@@ -1,0 +1,19 @@
+{
+  "base_git": "2f2c704eb0085f78e638d41cd2467c436713b695",
+  "reader_sha256": "cc756b054f271d626ecc55a16fb0ae702e10091284002f7b768e75ba0d0de2b8",
+  "edge_sha256": "be5c0a9dd30fa960378c57edb94037d10c62d27a8094e5c3c090535e1875c851",
+  "source": {
+    "ambiguity_v8.py": "27a42a815648209cb34b316e28e69233f0b78ffe9a3f89c3b58e74c2e04d6665",
+    "motion_v8.py": "311a364698198b02a188b81f171a1f490221855579043431d1cbe27a02b729bd",
+    "evidence_v8.py": "23fc92953f0aa05a8b0f1c7a0762e55a652921c7750bb7c09c4d2b8e3ce31619"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "first_layout_seed": 2612488000000000,
+  "sizes": [
+    12,
+    36
+  ],
+  "minimum_object_role_target": 0.25,
+  "max_score_gap": 0.2,
+  "selection": "first eligible distinct same-frame returns; labels used after selection only"
+}

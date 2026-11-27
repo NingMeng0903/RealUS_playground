@@ -1,0 +1,576 @@
+                                                               Scanning While Imagining:
+                                                A Scene-Graph World Model for Robotic Ultrasound Navigation
+                                                    Xuesong Lia,b , Shuai Chena , Feng Lia,b , Zhongliang Jiangc , Nassir Navaba,b , and Yuan Bia,b
+
+
+                                            Abstract— Ultrasound (US) acquisition depends on the op-
+                                         erator’s ability to interpret anatomy and anticipate how the
+                                         view will change with probe motion. Many robotic US nav-
+                                         igation methods select actions without explicitly predicting
+                                         these anatomical changes. We propose SonoGraph-WM, an
+                                         action- and goal-conditioned world model for anticipatory
+arXiv:2609.32837v1 [cs.RO] 26 Sep 2026
+
+
+
+
+                                         probe navigation. The model represents anatomy as scene
+                                         graphs (SGs), capturing visible structures, their geometry, and
+                                         spatial relationships without synthesizing US images. Given a
+                                         history of SGs and probe poses, a unified Transformer jointly
+                                         predicts future SGs and poses. A receding-horizon planner
+                                         recursively imagines candidate trajectories, selects the shortest
+                                         predicted path reaching a goal graph, and follows it over a short
+                                         execution horizon before replanning from new observations.
+                                         To reduce reliance on tracked and anatomically annotated
+                                         US sequences, we generate aligned SG–pose training data
+                                         from computed tomography (CT) label maps along surface-
+                                         constrained probe trajectories. On four held-out CT cases,
+                                         spatial relation F1 remains above 93% over 20 prediction
+                                         steps, and closed-loop navigation achieves 77.50% and 75.00%
+                                         success for the gallbladder and pancreas, respectively, using
+                                         annotation-derived SGs. In robot–phantom navigation exper-
+                                         iments with label-map-derived SGs, the planner reached the
+                                         target view in 73.7% of trials. These findings support CT-
+                                         supervised anatomical world modeling for probe planning
+                                         and highlight the importance of frequent observation updates           Fig. 1. Concept overview of SonoGraph-WM. For each candidate probe
+                                                                                                                motion, the model predicts anatomical scene graphs (SGs) and probe poses.
+                                         for reliable navigation. Project Page: https://noseefood.
+                                                                                                                The planner selects the shortest predicted path among those whose SGs
+                                         github.io/us-sonograph-wm/.                                            match a goal graph. B-mode examples illustrate the anatomical views
+                                                                                                                represented by the graphs.
+                                                              I. I NTRODUCTION
+                                            Medical ultrasound (US) is widely used for its portabil-
+                                         ity and real-time imaging without ionizing radiation [1].
+                                                                                                                visible. Such predictions would allow candidate motions to
+                                         Obtaining the desired view requires skilled adjustment of
+                                                                                                                be compared before execution, reflecting how sonographers
+                                         probe position and orientation, which can limit acquisition
+                                                                                                                use anatomical knowledge to anticipate changes in the view.
+                                         reproducibility [1]. Robotic US systems (RUSS) aim to
+                                                                                                                   Predicting these changes requires anatomical information
+                                         improve repeatability and reduce the physical workload of
+                                                                                                                beyond the current image. B-mode US shows a cross-section
+                                         scanning [2]. During autonomous scanning, the robot must
+                                                                                                                rather than the complete three-dimensional arrangement of
+                                         determine how to move the probe based on the anatomy
+                                                                                                                organs. The target may lie outside the imaging plane, and
+                                         visible in the current US image.
+                                                                                                                probe movement changes which structures are visible [10].
+                                            Existing RUSS navigation methods select probe motions in
+                                                                                                                Sonographers use anatomical knowledge to interpret visible
+                                         several ways. Registration-based approaches use rib-cartilage
+                                                                                                                structures, guide probe adjustments [1], and anticipate how
+                                         geometry to align US with computed tomography (CT) and
+                                                                                                                neighboring structures and their spatial arrangement may
+                                         transfer template scanning paths to individual patients [3],
+                                                                                                                appear. We aim to give robots this ability to anticipate
+                                         [4]. Rule-based and visual-servoing methods [5] adjust the
+                                                                                                                anatomical changes before choosing their next motion.
+                                         probe using detected anatomical features [6]. Model-free
+                                         reinforcement learning (RL) and imitation learning (IL) learn             A learned world model predicts what a robot would
+                                         motions from interaction or expert demonstrations [7]–[9].             observe after an action [11], [12]. Recursive predictions
+                                         Rule-based controllers and model-free policies typically act           enable comparison of paths before execution, as explored
+                                         without explicitly predicting which structures will become             in navigation and manipulation [13], [14]. In US, DreamReg
+                                                                                                                uses predicted observations to refine registration [15], while
+                                           a Computer Aided Medical Procedures (CAMP), Technical University
+                                                                                                                Fan et al. [16] use rewards from predicted US images to train
+                                         of Munich, Munich, Germany; b Munich Center for Machine Learning
+                                         (MCML), Munich, Germany; c Department of Mechanical Engineering, The
+                                                                                                                a predictor of probe motions toward a target view.
+                                         University of Hong Kong, Hong Kong SAR, China.                            However, predicting future US images requires modeling
+both anatomical changes and appearance variations caused          view [2]. Force- and confidence-based controllers address the
+by speckle [17], low contrast, and acquisition settings [10].     contact and alignment requirements [19], [20]. Building on
+Anatomical scene graphs (SGs) describe structures without         these controls, navigation methods use anatomical geometry,
+reproducing image texture. Li et al. [10] use SGs to explain      image feedback, or learned policies to determine how the
+US images and guide scanning toward missing structures.           probe should move.
+Nodes encode anatomical structures, positions, and sizes,            Geometry-based methods transfer template scanning paths
+while edges describe spatial relationships. This represen-        through rib-cartilage US–CT registration [3], [4] or use seg-
+tation predicts which structures candidate motions would          mented vessel geometry to maintain centering and perpen-
+reveal and where they would appear. However, the guidance         dicular imaging during scanning [6]. View-quality methods
+remains coarse and does not directly specify executable robot     guide target search through Bayesian optimization with an
+motions. Extending it to motion planning requires learning        expert-derived prior [21] or reward functions learned from
+how SGs evolve with probe motion from aligned SG–pose             ranked image pairs [22].
+sequences, which remain scarce in US.                                Learned policies map observations to probe motions. Deep
+   Anatomically labeled CT volumes offer an alternative           RL has been applied to target-plane navigation [7], [23],
+source of these sequences. We sample simulated US imaging         including transfer from simulated vessel masks to real US
+planes along generated probe paths using CADS organ label         segmentations [8]. SonoGym supports policy training and
+maps [18]. At each plane, intersecting structures, their geom-    evaluation in simulation [24], while UltraBot learns probe
+etry, and spatial relationships form an SG, which is paired       adjustments through imitation of expert demonstrations [9].
+with the corresponding probe pose. This produces multiple            While these approaches can guide probe motion based on
+SG–pose sequences from each volume without acquiring              the US observations, they generally do not explicitly predict
+and annotating US scans for every path. We use these              how the anatomical view will evolve along candidate paths.
+sequences to learn anatomical changes under probe motion          A world model that predicts future anatomical views would
+and evaluate prediction and navigation using annotation-          enable the robot to compare candidate paths before execution
+derived SG observations.                                          and select those expected to reach the target view efficiently,
+   We train SonoGraph-WM on these sequences and use               providing an explicit, interpretable basis for navigation.
+its predictions in a receding-horizon planner (Fig. 1). A
+unified Transformer takes the SG–pose history, a candidate        B. World Models for Ultrasound
+action for the first predicted step, and goal graphs specifying      A world model learns how actions change subsequent
+the desired views. It learns subsequent graph and pose            observations or representations of the scene. The quantities
+changes from generated reference trajectories. The planner        it predicts depend on how they will be used: PlaNet plans
+recursively extends candidate paths and checks for predicted      through learned latent states [12], while MuZero predicts
+goal-graph matches. It selects the shortest predicted goal-       rewards and values needed for planning [25]. Contrastive
+reaching path and follows it over a short execution horizon,      structured world models learn how object-level states change
+then repeats prediction and planning using newly observed         under actions [26]. For US, this raises two related questions:
+SGs and probe poses.                                              what information about a future view should be predicted,
+   The main contributions are:                                    and how should that prediction guide probe movement?
+   • We propose SonoGraph-WM, an action- and goal-
+                                                                     One use of world modeling is to learn anatomical and mo-
+      conditioned world model that jointly predicts anatomi-      tion information for a probe-guidance network. EchoWorld
+      cal SGs and probe poses for interpretable, anticipatory     predicts masked and motion-conditioned image features dur-
+      probe navigation. A receding-horizon planner selects        ing pretraining, then fine-tunes a guidance network that
+      the shortest predicted path reaching a goal graph and       uses previous images and motions [27]. Fan et al. [16]
+      follows it over a short horizon before replanning using     train an action-conditioned diffusion model to predict future
+      new observations.                                           US images. They then use rewards from the frozen world
+   • We introduce a CT-derived training-data pipeline that
+                                                                  model to fine-tune a goal-conditioned action predictor. In
+      generates aligned SG–pose sequences from anatomical         these approaches, learning how images change with probe
+      label maps, reducing the need for tracked and anatom-       motion supports the training of a network that produces probe
+      ically annotated US training sequences.                     guidance.
+   • We evaluate prediction and closed-loop navigation on
+                                                                     World-model predictions can also be used during infer-
+      held-out CT cases and demonstrate the feasibility of        ence, as illustrated by DreamReg for 2D–3D US registra-
+      real-world robotic US navigation through phantom ex-        tion [15]. DreamReg summarizes previous observations and
+      periments.                                                  poses in a latent estimate of the alignment, then simulates
+                                                                  candidate probe motions and their predicted observations to
+                    II. R ELATED W ORK                            refine the registration transform.
+                                                                     Anticipating the consequences of probe motion does not
+A. Autonomous Probe Navigation in Robotic Ultrasound              necessarily require predicting every detail of a future US
+  Autonomous robotic US scanning combines control of              image. Sonographers can instead draw on anatomical knowl-
+probe contact and orientation with navigation toward a target     edge to reason about which structures may appear and how
+Fig. 2. System overview of SonoGraph-WM. CT label maps supply SG–pose sequences for joint supervision. During navigation, the frozen model
+recursively predicts independent branches, each with an upper limit of 300 states. Branches stop at their first predicted goal match or an invalid state.
+Selection minimizes predicted probe travel among goal-matching branches; one action is executed before the observed SG is checked and history updated.
+
+
+
+their spatial arrangement may change. Given the noisy nature                  provide labels with broad anatomical coverage [18]. These
+of US images, high-fidelity image prediction introduces                       volume labels allow structures and their relationships to be
+the additional burden of modeling appearance variations                       extracted at successive imaging planes along a probe path.
+that may be irrelevant to navigation. Scene graphs offer                      We use CADS label maps to construct SGs at sampled
+a practical alternative by explicitly representing anatomical                 probe poses and assemble them into training sequences.
+structures, their geometry, and spatial relationships, allowing               The resulting SG–pose pairs let the world model learn how
+a world model to focus on navigation-relevant anatomical                      structures in the imaging plane change as the probe moves.
+changes.                                                                      During inference, SGs can be extracted from acquired US
+                                                                              images using specialized anatomical detection models.
+C. Anatomical Scene Graphs and CT-Derived Training Data                                                III. M ETHODS
+   Scene graphs explicitly represent objects and their rela-                  A. Problem Formulation
+tionships, allowing image content to be described through
+                                                                                 SonoGraph-WM predicts anatomical views and probe
+the objects present and how they are arranged [28]. In
+                                                                              poses to compare candidate motions before execution
+robotics, 3D dynamic scene graphs organize objects, places,
+                                                                              (Fig. 2). At time t, Ht contains the latest H observed pairs
+and their spatial relationships [29]; SayPlan uses these graphs
+                                                                              (Si , Pbi ), including the current state. Here, Si denotes the
+to identify objects and locations relevant to a task and plan
+                                                                              observed SG. The pose Pbi ∈ SE(3) maps the probe frame to
+robot actions [30]. For US, Li et al. [10] estimate anatomical
+                                                                              the anatomy-specific body frame. Consecutive poses define
+structures and their relations from neck images, then use the
+                                                                              the local motion
+graphs for image explanation and scanning guidance toward
+missing structures. Their work shows how the structures                                                At = (Pbt )−1 Pbt+1 ,                         (1)
+visible in a US image can provide information for deciding                    so Pbt+1 = Pbt At . This gives action labels during training; at
+where to scan next.                                                           inference, candidate actions are proposed before execution.
+   Predicting SGs along a probe path adds a temporal require-                 Their six-dimensional encoding at comprises local transla-
+ment to image-based SG estimation. Li et al. [10] annotate                    tion (mm) and a rotation vector (rad).
+structures and relations in individual neck US images and                        The goal is an unordered set of acceptable views, Ggoal =
+identify annotation effort and limited anatomical coverage                    {Smgoal M
+                                                                                     }m=1 , supplied for the requested target. Goal poses
+as constraints. World-model training additionally requires                    are not model inputs; goal-set construction and availability
+these labels across successive scanning steps, paired with                    are specified in Sec. IV-A. The world model predicts
+the probe’s position and orientation. Image-level graph an-
+                                                                                                 Tbt = Fθ (Ht , at , Ggoal ),           (2)
+notations alone do not provide these SG–pose sequences.
+   CT segmentation resources offer a source of anatomical                                                                   b b ) for k =
+                                                                              where Tbt contains K predicted pairs (Sbt+k , P t+k
+labels from which such sequences can be constructed. To-                      1, . . . , K. Each graph describes the anatomy expected at
+talSegmentator provides CT data and segmentation mod-                         its paired pose. The candidate action conditions the first
+els covering multiple organs and other anatomical struc-                      transition. Later steps form a learned goal-conditioned con-
+tures [31]. CADS combines and standardizes CT datasets to                     tinuation.
+                                                                            the imaging plane intersects the label map to obtain the
+                                                                            anatomical structures and their spatial relationships. The
+                                                                            same procedure generates history, future, and goal SGs.
+                                                                            The reference trajectories are geometrically generated, not
+                                                                            recorded sonographer demonstrations.
+                                                                               Each predicted SG–pose pair is supervised by the corre-
+                                                                            sponding future waypoint in the CT-derived trajectory. The
+                                                                            training objective combines graph and pose losses:
+                                                                                           L = LSG + Lpose ,
+                                                                                        LSG = Lpres + Lattr + Lpair + Lrel ,            (3)
+Fig. 3.    Ultrasound scene graph representation with per-node attributes              Lpose = Ltrans + Lrot .
+and relations.
+                                                                            Lpres applies binary cross-entropy to each anatomical node’s
+                                                                            presence label. Lrel applies binary cross-entropy indepen-
+B. Ultrasound Scene-Graph World Model Architecture                          dently to each relation label, allowing multiple relations per
+   The world model jointly predicts future anatomical SGs                   node pair. Lattr and Lpair use SmoothL1 for numerical node
+and probe poses, conditioned on the observed SG–pose                        attributes and pair features, respectively; component count
+history, a candidate action, and a set of goal SGs. Each SG                 is regressed. Pose supervision uses the relative transforms
+describes the anatomical structures intersecting the imaging                ∆Pt→t+k . Let Rk and R    b k denote their reference and pre-
+plane. Nodes have fixed anatomical identities and eight nu-                 dicted rotation matrices,
+                                                                                                    respectively.  The per-step rotation
+                                                                                                        b ⊤ Rk )−1
+                                                                                                     tr(R
+merical attributes: component count, normalized bounding-                   loss is ℓrot,k = arccos       k
+                                                                                                            2       .
+box coordinates (x, y, w, h), normalized centroid coordinates                  Lrot aggregates these angles over valid future steps, while
+(x, y), and visible-area ratio. Spatial relationships between               Ltrans penalizes relative translation error.
+structures are represented by three relation types: adjacent
+to, left of, and superficial to. One example is shown in Fig. 3.            D. Planning by Recursive Imagination
+   A shared SG encoder combines node features and pairwise                     The planner uses the world model to compare candidate
+features, including spatial relations, into a d-dimensional em-             probe trajectories before execution. At each planning iter-
+bedding. Probe poses are encoded from a 9-D representation                  ation, it generates candidate motions, recursively predicts
+comprising 3-D translation and continuous 6-D rotation. A                   their anatomical outcomes, and selects the shortest predicted
+multilayer perceptron fuses each pair of SG and pose em-                    path that reaches a goal view. The robot follows the selected
+beddings into a state token. The Transformer encoder takes                  trajectory over a short execution horizon before replanning
+H history state tokens, one candidate action token, and M                   from new observations.
+goal tokens obtained using the shared SG encoder. Temporal
+                                                                               At time t, we sample C candidate probe motions by
+embeddings encode the order of the history states, while
+                                                                            randomly perturbing the current probe velocity. Each candi-
+type embeddings distinguish the action and goal tokens.
+                                                                            date initializes an independent imagined branch, conditioned
+Goal tokens receive no order-dependent positional encoding,
+                                                                            on the same observed history Ht and goal set. The world
+allowing the goals to be represented as an unordered set.
+                                                                            model extends each branch in K-step chunks. An observed
+   The Transformer decoder uses K learned queries to predict
+                                                                            or predicted SG matches the goal set if its distance to at
+the next K SG–pose pairs in parallel. Each decoded token
+                                                                            least one goal graph falls below a threshold calibrated on
+is passed to an SG head and a pose head. The SG head
+                                                                            training cases. The graph distance compares node presence,
+predicts node presence, numerical attributes, pair features,
+                                                                            numerical attributes, pair features, and spatial relations.
+and spatial relations under the fixed graph schema. The pose
+                                                                               For branch j, a chunk starting at index s predicts SGs and
+head predicts relative 3-D translation and continuous 6-D
+                                                                            body-frame probe poses at s + 1, . . . , s + K, where s = t for
+rotation, which are converted into a rigid transformation
+d t→t+k ∈ SE(3). The future probe pose is reconstructed                     the first chunk. To continue the rollout, we derive the next
+∆P
+     bb            bd                                                       conditioning motion from the final two predicted poses:
+as P   t+k = Pt ∆Pt→t+k . All predicted poses within a
+chunk are expressed relative to the same current pose Pbt .                                 b (j) = (P
+                                                                                            A next
+                                                                                                     b b,(j) )−1 P
+                                                                                                                 b b,(j) .              (4)
+                                                                                                       s+K−1       s+K
+Accordingly, the supervision target for step k is ∆Pt→t+k =
+(Pbt )−1 Pbt+k .                                                            Its 6-D encoding serves as the first-action input for the next
+                                                                            chunk, starting at s + K. The branch history is updated
+C. CT-Derived Supervision and Training                                      using the latest H SG–pose pairs, including predicted pairs,
+   We train on SG–pose sequences generated from CADS                        while the goal set remains fixed. This process extends
+label maps [18]; trajectory construction and dataset settings               the imagined trajectory without acquiring new observations.
+are given in Sec. IV-A. Predicting anatomical structure rather              Predicted states are checked in temporal order, and each
+than image texture lets CT labels supply this supervision                   branch terminates at its first goal match, immediately before
+without paired annotated US scans. At each waypoint,                        an invalid state, or upon reaching the imagination limit nmax .
+   Let Bgoal denote the branches that reach a predicted goal     infeasible or highly redundant configurations. Each retained
+within the imagination limit, and let nj denote the first        start pose is paired with every verified target view for
+goal-matching step of branch j. The cumulative translational     the corresponding organ, and a smooth reference trajectory
+distance along this branch to the predicted goal is              constrained to the body surface is generated. Along each
+                       nj                                        trajectory, the probe progressively adjusts its position and
+                              b,(j)       b,(j)
+                       X
+                Dj =         b t+k − p
+                             p       b t+k−1          ,    (5)   orientation toward the target view. All trajectories undergo
+                                                  2              quality control for contact validity, geometric feasibility,
+                       k=1
+        b,(j)                                                    motion continuity, and terminal consistency, with manual
+where pb t+k is the translational component of the predicted
+                    b,(j)
+                                                                 review and correction when necessary. At each sampled
+probe pose, and p bt      = pbt is the current observed posi-    waypoint, the corresponding scene graph is constructed based
+tion. The planner selects the goal-reaching branch with the      on CT label maps, yielding synchronized SG–pose pairs
+shortest predicted travel distance:                              (Sec. III-C). The transformation between consecutive poses is
+                    j ∗ = arg min Dj .                     (6)   represented as a relative action in the probe-local coordinate
+                                j∈Bgoal                          frame (Eq. (1)). Each expert trajectory therefore provides
+Thus, selection minimizes predicted translational travel to a    a temporally aligned sequence of SG observations, probe
+goal, measured in millimeters. Probe orientation is included     poses, and local actions for subsequent world model training.
+in the predicted poses but does not contribute to the path-         3) Temporal Samples and Case Split: Each sample con-
+length criterion. If no branch reaches a predicted goal, the     tains H = 10 history SG–pose pairs, the current trajectory
+planner returns N O G OAL R EACHED without selecting a           action, the target-specific goal set, and K = 10 future SG–
+trajectory.                                                      pose targets.
+   The robot follows the selected trajectory under the surface      The patient-disjoint split comprises 20 training cases
+constraint over a short execution horizon. Newly acquired        (53,344 samples) and four test cases (7,981 samples). Nor-
+SGs and measured probe poses then update the observed            malization statistics and the goal threshold use training cases
+history for the next planning iteration. Navigation succeeds     only.
+only when an observed SG satisfies dgoal (S) ≤ τgoal ; a pre-       4) Model and Planner Configuration: The Transformer
+dicted goal match alone does not establish task completion.      uses embedding dimension d = 384, four encoder layers,
+The prediction, selection, and execution cycle repeats until     four decoder layers, eight attention heads, a feed-forward
+observed success, no eligible branch, or the execution limit     dimension of 1,536, and dropout of 0.1.
+is reached.                                                         Action vectors and pose translations are normalized using
+                                                                 training-set statistics before network encoding. This prepro-
+             IV. E XPERIMENTAL E VALUATION
+                                                                 cessing is omitted from the model notation; execution uses
+A. Data and Implementation Details                               physical units.
+   1) Dataset and Reference Goals: We use CT volumes                At each planning iteration, the planner samples C = 8
+and corresponding anatomical label maps from CADS [18].          candidate motions by randomly perturbing the current probe
+From 24 patient cases, we generate 1,839 probe trajectories      velocity. Each branch can extend to at most nmax = 300
+containing 63,164 waypoints. For each patient CT and target      predicted states (30 chunks of K = 10). Goal matching or
+organ, we predefine probe positions and orientations that        an invalid state terminates a branch earlier. Selection uses
+yield acceptable views of that organ, termed target-view         the predicted path length up to each eligible branch’s first
+poses. We extract a reference SG from the CT label map           goal match; each planning iteration executes one physical
+at each of these poses. By default, each target organ has        step. Because H = K in this configuration, each recursive
+M = 3 reference SGs representing alternative acceptable          call uses the previous chunk’s predicted SG–pose pairs as its
+views. The complete set of reference SGs is supplied as Ggoal    history.
+at inference, including for held-out patients.                      5) Robotic Ultrasound Setup: The robotic US platform
+   Training, future-state prediction, and CT-based navigation    comprises an LBR iiwa 7 R800 robot (KUKA, Germany)
+use annotation-derived SGs. The robot–phantom protocol           and a bk3000 US system (BK Medical, Herlev, Denmark)
+generates SG observations from a registered phantom label        equipped with a 5C1e curved-array transducer. The probe is
+map and measured probe poses. These settings test prediction     mounted on the robot end effector, and the B-mode imaging
+and planning separately from B-mode-to-SG estimation. The        depth is set to 16 cm. Robot experiments use a US-22 CT/US
+graph schema uses at most seven anatomical nodes, 21             abdominal phantom (Kyoto Kagaku, Japan).
+node pairs, and 51 relation triplets. Pair geometry comprises
+horizontal displacement, relative depth, normalized distance,    B. Evaluation Questions and Common Protocol
+and an adjacency score.                                             The evaluation addresses three questions: (1) How accu-
+   2) Geometric Reference Trajectory Generation: For each        rately do predicted SGs represent the anatomy at their cor-
+patient, we first select and manually validate a set of clin-    responding predicted probe poses, including over recursively
+ically meaningful target views for each target organ. We         extended rollouts? (2) How reliably does the planner reach
+then sample diverse initial probe poses across the acces-        an acceptable target view from different initial distances? (3)
+sible surface of the lower abdomen and manually exclude          Can the system guide a physical robot to the target view in
+                   (a) Start state                                   (b) Navigation and replanning                                (c) Stop state                    (d) Target SG
+               Gallbladder                                 Local planning                        Replan
+
+                                     Liver                                                                                                  Gallbladder                      Gallbladder
+               Spine     Pancreas
+
+                                                                                                                                           Liver                           Liver
+                             Vessels                                                                            Goal
+                 Spleen                                                                              Stop                     Vessels                            Vessels
+                                             Start
+                   Start SG + pose                                                                                                Final SG + pose                      Target SG
+
+               Pancreas                                    Local planning                        Replan                                      Gallbladder                     Gallbladder
+                                Liver                                                                                         Pancreas                            Pancreas
+               Vessels                                                                                                                             Liver                            Liver
+                                                                                                                                 Vessels                              Vessels
+                           Kidneys
+                 Spine                                                                                            Goal       Kidneys       Spine             Kidneys Spine
+                                             Start                                                      Stop
+                   Start SG + pose                                                                                                Final SG + pose                      Target SG
+                                              Start          Executed path       8 candidate trajectories      Preset goal      Goal region         Model stop
+
+
+Fig. 4. Closed-loop navigation examples for the gallbladder (top) and pancreas (bottom). (a) Initial SG and probe pose. (b) SonoGraph-WM evaluates
+eight candidate future trajectories, executes the first action of the selected trajectory, and replans from the updated observation. Purple dashed curves show
+predicted candidates and red curves show the executed path. (c) Final SG and probe pose at the model-selected stopping state. (d) Goal SG used for
+navigation conditioning.
+
+                                                                       TABLE I
+                                S CENE - GRAPH PREDICTION ACCURACY ON HELD - OUT CASES WITH TRAJECTORY- ACTION INPUTS .
+
+                                                                                       Gallbladder                                                           Pancreas
+                             Local step Total steps Node visibility                   Spatial relation         BBox mIoU          Node visibility          Spatial relation         BBox mIoU
+     Prediction stage            k          n         F1(%) ↑                            F1(%) ↑                 (%) ↑              F1(%) ↑                   F1(%) ↑                 (%) ↑
+     Initial                         1                 1           88.74 ± 0.21        94.45 ± 0.08            39.92 ± 0.32        93.13 ± 0.19            94.89 ± 0.10            42.44 ± 0.37
+                                     3                 3           87.69 ± 0.23        94.35 ± 0.08            38.95 ± 0.34        92.33 ± 0.22            94.77 ± 0.11            41.13 ± 0.40
+                                     5                 5           86.95 ± 0.24        94.20 ± 0.09            38.34 ± 0.34        91.42 ± 0.26            94.67 ± 0.11            39.79 ± 0.42
+                                    10                10           84.84 ± 0.30        93.80 ± 0.13            36.09 ± 0.42        89.97 ± 0.33            94.69 ± 0.11            38.87 ± 0.49
+     Recursive                       1                11           84.21 ± 0.31        94.14 ± 0.09            34.39 ± 0.37        89.21 ± 0.33            94.26 ± 0.15            37.00 ± 0.50
+                                     3                13           84.10 ± 0.34        94.16 ± 0.10            33.57 ± 0.43        89.07 ± 0.38            94.19 ± 0.15            35.60 ± 0.56
+                                     5                15           83.94 ± 0.37        94.12 ± 0.12            32.92 ± 0.46        88.57 ± 0.42            94.28 ± 0.16            34.60 ± 0.60
+                                    10                20           82.70 ± 0.51        93.59 ± 0.18            31.58 ± 0.57        87.50 ± 0.54            94.19 ± 0.19            34.09 ± 0.70
+
+
+
+phantom experiments? We evaluate navigation toward two                                                 This comparison assesses whether the imagined anatomy
+target organs, gallbladder and pancreas. For each target q,                                            agrees with the predicted probe location. We report three
+  (q)
+Ggoal denotes the set of all acceptable goal graphs.                                                   complementary metrics: node visibility F1 measures which
+   Navigation trials use a frozen world model, fixed planner                                           anatomical structures are present, spatial relation F1 mea-
+settings, and a fixed execution budget. Initial poses are                                              sures their pairwise relationships, and BBox mIoU measures
+divided into near (d0 ≤ dsplit ) and far (d0 > dsplit ) groups                                         the overlap between predicted and reference anatomical
+according to their reference surface-path distance d0 to the                                           bounding boxes. Table I reports the mean and standard
+nearest hidden goal pose. The threshold dsplit is set before                                           deviation of each metric at each evaluated step.
+evaluation on held-out cases. The goal poses are used only                                                Spatial relation prediction remains stable throughout the
+for trial sampling and evaluation and are not available to                                             evaluated horizon. Between steps 1 and 20, relation F1
+the planner. Results are reported for each target and distance                                         decreases only from 94.45% to 93.59% for gallbladder-
+group, together with an overall summary.                                                               conditioned rollouts and from 94.89% to 94.19% for
+C. Scene-Graph Prediction Accuracy                                                                     pancreas-conditioned rollouts. In contrast, node visibility F1
+                                                                                                       decreases from 88.74% to 82.70% and from 93.13% to
+   We evaluate the world model’s ability to predict anatom-
+                                                                                                       87.50%, respectively. Geometric localization also deterio-
+ical SGs over an initial prediction chunk and its first re-
+                                                                                                       rates: BBox mIoU decreases from 39.92% to 31.58% for
+cursive extension on four held-out CT cases. Rollouts are
+                                                                                                       the gallbladder group and from 42.44% to 34.09% for the
+conditioned on either a gallbladder or pancreas goal set, with
+                                                                                                       pancreas group. Both visibility and bounding-box overlap
+both groups evaluated over the full anatomical graph. Each
+                                                                                                       continue to decline during recursive extension.
+rollout begins with a ten-frame reference history and the cor-
+responding trajectory action. The recursive extension uses the                                            These results suggest that the model retains the broad
+model’s predicted SG–pose history and the motion derived                                               spatial relationships between anatomical structures over ex-
+from Eq. (4), without additional reference observations. We                                            tended imagined rollouts, while predicting their visibility and
+evaluate local steps k ∈ {1, 3, 5, 10} in each chunk, covering                                         precise geometry becomes more difficult. The gap between
+cumulative prediction steps up to n = 20.                                                              high relation F1 and limited bounding-box overlap identifies
+   For each predicted SG–pose pair, we extract a reference                                             geometric precision as a remaining challenge for long-
+SG from the held-out CT label map at the predicted pose.                                               horizon prediction. Whether these predictions support target-
+                                                                       TABLE II
+                   C LOSED - LOOP TARGET- VIEW ACQUISITION ON HELD - OUT CT CASES WITH EXECUTION HORIZONS OF 1, 5, AND 10 STEPS .
+
+                                              Execute 1                                                             Execute 5                                                            Execute 10
+                  Successes / trials Success rate Actions to goal Final position error Successes / trials Success rate Actions to goal Final position error Successes / trials Success rate Actions to goal Final position error
+ Initial distance      n/N              (%) ↑        (steps) ↓          (mm) ↓              n/N              (%) ↑        (steps) ↓          (mm) ↓              n/N              (%) ↑        (steps) ↓          (mm) ↓
+ Gallbladder
+ Near                 52/64           81.25      19.37 ± 11.76      12.43 ± 11.86           22/64           34.38      19.64 ± 15.84     15.32 ± 13.29            25/64          39.06      27.64 ± 28.30      11.69 ± 9.60
+ Far                  41/56           73.21      37.51 ± 15.67      16.25 ± 11.77           27/56           48.21      38.59 ± 16.32      12.14 ± 9.08           21/56           37.50      42.76 ± 25.40      13.38 ± 11.04
+ Overall              93/120          77.50      27.37 ± 16.29      14.11 ± 11.91          49/120           40.83      30.08 ± 18.57     13.56 ± 11.16           46/120          38.33      34.54 ± 27.78      12.46 ± 10.20
+ Pancreas
+ Near                 52/65           80.00      18.33 ± 10.57      15.15 ± 8.11            19/65           29.23      13.95 ± 22.02      15.80 ± 9.58           21/65           32.31      17.57 ± 21.42      12.38 ± 7.97
+ Far                  38/55           69.09      33.18 ± 13.56      13.10 ± 7.08            9/55            16.36      46.89 ± 34.60      19.77 ± 3.52            6/55           10.91      58.00 ± 35.01      16.80 ± 2.55
+ Overall              90/120          75.00      24.60 ± 13.96      14.28 ± 7.72           28/120           23.33      24.54 ± 30.39      17.08 ± 8.27           27/120          22.50      26.56 ± 29.70      13.36 ± 7.33
+
+
+
+
+view acquisition is assessed separately through closed-loop                                                         69.09%, and the mean action count increases from 18.33 to
+navigation experiments.                                                                                             33.18. Longer execution horizons particularly affect pancreas
+                                                                                                                    navigation from far starts, where success falls to 16.36% with
+D. Closed-Loop Navigation Performance                                                                               Execute 5 and 10.91% with Execute 10.
+   We evaluate closed-loop target-view acquisition in held-                                                            For successful trials under Execute 1, the mean final
+out CT anatomical environments for the gallbladder and                                                              position error is 14.11 mm for the gallbladder and 14.28 mm
+pancreas. To examine the effect of replanning frequency, we                                                         for the pancreas. Thus, reaching an acceptable anatomical
+compare execution horizons of 1, 5, and 10 steps, denoted                                                           view does not require exact recovery of a predefined refer-
+Execute 1, Execute 5, and Execute 10. At each planning                                                              ence position. Although some longer-horizon settings yield
+iteration, the robot follows the selected predicted trajectory                                                      lower mean position errors, these values describe only the
+for the specified horizon before updating its SG–pose history                                                       successful subset and should be interpreted alongside their
+from new observations and replanning. A trial succeeds                                                              substantially lower success rates.
+when an observed SG satisfies the goal criterion within the                                                            Overall, the results support the use of predicted anatomical
+execution budget.                                                                                                   trajectories for target-view acquisition, while showing that re-
+   Table II reports results for 120 trials per target under each                                                    liable performance depends strongly on frequent replanning
+execution setting, grouped by near and far initial distances.                                                       from observed anatomy.
+Success rate is the proportion of all attempted trials that
+reach an acceptable target view. Actions to goal count the                                                          E. Robot–Phantom Navigation Performance
+executed probe-motion steps until the first successful obser-                                                          We further evaluate SonoGraph-WM on the US-22 phan-
+vation. Final position error measures the minimum Euclidean                                                         tom using the robotic US platform described in Sec. IV-A.5.
+distance from the terminal probe position to the region                                                             A compliant position–force controller maintains acoustic
+defined by the three predefined target-view positions. Action                                                       contact and workspace limits. The phantom, robot-base, and
+counts and position errors are reported as mean ± standard                                                          probe frames are registered before each session. A registered
+deviation over successful trials only. Overall action counts                                                        phantom label map and the measured probe pose generate
+and position errors are calculated across all successful trials                                                     the current SG, matching the similar SG used for training.
+from both distance groups. Navigation success is determined                                                         The acquired B-mode stream is recorded for target-view and
+by whether the observed SG matches an acceptable goal                                                               contact assessment but is not an input to the planner. This
+graph; position error separately measures the distance to the                                                       experiment therefore tests physical execution and repeated
+nearest reference target-view position.                                                                             replanning, not B-mode-to-SG perception. Trials start from
+   Replanning after every step achieves the highest success                                                         free poses across phantom surface.
+rates for both targets and in both distance groups. With
+Execute 1, the planner succeeds in 93/120 gallbladder trials
+(77.50%) and 90/120 pancreas trials (75.00%). Increasing
+the execution horizon to five steps reduces overall success to
+40.83% and 23.33%, respectively. With ten-step execution,
+success decreases further to 38.33% and 22.50%. These
+results demonstrate the importance of frequent observation
+updates for navigation with the current world model. The
+degradation with longer execution horizons is consistent
+with the reduced prediction accuracy observed over extended
+rollouts.
+   Under Execute 1, distant starts are associated with lower
+success rates and longer successful trajectories. Gallbladder
+success decreases from 81.25% for near starts to 73.21% for
+far starts, while the mean action count increases from 19.37                                                        Fig. 5.    Experimental setup for scene graph-guided robotic ultrasound
+to 37.51. For the pancreas, success decreases from 80.00% to                                                        navigation on an abdominal phantom.
+   The planner reached the target view in 8/10 gallbladder                     [7] H. Hase et al., “Ultrasound-guided robotic navigation with deep
+trials (80.0%) and 6/9 pancreas trials (66.7%), yielding an                        reinforcement learning,” in IEEE/RSJ International Conference on
+                                                                                   Intelligent Robots and Systems (IROS), 2020, pp. 5534–5541.
+overall success rate of 73.7% (14/19). Among successful                        [8] Y. Bi, Z. Jiang, Y. Gao, T. Wendler, A. Karlas, and N. Navab, “VesNet-
+trials, actions to goal were 22.0 ± 12.81 steps for the                            RL: Simulation-based reinforcement learning for real-world US probe
+gallbladder and 23.5 ± 12.44 steps for the pancreas, with                          navigation,” IEEE Robotics and Automation Letters, 2022.
+                                                                               [9] H. Jiang et al., “Towards expert-level autonomous carotid ultra-
+22.64 ± 12.18 steps overall (mean ± standard deviation).                           sonography with large-scale learning-based robotic system,” Nature
+Across all trials, final position errors were 37.70 ± 19.08 mm                     Communications, vol. 16, no. 1, p. 7893, 2025.
+for the gallbladder and 23.07 ± 10.45 mm for the pancreas                     [10] X. Li, D. Huang, Y. Zhang, N. Navab, and Z. Jiang, “Semantic scene
+                                                                                   graph for ultrasound image explanation and scanning guidance,” in In-
+(mean ± standard deviation), with an overall mean of                               ternational Conference on Medical Image Computing and Computer-
+30.77 mm.                                                                          Assisted Intervention (MICCAI), 2025.
+                                                                              [11] D. Ha and J. Schmidhuber, “Recurrent world models facilitate policy
+              V. C ONCLUSION AND L IMITATIONS                                      evolution,” in Advances in Neural Information Processing Systems
+                                                                                   (NeurIPS), 2018.
+   SonoGraph-WM learns anatomical transitions from CT-                        [12] D. Hafner et al., “Learning latent dynamics for planning from pixels,”
+derived SG–pose sequences and selects the shortest predicted                       in International Conference on Machine Learning (ICML), 2019.
+path among branches that match a goal view. On four held-                     [13] A. Bar, G. Zhou, D. Tran, T. Darrell, and Y. LeCun, “Navigation world
+                                                                                   models,” in IEEE/CVF Conference on Computer Vision and Pattern
+out cases, spatial relation F1 remained above 93% through 20                       Recognition (CVPR), 2025.
+predicted steps, while bounding-box overlap declined with                     [14] Y. Du et al., “Learning universal policies via text-guided video
+the prediction horizon. Closed-loop acquisition succeeded                          generation,” in Advances in Neural Information Processing Systems
+                                                                                   (NeurIPS), 2023.
+in 77.50% of gallbladder trials and 75.00% of pancreas                        [15] L. Kang, Y. Zhang, J. Shan, H. Gong, Q. Ding, and S. S. Cheng,
+trials. Robot–phantom trials reached the target view in 14/19                      “DreamReg: Belief-driven world model for 2D-3D ultrasound regis-
+cases (73.7%), showing that the predicted trajectories can                         tration,” arXiv preprint arXiv:2606.18825, 2026.
+                                                                              [16] S. Fan et al., “Action-conditioned world model for goal plane probe
+be executed on a physical system. These results support                            guidance in robotic ultrasound,” arXiv preprint arXiv:2607.21918,
+anatomical prediction and navigation with annotation-derived                       2026.
+SG observations and case-specific goal graphs.                                [17] X. Li, N. Navab, and Z. Jiang, “Speckle2self: Self-supervised ultra-
+                                                                                   sound speckle reduction without clean data,” Medical Image Analysis,
+   Stable relation prediction coexisted with limited geometric                     2025.
+precision. Far-start trials had lower success rates and required              [18] M. Xu, T. Amiranashvili et al., “CADS: A comprehensive anatomical
+more actions among successful trials. Prediction accuracy                          dataset and segmentation for whole-body anatomy in computed
+                                                                                   tomography,” arXiv preprint arXiv:2507.22953, 2025. [Online].
+beyond 20 steps remains uncharacterized despite a maximum                          Available: https://arxiv.org/abs/2507.22953
+planning horizon of 300 states. Predicted goal matches                        [19] Z. Jiang, M. Grimm, M. Zhou, Y. Hu, J. Esteban, and N. Navab, “Au-
+guide selection, while observed SG feedback verifies actual                        tomatic force-based probe positioning for precise robotic ultrasound
+                                                                                   acquisition,” IEEE Transactions on Industrial Electronics, vol. 68,
+completion.                                                                        no. 11, pp. 11 200–11 211, 2021.
+   Evaluation covers four test anatomies and assesses the                     [20] Z. Jiang et al., “Automatic normal positioning of robotic ultrasound
+complete system without isolating individual design con-                           probe based only on confidence map optimization and force measure-
+                                                                                   ment,” IEEE Robotics and Automation Letters, vol. 5, pp. 1342–1349,
+tributions. Extending the approach to B-mode input re-                             2020.
+quires a schema-compatible SG estimator and evaluation                        [21] D. Raina, S. H. Chandrashekhara, R. Voyles, J. Wachs, and S. K. Saha,
+of perception errors during navigation. This would test                            “Robotic sonographer: Autonomous robotic ultrasound using domain
+                                                                                   expertise in Bayesian optimization,” in IEEE International Conference
+whether CT-trained structural predictions remain useful with                       on Robotics and Automation (ICRA), 2023.
+image-derived observations. Cross-subject goal representa-                    [22] Z. Jiang, Y. Bi, M. Zhou, Y. Hu, M. Burke, and N. Navab, “Intelligent
+tions would further reduce reliance on case-specific reference                     robotic sonographer: Mutual information-based disentangled reward
+                                                                                   learning from few demonstrations,” The International Journal of
+graphs.                                                                            Robotics Research, 2024.
+                                                                              [23] K. Li et al., “Autonomous navigation of an ultrasound probe towards
+                            R EFERENCES                                            standard scan planes with deep reinforcement learning,” in IEEE
+                                                                                   International Conference on Robotics and Automation (ICRA), 2021,
+ [1] Z. Jiang, S. E. Salcudean, and N. Navab, “Robotic ultrasound imaging:
+                                                                                   pp. 8302–8308.
+     State-of-the-art and future perspectives,” Medical Image Analysis,
+                                                                              [24] Y. Ao et al., “SonoGym: High performance simulation for chal-
+     vol. 89, p. 102878, 2023.
+                                                                                   lenging surgical tasks with robotic ultrasound,” arXiv preprint
+ [2] Y. Bi, Z. Jiang, F. Duelmer, D. Huang, and N. Navab, “Machine
+                                                                                   arXiv:2507.01152, 2025.
+     learning in robotic ultrasound imaging: Challenges and perspectives,”
+                                                                              [25] J. Schrittwieser et al., “Mastering Atari, Go, chess and shogi by
+     Annual Review of Control, Robotics, and Autonomous Systems, vol. 7,
+                                                                                   planning with a learned model,” Nature, vol. 588, no. 7839, pp. 604–
+     pp. 335–357, 2024.
+                                                                                   609, 2020.
+ [3] Z. Jiang, X. Li, C. Zhang, Y. Bi, W. Stechele, and N. Navab, “Skeleton
+                                                                              [26] T. Kipf, E. van der Pol, and M. Welling, “Contrastive learning of
+     graph-based ultrasound-CT non-rigid registration,” IEEE Robotics and
+                                                                                   structured world models,” in International Conference on Learning
+     Automation Letters, vol. 8, no. 8, pp. 4394–4401, 2023.
+                                                                                   Representations (ICLR), 2020.
+ [4] Z. Jiang, Y. Kang, Y. Bi, X. Li, C. Li, and N. Navab, “Class-aware
+                                                                              [27] Y. Yue, Y. Wang, H. Jiang, P. Liu, S. Song, and G. Huang, “EchoWorld:
+     cartilage segmentation for autonomous US-CT registration in robotic
+                                                                                   Learning motion-aware world models for echocardiography probe
+     intercostal ultrasound imaging,” IEEE Transactions on Automation
+                                                                                   guidance,” in IEEE/CVF Conference on Computer Vision and Pattern
+     Science and Engineering, vol. 22, pp. 4818–4830, 2025.
+                                                                                   Recognition (CVPR), 2025, pp. 25 993–26 003.
+ [5] Z. Jiang et al., “Needle segmentation using GAN: Restoring thin
+                                                                              [28] J. Johnson et al., “Image retrieval using scene graphs,” in IEEE
+     instrument visibility in robotic ultrasound,” IEEE Transactions on
+                                                                                   Conference on Computer Vision and Pattern Recognition (CVPR),
+     Instrumentation and Measurement, vol. 73, pp. 1–11, 2024.
+                                                                                   2015.
+ [6] Z. Jiang et al., “Autonomous robotic screening of tubular structures
+                                                                              [29] A. Rosinol, A. Gupta, M. Abate, J. Shi, and L. Carlone, “3D dynamic
+     based only on real-time ultrasound imaging feedback,” IEEE Transac-
+                                                                                   scene graphs: Actionable spatial perception with places, objects, and
+     tions on Industrial Electronics, vol. 69, no. 7, pp. 7064–7075, 2022.
+                                                                                   humans,” in Robotics: Science and Systems (RSS), 2020.
+[30] K. Rana, J. Haviland, S. Garg, J. Abou-Chakra, I. Reid, and              [31] J. Wasserthal et al., “TotalSegmentator: Robust segmentation of 104
+     N. Sünderhauf, “SayPlan: Grounding large language models using 3D            anatomic structures in CT images,” Radiology: Artificial Intelligence,
+     scene graphs for scalable robot task planning,” in Conference on Robot        vol. 5, no. 5, p. e230024, 2023.
+     Learning (CoRL), 2023.
+

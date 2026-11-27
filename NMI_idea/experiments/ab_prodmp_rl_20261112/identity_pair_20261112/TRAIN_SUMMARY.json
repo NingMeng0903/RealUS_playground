@@ -1,0 +1,11 @@
+{
+  "training_cases": 64,
+  "cases_with_a_pair": 63,
+  "paired_actions": 189,
+  "mean_advantage": -0.05321964128901558,
+  "advantages_above_policy_margin": 0,
+  "rule_successes": 56,
+  "rule_identity_failures": 7,
+  "rule_failures_with_a_passing_alternative": 0,
+  "discordant_action_pairs": 10
+}

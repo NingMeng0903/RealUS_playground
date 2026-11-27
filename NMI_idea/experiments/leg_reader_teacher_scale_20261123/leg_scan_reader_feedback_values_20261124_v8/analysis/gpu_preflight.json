@@ -1,0 +1,10 @@
+{
+  "torch": "2.12.0+cu126",
+  "torch_cuda_build": "12.6",
+  "device": "NVIDIA GeForce RTX 4080 Laptop GPU",
+  "torch_cuda_visible_devices": 1,
+  "gpu_memory_bytes": 12424249344,
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "cuda_optimizer_step_verified": true
+}

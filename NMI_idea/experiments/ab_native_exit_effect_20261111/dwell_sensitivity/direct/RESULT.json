@@ -1,0 +1,28 @@
+{
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/2a921a2997242aaf7a1d55ea.json",
+  "root": "b851e6874ff8b54c2c8cbfb6fd491c587d0f018568db17c795e2b87f9280625a",
+  "arm": "direct",
+  "prescribed_target": "side_left__single_dwell_0.6",
+  "order": [
+    "side_left__single_dwell_0.6"
+  ],
+  "links": [
+    {
+      "action": "side_left__single_dwell_0.6",
+      "status": "passed",
+      "route": "side_right__single_dwell_0.6__side_right__single_dwell_0.6__side_right__single_dwell_0.6__side_left__single_dwell_0.6__retreat_fork",
+      "elapsed_s": 4.15,
+      "path_m": 0.051168961055784105,
+      "waypoints": 3,
+      "state_in": "b851e6874ff8b54c2c8cbfb6fd491c587d0f018568db17c795e2b87f9280625a",
+      "state_out": "7b5aa42849028294add28e551501c9d559156a4c48ce69ebdf7d4cae1e67fbc3",
+      "traces": [
+        "seg_8cf4d96c2e22b718b3b0_0",
+        "seg_8cf4d96c2e22b718b3b0_1",
+        "seg_8cf4d96c2e22b718b3b0_2"
+      ]
+    }
+  ],
+  "complete": true,
+  "motion_s": 4.15
+}

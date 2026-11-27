@@ -33,6 +33,7 @@ from rm75_control.force.compensation.v2.fit_staged import (
     fit_delay_on_lines,
     fit_inertia_moments,
     fit_static_windows,
+    force_outlier_windows,
     inertia_moment_residual,
     pooled_shrinkage_cov,
     robust_mean,
@@ -1404,14 +1405,41 @@ def fit_hardware_log(
     samples = [w.samples for w in windows if w.is_train and w.samples is not None]
     Sigma = pooled_shrinkage_cov(samples) if samples else np.diag([0.04, 0.04, 0.04, 0.008, 0.008, 0.008]) ** 2
     st = cfg.get("static") or {}
-    fit = fit_static_windows(
-        windows,
-        Sigma=Sigma,
+    fit_kw = dict(
         m_min=float(st.get("m_min", 0.05)),
         m_max=float(st.get("m_max", 5.0)),
         r_max_m=float(st.get("r_max_m", 0.12)),
         eps_b=float(st.get("drift_eps_b", 0.02)),
     )
+    fit = fit_static_windows(windows, Sigma=Sigma, **fit_kw)
+    limit_n = float(st.get("outlier_force_n", 1.5))
+    rejected = force_outlier_windows(windows, fit, limit_n=limit_n)
+    if rejected:
+        dropped = {id(window) for window, _error in rejected}
+        kept = [w for w in windows if id(w) not in dropped]
+        if sum(w.is_train for w in kept) >= 6:
+            for window, error in rejected:
+                print(
+                    f"[FIT] drop {window.name}  |dF|={np.linalg.norm(error[:3]):.2f} N  "
+                    f"dF={np.array2string(error[:3], precision=2)}  "
+                    f"(not a gravity pose; cable or contact)",
+                    flush=True,
+                )
+            train_samples = [w.samples for w in kept if w.is_train and w.samples is not None]
+            if train_samples:
+                Sigma = pooled_shrinkage_cov(train_samples)
+            fit = fit_static_windows(kept, Sigma=Sigma, **fit_kw)
+            print(
+                f"[FIT] refit without {len(rejected)} poses  "
+                f"inliers {len(kept)}/{len(windows)}  limit={limit_n:.2f} N",
+                flush=True,
+            )
+            windows = kept
+        else:
+            print(
+                f"[FIT] {len(rejected)} poses exceed {limit_n:.2f} N but too few inliers remain",
+                flush=True,
+            )
     print(
         f"[FIT] static m={fit.mass_kg:.3f} kg  h={np.array2string(fit.h_L, precision=4)}  "
         f"rank={fit.rank_m0} cond={fit.cond_m0:.1f} drift={fit.drift_enabled}",

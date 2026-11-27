@@ -75,6 +75,15 @@ def test_joint_weighted_solution_matches_closed_form_including_opposed_torque(si
     assert len(result.diagnostics['numeric_attempts']) <= 2
 
 
+def test_small_opposing_request_keeps_the_moment_centre():
+    result = ContactQp(config()).solve(datum(mechanical_omega_rad_s=-.12,
+        visual_task_valid=True, visual_request_rad_s=.04, cop_m=None))
+    assert result.success, result.diagnostics
+    expected = (-.12 + 10.*.04) / 11.
+    assert result.diagnostics['mechanical_omega_rad_s'] == pytest.approx(-.12)
+    assert result.diagnostics['Omega_rad_s'] == pytest.approx(expected, abs=2e-9)
+
+
 @pytest.mark.parametrize('force,cop', [(.799, .015), (4., .02501), (4., None), (-4., .015)])
 def test_invalid_cop_disables_soft_term_instead_of_clamping(force, cop):
     result = ContactQp(config()).solve(datum(force_n=force, cop_m=cop,
@@ -85,15 +94,18 @@ def test_invalid_cop_disables_soft_term_instead_of_clamping(force, cop):
     assert result.diagnostics['U_m_s'] == pytest.approx(.001, abs=2e-10)
 
 
-def test_visual_gate_scales_request_and_zero_gate_removes_row():
-    d = datum(mechanical_omega_rad_s=0., visual_task_valid=True,
-        visual_request_rad_s=.11, visual_gamma=.5, cop_m=None)
+def test_force_gate_admits_the_full_image_request():
+    d = datum(mechanical_omega_rad_s=-.17, visual_task_valid=True,
+        visual_request_rad_s=.14, visual_gamma=.5, cop_m=None)
     r = ContactQp(config()).solve(d)
     assert r.success, r.diagnostics
-    assert r.diagnostics['Omega_rad_s'] == pytest.approx(.05, abs=2e-9)
+    assert r.diagnostics['visual_rows_active'] is True
+    assert r.diagnostics['mechanical_omega_rad_s'] == pytest.approx(-.17)
+    assert r.diagnostics['visual_request_gated_rad_s'] == pytest.approx(.14)
+    assert r.diagnostics['Omega_rad_s'] == pytest.approx((-.17+10.*.14)/11., abs=2e-9)
     r = ContactQp(config()).solve(replace(d, visual_gamma=0.))
     assert r.diagnostics['visual_rows_active'] is False
-    assert r.diagnostics['Omega_rad_s'] == 0.
+    assert r.diagnostics['Omega_rad_s'] == pytest.approx(-.17)
 
 
 def test_affine_feedback_not_scaled_and_alpha_zero_keeps_contact_mechanics():
@@ -300,6 +312,27 @@ def test_progress_row_is_exported_only_while_it_can_be_verified(norm, exported):
         index = list(rows.labels).index('progress_range')
         value = float(np.asarray(rows.A)[index] @ result.qp_twist)
         assert np.spacing(abs(value)) <= config().feasibility_tolerance
+
+
+def test_endpoint_column_near_1e_12_settles_instead_of_rejecting_its_certificate():
+    """figure8/003 finished the path and faulted instead of lifting.
+
+    The column norm was 1.1e-12. One ULP of the progress value was 3.7e-9,
+    under the 1e-8 tolerance, so the old guard exported the row. Evaluating
+    it then missed the bound by 1.5e-8.
+    """
+    direction = np.array([.56, .035, 0., -.83, 0., .044])
+    direction = direction/np.linalg.norm(direction)*1.15e-12
+    result = ContactQp(config()).solve(datum(
+        path_feedforward_contact=direction,
+        path_feedback_contact=np.array([6.5e-4, 1.2e-4, 0., 1.1e-3, 0., -1.2e-3]),
+        previous_twist=np.array([6.4e-4, 3.5e-4, -8.2e-3, 1.1e-3, 0., -1.2e-3]),
+        mechanical_normal_m_s=-7.8e-3, mechanical_omega_rad_s=0., alpha_preferred=.25,
+        cop_m=-2.3e-3), online=True)
+    assert result.success, result.diagnostics
+    assert result.diagnostics['zero_path'] is True
+    assert 'progress_range' not in result.hard_constraints.labels
+    assert result.hard_constraints.violation(result.qp_twist) <= config().feasibility_tolerance
 
 
 def test_ordinary_path_keeps_the_unscaled_progress_row_and_its_alpha_ceiling():

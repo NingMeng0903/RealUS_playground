@@ -1,0 +1,32 @@
+{
+  "model": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/models/v3/MODEL.json",
+  "model_sha256": "b8dcdbf7d4f57da9b97e10c85334867f964d6c0f19164659426faa53f38cc767",
+  "parameters": {
+    "target_detect_probability": 0.8067415730337079,
+    "present_to_lost": 0.029193385082686468,
+    "lost_to_present": 0.7201834862385321,
+    "platt_a": 0.8648856008046063,
+    "platt_b": 0.14115316308219142,
+    "risk_gate": 0.9
+  },
+  "upper_bound_assumptions": "perfect support/geometry/quality/identity; omit absorbing false stops; pre-capture visibility transition retained; detector misses and visibility persistence retained",
+  "endpoints": [
+    {
+      "initial_present_mass": 0.0,
+      "capture1_present_mass": 0.7201834862385321,
+      "one_attempt_raw_upper": 0.5810019585609731,
+      "two_attempt_raw_upper": 0.8525814894985345,
+      "calibrated_at_two_attempt_upper": 0.8401066136766688
+    },
+    {
+      "initial_present_mass": 1.0,
+      "capture1_present_mass": 0.9708066149173136,
+      "one_attempt_raw_upper": 0.7831900556299226,
+      "two_attempt_raw_upper": 0.9470908930453745,
+      "calibrated_at_two_attempt_upper": 0.933154830106345
+    }
+  ],
+  "one_attempt_gate_impossible": true,
+  "two_attempt_gate_not_ruled_out": true,
+  "scope": "model algebra; not real acoustic measurement, not guarantee of any admitting posterior"
+}

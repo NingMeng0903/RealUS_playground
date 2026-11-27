@@ -1,0 +1,87 @@
+{
+  "contiguous_supported_runs": [
+    {
+      "end_index": 220,
+      "internal_length_m": 0.6549711327978316,
+      "internal_length_mm": 654.9711327978316,
+      "label_end": "R_POST_TIB_V",
+      "label_start": "R_SUPFEMV",
+      "point_count": 192,
+      "repaired_d_max": 0.9895662725555918,
+      "repaired_d_min": 0.1226463443805857,
+      "repaired_h_end": 0.9376471770903257,
+      "repaired_h_start": 0.1404649313950423,
+      "skin_length_m": 0.7768948688337836,
+      "skin_length_mm": 776.8948688337836,
+      "source_global_index_end": 697,
+      "source_global_index_start": 442,
+      "start_index": 29
+    }
+  ],
+  "decode_checks": {
+    "strict_internal_invalid_count": 42,
+    "strict_internal_inverse_residual_max_m": 2.2291027918243403e-16,
+    "strict_internal_valid_count": 192,
+    "surface_address_decode_max_error_m": 4.443059973708341e-16,
+    "surface_address_decode_median_error_m": 6.938893903907228e-18
+  },
+  "full_ordered_path_length_m": 0.794869033655085,
+  "full_ordered_path_length_mm": 794.869033655085,
+  "full_ordered_skin_length_m": 0.8935127703732761,
+  "full_ordered_skin_length_mm": 893.5127703732761,
+  "internal_contract": "strict containing-tetra inverse on repaired atlas_right; no nearest projection",
+  "old_xi_warning": "legacy_xi is retained only as provenance/debug; do not use it as repaired internal coordinates",
+  "ordering": [
+    "R_COM_FEM_V",
+    "R_SUPFEMV",
+    "R_POPV",
+    "R_POST_TIB_V"
+  ],
+  "repaired_atlas_domain": {
+    "d": [
+      0.0,
+      1.0
+    ],
+    "h": [
+      0.14000000059604645,
+      0.9399999976158142
+    ],
+    "theta": "periodic radians"
+  },
+  "row_count": 234,
+  "schema": "long_leg_assets_v1",
+  "source_assets": {
+    "baked_internal_source_asset": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/servo/prepared_scene/prebake/right_thigh_patch_and_vessels.npz",
+      "sha256": "02ef26d9daf561328958af37417736b24b5a11e476717d38ffb96b19d6d62dc6"
+    },
+    "legacy_vessel_material_asset": {
+      "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/vessels/vessel_material_coordinates.npz",
+      "role": "upstream source provenance only; its old xi_skin labels were not used"
+    },
+    "repaired_atlas_asset": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/knee_rebake/atlas_right.npz",
+      "sha256": "b8a0e1395786774aac66f6bb621725e771a00af461e7a678266c2ebea9254aa5"
+    },
+    "surface_asset": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+      "sha256": "1f98c55cd623adc6e060680f5aec60b9f11366e9b6b03cd770726c8e8b532da8"
+    },
+    "template_prior_asset": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/right_template_prior_chart_addresses.npz",
+      "sha256": "5589b4565c772915a946d96b31c71bb29094b7ad8171e2ca2c9f943fa87ac7c6"
+    }
+  },
+  "source_internal_bake_summary": {
+    "baked_internal_field_keys": [
+      "vessel_points",
+      "vessel_surface_points",
+      "vessel_theta",
+      "vessel_h"
+    ],
+    "baked_trunk_label": "LEG_VESSEL_CHAIN",
+    "baked_trunk_points": 255
+  },
+  "status": "bounded_repaired_internal_attachment",
+  "surface_contract": "full retained right-leg contact multichart surface, d=0 only"
+}

@@ -22,6 +22,7 @@
 *.safetensors
 *.onnx
 *.npz
+!assets/human_reference/subject_shape_tpose.npz
 !rm75_control/data/force_compensation/logs/force_id_pose_*.npz
 *.pkl
 *.pickle
@@ -33,7 +34,11 @@ camera_calibration/data/
 smplx_outputs/*
 !smplx_outputs/README.md
 !smplx_outputs/.gitignore
-outputs/anatomy_retarget/
+/outputs/
+# Reproducible external benchmark dependencies (clone commits are recorded).
+ref_code_library/MV4DHMR/
+ref_code_library/HybrIK/
+ref_code_library/pytorch3d/
 **/.genesis_urdf_cache/
 **/.cuda_shim/
 rm75_control/data/force_compensation/logs/*

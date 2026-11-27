@@ -1,0 +1,37 @@
+{
+  "artifact_files": [
+    "prodmp_demos.npz",
+    "prodmp_weights.npz",
+    "prodmp_protocol.json",
+    "prodmp_diagnostics.json"
+  ],
+  "basis_source": "reference",
+  "chart": "endpoint-normalized physical tangent/left-normal; coordinates divided by step length",
+  "lambda": 5.0,
+  "quadrature_order": 64,
+  "reference_goal_mm": [
+    105.0,
+    18.0
+  ],
+  "reference_start_mm": [
+    25.0,
+    -12.0
+  ],
+  "schema": "learned-prodmp-2d-v1",
+  "seed": 20261112,
+  "skills": [
+    "advance",
+    "sweep_left",
+    "sweep_right"
+  ],
+  "sweep_amplitude_fraction": [
+    0.15,
+    0.35
+  ],
+  "test_generator": "same analytic family with independent held-out parameters and phase grid",
+  "test_per_skill": 8,
+  "test_phases": 97,
+  "train_generator": "quintic smoothstep plus sin(pi*s)^2 analytic sinusoidal bow; independent RNG stream",
+  "train_per_skill": 12,
+  "train_phases": 81
+}

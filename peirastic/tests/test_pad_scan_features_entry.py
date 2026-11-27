@@ -52,6 +52,8 @@ def test_ultrapoc_publishes_stick_before_image_without_lifecycle():
     phase = compile_request(ctx, ModeRequest(Mode.TRACK_HYBRID, payload), raw=raw)
     try:
         assert getattr(phase.outer, 'command_lifecycle', None) is None
+        assert phase.outer.controller.cfg.max_vz_tool_m_s == pytest.approx(.015)
+        assert phase.outer.controller.cfg.max_velocity[2] == pytest.approx(.015)
         pose = ctx.kin.fk_pose(_SEED)
         phase.outer.set_origin(pose)
         command = phase.outer.sample(
@@ -152,3 +154,20 @@ def test_complete_twenty_region_payload_fits_existing_transport(kind):
     no_echo = replace(obs, echo_feature_version=None, nearfield_echo=None,
                       nearfield_echo_valid=None, nearfield_echo_depth=None)
     assert 'near-field' in observation_problem(no_echo, config, now_s=10.06)
+
+
+def test_handheld_tilt_limit_uses_pose_since_contact():
+    from peirastic.realman8dof.modes.track import pad_contact_tilt_rad
+    pose = np.zeros(6)
+    origin, theta = pad_contact_tilt_rad(None, pose, contact=False)
+    assert origin is None and theta == 0.
+    origin, theta = pad_contact_tilt_rad(None, pose, contact=True)
+    assert theta == 0.
+    cocked = pose.copy()
+    cocked[4] = .2
+    origin, theta = pad_contact_tilt_rad(origin, cocked, contact=True)
+    assert theta == pytest.approx(.2)
+    # Leaving contact drops the origin, so a saturated moment integrator
+    # cannot keep the next touch pinned at the 150° cap.
+    origin, theta = pad_contact_tilt_rad(origin, cocked, contact=False)
+    assert origin is None and theta == 0.

@@ -378,10 +378,10 @@ class PadVisualGuide:
             pad_block = dict(self.config.get("pad") or {})
             if pad_block.get("policy") == "pad_scan_v1":
                 self.static_stick_m_s = float(pad_block.get("static_stick_m_s", 0.01))
-                self.static_visual_omega_rad_s = float(pad_block.get("static_visual_omega_rad_s", 0.04))
-                self.static_commit_s = float(pad_block.get("static_commit_s", 0.80))
+                self.static_visual_omega_rad_s = float(pad_block.get("static_visual_omega_rad_s", 0.12))
+                self.static_commit_s = float(pad_block.get("static_commit_s", 0.20))
                 self.static_committed_omega_rad_s = float(
-                    pad_block.get("static_committed_omega_rad_s", 0.12)
+                    pad_block.get("static_committed_omega_rad_s", 0.16)
                 )
                 spread = float(pad_block.get("relative_spread_floor", 0.12) or 0.)
                 self.relative_spread_floor = spread if spread > 0. else None
@@ -565,26 +565,30 @@ class PadVisualGuide:
     def _reset_static_dwell(self):
         self._static_dir = 0
         self._static_dir_since = None
+        self._static_elapsed = 0.
 
     def _parked_omega_cap(self, now_s, stick_speed_m_s, request, *, active):
-        """0.04 until the same echo sign lasts past a hunt half-cycle, then 0.12."""
+        """Small cap until the same sign has held, then the committed limit."""
 
         if not self._parked_stick(stick_speed_m_s):
             self._reset_static_dwell()
             return None
-        if not active or abs(float(request)) < 1e-9:
+        # A zero request is an edge that has gone. Any same-sign request,
+        # echo or region, keeps the dwell. A sign change starts it over.
+        if abs(float(request)) < 1e-9:
             self._reset_static_dwell()
             return float(self.static_visual_omega_rad_s)
         direction = int(np.sign(request))
         if direction != self._static_dir:
             self._static_dir = direction
             self._static_dir_since = float(now_s)
-        elapsed = float(now_s) - float(self._static_dir_since)
-        if self.static_commit_s > 0.0 and elapsed + 1e-12 >= self.static_commit_s:
+        elapsed = 0. if self._static_dir_since is None else float(now_s) - float(self._static_dir_since)
+        self._static_elapsed = max(0., elapsed)
+        if self.static_commit_s > 0.0 and self._static_elapsed + 1e-12 >= self.static_commit_s:
             return float(self.static_committed_omega_rad_s)
         return float(self.static_visual_omega_rad_s)
 
-    def _limit_parked_visual(self, stick_speed_m_s, now_s, request=None, *, active=None):
+    def _limit_parked_visual(self, stick_speed_m_s, now_s, request=None, *, active=None, dt_s=0.005):
         """Parked residuals do not hold. A stable one-sided wedge may raise the cap."""
 
         if request is None:
@@ -594,8 +598,15 @@ class PadVisualGuide:
         cap = self._parked_omega_cap(now_s, stick_speed_m_s, request, active=active)
         if cap is None or not np.isfinite(cap):
             return False
-        self.omega_target = float(np.clip(self.omega_target, -cap, cap))
+        target = float(self.omega_target)
+        # The cap only limits a request the relative moment already made.
+        # An absolute darkness number must not raise that request.
+        self.omega_target = float(np.clip(target, -cap, cap))
         self.omega_cmd = float(np.clip(self.omega_cmd, -cap, cap))
+        if abs(self.omega_target) > abs(self.omega_cmd) + 1e-12:
+            self.omega_cmd = self._slew(
+                self.omega_cmd, self.omega_target, self.omega_accel, dt_s)
+            self.omega_cmd = float(np.clip(self.omega_cmd, -cap, cap))
         self.last_visual_omega = self.omega_cmd
         self._clear_visual_hold()
         if self.last_facts:
@@ -651,10 +662,10 @@ class PadVisualGuide:
                 self._overlay_echo_visual(
                     now_s=now, dt_s=float(dt_s), contact_present=bool(contact_present),
                     force_n=force_n, stick_speed_m_s=stick_speed_m_s)
-            echo_reason = (self.last_facts or {}).get('echo_reason')
-            self._limit_parked_visual(
-                stick_speed_m_s, now, self.omega_target,
-                active=echo_reason == 'unilateral_missing_echo')
+                self._limit_parked_visual(
+                    stick_speed_m_s, now, self.omega_target,
+                    active=abs(float(self.omega_target)) > 1e-9,
+                    dt_s=float(dt_s))
             return visual
         observation = self._fresh_observation(now)
         self.last_alpha = None
@@ -720,7 +731,8 @@ class PadVisualGuide:
             config_version=self.config.get('config_version', 'pad_scan_v1'))
         self._limit_parked_visual(
             stick_speed_m_s, now_s, self.omega_target,
-            active=result.reason == 'unilateral_missing_echo')
+            active=abs(float(self.omega_target)) > 1e-9,
+            dt_s=float(dt_s))
         return None
 
     def _overlay_echo_visual(self, *, now_s, dt_s, contact_present, force_n, stick_speed_m_s):
@@ -742,9 +754,6 @@ class PadVisualGuide:
         if result.reason == 'unilateral_missing_echo' and abs(float(result.omega_request_rad_s)) > 0.:
             request = float(result.omega_request_rad_s)
             parked = self._parked_stick(stick_speed_m_s)
-            if parked:
-                cap = self._parked_omega_cap(now_s, stick_speed_m_s, request, active=True)
-                request = float(np.clip(request, -cap, cap))
             self.omega_target = request
             self.omega_cmd = float(np.clip(
                 self._slew(self.omega_cmd, self.omega_target, self.omega_accel, dt_s),
@@ -758,7 +767,9 @@ class PadVisualGuide:
                 self.alpha_target = min(float(self.alpha_target), float(result.alpha_target))
                 limited, _ = self._repair_limited_alpha(self.alpha_target, stick_speed_m_s)
                 if limited < self.alpha_cmd:
-                    alpha_rate = 0.75 / self.ramp_s
+                    # Moving edges open in a few tenths of a second. Reach the
+                    # repair speed cap in about 50 ms instead of the 0.20 s ramp.
+                    alpha_rate = 0.75 / (0.05 if not parked else self.ramp_s)
                 else:
                     alpha_rate = 0.75 / max(self.ramp_up_s, 1.0e-6)
                 self.alpha_cmd = float(np.clip(
@@ -769,19 +780,13 @@ class PadVisualGuide:
                 visual_reason=result.reason, visual_policy='pad_scan_nearfield_v1',
                 visual_request_rad_s=self.omega_target, visual_omega_rad_s=self.omega_cmd,
                 alpha=self.last_alpha, alpha_target=self.alpha_target)
-        elif result.reason == 'force_unstable' or self._parked_stick(stick_speed_m_s):
+        elif result.reason in ('healthy', 'recovery_confirming', 'force_unstable') or self._parked_stick(stick_speed_m_s):
+            held_over = facts.get('visual_reason') == 'visual_hold'
             self._clear_visual_hold()
-        elif (self.visual_hold_s > 0. and self._hold_until_s is not None
-              and float(now_s) < float(self._hold_until_s)
-              and result.reason in ('healthy', 'recovery_confirming')):
-            self.omega_target = float(self._hold_omega)
-            self.omega_cmd = float(np.clip(
-                self._slew(self.omega_cmd, self.omega_target, self.omega_accel, dt_s),
-                -self.omega_vmax, self.omega_vmax))
-            self.last_visual_omega = self.omega_cmd
-            facts.update(
-                visual_reason='visual_hold', visual_policy='pad_scan_nearfield_v1',
-                visual_request_rad_s=self.omega_target, visual_omega_rad_s=self.omega_cmd)
+            if held_over and result.reason in ('healthy', 'recovery_confirming', 'force_unstable'):
+                self.omega_target = 0.
+                self.omega_cmd = 0.
+                self.last_visual_omega = 0.
         self.last_facts = facts
 
     def _preview_progress(self, observation, *, contact_present, now_s, dt_s):

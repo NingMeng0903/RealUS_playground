@@ -1,0 +1,39 @@
+ACTIVE TASK — CONTINUING RECOVERY B, 2026-11-11
+
+User objective remains: implement and run a local closed loop that chooses how to probe and when to continue from observations, with no hard task-time cutoff; retain false detections/loss and strong A/complete-pair controls. Determine whether B has an independent final-success benefit, without manufacturing a win. User authorizes local GPU/tests and asks Astra max for theory/design/conclusions, cheap workers for code.
+
+Previous bounded implementation:
+../ab_adaptive_stopping_20261111 contains the v3 code, learned model, calibration, exact numerical audits, and completed/partial pilot. Its source is frozen and must not be edited. The pilot was stopped for a scope correction: two rejected terminal frames ended the entire task, and capture guards censored recovery. It cannot represent the requested continuing recovery. PILOT_SCOPE_STOP.json records signalled processes; root exec session31123 exited143. No held-out test was used.
+PILOT_SUMMARY.json preserves 88/112 completed episodes. Strong A_task14/16 and A_info15/16; B_H1 only8/16 completed6correct; B_H2 no complete episode; pair three dwell settings9/16,10/16,10/16. Unequal B completion is compute-incomplete, not task failure and not a comparative efficacy conclusion. Do not select a winner from these partial groups.
+
+Model carried forward (not retrained/new evidence): models/v3/MODEL.json, 512 training objects; 128 calibration objects/1280 prefix-option records. Separate development objects have a distinct seed namespace. Test seed721503 remains unused. Original model SHA b8dcdbf7d4f57da9b97e10c85334867f964d6c0f19164659426faa53f38cc767.
+Old exact same-pose option integration independently audited. Numba merge/transition retained source lineage and fallback; full 1280 calibration replay max probability difference6.1283e-10, mean5.74e-13. Root v3 combined tests33pass2skip. The calibration fitted in-sample admitted-record hit rate199/218 is not held-out policy evidence.
+
+Native diagnostic: A_task mirror0 case1 fifth probe switch right→left had no checked route under2mm whole-segment gate. No solve failure/collision/state mismatch. Round-tip clearly exceeds2mm midsegment; retreat-fork actual early peak2.049mm and before-tick mid2.006mm. Final capture dwell is stable sub-mm. Preserve existing gates for now; use common alternative candidates rather than terminate on the first missing witness. NATIVE_PILOT_AUDIT.txt in v3 has exact traces. No controller/production source edits authorized to workers here.
+
+Current work/ownership (all in this NEW directory):
+- /root/astra_closed_loop_design (Astra max): concrete v4 protocol/theory, later independent conclusions. Requested one-layer action candidate evaluation with an A_task rollout tail, finite rollout censoring handled honestly, no new sensor/layout/task-risk changes. Must resolve MC comparison/refinement details before final implementation freeze.
+- /root/adaptive_belief (luna_worker): belief_model.py,test_belief_model.py,DENSE_EQUIVALENCE.json; compile/vectorize full dense posterior update and batched immediate acceptance probabilities WITHOUT changing model/particles/components. Old references/snapshots retained. Target milliseconds not0.25s per hypothetical update; equivalence required. Do not modify v3.
+- /root/adaptive_planner (luna_worker): adaptive_planning.py,run_adaptive.py,test_adaptive_planning.py,RUNNER_NOTES.txt,new rollout_policy.py if useful. Two terminal rejects return to planning with full state/belief; failed planning check blacklists only that action at current state and tries common alternatives; accepted false packets remain absorbing. Administrative guard counts ALL new acquisitions and is right-censoring; exact continuation/checkpoint. New B uses one-layer candidates and model-generated latent-consistent public tails, never a branching H2 tree.
+- Root coordinates runs, freezes, statistics; old stats worker can be reused for data/reporting. No v4 studies started yet.
+
+Astra's first concrete v4 settings (await final short protocol): all12 single-probe candidates; N16 common latent/noise rollouts per candidate; at most8 future fresh packets including first candidate, terminal and recovery; sample joint S/mode/component/w once per rollout, holdS/w through future frames, advance mode each acquisition. Tail reads public packets only and uses fitted ModelParams, not actual simulator truth/parameters. Keep A's current action as fallback; ambiguous value→execute A, not refuse. External A_info remains strong comparator, even if tail is cheaper A_task. Capture checkpoints8/16/32; unresolved32 is censored and success bound[S/N,(S+U)/N], not permanent failure. Old.90 score remains local two-attempt score, not calibrated final mission probability. Need address censored rollout leaves as well; zeroing them would repeat old truncation issue.
+
+Runtime /media/camp/EXT_DRIVE/envs/genesis/bin/python. OMP/OPENBLAS/MKL=1. 32 logical CPUs,30GiB RAM,~18GiB available at last read; RTX4080Laptop12GB. External disk16GB free initially. Native simulations only, no robot connections. Prefer bounded concurrency4–6 and check resource use.
+Need finish: final v4 protocol, efficient equivalent belief, continuing rollout implementation and regression, small paired dev pilot, determine scalability/calibration/censoring before any untouched test, actual results + Astra audit + concise honest final report. Never claim the positive research target merely because interfaces run.
+
+Native continuing pilot execution
+---------------------------------
+Primary output: study_v4_closed_loop_20261111. The 96 initial trajectories
+have all produced RESULT.json. The same fitted model and frozen source manifest
+are used for the two strong A arms, B, and the three full-pair dwell controls.
+The driver continues watchdog records from their exact saved state to 16/32.
+The preflight shared-logic suite passed 30 tests with 2 skips. The native pair
+smoke continued its pending second member after a one-frame checkpoint.
+
+Do not count controller history reconstruction errors as task failures.
+The driver keeps the last complete saved checkpoint. For a failed guard-stage
+command an exact same-source/same-checkpoint retry is recorded separately.
+The original failure and any later completion/censoring are retained together.
+No holdout set has been used. The pilot's observed rates and sample-level
+unresolved-outcome bounds must both be reported.

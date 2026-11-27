@@ -1,0 +1,35 @@
+{
+  "schema": "public_probe_information_check_v1",
+  "module": "probe_information.py",
+  "scope": "binned signed-centroid categorical Fisher and task-directed candidate design",
+  "model_contract": {
+    "outcomes": ["miss", "y_bin_*"],
+    "tail_contract": "censoring=tail exposes left_censored/right_censored; censoring=miss folds finite-edge tails into miss",
+    "clutter": "optional unconditional p_clutter mass with an independent Gaussian law; remaining mass is miss",
+    "jacobian_orientation": "parameter_jacobian is d(local_design)/d(parameter), shape design x parameter",
+    "mixture_mode_claim": "not_claimed"
+  },
+  "public_apis": [
+    "binned_signed_centroid_probabilities",
+    "binned_signed_centroid_fisher",
+    "categorical_fisher",
+    "categorical_mutual_information",
+    "finite_difference_fisher",
+    "chain_fisher",
+    "task_design_score",
+    "schur_complement_information",
+    "greedy_common_candidates"
+  ],
+  "verification": {
+    "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q test_probe_information.py",
+    "result": "6 passed",
+    "checks": [
+      "analytic probability Jacobian agrees with central finite differences",
+      "miss and explicit-tail censoring normalize",
+      "state-dependent detection and clutter derivatives preserve derivative mass sum zero",
+      "categorical Fisher is PSD and finite-state mutual information matches exact cases",
+      "task+nuisance covariance reduction and Schur score are finite",
+      "greedy selection excludes unsafe candidates and records a common safe mask"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "actions": 6,
+  "device": "cpu",
+  "feature_shape": [
+    4608,
+    6,
+    34
+  ],
+  "models": {
+    "cql_29": {
+      "checkpoint": "cql_29.pt",
+      "method": "cql",
+      "seed": 29
+    },
+    "cql_7": {
+      "checkpoint": "cql_7.pt",
+      "method": "cql",
+      "seed": 7
+    },
+    "fqi_7": {
+      "checkpoint": "fqi_7.pt",
+      "method": "fqi",
+      "seed": 7
+    }
+  },
+  "rows": 4608,
+  "shared_transition_table": true,
+  "steps": 600,
+  "version": 1
+}

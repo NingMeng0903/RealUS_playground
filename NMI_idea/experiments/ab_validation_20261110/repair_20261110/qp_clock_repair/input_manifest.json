@@ -1,0 +1,28 @@
+{
+  "protocol": "70c2501bec5aa49708d4e784ebb9f12cc5f8f8b589ce832f0a555b9899967362",
+  "runner": "9e171a051f6e84e8fcd5084bb7ad759257ab0a821c068ae6d23df2a28c2ece20",
+  "original_frozen_runner": "40a2fa8dd903224f6a8959e7668b0d07cef2239e6bce7eff4b24d5cd184ef837",
+  "input": "7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8",
+  "native_client": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py",
+    "sha256": "d831ab4ff4b277fb08310492136e444d0df74730f69c6ca6af36216742de2ad4"
+  },
+  "qp_replay": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py",
+    "sha256": "88b71baaa55c18a35d0bd3696b18ef9d24a54b813e766fbacbbdf2f0cffb09ec"
+  },
+  "config": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/configs/controller.yaml",
+    "sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f"
+  },
+  "native_binary": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt",
+    "sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07"
+  },
+  "reference": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/reference.py",
+    "sha256": "b82225257854774d99cf78396ce8c6c36042999c9d9d7ffdfc696f23c9edf6a8"
+  },
+  "clock_change": "model timestamp is finalized before seq publication; wall deadline unchanged",
+  "old_results_preserved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_reference_followup/RESULTS.json"
+}

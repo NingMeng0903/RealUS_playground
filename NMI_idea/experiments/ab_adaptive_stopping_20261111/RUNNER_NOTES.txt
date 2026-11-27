@@ -1,0 +1,138 @@
+Adaptive stopping runner handoff (2026-11-11)
+===============================================
+
+The implementation files owned by this worker are adaptive_planning.py,
+run_adaptive.py, test_adaptive_planning.py and this note.  The source contract
+is DESIGN_PROTOCOL.txt; this note is operational guidance, not a new protocol.
+
+Runtime
+-------
+
+Always use:
+
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python
+
+The runner inserts this directory before imports and records absolute source
+paths and SHA-256 hashes for acoustics.py, fixture.py, robot_motion.py,
+belief_model.py, native_adapter.py and adaptive_planning.py.  It uses
+train_calibrate.render_sensor_v2 in the runner-only private renderer.  V2Truth
+is retained only under each result's isolated privateeval list; it never enters
+AdaptivePlanner.
+
+Stages and split seeds
+----------------------
+
+  smoke: one or a few cases only, calibration seed 721502; no result claim
+  dev:   independent calibration/development subjects, seed 721502
+  test:  untouched seed 721503; --model-artifact is required
+  train: training (512, 721501) is owned by train_calibrate.py and is not
+         implicitly run by run_adaptive.py
+  noise: 721504 (common random observation family)
+
+Example smoke (native, one constrained mirror, one B_H1 case):
+
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python run_adaptive.py \
+    --stage smoke --count 1 --index 0 --mode constrained --arm B_H1 \
+    --max-probe-frames 1 --output /tmp/adaptive_smoke
+
+`--mode` is explicit: index 0 and index 1 may both be constrained mirror
+fixtures; use `--mode open` only for the open reversible control.  The default
+watchdog is 8 diagnostic acquisitions.  A declared sensitivity can be run
+with `--max-probe-frames 12`; this is not a task deadline.  `--resume` keeps a
+previous fixed-pair order and skips existing case RESULT.json files.
+An unresolved guard-8 run writes `CONTINUATION.pkl` containing the complete
+belief, actual native state, public history and evaluator visibility mode.
+Continue that exact state with:
+
+  ... run_adaptive.py --stage dev --continue-checkpoint PATH/CONTINUATION.pkl \
+      --max-probe-frames 12 --output SAME_OR_NEW_OUTPUT
+
+The continuation writes `RESULT_CONTINUED.json`; it is not an independent
+from-scratch guard-12 run.
+
+The mechanical NativeAdapter is created once per stage/index/mode run under
+`native_shared/` and is shared across cases and arms.  Its complete-state
+checkpoint cache is enabled (`reuse_checked=True`).  The public fixed pair is
+checked once per shared adapter and its min-worst-case order is frozen in the
+manifest.  Adaptive prediction does not native-check 12 candidates or each
+QMC branch: candidates are public measured-frame action/route predictions and
+only selected actions are checked then executed from the complete actual state.
+The zero-history initial decision is cached once per arm/model/config in both
+the manifest and `INITIAL_DECISIONS_<index>_<mode>.json` and reused for every
+subject/chunk; it is independent of scenario ID and private truth.  The
+manifest reports the one-time `initial_decision_precompute_wall_s`, cache
+hits/misses, and the per-case result reports native counter deltas while
+`native_counts_cumulative` remains the shared-adapter total.
+
+Policy boundary
+---------------
+
+Every actual packet, including a labelled diagnostic, is fed to one shared
+public verifier.  A public acceptance is absorbing and the private evaluator
+marks it correct or false.  B_H1/B_H2 prediction branches contain immediate
+correct acceptance, immediate false acceptance (zero/absorbing), and public
+rejection followed by option/next-probe value.  A/A_task uses immediate correct
+completion probability; A_info uses task-class information gain.  Pair probes
+also stop if their first packet is publicly accepted; otherwise the selected
+pair consumes both probes before a commit decision.  A complete option is one
+window with at most one same-window retry.  Two public terminal rejections end
+the bounded option as uncompleted; no implicit extra terminal retry or probe is
+added.
+
+The planner carries actual state only after `observe`; each next decision is
+made from the event's full native output.  It has no scenario, hidden mode,
+truth label or physical frame access.  `privateeval` is separated from public
+event rows for audit only.
+
+Verification performed
+----------------------
+
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+    /media/camp/EXT_DRIVE/envs/genesis/bin/python -m pytest -q \
+    test_adaptive_planning.py
+
+Current result: `22 passed, 2 skipped` for the local planner/belief/native
+bundle.  The arm-path test executes one public missing packet through A_task,
+A_info, B_H1, B_H2 and pair_fixed.  The release B_H1 smoke with v3 reached a
+genuine publicly accepted probe using one selected native check/execute (no
+candidate native search): per-case planning wall was 2.25 s, one-time initial
+decision precompute was 12.99 s, and pair-order precompute was recorded only
+in the manifest.  The result's case delta was
+`verification_calls=1, execution_calls=1, realnative_count=1,
+execution_reuse_count=1`, while cumulative shared-adapter totals were
+`verification_calls=13` (12 fixed-pair checks plus the selected check) and
+`proposal_calls=2472` with 2408 proposal-cache hits.  This is a
+smoke/performance diagnostic, not development or test evidence.
+
+At the primary guard boundary, every arm performs one common terminal risk-gate
+check after the eighth public probe update.  An admitted option may execute;
+otherwise the result is `watchdog_probe_guard` with no ninth probe.  Pair has no
+special even-boundary exception.  Boundary tests cover both admitted and
+unadmitted paths for all declared arms.
+
+H2 initial-decision profiling was started with the full declared QMC schedule
+and was interrupted after roughly 150 s without a completed decision; do not
+interpret that partial run as evidence or silently reduce H2 QMC.  H2's first
+real layer is 16→32→64→256; only the nested hypothetical layer is 8→16→32.
+
+Development `--arm all` intentionally runs only A_task, A_info, B_H1, B_H2 and
+pair_fixed.  Pair dwell configurations are written under distinct
+`pair_fixed_dwell_<centiseconds>/` directories.  `--freeze` requires common
+case coverage, common source hashes, risk-gate eligibility, and completed A,
+B and pair rows.  Test defaults to selected_b; `--arm all` runs the frozen
+selected A, selected B and pair baseline (when present), and verifies the
+frozen model SHA.
+
+Performance note: QMC counts and GH33 option integration are protocol values;
+do not silently reduce them to speed up a run.  The belief worker may replace
+the vectorized public prediction/update implementation while preserving the
+same interfaces and numerical settings.  Keep `timing` fields in RESULT.json
+(`choose_s`, `future_outcomes_s`, `option_predict_s`, `belief_update_s`,
+`native_selected_s`, `acquisition_s`) when comparing runs.
+
+Predicted future mechanics are explicitly unknown until the selected action is
+native-checked.  The current planner does not implement an F0 nominal-state
+factorial arm and must not be used to claim an F effect.  Public pair order
+selection includes both fork members and the slower same-window terminal
+option cost; pair probes remain atomic unless the first packet publicly
+completes.

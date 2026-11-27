@@ -1,16 +1,16 @@
 joint_zero_offsets_deg:
-- -0.12719090204759542
-- -0.08017369184371216
-- -0.11409973822400163
-- -0.38845126597441926
-- -0.23969445933011083
-- -1.0152475058131862
+- -1.0608896971525377
+- -1.076422640418303
+- -1.2000468041746672
+- -0.8964137988301246
+- 0.36730473523593227
+- -0.15031071177172553
 - 0.0
-wbc_urdf_sha1: 9b469f5e82b0ae2c5ee88e03c71a79d05d74fcb3
+wbc_urdf_sha1: 0b0bcd0dac2404deb727fa107748045fa8a047dd
 wbc_urdf: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
-n_samples: 43
-ba_rmse_px: 0.5863070775421866
-leave_out_rmse_px: 0.5969723587880549
-fitted_at: '2026-08-26T06:20:45Z'
+n_samples: 22
+ba_rmse_px: 0.9068345874183008
+leave_out_rmse_px: 1.1978605635078525
+fitted_at: '2026-11-26T15:23:17Z'
 lock_reasons:
 - joint_7 locked at 0 (absorbed by T_tcp_board)

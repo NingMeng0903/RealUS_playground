@@ -1,0 +1,23 @@
+{
+  "scope": "calibration audit only; these labels fitted Platt, not held-out policy performance",
+  "subjects": 128,
+  "records": 1280,
+  "equal_subject_weight": true,
+  "all_source_hashes_match": {
+    "train_calibrate.py": true,
+    "belief_model.py": true,
+    "acoustics.py": true,
+    "DESIGN_PROTOCOL.txt": true
+  },
+  "brier_raw": 0.13214558322704437,
+  "brier_calibrated": 0.1313254769628385,
+  "raw_range": [
+    7.543161663180376e-24,
+    0.9459412745576509
+  ],
+  "admitted_calibration_records": 218,
+  "admitted_calibration_subjects": 83,
+  "admitted_label_rate": 0.9128440366972477,
+  "model_sha256": "b8dcdbf7d4f57da9b97e10c85334867f964d6c0f19164659426faa53f38cc767",
+  "records_sha256": "160bf268b3b9e9115ef59b528ebbe62fbbcad0121e7ad05846ffb8f4032baaac"
+}

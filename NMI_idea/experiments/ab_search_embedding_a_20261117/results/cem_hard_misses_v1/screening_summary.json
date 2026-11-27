@@ -1,0 +1,42 @@
+{
+  "development": {
+    "screened": {
+      "connection": 192,
+      "parallel": 192
+    },
+    "has_a_genuine_miss": {
+      "connection": 110,
+      "parallel": 30
+    },
+    "selected_in_seed_order": {
+      "connection": 24,
+      "parallel": 24
+    },
+    "missed_intervals": {
+      "1": 468,
+      "2": 321,
+      "3": 42
+    }
+  },
+  "holdout": {
+    "screened": {
+      "connection": 256,
+      "parallel": 256
+    },
+    "has_a_genuine_miss": {
+      "connection": 143,
+      "parallel": 34
+    },
+    "selected_in_seed_order": {
+      "connection": 32,
+      "parallel": 32
+    },
+    "missed_intervals": {
+      "1": 642,
+      "2": 388,
+      "3": 44,
+      "5": 1
+    }
+  },
+  "shadow_scale": 3.0
+}

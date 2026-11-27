@@ -1,0 +1,22 @@
+[
+  {
+    "case": "face_touch_opposite_sides",
+    "overlap": 0
+  },
+  {
+    "case": "same_side_face_fold",
+    "overlap": 1
+  },
+  {
+    "case": "separated",
+    "overlap": 0
+  },
+  {
+    "case": "strict_containment",
+    "overlap": 1
+  },
+  {
+    "case": "identical",
+    "overlap": 1
+  }
+]

@@ -47,6 +47,12 @@ class QpConfig:
     progress_loss_gain: float = 0.75
     alpha_min: float = 0.25
     alpha_min_at_quality: float | None = None
+    # Absolute compares every region with c_min, so tissue darker than a
+    # phantom reads as a hole and pins path speed. Relative uses this frame's
+    # better half: an even map keeps α at 1, a one-sided gap still slows.
+    deficit_mode: str = "absolute"
+    relative_alpha_span: float = 0.15
+    relative_spread_floor: float | None = None
     alpha_hold: float | None = None
     recover_quality: float | None = None
     recover_hold_s: float = 0.0
@@ -133,6 +139,19 @@ class QpConfig:
             if not math.isfinite(floor_q) or not 0 <= floor_q < self.c_min:
                 raise ValueError("alpha_min_at_quality must be in [0, c_min)")
             object.__setattr__(self, "alpha_min_at_quality", floor_q)
+        mode = str(self.deficit_mode or "absolute").lower()
+        if mode not in ("absolute", "relative"):
+            raise ValueError("deficit_mode must be 'absolute' or 'relative'")
+        object.__setattr__(self, "deficit_mode", mode)
+        span = float(self.relative_alpha_span)
+        if not math.isfinite(span) or span <= 0.:
+            raise ValueError("relative_alpha_span must be finite and positive")
+        object.__setattr__(self, "relative_alpha_span", span)
+        if self.relative_spread_floor is not None:
+            spread = float(self.relative_spread_floor)
+            if not math.isfinite(spread) or spread <= 0.:
+                raise ValueError("relative_spread_floor must be finite and positive")
+            object.__setattr__(self, "relative_spread_floor", spread)
         if self.recover_quality is not None:
             recover = float(self.recover_quality)
             if not math.isfinite(recover) or recover < self.c_min or recover > 1.:

@@ -6,26 +6,77 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from collections.abc import Mapping
 
 import numpy as np
-import torch
 import yaml
 
-from ird_playground.ird.canonical import rotation_from_6d_torch
-from ird_playground.ird.gpu_pose_gt import GpuPoseGtConfig, _probe_collision_filter
-from ird_playground.ird.gt_common import reachability_modules
-from ird_playground.ird.robot_model import RobotModelSpec, load_robot_model_spec
-from ird_playground.ird.tool_frame import pose_flange_to_tcp, pose_tcp_to_flange
-from ird_playground.ird.torch_kinematics import TorchRM75Kinematics, so3_log
-from ird_playground.calib import false_acceptance_report, load_conformal_json
-from ird_playground.ird.splits import FiveWaySplitConfig, five_way_split_indices
-from ird_playground.neural.signed_field import ReachabilitySDF
-from ird_playground.neural.train_signed import (
-    _side_indices,
-    evaluate_signed_field,
-    load_signed_train_config,
-)
-from ird_playground.region.operator import RegionA, RegionAConfig
+try:  # Keep the pure path resolver importable on CPU-only test hosts.
+    import torch
+except ImportError:  # pragma: no cover - evaluation itself requires torch
+    torch = None  # type: ignore[assignment]
+
+
+def resolve_eval_path(
+    cli_value: str | Path | None,
+    raw_cfg: Mapping[str, object] | None,
+    key: str,
+    *,
+    root: Path,
+    default: str | Path,
+) -> Path:
+    """Resolve one evaluation artifact with CLI > config > legacy precedence.
+
+    Relative paths are rooted at ``root``.  ``raw_cfg`` is read-only and this
+    helper performs no filesystem access, making path precedence independently
+    testable without importing the GPU evaluation stack.
+    """
+
+    configured: object | None = None
+    if isinstance(raw_cfg, Mapping):
+        io = raw_cfg.get("io")
+        if isinstance(io, Mapping):
+            configured = io.get(key)
+    chosen: object = cli_value if cli_value is not None else configured
+    if chosen in (None, ""):
+        chosen = default
+    path = Path(chosen)
+    return path if path.is_absolute() else root / path
+
+
+def _load_runtime_dependencies() -> None:
+    """Import torch-backed evaluation dependencies only when main() runs."""
+
+    global rotation_from_6d_torch, GpuPoseGtConfig, _probe_collision_filter
+    global reachability_modules, RobotModelSpec, load_robot_model_spec
+    global pose_flange_to_tcp, pose_tcp_to_flange, TorchRM75Kinematics, so3_log
+    global false_acceptance_report, load_conformal_json
+    global FiveWaySplitConfig, five_way_split_indices, ReachabilitySDF
+    global _side_indices, evaluate_signed_field, load_signed_train_config
+    global RegionA, RegionAConfig
+    if torch is None:
+        raise RuntimeError("torch is required for signed evaluation")
+    from ird_playground.ird.canonical import rotation_from_6d_torch
+    from ird_playground.ird.gpu_pose_gt import GpuPoseGtConfig, _probe_collision_filter
+    from ird_playground.ird.gt_common import reachability_modules
+    from ird_playground.ird.robot_model import RobotModelSpec, load_robot_model_spec
+    from ird_playground.ird.tool_frame import pose_flange_to_tcp, pose_tcp_to_flange
+    from ird_playground.ird.torch_kinematics import TorchRM75Kinematics, so3_log
+    from ird_playground.calib import false_acceptance_report, load_conformal_json
+    from ird_playground.ird.splits import FiveWaySplitConfig, five_way_split_indices
+    from ird_playground.neural.signed_field import ReachabilitySDF
+    from ird_playground.neural.train_signed import (
+        _side_indices,
+        evaluate_signed_field,
+        load_signed_train_config,
+    )
+    from ird_playground.region.operator import RegionA, RegionAConfig
+
+
+def _no_grad(function):
+    """Apply torch.no_grad when available, otherwise keep path-only imports usable."""
+
+    return torch.no_grad()(function) if torch is not None else function
 
 
 def _sha256(path: Path) -> str:
@@ -57,7 +108,7 @@ def _tcp_pose_matrices(
     return torch.cat((torch.cat((R, p[..., None]), dim=-1), bottom), dim=-2)
 
 
-@torch.no_grad()
+@_no_grad
 def _region_pair_direction(
     field: ReachabilitySDF,
     region: RegionA,
@@ -235,7 +286,13 @@ def main(argv: list[str] | None = None) -> int:
         "--conformal",
         type=Path,
         default=None,
-        help="Optional conformal JSON; if missing, fit on a train subset and write default path.",
+        help="Optional conformal JSON; CLI value overrides config io.conformal.",
+    )
+    ap.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional evaluation report path; overrides config io.eval_report.",
     )
     ap.add_argument(
         "--report-near-axis",
@@ -244,6 +301,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Report accuracy restricted to flange chart r < 5 cm (default: on).",
     )
     args = ap.parse_args(argv)
+    _load_runtime_dependencies()
     root = Path(__file__).resolve().parents[2]
     cfg_path = args.config if args.config.is_absolute() else root / args.config
     cfg = load_signed_train_config(cfg_path, root=root)
@@ -280,11 +338,13 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     val_idx = splits["test"]
-    conformal_path = args.conformal
-    if conformal_path is None:
-        conformal_path = root / "data/calib/conformal_rm4d_signed.json"
-    elif not conformal_path.is_absolute():
-        conformal_path = root / conformal_path
+    conformal_path = resolve_eval_path(
+        args.conformal,
+        raw_cfg,
+        "conformal",
+        root=root,
+        default="data/calib/conformal_rm4d_signed.json",
+    )
     if not conformal_path.is_file():
         raise FileNotFoundError(
             f"independent calibration is required before final evaluation: {conformal_path}"
@@ -360,7 +420,13 @@ def main(argv: list[str] | None = None) -> int:
         and metrics["roll_collision_variation_rate"] <= 0.05
         and metrics["safety_false_accept_rate_upper"] <= float(conf["alpha"])
     )
-    report = root / "data/reports/eval_rm4d_signed.json"
+    report = resolve_eval_path(
+        args.output,
+        raw_cfg,
+        "eval_report",
+        root=root,
+        default="data/reports/eval_rm4d_signed.json",
+    )
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(json.dumps(metrics, indent=2))

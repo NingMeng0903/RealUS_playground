@@ -1,0 +1,32 @@
+事后任务尺度扩展协议（不覆盖第一版）
+======================================
+
+这是在第一版 1 unit=1 mm、target=[0.40,-0.30] mm、0.50 mm success
+结果完成后记录的独立 task-regime addendum，不是最初预注册结果。第一版
+的 100% success 结果保留并单独报告。
+
+保持不变
+--------
+* 同一 compliance law、label noise、normalized action magnitude [0.15,0.8]、
+  32 candidates、候选生成规则、model weights、训练 seeds 和 optimizer；
+  不读新测试 GT 调参，不混入新测试样本训练。
+* 物理尺度改为 1 normalized action/response unit = 10 mm。
+* 初始 image-plane correction 固定为 [4,-3] mm，即 normalized target
+  [0.40,-0.30]，与上一版归一化目标数值相同。
+* success 固定为物理 x/z Euclidean error <=2 mm，即 normalized error
+  <=0.20。该门槛在本文件写入后冻结。
+* 新 OOD test seed=720972、ID seed=720973，各 512 independent contexts，
+  不与原 test seed=720950/720951 混合；同一 32 candidate budget。
+
+报告方法
+--------
+使用公平 signless-input corrected models 的 n=2048/seed=101 权重，报告
+analytic-zero、global fixed-linear、probe-local canonical MLP、真实 e3nn
+typed basis，以及 online 3-probe RLS。给出同候选集 oracle ceiling、实际
+centering success、regret 和 response RMSE；没有额外模型选择或阈值搜索。
+
+解释边界
+--------
+这是看过第一版饱和结果后的开发扩展，不能说成原始预注册实验。若在
+2 mm 门下所有方法仍可行或固定线性/RLS 已足够，记录为任务区分度/强基线
+结果，不继续调 plant 或门槛制造学习增益。

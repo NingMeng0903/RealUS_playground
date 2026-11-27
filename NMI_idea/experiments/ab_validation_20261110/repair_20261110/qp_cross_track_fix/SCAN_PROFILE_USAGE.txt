@@ -1,0 +1,39 @@
+可复用离线扫描跟踪入口（2026-11-10）
+
+推荐profile：scan_tracking_profile.yaml
+保持原100/50任务权重；软件command-lead界20deg；峰值2cm/s；
+新连续6D参考、.8s双端起停、2s终点等待。物理关节位置/v/a/j、碰撞门不变。
+这是离线ideal-q profile；本入口不建立机器人/导轨设备连接。
+
+命令（默认使用已经冻结的path0输入；输出目录不得已存在）：
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
+/media/camp/EXT_DRIVE/envs/genesis/bin/python \
+/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/run_scan_profile.py \
+--output /tmp/scan_profile_replay
+
+自己的NPZ可指定：
+--input /absolute/input.npz --poses-key your_T_key --q-key your_q_seed_key
+T数组为(N,4,4)的base坐标TCP位姿，q_seed为(8,)：rail米、7臂关节弧度。
+TCP/URDF必须匹配本机器人合同；不要把某个患者隐藏真血管当策略输入。
+公共模板先验或已选概率路径样本都可以给出命令pose，导数只依赖实际下发
+的参考和时间律。当前模块要求连续相邻位置不同；纯旋转需另设时间参数。
+
+在后续A/B实验中复用：
+from scan_replay import ScanReplayBridge
+bridge = ScanReplayBridge()
+result = bridge.query_pose_path(T, q_seed, speed_m_s=.02, return_trace=True)
+它使用独立reference工厂，无全局monkeypatch，并把profile/reference指纹写入
+状态合同；观察hold保持静止，带旋转的固定位置序列不会被静默当hold。
+
+生产参考模块：
+rm75_control.control.joint_admittance_8dof.scan_reference.WorldPoseSplineReference
+sample(t)同时返回同一条可微曲线的pose与base几何6D速度。
+控制器既有WorldPolylineReference历史默认保留，不假称所有调用方已迁移。
+
+精度评估：results.json/time_aligned_middle用FK(q_meas_before)对同一时刻T(t)。
+raw旧q_send(t+dt)对T(t)的指标保留用于复算；不要将它当作同刻真实误差。
+短路径没有.8s起停之外的中段时，明确samples=0、max=null。
+
+本轮入口实跑：profile_integration_check/results.json复现path0中段
+最大位置.032982414mm、姿态.032484455deg。
+物理jerk严格余量的小负值仍在原始结果中，不声称全部机械门已通过。

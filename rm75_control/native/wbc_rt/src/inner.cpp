@@ -36,6 +36,10 @@ constexpr double kQuietLinExit = 0.008;
 constexpr double kQuietRotExit = 0.08;
 constexpr double kQuietTcp = 0.010;
 constexpr double kQuietHold = 0.15;
+// A q_send position rejection is distinct from a solver/CBF status.  Keep
+// the reason in the existing task_pause_reason telemetry without adding an
+// ABI field or silently replacing the arm command with a clipped value.
+constexpr uint32_t kPauseQsendPosition = 3;
 // ProxQP has a separate inner Newton loop whose default (1500) is not
 // covered by settings.max_iter. Bound it explicitly on every solve so the
 // controller's wall-clock iteration budget cannot expand into an unbounded
@@ -125,6 +129,19 @@ bool box_conflict(const Vec8& lo, const Vec8& hi, int* joint) {
     }
   }
   return false;
+}
+
+bool qsend_in_position_limits(const Vec8& q, const Vec8& q_lo, const Vec8& q_hi,
+                              int* joint) {
+  constexpr double kTol = 1.0e-12;
+  for (int i = 0; i < kNv; ++i) {
+    if (!std::isfinite(q[i]) || !std::isfinite(q_lo[i]) || !std::isfinite(q_hi[i]) ||
+        q[i] < q_lo[i] - kTol || q[i] > q_hi[i] + kTol) {
+      if (joint) *joint = i;
+      return false;
+    }
+  }
+  return true;
 }
 
 double qp_eq_violation(const MatX& A, const VecX& b, const VecX& x) {
@@ -238,6 +255,7 @@ Collision::Collision(pinocchio::Model& model, const Config& cfg)
   geom_data_ = pinocchio::GeometryData(geom_model_);
   slots_.assign(static_cast<std::size_t>(cfg.max_pairs), -1);
   local_spheres_.resize(geom_model_.geometryObjects.size());
+  world_centers_.resize(local_spheres_.size());
   local_aabbs_.resize(geom_model_.geometryObjects.size());
   world_obbs_.resize(geom_model_.geometryObjects.size());
   for (std::size_t i = 0; i < geom_model_.geometryObjects.size(); ++i) {
@@ -250,11 +268,15 @@ Collision::Collision(pinocchio::Model& model, const Config& cfg)
 }
 
 void Collision::update(const Vec8& q, pinocchio::Data& data) {
+  // Rigid geometry and pair policy are immutable for this Collision instance.
+  // An identical sample has exactly the same world placements and witnesses.
+  if ((q.array() == last_geometry_q_.array()).all()) return;
   queried_.clear();
   if (geom_model_.ngeoms == 0) return;
   pinocchio::updateGeometryPlacements(*model_, data, geom_model_, geom_data_, q);
   for (std::size_t i = 0; i < local_aabbs_.size(); ++i) {
     const auto& placement = geom_data_.oMg[i];
+    world_centers_[i] = placement.act(local_spheres_[i].c);
     world_obbs_[i] = collision_broadphase::transformed(
         local_aabbs_[i], placement.rotation(), placement.translation());
   }
@@ -270,9 +292,7 @@ void Collision::update(const Vec8& q, pinocchio::Data& data) {
     const double rb = local_spheres_[gb].r;
     double lb = -std::numeric_limits<double>::infinity();
     if (std::isfinite(ra) && std::isfinite(rb)) {
-      const Eigen::Vector3d ca = geom_data_.oMg[ga].act(local_spheres_[ga].c);
-      const Eigen::Vector3d cb = geom_data_.oMg[gb].act(local_spheres_[gb].c);
-      lb = (ca - cb).norm() - ra - rb;
+      lb = (world_centers_[ga] - world_centers_[gb]).norm() - ra - rb;
     }
     if (lb < best_lb) {
       best_lb = lb;
@@ -294,6 +314,7 @@ void Collision::update(const Vec8& q, pinocchio::Data& data) {
                                static_cast<pinocchio::PairIndex>(best_i));
     queried_.push_back(best_i);
   }
+  last_geometry_q_ = q;
 }
 
 int Collision::build_rows(pinocchio::Data& data, MatX* jac, VecX* lower, std::vector<int>* slots) {
@@ -342,7 +363,7 @@ int Collision::build_rows(pinocchio::Data& data, MatX* jac, VecX* lower, std::ve
     const auto& h = hits[static_cast<std::size_t>(i)];
     const auto& goa = geom_model_.geometryObjects[static_cast<std::size_t>(h.ga)];
     const auto& gob = geom_model_.geometryObjects[static_cast<std::size_t>(h.gb)];
-    pinocchio::Data::Matrix6x Ja(6, model_->nv), Jb(6, model_->nv);
+    Mat6x8 Ja = Mat6x8::Zero(), Jb = Mat6x8::Zero();
     pinocchio::getFrameJacobian(*model_, data, goa.parentFrame, pinocchio::LOCAL_WORLD_ALIGNED, Ja);
     pinocchio::getFrameJacobian(*model_, data, gob.parentFrame, pinocchio::LOCAL_WORLD_ALIGNED, Jb);
     const Eigen::Vector3d oa = data.oMf[goa.parentFrame].translation();
@@ -928,7 +949,11 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
       const double toward_lo = -stopping_velocity(re[i] + lead, a_max_[i], reaction);
       double chi = std::min((*hi)[i], toward_hi);
       double clo = std::max((*lo)[i], toward_lo);
-      if (clo > chi) {
+      // The arm position/velocity intersection is a real hard constraint.
+      // Only the prismatic rail may use the legacy one-sided lead repair;
+      // repairing an arm conflict by copying the acceleration lower bound
+      // into its upper bound can publish a q_send beyond the URDF limit.
+      if (i == 0 && clo > chi) {
         if (lead >= 0.0) chi = clo;
         else clo = chi;
       }
@@ -966,42 +991,75 @@ void InnerLoop::apply_velocity_box(const Vec8& q_geom, const Vec8& q_cmd, const 
   }
 }
 
-void InnerLoop::tighten_branch(const Vec8& q, bool rail_open, Vec8* lo, Vec8* hi) {
-  if (!cfg_.branch_enabled) return;
-  double act = cfg_.branch_box_activate;
-  if (act <= 1e-9) act = cfg_.branch_activate;
-  const double eps = cfg_.branch_eps;
-  const double band = std::max(act - eps, 1e-6);
+void InnerLoop::tighten_arm_approach_bounds(const Vec8& q, const Vec8& q_cmd,
+                                           double dt, double h, double previous_h,
+                                           bool rail_open, Vec8* lo, Vec8* hi) {
+  Vec8 preview_lo = -v_max_;
+  Vec8 preview_hi = v_max_;
+  // Bound the inward acceleration reachable next tick from committed history.
+  // The hard intersection below remains authoritative when history is infeasible.
+  auto preview = [&](int i, bool toward_hi, double distance, double reaction) {
+    const double a = a_max_[i];
+    const double j = j_max_[i];
+    if (!(a > 0.0 && j > 0.0)) return;
+    const double acceleration = (std::isfinite(previous_h) && previous_h > 1e-9)
+        ? (qdot_prev_[i] - qdot_prev2_[i]) / previous_h : 0.0;
+    const double inward = clip((toward_hi ? acceleration : -acceleration) + j * h, 0.0, a);
+    // While jerk reverses the inward acceleration, velocity can rise by
+    // inward^2 / (2*j). Reserve that peak until full braking is available.
+    const double ramp = h + (a + inward) / j;
+    const double peak_gain = 0.5 * inward * inward / j;
+    const double speed = std::max(0.0, stopping_velocity(distance, a, reaction + ramp) - peak_gain);
+    if (toward_hi) preview_hi[i] = std::min(preview_hi[i], speed);
+    else preview_lo[i] = std::max(preview_lo[i], -speed);
+  };
+  // A linear damper requires distance >= speed * band / vmax. Reserve this
+  // distance in addition to the braking distance, using the nearer of the
+  // measured joint and the last committed position.
+  auto branch_wall = [&](int i, bool toward_hi, double measured_distance,
+                         double command_distance, double band) {
+    const double vmax = v_max_[i];
+    const double cap = vmax * clip(measured_distance / band, 0.0, 1.0);
+    if (toward_hi) (*hi)[i] = std::min((*hi)[i], cap);
+    else (*lo)[i] = std::max((*lo)[i], -cap);
+    if (vmax > 0.0)
+      preview(i, toward_hi, std::min(measured_distance, command_distance), band / vmax);
+  };
   for (int i = 1; i < kNv; ++i) {
+    if (cfg_.resync_err_rad > 0.0) {
+      const double lead = q_cmd[i] - q[i];
+      preview(i, true, cfg_.resync_err_rad - lead, dt);
+      preview(i, false, cfg_.resync_err_rad + lead, dt);
+    }
+    if (!cfg_.branch_enabled) continue;
     const double qs = q_star_signs_[i];
-    if (std::abs(qs) <= cfg_.branch_target_eps) continue;
-    const double sign = qs >= 0.0 ? 1.0 : -1.0;
-    const double margin = sign * q[i];
-    const double d = clip((margin - eps) / band, 0.0, 1.0);
-    if (sign > 0.0) (*lo)[i] = std::max((*lo)[i], -v_max_[i] * d);
-    else (*hi)[i] = std::min((*hi)[i], v_max_[i] * d);
-  }
-  const double qs1 = q_star_signs_[1];
-  if (std::abs(qs1) > cfg_.branch_target_eps) {
-    const double sign1 = qs1 >= 0.0 ? 1.0 : -1.0;
-    if (sign1 * q[1] > 0.0) {
-      const double wall = std::max(cfg_.j1_overfold_abs, 1e-6);
-      const double j1_eps = std::max(cfg_.j1_overfold_eps, 0.0);
-      const double j1_act = std::max(cfg_.j1_overfold_activate, j1_eps + 1e-6);
-      const double j1_band = std::max(j1_act - j1_eps, 1e-6);
-      const double d_ov = clip((wall - std::abs(q[1]) - j1_eps) / j1_band, 0.0, 1.0);
-      if (sign1 < 0.0) (*lo)[1] = std::max((*lo)[1], -v_max_[1] * d_ov);
-      else (*hi)[1] = std::min((*hi)[1], v_max_[1] * d_ov);
+    if (std::abs(qs) > cfg_.branch_target_eps) {
+      const double sign = qs >= 0.0 ? 1.0 : -1.0;
+      const double act = cfg_.branch_box_activate > 1e-9
+                             ? cfg_.branch_box_activate : cfg_.branch_activate;
+      const double eps = cfg_.branch_eps;
+      branch_wall(i, sign < 0.0, sign * q[i] - eps, sign * q_cmd[i] - eps,
+                  std::max(act - eps, 1e-6));
+      if (i == 1 && sign * q[i] > 0.0) {
+        const double wall = std::max(cfg_.j1_overfold_abs, 1e-6);
+        const double edge = std::max(cfg_.j1_overfold_eps, 0.0);
+        branch_wall(i, sign > 0.0, wall - sign * q[i] - edge,
+                    wall - sign * q_cmd[i] - edge,
+                    std::max(cfg_.j1_overfold_activate - edge, 1e-6));
+      }
+    }
+    if (i == 4 && rail_open) {
+      const double edge = cfg_.j4_limit_eps;
+      const double band = std::max(cfg_.j4_limit_activate - edge, 1e-6);
+      branch_wall(i, true, q_hi_[i] - q[i] - edge, q_hi_[i] - q_cmd[i] - edge, band);
+      branch_wall(i, false, q[i] - q_lo_[i] - edge, q_cmd[i] - q_lo_[i] - edge, band);
     }
   }
-  if (rail_open && q.size() > 4) {
-    const double j4_eps = cfg_.j4_limit_eps;
-    const double j4_act = std::max(cfg_.j4_limit_activate, j4_eps + 1e-6);
-    const double j4_band = std::max(j4_act - j4_eps, 1e-6);
-    const double d_hi = clip(((q_hi_[4] - q[4]) - j4_eps) / j4_band, 0.0, 1.0);
-    const double d_lo = clip(((q[4] - q_lo_[4]) - j4_eps) / j4_band, 0.0, 1.0);
-    (*hi)[4] = std::min((*hi)[4], v_max_[4] * d_hi);
-    (*lo)[4] = std::max((*lo)[4], -v_max_[4] * d_lo);
+  for (int i = 1; i < kNv; ++i) {
+    const double hard_lo = (*lo)[i], hard_hi = (*hi)[i];
+    if (hard_lo > hard_hi) continue;
+    (*lo)[i] = clip(preview_lo[i], hard_lo, hard_hi);
+    (*hi)[i] = clip(preview_hi[i], hard_lo, hard_hi);
   }
 }
 
@@ -1018,6 +1076,7 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   qp1_iter_ = qp2_iter_ = 0;
   qp1_ms_ = qp2_ms_ = assembly_ms_ = fallback_ms_ = 0.0;
   collision_ms_ = qp_total_ms_ = 0.0;
+  n_cbf_active_ = 0;
   rail_preview_arm_.setConstant(std::numeric_limits<double>::quiet_NaN());
   rail_preview_residual_ = std::numeric_limits<double>::quiet_NaN();
   task_progress_alpha_ = 1.0;
@@ -1038,13 +1097,28 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   {
     const double olo = lo_box[0];
     const double ohi = hi_box[0];
-    tighten_branch(q_geom, rail_open, &lo_box, &hi_box);
+    tighten_arm_approach_bounds(q_geom, q_prev, dt, h1, h2, rail_open, &lo_box, &hi_box);
     note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindBranch);
   }
   {
     const double olo = lo_box[0];
     const double ohi = hi_box[0];
+    // collapse_interval is retained for the rail's one-dimensional braking
+    // behavior.  For arm coordinates, however, an empty intersection of the
+    // physical position box with acceleration/jerk/lead bounds is genuine
+    // infeasibility.  Preserve the pre-collapse arm interval so the P0
+    // conflict check below rejects it instead of manufacturing a singleton
+    // outside the physical position bound.
+    const Vec8 arm_box_lo = lo_box;
+    const Vec8 arm_box_hi = hi_box;
     collapse_interval(&lo_box, &hi_box, &qdot_prev_, &a_max_, h1);
+    for (int i = 1; i < kNv; ++i) {
+      if (std::isfinite(arm_box_lo[i]) && std::isfinite(arm_box_hi[i]) &&
+          arm_box_lo[i] > arm_box_hi[i] + 1.0e-12) {
+        lo_box[i] = arm_box_lo[i];
+        hi_box[i] = arm_box_hi[i];
+      }
+    }
     note_rail_bind(olo, ohi, lo_box, hi_box, kRailBindCollapse);
   }
   if (std::isfinite(rail_task_vel)) {
@@ -1070,7 +1144,6 @@ bool InnerLoop::solve_hqp(const Mat6x8& J, const Vec6& v_cmd, const Vec8& q_geom
   C.block(0, 0, kNv, kNv) = Mat8::Identity();
   lo.head<kNv>() = lo_box;
   hi.head<kNv>() = hi_box;
-  n_cbf_active_ = 0;
   const bool cbf_soft = cfg_.cbf_slack_w > 0.0;
   MatX cbf_jac = MatX::Zero(kMaxCbf, kNv);
   VecX cbf_lo = VecX::Constant(kMaxCbf, -1e20);
@@ -1615,6 +1688,33 @@ TickOut InnerLoop::step(const TickIn& in) {
       const double d_target = std::isfinite(d_star_) ? d_star_ : d_live;
       track_rail_authority(d_live, d_target, qdot[0], dt);
     }
+    int qsend_bad_joint = -1;
+    if (!qsend_in_position_limits(q_cmd_, q_lo_, q_hi_, &qsend_bad_joint)) {
+      // Direct PTP has no QP solve to certify the final integrated command;
+      // reject it through the same publication contract and restore all
+      // speculative history.  In particular, do not clip an arm q_send and
+      // call the resulting acceleration/jerk history valid.
+      restore_history(committed_snap_);
+      qdot.setZero();
+      task_paused_ = true;
+      task_pause_reason_ = kPauseQsendPosition;
+      qp1_status_ = kQpFailed;
+      out.q_cmd = q_cmd_;
+      out.qdot = qdot;
+      out.sigma_min = last_sigma_;
+      out.sigma_arm = sigma_arm;
+      out.homotopy_s = homotopy_s_;
+      out.psi = psi_cmd_;
+      out.solve_ms = elapsed_ms(t0);
+      out.kinematics_ms = kinematics_ms_;
+      fill_mixer_out(&out);
+      out.flags |= kOutFailed;
+      out.status = kStatusFail;
+      out.qp1_status = kQpFailed;
+      out.task_paused = 1;
+      out.task_pause_reason = kPauseQsendPosition;
+      return out;
+    }
     dq_prev_ = q_cmd_ - q_prev;
     have_dq_prev_ = true;
     out.q_cmd = q_cmd_;
@@ -2011,7 +2111,6 @@ TickOut InnerLoop::step(const TickIn& in) {
       qm[i] -= eps;
       g[i] = (kin_.sew_psi(qp) - kin_.sew_psi(qm)) / (2 * eps);
     }
-    kin_.update(q_state);
     const double lam = sr_damping_lambda(last_sigma_, cfg_.sr_lam0, cfg_.sr_sigma_ref,
                                          cfg_.sr_sigma_floor);
     const Vec8 gN = project_nullspace(J, g, lam);
@@ -2094,11 +2193,9 @@ TickOut InnerLoop::step(const TickIn& in) {
     for (int i = 1; i < kNv; ++i) {
       Vec8 qp = q_state;
       qp[i] += eps;
-      kin_.update(qp);
-      const double sp = kin_.sigma_arm();
+      const double sp = kin_.sigma_arm_at(qp);
       sigma_grad_[i] = (sp - sigma_arm) / eps;
     }
-    kin_.update(q_state);
   }
   ++sigma_tick_;
 
@@ -2179,6 +2276,18 @@ TickOut InnerLoop::step(const TickIn& in) {
     }
   }
   uint32_t publication_pause_reason = 0;
+  int qsend_bad_joint = -1;
+  if (published_ok && !qsend_in_position_limits(q_cmd_, q_lo_, q_hi_, &qsend_bad_joint)) {
+    // This is the final arm/rail position admission after every command
+    // rewrite (rail integration and acceleration shadow included).  A bad
+    // q_send is a failed publication, never a reason to silently clip an arm
+    // coordinate or to retain the QP's acceleration/jerk history.
+    published_ok = false;
+    publication_pause_reason = kPauseQsendPosition;
+    qp1_status_ = kQpFailed;
+    q_cmd_ = q_prev;
+    qdot.setZero();
+  }
   // Includes QP1-only numerical fallback, clipping and all rail mutations.
   // Do not send an uncertified result or hide the changed payload in telemetry.
   if (published_ok && (!command_twist_ok(qdot) || (command_power_enabled_ &&

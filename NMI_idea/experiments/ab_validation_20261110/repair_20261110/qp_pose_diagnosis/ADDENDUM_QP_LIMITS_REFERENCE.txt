@@ -1,0 +1,65 @@
+底层QP参数与姿态跟踪误差：冻结轨迹逐帧核查（2026-11-10）
+
+范围与证据
+只读冻结 native/URDF branch4/no_dird/path0、2cm/s逐tick trace：
+../dird/qp_native_urdf_branch4_sensitivity/no_dird_0_trace.npz。
+此实际配置使用生产 WorldPolylineReference、CartesianTrackOuterLoop、
+JointIkController.update，理想q反馈；没有dIRD在线推理、物理plant或超声。
+角前馈对照只引用先前封存 ../dird/angular_ff_diagnostic.json，
+它是离线monkeypatch诊断，不能当已修改生产参考或已通过执行门。
+
+原QP是否过严
+路径段779tick中，task_progress最小.953809、p05 .998543、低于.99
+仅1.28%；task_paused=0，physical_saturated=0，joint_limited=0，
+rail_limited=0。期望/可行twist的角部分差的p95为.000581rad/s，
+最大.002798rad/s；参考角速度约.391081rad/s。角外环命令最大
+.319950rad/s，明显低于1.5rad/s外环上限。
+逐坐标速度最大/限值比≤.2613；加速度最大/限值比≤.9787；
+jerk最大/限值比1.000113，超箱幅度.033958rad/s³（相对300约.0113%）。
+因此这条branch4原速轨迹的7.91°角p95主要不能解释为大量任务暂停、
+速度限值或角速度cap过严。加速度/jerk接近限值，应保留为加入新前馈时
+的容量风险；不能声称全部动态约束通过，更不能据此任意放宽限值。
+
+参考律的直接证据
+生产 reference.py WorldPolylineReference._interp 对相邻姿态做Slerp，
+但 sample 只赋 vel[:3]=切向速度，vel[3:6]一直为零。
+生产 loop.py CartesianTrackOuterLoop.sample 使用
+path_base=ref.vel_ff，feedback_base=k_task*pose_error，旋转增益=2/s。
+冻结逐tick原速轨迹中，角命令大小/同tick执行后姿态误差的中位比
+约2.020/s（微小偏差来自误差记录在qnext、命令算在qmeas）。这证实
+角命令近乎全靠比例反馈生成。角姿态参考前进时，理想关节plant也必须
+先出现姿态误差才会产生跟随角速度；速度约.391rad/s时一阶稳态数量级
+omega/k≈.1955rad≈11.2°，有限路径实测p95 7.9075°。
+
+独立慢速固定对照（本目录ADDENDUM_SLOW_REFERENCE.txt）把相同pose路径
+的参考速从2cm/s降到0.5cm/s，实际参考角速p95从.39108降到
+.09777rad/s；位置p95 .106325→.026124mm，姿态p95 7.9075→2.6511°，
+两组path progress近1、未pause。这支持移动参考/缺角前馈的动态滞后。
+慢速仍高于2°，不能写成通过门槛。
+
+为何不能直接把角前馈填上或加大增益
+先前同path/seed的离线SO(3)中心差分角前馈诊断：姿态p95 7.91°→
+.547°，但位置p95 .106mm→6.932mm、task_progress p05由约.999
+降至.408，完整2mm/2°门仍失败。该诊断确实改变了参考的6D输入，
+说明角前馈有减少旋转滞后的潜力，同时在现有加速度/jerk和任务分配下
+挤占平移跟踪。单独加角前馈或调大旋转P增益均非已验证的总修复。
+
+可实施修正方向（尚未改生产）
+1. WorldPolylineReference用同一Slerp时间参数生成相容的世界系角速度：
+   每段R(u)=R_i exp(u log(R_i^T R_{i+1}))，令du/dt=v_path*tau_dot/
+   segment_length，则omega_world=R_i log(R_i^T R_{i+1})*du/dt。
+   与线速度共同在路径结束后置零，姿态和角前馈使用同一时间锚与软起步。
+2. 先检查每段6D twist、关节加速度/jerk、QP task_progress；若不可行，
+   同步降低整条参考的时间推进率，使期望pose和线/角前馈一起变慢，
+   不能只压低角速度而让姿态参考继续前进。路段连接处的线/角速度跳变
+   需连续retime或轨迹重建，避免导数峰值。
+3. 发布门保持TCP位姿误差、全路径/入口q合法、QP progress、速度/加速度/
+   jerk、自碰撞和连续段检查。必须在旧固定branch4及branch0、全12路径
+   和独立持出路径测总效果，不能因单指标好看而选择参数。
+4. native异常rail的原二进制根因尚未解决；上述参考改动前后仍需桥接器
+   fail-closed，不得把solver status或小qdot当绝对位置合法证明。
+
+结论：在这条固定branch4路径上，原姿态误差主要是参考律没有送角速度、
+比例反馈跟随移动姿态的滞后；不是已观察到的大面积QP任务停滞。
+QP动态余量紧，新的6D参考必须与时间调度一起验证，当前还没有已通过的
+总修复或物理执行证明。

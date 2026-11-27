@@ -1,0 +1,103 @@
+{
+  "status": "sealed_for_independent_read_only_audit",
+  "sealed_utc": "2026-11-10T09:11:51.568859+00:00",
+  "scope": "synthetic single-frame mechanism pilot; NOT V9.3 first qualified LA acquisition, trained A, SMPL-X production atlas, or real QP/dIRD validation",
+  "primary_result": "A and B identical action traces 256/256 main worlds and 128/128 shifted worlds; no incremental evidence to select B",
+  "correction_history": "One fixed-sequence posterior-scoring bug was corrected and same frozen test worlds rerun; superseded source/results/logs retained; A/B actions unchanged.",
+  "replay_command": "cd /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab && python benchmark.py",
+  "test_command": "cd /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab && python -m unittest -v test_contract",
+  "environment": {
+    "python": "3.10.12",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3"
+  },
+  "files": {
+    "report": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/REPORT.txt",
+      "bytes": 8508,
+      "sha256": "e61e41ea73382b31148f6669d58ff98b4566a023bcac7caa255f73c74efc7901"
+    },
+    "protocol": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/PROTOCOL.json",
+      "bytes": 6284,
+      "sha256": "36d9ee592336dbc6ea04cf75b1e4a1123498b16fe2544de649a8bf20ffb356c0"
+    },
+    "prior_permission_amendment": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/AMENDMENT_TEMPLATE_PRIOR.txt",
+      "bytes": 2147,
+      "sha256": "dd4b32ded443d97b7e1ccb7c27f24101750063932e7c4424f2204a058c1b3f03"
+    },
+    "protocol_snapshot_v1": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/PROTOCOL_v1_before_LA_scope_fix.json",
+      "bytes": 5640,
+      "sha256": "42533fe3e83b6640fb4eb998f4c68f6903827dd886187b822f607f5f10ad6d6b"
+    },
+    "protocol_snapshot_v2": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/PROTOCOL_v2_before_physical_speed_time_fix.json",
+      "bytes": 6027,
+      "sha256": "26deca048abb422846a62fa8d1ad863b28703a3516d510d0ecc6a1a2cb2e989b"
+    },
+    "benchmark_source": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/benchmark.py",
+      "bytes": 27761,
+      "sha256": "7ad1d57c24b89bf50ad26a50cfdd38fcad326757d44232e33457bb64b9beab54"
+    },
+    "contract_tests": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/test_contract.py",
+      "bytes": 2628,
+      "sha256": "8d77603ff321f535a9ec96840f98dbb9f4521a2f4e6b05b9ce941cc08ce1fd05"
+    },
+    "test_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/test.log",
+      "bytes": 499,
+      "sha256": "ee78df3e9beed18dd75b48814b1bae5a3296db3fd1468f541d13bf896d647a91"
+    },
+    "current_results": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/results.json",
+      "bytes": 5016003,
+      "sha256": "2d15faf248eeb2977eccf60a3aa2e236170f1cccddbf2b8a1c77e5d4946480c7"
+    },
+    "current_run_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/run.log",
+      "bytes": 5634,
+      "sha256": "4c275bb7dfc51cd2dc4288d3323e6009105eaf80928a9d9efc65f81dc479b1f9"
+    },
+    "superseded_fixed_sequence_source": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/before_fixed_sequence_bayes_fix/benchmark.py",
+      "bytes": 27446,
+      "sha256": "99f8bde764ad7131ea8922c8565d35f7f1c4da770fe2da589f6f9757ef7a8fd9"
+    },
+    "superseded_fixed_sequence_results": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/before_fixed_sequence_bayes_fix/results.json",
+      "bytes": 5017605,
+      "sha256": "5886e74105620d07cd6b07c1b1c0526d19dcdacd81c9ece02623c3df43aed973"
+    },
+    "superseded_fixed_sequence_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/before_fixed_sequence_bayes_fix/run.log",
+      "bytes": 5642,
+      "sha256": "2363ee8d4319c82f8736bb1f81bc7eea0ea271cd71523306025b2c9ffd6d9b92"
+    },
+    "parent_protocol": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/NO_PRESCAN_FOLLOWUP_PROTOCOL.txt",
+      "bytes": 5716,
+      "sha256": "9118d5a7084e3d65dfbbad17efb85de0c534ed5af6431cba6ffc13c268291c54"
+    },
+    "actual_dmp_module": {
+      "path": "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/dmp.py",
+      "bytes": 4712,
+      "sha256": "c049d7e32df71c1a39038722924472a83ca8b70a90dee47877b09fe3bc9ff972"
+    },
+    "report_v1_before_audit_wording": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/REPORT_v1_before_audit_wording.txt",
+      "bytes": 7598,
+      "sha256": "b15c647f2d3a9417ee398fd6f9cb7982c040cae18b5902cad1df68de6f7e4d6e"
+    },
+    "report_v2_before_endpoint_audit_wording": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/REPORT_v2_before_endpoint_audit_wording.txt",
+      "bytes": 8029,
+      "sha256": "23b2860e4a68409982140bb02dfafb2bd754f8e0cb6e4b3596689686623451a2"
+    }
+  },
+  "audit_wording_correction": "After independent audit feedback, report only corrected prose: fixed second action/abstention is precommitted before first observation; 8.204 ms censored-time difference is distinct from ~14.889 ms online planner compute difference; 141 ever-qualified, 96 public-stop, 85 correct-stop, 11 false-stop. Source, protocol, and results unchanged. Previous report retained with hash.",
+  "independent_audit_wording_correction": "Astra independently recomputed 5196 observations/seed/likelihood/posterior/summary with zero mismatches and 384 A=B=MPC action traces. Report prose corrected mixed DMP endpoint norm unit and nominal sensor endpoint approximation; source/protocol/results unchanged. Prior report snapshot retained."
+}

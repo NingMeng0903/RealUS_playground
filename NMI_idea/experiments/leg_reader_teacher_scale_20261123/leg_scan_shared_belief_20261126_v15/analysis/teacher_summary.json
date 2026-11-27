@@ -1,0 +1,158 @@
+{
+  "teach": {
+    "prefixes": 108,
+    "before_last": 72,
+    "after_review": 68,
+    "real_candidates": 582,
+    "selected_program": 37,
+    "proof_rescue": 7,
+    "proof_loss": 5,
+    "proof_strict": 71,
+    "continue_strict": 69,
+    "proof_wrong": 21,
+    "continue_wrong": 23,
+    "proof_wrong_removed": 7,
+    "proof_wrong_added": 5,
+    "targets": {
+      "4": {
+        "prefixes": 36,
+        "before_last": 36,
+        "with_legal_action": 36,
+        "after_review": 0
+      },
+      "5": {
+        "prefixes": 36,
+        "before_last": 36,
+        "with_legal_action": 36,
+        "after_review": 32
+      },
+      "6": {
+        "prefixes": 36,
+        "before_last": 0,
+        "with_legal_action": 36,
+        "after_review": 36
+      }
+    },
+    "programs": {
+      "4": {
+        "legal": 216,
+        "positive": 66,
+        "negative": 59,
+        "neutral": 91,
+        "selected": 22
+      },
+      "5": {
+        "legal": 222,
+        "positive": 43,
+        "negative": 51,
+        "neutral": 128,
+        "selected": 9
+      },
+      "6": {
+        "legal": 144,
+        "positive": 26,
+        "negative": 8,
+        "neutral": 110,
+        "selected": 6
+      }
+    },
+    "proof_regions": {
+      "4": {
+        "corrected": 1,
+        "lost": 0,
+        "wrong_removed": 1,
+        "wrong_added": 0
+      },
+      "5": {
+        "corrected": 5,
+        "lost": 3,
+        "wrong_removed": 3,
+        "wrong_added": 1
+      },
+      "6": {
+        "corrected": 5,
+        "lost": 5,
+        "wrong_removed": 4,
+        "wrong_added": 6
+      }
+    }
+  },
+  "teach_cal": {
+    "prefixes": 36,
+    "before_last": 24,
+    "after_review": 21,
+    "real_candidates": 194,
+    "selected_program": 18,
+    "proof_rescue": 6,
+    "proof_loss": 4,
+    "proof_strict": 23,
+    "continue_strict": 21,
+    "proof_wrong": 3,
+    "continue_wrong": 8,
+    "proof_wrong_removed": 6,
+    "proof_wrong_added": 1,
+    "targets": {
+      "4": {
+        "prefixes": 12,
+        "before_last": 12,
+        "with_legal_action": 12,
+        "after_review": 0
+      },
+      "5": {
+        "prefixes": 12,
+        "before_last": 12,
+        "with_legal_action": 12,
+        "after_review": 9
+      },
+      "6": {
+        "prefixes": 12,
+        "before_last": 0,
+        "with_legal_action": 12,
+        "after_review": 12
+      }
+    },
+    "programs": {
+      "4": {
+        "legal": 76,
+        "positive": 31,
+        "negative": 10,
+        "neutral": 35,
+        "selected": 11
+      },
+      "5": {
+        "legal": 70,
+        "positive": 21,
+        "negative": 5,
+        "neutral": 44,
+        "selected": 5
+      },
+      "6": {
+        "legal": 48,
+        "positive": 12,
+        "negative": 8,
+        "neutral": 28,
+        "selected": 2
+      }
+    },
+    "proof_regions": {
+      "4": {
+        "corrected": 0,
+        "lost": 2,
+        "wrong_removed": 0,
+        "wrong_added": 0
+      },
+      "5": {
+        "corrected": 3,
+        "lost": 2,
+        "wrong_removed": 2,
+        "wrong_added": 0
+      },
+      "6": {
+        "corrected": 5,
+        "lost": 2,
+        "wrong_removed": 4,
+        "wrong_added": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+ m ../.worktrees/e85-hard-contact
+ m ../.worktrees/peirastic-session-dof
+ m ../.worktrees/qpik-dbb-repair
+ M ../MD/GITHUB.md
+ M ird_playground/cli/eval_signed.py
+ M ird_playground/ird/gpu_pose_gt.py
+ M ird_playground/ird/splits.py
+ M ird_playground/ird/srs_label.py
+ M ird_playground/ird/torch_kinematics.py
+ M ird_playground/neural/train_signed.py
+ M tests/test_srs_label.py
+ m ../ref_code_library/smplx_blender_addon
+?? ../NMI_idea/experiments/
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.1.aux
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.1.fdb_latexmk
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.1.fls
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.1.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.2.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.3.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.4.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.5.2.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V8.5.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V9.1.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V9.2.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V9.3.tex
+?? ../NMI_idea/ideas/Anatomical_GPS_V9.4.tex
+?? ../NMI_idea/ideas/V8.5.4_execution_sufficiency_20261108/
+?? ../NMI_idea/ideas/V8.5.5_transfer_validation_20261108/
+?? ../camera_tests/
+?? configs/rm4d_signed_current_robot_20261108.yaml
+?? tests/test_eval_paths.py
+?? tests/test_grouping_performance.py
+?? ../scripts/plot_proposal_force.py
+?? ../scripts/plot_proposal_force_adjusted.py
+?? ../scripts/plot_proposal_trajectory.py
+?? ../work/

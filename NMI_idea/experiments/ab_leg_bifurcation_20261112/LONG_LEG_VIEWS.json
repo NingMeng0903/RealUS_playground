@@ -1,0 +1,985 @@
+{
+  "audit_output": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_VIEWS.json",
+  "frame_columns": [
+    "longitudinal_tangent",
+    "lateral",
+    "inward"
+  ],
+  "input_asset": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_ASSETS.npz",
+    "sha256": "bc257945ad87e0343526b16eb27df3a8abdb1be9ef73630b32c51f12b5fdbb63"
+  },
+  "input_asset_metadata": {
+    "contiguous_supported_runs": [
+      {
+        "end_index": 103,
+        "internal_length_m": 0.2521758257053436,
+        "internal_length_mm": 252.17582570534358,
+        "label_end": "R_POPV",
+        "label_start": "R_SUPFEMV",
+        "point_count": 75,
+        "repaired_d_max": 0.9643320249988983,
+        "repaired_d_min": 0.6189626492192829,
+        "repaired_h_end": 0.4462669549853398,
+        "repaired_h_start": 0.1404699396431306,
+        "skin_length_m": 0.32605488537277016,
+        "skin_length_mm": 326.0548853727702,
+        "source_global_index_end": 580,
+        "source_global_index_start": 442,
+        "start_index": 29
+      },
+      {
+        "end_index": 220,
+        "internal_length_m": 0.3926723787363621,
+        "internal_length_mm": 392.67237873636213,
+        "label_end": "R_POST_TIB_V",
+        "label_start": "R_POPV",
+        "point_count": 115,
+        "repaired_d_max": 0.995709370704139,
+        "repaired_d_min": 0.1259640906387393,
+        "repaired_h_end": 0.9376474635257113,
+        "repaired_h_start": 0.4569156277624795,
+        "skin_length_m": 0.41887397248688013,
+        "skin_length_mm": 418.8739724868801,
+        "source_global_index_end": 697,
+        "source_global_index_start": 583,
+        "start_index": 106
+      }
+    ],
+    "decode_checks": {
+      "strict_internal_invalid_count": 44,
+      "strict_internal_inverse_residual_max_m": 2.2291027918243403e-16,
+      "strict_internal_valid_count": 190,
+      "surface_address_decode_max_error_m": 4.443059973708341e-16,
+      "surface_address_decode_median_error_m": 6.938893903907228e-18
+    },
+    "full_ordered_path_length_m": 0.794869033655085,
+    "full_ordered_path_length_mm": 794.869033655085,
+    "full_ordered_skin_length_m": 0.8935127703732761,
+    "full_ordered_skin_length_mm": 893.5127703732761,
+    "internal_contract": "strict containing-tetra inverse on repaired atlas_right; no nearest projection",
+    "old_xi_warning": "legacy_xi is retained only as provenance/debug; do not use it as repaired internal coordinates",
+    "ordering": [
+      "R_COM_FEM_V",
+      "R_SUPFEMV",
+      "R_POPV",
+      "R_POST_TIB_V"
+    ],
+    "repaired_atlas_domain": {
+      "d": [
+        0.0,
+        1.0
+      ],
+      "h": [
+        0.14000000059604645,
+        0.9399999976158142
+      ],
+      "theta": "periodic radians"
+    },
+    "row_count": 234,
+    "schema": "long_leg_assets_v1",
+    "source_assets": {
+      "baked_internal_source_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/servo/prepared_scene/prebake/right_thigh_patch_and_vessels.npz",
+        "sha256": "02ef26d9daf561328958af37417736b24b5a11e476717d38ffb96b19d6d62dc6"
+      },
+      "legacy_vessel_material_asset": {
+        "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/vessels/vessel_material_coordinates.npz",
+        "role": "upstream source provenance only; its old xi_skin labels were not used"
+      },
+      "repaired_atlas_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+        "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+      },
+      "surface_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+        "sha256": "1f98c55cd623adc6e060680f5aec60b9f11366e9b6b03cd770726c8e8b532da8"
+      },
+      "template_prior_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/right_template_prior_chart_addresses.npz",
+        "sha256": "5589b4565c772915a946d96b31c71bb29094b7ad8171e2ca2c9f943fa87ac7c6"
+      }
+    },
+    "source_internal_bake_summary": {
+      "baked_internal_field_keys": [
+        "vessel_points",
+        "vessel_surface_points",
+        "vessel_theta",
+        "vessel_h"
+      ],
+      "baked_trunk_label": "LEG_VESSEL_CHAIN",
+      "baked_trunk_points": 255
+    },
+    "status": "bounded_repaired_internal_attachment",
+    "surface_contract": "full retained right-leg contact multichart surface, d=0 only"
+  },
+  "internal_scope": "internal_valid/internal_xi copied from strict repaired atlas inverse; invalid rows remain NaN",
+  "lateral_offsets_nominal_mm": [
+    -16.0,
+    -8.0,
+    0.0,
+    8.0,
+    16.0
+  ],
+  "lateral_sign": "cross(inward,longitudinal), sign continuity; inward dot(actual vessel-skin) > 0",
+  "output": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_VIEWS.npz",
+  "pose_deg": 0,
+  "pose_scope": "canonical fixed pose; no simulated tissue/probe dynamics",
+  "public_robot": {
+    "anchor": [
+      [
+        -0.9853855957027937,
+        0.1527459384942238,
+        0.07539168425609982,
+        0.4058983753071562
+      ],
+      [
+        0.15963494404680753,
+        0.982510211759051,
+        0.09586640928062412,
+        0.22358551217316117
+      ],
+      [
+        -0.05942989500769194,
+        0.10650052611469263,
+        -0.9925349996431717,
+        0.1505291678470127
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "candidate_count_per_view": 8,
+    "candidate_static_found_count": 687,
+    "candidate_total_count": 1120,
+    "chosen_static_found_count": 130,
+    "chosen_view_count": 140,
+    "dird_margin_chosen_max": 6.753526985770037,
+    "dird_margin_chosen_min": -6.172600749891627,
+    "evaluator_manifest": {
+      "exact_scope": "FK/URDF limits/configured robot-probe self-collision at endpoint; finite IK search; no body or environment collision, contact, dynamics, or exhaustive infeasibility certificate",
+      "original_dird": {
+        "T_rail_j1_axis_at_rail0": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            -0.4
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.2405
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "angle_unit": "rad",
+        "calibration_path": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints/rm4d_signed_current_robot_20261108/conformal.json",
+        "calibration_sha256": "a6322c54ddd445c1c814543b777257ade5e5bb60dbd24c97fe5af6cb530be295",
+        "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints/rm4d_signed_current_robot_20261108/selected.pt",
+        "checkpoint_calibration_hash_match": true,
+        "checkpoint_meta": {
+          "artifact_schema": "ird_signed_field_v2",
+          "calibration_schema": "ird_clearance_calibration_v2",
+          "dataset_meta": {
+            "auxiliary_npz": [
+              "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/revalidated/gpu_pose_uniform_production.npz",
+              "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/full_revalidated/fresh_stencils_classification.npz",
+              "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/uniform.npz"
+            ],
+            "canonical_frame": "physical_joint_1_axis",
+            "collision_contract": "Selected witness checked with current arm-body collision model; camera included, security margin=0.01m; not an existential IK oracle",
+            "config": {
+              "auxiliary_npz": [
+                "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/revalidated/gpu_pose_uniform_production.npz",
+                "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/full_revalidated/fresh_stencils_classification.npz",
+                "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/uniform.npz"
+              ],
+              "edt_npz": null,
+              "far_field_sdf_weight": 0.25,
+              "min_pair_separation_normalized": 1e-05,
+              "output_npz": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/full_revalidated/canonical.npz",
+              "quantile_hi": 0.995,
+              "quantile_lo": 0.005,
+              "robot_spec": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/configs/robot_probe45.yaml",
+              "source_npz": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/revalidated/gpu_pose_stencils_production.npz"
+            },
+            "embedding_dimension": 9,
+            "far_field_edt": {},
+            "features": [
+              "p_z_m",
+              "r_m",
+              "u_x_dot_z",
+              "p_xy_dot_u_x_m",
+              "p_xy_cross_u_x_m",
+              "u_z_dot_z",
+              "p_xy_dot_u_z_m",
+              "p_xy_cross_u_z_m",
+              "u_y_dot_z"
+            ],
+            "intrinsic_dimension": 5,
+            "metric": {
+              "cm_per_deg": 1.0,
+              "lambda_m_per_rad": 0.5729577951308232,
+              "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic",
+              "schema": "se3_weighted_l2_v1"
+            },
+            "n": 1796364,
+            "n_auxiliary": 540960,
+            "n_boundary_groups": 83563,
+            "n_oriented_groups": 83532,
+            "n_source": 1171872,
+            "n_zero_boundary": 83532,
+            "representation": "flange_j1_axis_9d_embedding_v1",
+            "robot_contract": {
+              "T_flange_tcp": [
+                [
+                  0.014774022132612807,
+                  0.9998908401730626,
+                  -0.0001897578249923093,
+                  0.0
+                ],
+                [
+                  -0.6440522759647374,
+                  0.009371115199288349,
+                  -0.7649240799089563,
+                  -0.01523
+                ],
+                [
+                  -0.7648388026863352,
+                  0.011423219245411842,
+                  0.644120420393116,
+                  0.12135
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "T_root_j1_axis": [
+                [
+                  1.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0,
+                  -0.4
+                ],
+                [
+                  0.0,
+                  0.0,
+                  1.0,
+                  0.2405
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "collision_mesh_sha256": {
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl": "d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl": "90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl": "8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl": "a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl": "525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl": "bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl": "d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl": "a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c",
+                "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl": "8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5"
+              },
+              "collision_pairs": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml",
+              "collision_pairs_sha256": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+              "collision_scope": "arm_body_self_collision_only",
+              "collision_security_margin_m": 0.01,
+              "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+              "collision_urdf_sha256": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+              "flange_frame": "link_7",
+              "j1_joint": "joint_1",
+              "kinematics_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf",
+              "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+              "metric": {
+                "cm_per_deg": 1.0,
+                "lambda_m_per_rad": 0.5729577951308232,
+                "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic",
+                "schema": "se3_weighted_l2_v1"
+              },
+              "rail_joint": "rail_y",
+              "rail_limits_m": [
+                0.0,
+                0.8
+              ],
+              "rail_locked_at_m": 0.0,
+              "root_frame": "rail_base",
+              "schema": "realman_robot_contract_v1",
+              "tcp_frame": "tcp",
+              "tcp_joint": "link_7_to_tcp",
+              "tool_frame": {
+                "T_flange_tcp": [
+                  [
+                    0.014774022132612807,
+                    0.9998908401730626,
+                    -0.0001897578249923093,
+                    0.0
+                  ],
+                  [
+                    -0.6440522759647374,
+                    0.009371115199288349,
+                    -0.7649240799089563,
+                    -0.01523
+                  ],
+                  [
+                    -0.7648388026863352,
+                    0.011423219245411842,
+                    0.644120420393116,
+                    0.12135
+                  ],
+                  [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ]
+                ],
+                "T_tcp_flange": [
+                  [
+                    0.014774022132612865,
+                    -0.6440522759647375,
+                    -0.7648388026863353,
+                    0.08300427254304381
+                  ],
+                  [
+                    0.9998908401730625,
+                    0.00937111519928828,
+                    0.011423219245411823,
+                    -0.001243485570945564
+                  ],
+                  [
+                    -0.0001897578249922692,
+                    -0.7649240799089563,
+                    0.6441204203931159,
+                    -0.08981380675171803
+                  ],
+                  [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                  ]
+                ],
+                "child_frame": "tcp",
+                "joint_name": "link_7_to_tcp",
+                "parent_frame": "link_7"
+              },
+              "yaw_invariant_static_links": [
+                "base_link"
+              ]
+            },
+            "source_id_schema": "namespaced_source_or_unique_aux_v1",
+            "source_npz": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/revalidated/gpu_pose_stencils_production.npz",
+            "supervision": {
+              "far_field": "EDT metres when edt_npz provided",
+              "near_field": "stencil metres (margin_weight > 0)",
+              "q1_aux_head": false,
+              "sign": "FK positive / IK negative reachable labels"
+            },
+            "zero_boundary_schema": "on_manifold_se3_interpolation_v1"
+          },
+          "dataset_sha256": "246f9b5f65337525c3dae77409e2749e7c399f2e6bb7b7caca83c2ea82282f73",
+          "input_center": [
+            0.2353830635547638,
+            0.7967379093170166,
+            -0.0007084801909513772,
+            0.0006967157241888344,
+            -0.11017460376024246,
+            0.005989949218928814,
+            -0.1054178774356842,
+            0.0018018096452578902,
+            -0.00030594319105148315
+          ],
+          "input_scale": [
+            0.8618326783180237,
+            0.7540995478630066,
+            0.989998459815979,
+            1.1218717098236084,
+            1.2192829847335815,
+            0.9939033389091492,
+            1.1001673936843872,
+            1.0972294807434082,
+            0.990035355091095
+          ],
+          "metric_schema": {
+            "cm_per_deg": 1.0,
+            "lambda_m_per_rad": 0.5729577951308232,
+            "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic",
+            "schema": "se3_weighted_l2_v1"
+          },
+          "metrics": {
+            "accuracy": 0.9354582083290456,
+            "balanced_accuracy": 0.9327948413829206,
+            "boundary_groups_deg": 5357,
+            "boundary_groups_m": 6752,
+            "crossing_mae_deg": 0.04964625967873467,
+            "crossing_mae_m": 0.0004730535337020707,
+            "crossing_p95_deg": 0.09552160799503326,
+            "crossing_p95_m": 0.0009390789200551808,
+            "direction_agreement_deg": 0.9983199551988053,
+            "direction_agreement_m": 0.9995556872037915,
+            "n": 252658,
+            "n_with_zero_boundary": 264762,
+            "near_axis_r_lt_5cm_accuracy": 0.8857331571994715,
+            "near_axis_r_lt_5cm_balanced_accuracy": 0.8846248158715646,
+            "near_axis_r_lt_5cm_n": 1514,
+            "near_axis_r_m": 0.05,
+            "reachable_recall": 0.9155094325497829,
+            "strict_straddle_rate_deg": 0.20160537614336382,
+            "strict_straddle_rate_m": 0.45630924170616116,
+            "unreachable_specificity": 0.9500802502160582,
+            "wide_straddle_rate_deg": 0.8706365503080082,
+            "wide_straddle_rate_m": 0.9508293838862559
+          },
+          "output_scale": 100.0,
+          "q1_aux_head": false,
+          "robot_contract": {
+            "T_flange_tcp": [
+              [
+                0.014774022132612807,
+                0.9998908401730626,
+                -0.0001897578249923093,
+                0.0
+              ],
+              [
+                -0.6440522759647374,
+                0.009371115199288349,
+                -0.7649240799089563,
+                -0.01523
+              ],
+              [
+                -0.7648388026863352,
+                0.011423219245411842,
+                0.644120420393116,
+                0.12135
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "T_root_j1_axis": [
+              [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0,
+                0.0,
+                -0.4
+              ],
+              [
+                0.0,
+                0.0,
+                1.0,
+                0.2405
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "collision_mesh_sha256": {
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl": "d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl": "90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl": "8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl": "a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl": "525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl": "bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl": "d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl": "a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c",
+              "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl": "8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5"
+            },
+            "collision_pairs": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml",
+            "collision_pairs_sha256": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+            "collision_scope": "arm_body_self_collision_only",
+            "collision_security_margin_m": 0.01,
+            "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+            "collision_urdf_sha256": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+            "flange_frame": "link_7",
+            "j1_joint": "joint_1",
+            "kinematics_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf",
+            "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+            "metric": {
+              "cm_per_deg": 1.0,
+              "lambda_m_per_rad": 0.5729577951308232,
+              "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic",
+              "schema": "se3_weighted_l2_v1"
+            },
+            "rail_joint": "rail_y",
+            "rail_limits_m": [
+              0.0,
+              0.8
+            ],
+            "rail_locked_at_m": 0.0,
+            "root_frame": "rail_base",
+            "schema": "realman_robot_contract_v1",
+            "tcp_frame": "tcp",
+            "tcp_joint": "link_7_to_tcp",
+            "tool_frame": {
+              "T_flange_tcp": [
+                [
+                  0.014774022132612807,
+                  0.9998908401730626,
+                  -0.0001897578249923093,
+                  0.0
+                ],
+                [
+                  -0.6440522759647374,
+                  0.009371115199288349,
+                  -0.7649240799089563,
+                  -0.01523
+                ],
+                [
+                  -0.7648388026863352,
+                  0.011423219245411842,
+                  0.644120420393116,
+                  0.12135
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "T_tcp_flange": [
+                [
+                  0.014774022132612865,
+                  -0.6440522759647375,
+                  -0.7648388026863353,
+                  0.08300427254304381
+                ],
+                [
+                  0.9998908401730625,
+                  0.00937111519928828,
+                  0.011423219245411823,
+                  -0.001243485570945564
+                ],
+                [
+                  -0.0001897578249922692,
+                  -0.7649240799089563,
+                  0.6441204203931159,
+                  -0.08981380675171803
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "child_frame": "tcp",
+              "joint_name": "link_7_to_tcp",
+              "parent_frame": "link_7"
+            },
+            "yaw_invariant_static_links": [
+              "base_link"
+            ]
+          },
+          "sampler": {
+            "batch_size": 4096,
+            "groups_per_batch": 256,
+            "name": "complete_boundary_groups_stratified_global_v1"
+          },
+          "selection_score": 1.6220242413707118,
+          "split_fingerprint": "426d0ecad514935c9cffb87543ce6c45eaa3a3a3ea42e5e73c0e3bbed2985b70",
+          "training_config": {
+            "batch_size": 4096,
+            "boundary_sample_boost": 2.5,
+            "checkpoint": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/full_revalidated/extended90/selected.pt",
+            "depth": 5,
+            "device": "cuda",
+            "early_stop_patience": 16,
+            "epochs": 90,
+            "external_test_fraction": 0.1,
+            "external_test_mode": null,
+            "fourier_bands": 3,
+            "gt_npz": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/full_revalidated/canonical.npz",
+            "lambda_boundary_slope": 0.12,
+            "lambda_classification": 1.0,
+            "lambda_generic_eikonal": 0.0,
+            "lambda_normal_direction": 0.35,
+            "lambda_signed_value": 6.0,
+            "lambda_straddle": 1.5,
+            "learning_rate": 0.0003,
+            "logit_scale": 1.0,
+            "max_boundary_groups": null,
+            "max_global_rows": null,
+            "near_axis_r_m": 0.05,
+            "near_band_abs": 0.01,
+            "near_band_boost": 3.0,
+            "normal_batch_max": 768,
+            "paired_boundary_groups": 256,
+            "report": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/work/dird_current_robot_20261108/full_revalidated/extended90/train_report.json",
+            "report_near_axis": true,
+            "resume_checkpoint": null,
+            "safety_calibration_fraction": 0.05,
+            "sdf_target_scale": 100.0,
+            "seed": 20261128,
+            "softplus_beta": 20.0,
+            "straddle_margin": 0.25,
+            "test_fraction": 0.1,
+            "val_fraction": 0.15,
+            "weight_decay": 0.0001,
+            "width": 192,
+            "zero_calibration_fraction": 0.05
+          }
+        },
+        "checkpoint_sha256": "08698c273bd1f0f4f2a86d956df95448ba502ee9d7fc17445f06258a13286e51",
+        "exact_scope": "SRS fixed seed branch; FK and limits at task samples; full configured robot/probe self-collision pairs on sampled joint interpolation including departure; no body/environment/contact/dynamics checks",
+        "length_unit": "m",
+        "load_seconds": 0.046345628001290606,
+        "pose_frame": "rail_base",
+        "q_order": [
+          "rail_y",
+          "joint_1",
+          "joint_2",
+          "joint_3",
+          "joint_4",
+          "joint_5",
+          "joint_6",
+          "joint_7"
+        ],
+        "robot_contract": {
+          "T_flange_tcp": [
+            [
+              0.014774022132612807,
+              0.9998908401730626,
+              -0.0001897578249923093,
+              0.0
+            ],
+            [
+              -0.6440522759647374,
+              0.009371115199288349,
+              -0.7649240799089563,
+              -0.01523
+            ],
+            [
+              -0.7648388026863352,
+              0.011423219245411842,
+              0.644120420393116,
+              0.12135
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "T_root_j1_axis": [
+            [
+              1.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              1.0,
+              0.0,
+              -0.4
+            ],
+            [
+              0.0,
+              0.0,
+              1.0,
+              0.2405
+            ],
+            [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "collision_mesh_sha256": {
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl": "d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl": "90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl": "8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl": "a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl": "525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl": "bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl": "d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl": "a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c",
+            "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl": "8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5"
+          },
+          "collision_pairs": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml",
+          "collision_pairs_sha256": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+          "collision_scope": "arm_body_self_collision_only",
+          "collision_security_margin_m": 0.01,
+          "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+          "collision_urdf_sha256": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+          "flange_frame": "link_7",
+          "j1_joint": "joint_1",
+          "kinematics_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf",
+          "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+          "metric": {
+            "cm_per_deg": 1.0,
+            "lambda_m_per_rad": 0.5729577951308232,
+            "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic",
+            "schema": "se3_weighted_l2_v1"
+          },
+          "rail_joint": "rail_y",
+          "rail_limits_m": [
+            0.0,
+            0.8
+          ],
+          "rail_locked_at_m": 0.0,
+          "root_frame": "rail_base",
+          "schema": "realman_robot_contract_v1",
+          "tcp_frame": "tcp",
+          "tcp_joint": "link_7_to_tcp",
+          "tool_frame": {
+            "T_flange_tcp": [
+              [
+                0.014774022132612807,
+                0.9998908401730626,
+                -0.0001897578249923093,
+                0.0
+              ],
+              [
+                -0.6440522759647374,
+                0.009371115199288349,
+                -0.7649240799089563,
+                -0.01523
+              ],
+              [
+                -0.7648388026863352,
+                0.011423219245411842,
+                0.644120420393116,
+                0.12135
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "T_tcp_flange": [
+              [
+                0.014774022132612865,
+                -0.6440522759647375,
+                -0.7648388026863353,
+                0.08300427254304381
+              ],
+              [
+                0.9998908401730625,
+                0.00937111519928828,
+                0.011423219245411823,
+                -0.001243485570945564
+              ],
+              [
+                -0.0001897578249922692,
+                -0.7649240799089563,
+                0.6441204203931159,
+                -0.08981380675171803
+              ],
+              [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            ],
+            "child_frame": "tcp",
+            "joint_name": "link_7_to_tcp",
+            "parent_frame": "link_7"
+          },
+          "yaw_invariant_static_links": [
+            "base_link"
+          ]
+        },
+        "schema": "ab_dird_capability_v1",
+        "score_is_metric_distance": false,
+        "score_is_safety_certificate": false,
+        "source": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground"
+      },
+      "pose_convention": "T_world_tcp; T_world_rail defaults to identity; q is rail_base URDF coordinates",
+      "q_out": "only returned for native replay; actual q_send integrated by offline ideal plant",
+      "q_solution": "kinematic configuration found by finite static search, never executed state",
+      "runtime_threads": 1,
+      "schema": "ab_capability_evaluator_v1",
+      "score_is_safety_certificate": false,
+      "search_config": {
+        "branches": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "collision_margin_m": 0.01,
+        "collision_segment_rail_m": 0.005,
+        "collision_segment_step_deg": 2.0,
+        "fk_position_tolerance_m": 0.0001,
+        "fk_rotation_tolerance_rad": 0.001,
+        "include_seed_swivel": true,
+        "psi_step_deg": 15.0
+      },
+      "source_sha256": {
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/capability/capability.py": "8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/adapter.py": "e056959792d4529d7389d5e49facb04b5497ded88d579677680b019f10e22eac",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/collision_model.py": "cd83783fd330644a626f47ad750567b1cd64f141b0ed10c10f05364fa5033cec",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/model.py": "575647629fbc5fa78c7a0e756986f91459154095821384f132454af546fda2b3",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/kinematics/srs_ik.py": "7470286eb54d312c6f410c13040d0d50b453c7eb025f27021f6d705ee4697487"
+      },
+      "static_statuses": [
+        "found_valid_configuration",
+        "search_not_found"
+      ],
+      "twist_convention": "gradient [world translation metres, left world rotation radians, raw rail metres]"
+    },
+    "placement": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_regression_20261110/public_prior_layout/SELECTED.json",
+    "placement_sha256": "af1328e68c85da6462e360040a4a1dc4b4f14a91994c9eb9b730c09617ab599e",
+    "q_seed": [
+      0.4,
+      -1.562069680534925,
+      -1.562069680534925,
+      1.137954672300303,
+      1.6755160819145565,
+      1.5585790220309363,
+      1.064650843716541,
+      1.6510814723866356
+    ],
+    "scope_note": "score_is_safety_certificate=False; endpoint IK is a finite search, not an infeasibility proof",
+    "static_requested": true
+  },
+  "robot_scope": "public CapabilityEvaluator score + finite _static_pose endpoint; no anatomy collision/path/native claim",
+  "row_slice": [
+    106,
+    220
+  ],
+  "schema": "long_leg_views_v1",
+  "source_label_span": [
+    "R_POPV",
+    "R_POST_TIB_V"
+  ],
+  "source_path_length_m": 0.39267237873636196,
+  "source_path_length_mm": 392.67237873636196,
+  "source_row_count": 115,
+  "station_count": 28,
+  "station_row_ids": [
+    106,
+    110,
+    115,
+    119,
+    125,
+    129,
+    133,
+    138,
+    142,
+    146,
+    150,
+    155,
+    159,
+    163,
+    168,
+    172,
+    176,
+    181,
+    185,
+    189,
+    193,
+    198,
+    202,
+    206,
+    211,
+    215,
+    219,
+    220
+  ],
+  "station_s_mm": [
+    0.0,
+    13.415987017408725,
+    30.296817395344622,
+    43.81996905695129,
+    61.27012729423144,
+    75.23002582615824,
+    89.16584931661389,
+    106.61073178363374,
+    120.56691625874164,
+    134.49083493227485,
+    148.44996323250126,
+    165.88367331083526,
+    179.83868889222717,
+    193.79842241105806,
+    211.24361025103036,
+    225.20374038541163,
+    239.15601133418275,
+    256.60285116753056,
+    270.5622961266103,
+    284.51195377087834,
+    298.47154254761836,
+    315.91883511763905,
+    329.8762503576636,
+    343.836372311481,
+    361.2774815188665,
+    375.23718467140446,
+    389.1907437059492,
+    392.67237873636196
+  ],
+  "station_selection": "nearest original LONG_LEG_ASSETS row to arc-length grid, always including run ends",
+  "station_step_requested_mm": 15.0,
+  "status": "geometry_and_public_robot_static_ik",
+  "surface_projection": {
+    "asset": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+    "contract": "full retained right-leg contact multichart d=0 surface",
+    "projection_tolerance_mm": 5.0,
+    "query": "SurfaceMaterialAtlas.query(project=True) followed by exact decode(chart_id, coordinate_uv_m)",
+    "residual_is_retained": true
+  },
+  "vessel_depth_mm": {
+    "max": 56.877674967168865,
+    "median": 25.3245848192692,
+    "min": 3.13178845659307
+  },
+  "view_projection_residual_max_mm": 11.354885825194614,
+  "view_projection_residual_median_mm": 2.0641330649852265,
+  "view_projection_total_count": 140,
+  "view_projection_within_tolerance_count": 110
+}

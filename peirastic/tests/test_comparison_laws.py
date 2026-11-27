@@ -73,7 +73,7 @@ def test_ac2d_matches_1d_on_z_and_holds_omega_before_contact():
     assert last_two.v_force[4] != 0.0
 
 
-def test_ac2d_moment_track_is_75_percent_and_has_coulomb_deadband():
+def test_ac2d_moment_track_is_60_percent_and_has_coulomb_deadband():
     from peirastic.realman8dof.force.comparison_laws import (
         DEFAULT_COULOMB_YY,
         DEFAULT_DAMPING_YY,
@@ -81,9 +81,9 @@ def test_ac2d_moment_track_is_75_percent_and_has_coulomb_deadband():
         MOMENT_TRACK_SCALE,
     )
 
-    assert MOMENT_TRACK_SCALE == pytest.approx(0.75)
-    assert DEFAULT_DAMPING_YY == pytest.approx(0.22 / 0.75)
-    assert DEFAULT_VMAX_OMEGA_Y == pytest.approx(0.21)
+    assert MOMENT_TRACK_SCALE == pytest.approx(0.60)
+    assert DEFAULT_DAMPING_YY == pytest.approx(0.22 / 0.60)
+    assert DEFAULT_VMAX_OMEGA_Y == pytest.approx(0.28 * 0.60)
     assert DEFAULT_COULOMB_YY == pytest.approx(0.02)
     law = ComparisonAdmittance2D(mass=1.0, damping=40.0, vmax_m_s=0.05, dt=0.005)
     law.reset(pose=np.zeros(6), f_ext=np.zeros(6))

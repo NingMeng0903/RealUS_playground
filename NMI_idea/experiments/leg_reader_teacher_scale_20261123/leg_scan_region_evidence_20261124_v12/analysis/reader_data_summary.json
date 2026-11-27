@@ -1,0 +1,43 @@
+{
+  "fit": {
+    "layouts": 168,
+    "relative_layouts": 47,
+    "r5_a_wrong_b_right": 7,
+    "r5_aliases": 6,
+    "programs": {
+      "plain": 168,
+      "5_repeat": 56,
+      "5_window": 168,
+      "5_trace_a": 168,
+      "5_trace_b": 168,
+      "4_window": 112
+    },
+    "r5_plain_wrong": 21
+  },
+  "cal": {
+    "layouts": 42,
+    "relative_layouts": 0,
+    "r5_a_wrong_b_right": 1,
+    "r5_aliases": 0,
+    "programs": {
+      "plain": 42,
+      "5_window": 42,
+      "5_trace_a": 42,
+      "5_trace_b": 42
+    },
+    "r5_plain_wrong": 11
+  },
+  "reader_dev": {
+    "layouts": 48,
+    "relative_layouts": 0,
+    "r5_a_wrong_b_right": 4,
+    "r5_aliases": 0,
+    "programs": {
+      "plain": 48,
+      "5_window": 48,
+      "5_trace_a": 48,
+      "5_trace_b": 48
+    },
+    "r5_plain_wrong": 10
+  }
+}

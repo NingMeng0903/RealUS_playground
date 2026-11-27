@@ -1,0 +1,35 @@
+{
+  "single_version": "bf1ad94ab9f195b27940d3fa26ccc1e9c16b25ddda79682125a387568ae55790",
+  "teach": {
+    "prefixes": 120,
+    "after_review": 120,
+    "r6_queries": 97,
+    "real_candidates": 1033,
+    "r6_candidates": 388,
+    "positive": 193,
+    "negative": 209,
+    "neutral": 631,
+    "proof_rescue": 15,
+    "proof_loss": 7,
+    "r6_proof_corrected": 10,
+    "r6_selected": 12,
+    "proof_wrong": 17,
+    "continue_wrong": 14
+  },
+  "teach_cal": {
+    "prefixes": 36,
+    "after_review": 36,
+    "r6_queries": 28,
+    "real_candidates": 309,
+    "r6_candidates": 112,
+    "positive": 96,
+    "negative": 66,
+    "neutral": 147,
+    "proof_rescue": 5,
+    "proof_loss": 0,
+    "r6_proof_corrected": 5,
+    "r6_selected": 2,
+    "proof_wrong": 5,
+    "continue_wrong": 10
+  }
+}

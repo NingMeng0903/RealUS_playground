@@ -1,0 +1,11 @@
+2026-11-10, before first core root QP result: parent narrows first stage to all
+21 fixed root edges (7 in each original context), using URDF TCP and verified
+native backend. Primary engineering thresholds remain exactly as frozen.
+If native is unavailable or fails its independent state/parity checks, record
+that limitation and use Python only as an explicitly labelled fallback.
+No full192-edge graph begins until root outcomes and complete-prefix replay
+state consistency are known. If no root action passes the primary gate, stop
+by logical reachability and report no continuous B mechanical graph. If only
+zero/stay actions pass, retain them and determine whether any terminal action
+can actually be reached; do not claim useful motion from a stationary pass.
+This changes staged compute/backend choice, not paths/thresholds/scene outcomes.

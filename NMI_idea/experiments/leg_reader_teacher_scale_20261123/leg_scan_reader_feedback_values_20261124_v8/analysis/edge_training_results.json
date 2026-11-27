@@ -1,0 +1,119 @@
+{
+  "calibration": {
+    "rows": 1400000,
+    "positive": 451357,
+    "selected": 335767,
+    "true_positive": 305816,
+    "false_positive": 29951,
+    "false_negative": 145541,
+    "precision": 0.9107982618899415,
+    "recall": 0.6775479276935995,
+    "threshold": 0.7233270207460591
+  },
+  "operation": {
+    "rows": 1400000,
+    "positive": 437103,
+    "selected": 320923,
+    "true_positive": 289677,
+    "false_positive": 31246,
+    "false_negative": 147426,
+    "precision": 0.9026370811690032,
+    "recall": 0.6627202284129827,
+    "threshold": 0.7233270207460591
+  },
+  "truth_forced_train": {
+    "rows": 16979891,
+    "positive": 573184,
+    "normal_positive_median": 0.23205870850652163,
+    "truth_forced_cosine_positive_median": 0.740272587439383,
+    "normal_positive_recall_at_.90": 0.0010746985261277356,
+    "truth_forced_positive_recall_at_.90": 0.050687039414917374
+  },
+  "fit": {
+    "device": "cuda:0",
+    "optimizer": "AdamW",
+    "epochs": 80,
+    "parameter_count": 9,
+    "optimizer_steps": 80,
+    "cuda_optimizer_step_verified": true,
+    "best_loss": 0.8985506892204285,
+    "loss_tail": [
+      0.9079105257987976,
+      0.9055401682853699,
+      0.9031901955604553,
+      0.9008604288101196,
+      0.8985506892204285
+    ]
+  },
+  "operation_point": {
+    "target_precision": 0.9,
+    "selected_threshold": 0.7233270207460591,
+    "precision": 0.9026370811690032,
+    "recall": 0.6627202284129827,
+    "selected": 320923,
+    "positive": 437103,
+    "certified": true,
+    "candidates": 302
+  },
+  "hard_cases": {
+    "train": {
+      "layouts": 734,
+      "prefix_records": 2202,
+      "unique_layouts": 734,
+      "unique_cases": 734,
+      "rows": 1400000,
+      "positive": 200000,
+      "negative": 1200000,
+      "natural_rows": 8127748,
+      "natural_positive": 2597010,
+      "natural_negative": 5530738,
+      "sampling": "all_positive_at_most_six_negatives_per_positive",
+      "cap": null,
+      "hard_positive": 272222,
+      "hard_negative": 387728
+    },
+    "calibration": {
+      "layouts": 416,
+      "prefix_records": 1248,
+      "unique_layouts": 416,
+      "unique_cases": 416,
+      "rows": 1400000,
+      "positive": 451357,
+      "negative": 948643,
+      "natural_rows": 4594368,
+      "natural_positive": 1483098,
+      "natural_negative": 3111270,
+      "sampling": "uniform_over_all_retrieved_pairs",
+      "cap": 1400000,
+      "hard_positive": 155566,
+      "hard_negative": 211137
+    },
+    "operation": {
+      "layouts": 386,
+      "prefix_records": 1158,
+      "unique_layouts": 386,
+      "unique_cases": 386,
+      "rows": 1400000,
+      "positive": 437103,
+      "negative": 962897,
+      "natural_rows": 4257775,
+      "natural_positive": 1330525,
+      "natural_negative": 2927250,
+      "sampling": "uniform_over_all_retrieved_pairs",
+      "cap": 1400000,
+      "hard_positive": 145396,
+      "hard_negative": 215084
+    }
+  },
+  "no_identity_control": {
+    "description": "same geometry/embedding/physical mass; role_overlap and target_probability_disagreement changed",
+    "agreement_score": 0.8245912142041012,
+    "conflict_score": 0.8245912142041012,
+    "absolute_score_delta": 0.0,
+    "invariant": true,
+    "zeroed_features": [
+      "role_overlap",
+      "target_probability_disagreement"
+    ]
+  }
+}

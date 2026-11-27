@@ -1,0 +1,935 @@
+{
+  "schema": "ab_observation_stress_prodmp_native_v1",
+  "scope": "offline deterministic QP replay only; no hardware/device connection",
+  "backend": "native",
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/motion.py",
+  "public_layout": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_regression_20261110/public_prior_layout/SELECTED.json",
+  "q_seed": [
+    0.4,
+    -1.562069680534925,
+    -1.562069680534925,
+    1.137954672300303,
+    1.6755160819145565,
+    1.5585790220309363,
+    1.064650843716541,
+    1.6510814723866356
+  ],
+  "T_world_body": [
+    [
+      -0.9853855957027937,
+      0.1527459384942238,
+      0.07539168425609982,
+      0.4058983753071562
+    ],
+    [
+      0.15963494404680753,
+      0.982510211759051,
+      0.09586640928062412,
+      0.22358551217316117
+    ],
+    [
+      -0.05942989500769194,
+      0.10650052611469263,
+      -0.9925349996431717,
+      0.1505291678470127
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "goals_local": [
+    [
+      0.004,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.004,
+      0.08
+    ],
+    [
+      -0.004,
+      0.003,
+      -0.08
+    ],
+    [
+      0.006,
+      -0.004,
+      0.12
+    ]
+  ],
+  "segments": [
+    {
+      "index": 0,
+      "goal_local": [
+        0.004,
+        0.0,
+        0.0
+      ],
+      "duration_s": 0.44836673717811093,
+      "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/motion_validation/prodmp_segment_0_trace.npz",
+      "result": {
+        "schema": "ultrapoc_motion_qp_path_v1",
+        "provenance": "ProDMP short local segment 0",
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "speed_m_s": 0.02,
+        "soft_start_ramp_s": 0.4,
+        "settle_s": 0.1,
+        "dt_s": 0.005,
+        "nominal_path_duration_s": 0.4483667371781114,
+        "simulated_duration_s": 0.55,
+        "integrated_duration_s": 0.555,
+        "n_steps": 111,
+        "failures": [],
+        "qp1_status_counts": {
+          "solved": 111
+        },
+        "position_error_mean_m": 3.527298795972123e-05,
+        "position_error_p95_m": 7.792300556572321e-05,
+        "position_error_max_m": 7.875553478838225e-05,
+        "rotation_error_p95_rad": 7.932446896487117e-07,
+        "endpoint_position_error_m": 4.0471866181980434e-06,
+        "endpoint_rotation_error_rad": 7.757740272852323e-07,
+        "max_arm_step_rad": 0.0003601519781719631,
+        "max_rail_step_m": 6.002399756549481e-05,
+        "velocity_max_abs_by_coordinate": [
+          0.012027728887091792,
+          0.07203039563440151,
+          0.020918417941637544,
+          0.02465513219376532,
+          0.06028334489967839,
+          0.021185773796802167,
+          0.02735381177200793,
+          0.0659926990835782
+        ],
+        "derivative_history_schema": "continuous_command_fd_v2",
+        "qdot_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.06003595247589949,
+          2.5517644757543883,
+          1.2536769421826663,
+          1.4351846052109012,
+          2.1091195213978815,
+          0.8591651888032115,
+          1.4995352916080886,
+          0.8265033823718687
+        ],
+        "jerk_max_abs_by_coordinate": [
+          13.777473892836777,
+          300.03198191335787,
+          250.73472395403135,
+          287.03610347869864,
+          229.31639539323066,
+          163.19144530017476,
+          299.9061661450063,
+          165.3006880608088
+        ],
+        "velocity_limit_by_coordinate": [
+          0.4,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005
+        ],
+        "acceleration_limit_by_coordinate": [
+          1.6,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "jerk_limit_by_coordinate": [
+          320.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0
+        ],
+        "velocity_margin_min": 0.3879722711129082,
+        "acceleration_margin_min": 0.44823552424561175,
+        "jerk_margin_min": -0.0319819133578676,
+        "joint_limit_min_margin_by_coordinate": [
+          0.3799687536312402,
+          1.543930319426694,
+          0.6969351147054073,
+          1.9680453278018923,
+          0.6717808426316914,
+          1.5474209778881038,
+          1.1579623882756067,
+          4.607697447473975
+        ],
+        "minimum_self_collision_distance_m": 0.0395835502095482,
+        "self_collision_gate_m": 0.01,
+        "self_collision_sampled_at_every_control_tick": true,
+        "self_collision_pairs_per_tick": 35,
+        "qp_hard_residual_max": 7.995478339475892e-07,
+        "task_paused_count": 0,
+        "task_progress_p05": 0.9999983578612761,
+        "q_exit": [
+          0.39677398445930534,
+          -1.5493176406747817,
+          -1.5719648852945927,
+          1.1271295110689707,
+          1.6724628878898682,
+          1.5508152015309218,
+          1.0760376117243933,
+          1.672302552526025
+        ],
+        "qdot_exit": [
+          -0.005933220301192027,
+          -0.00780839515887954,
+          -0.02084944008865666,
+          -0.02465513219376532,
+          -0.027387196763726137,
+          0.004053957530130607,
+          0.02735381177200793,
+          0.03265792685078981
+        ],
+        "acceleration_exit": [
+          0.04610644501299131,
+          -0.01920479860767696,
+          -0.004785972484484119,
+          -0.017686918117850586,
+          0.2063792423516085,
+          0.13194985352111677,
+          0.013600723467610543,
+          -0.2520299693187067
+        ],
+        "pose_exit": [
+          [
+            -0.9853854979044787,
+            0.15274658528096216,
+            0.07539165208795562,
+            0.40195534544371747
+          ],
+          [
+            0.15963555786819866,
+            0.9825101570623042,
+            0.09586594772659263,
+            0.2242278099374144
+          ],
+          [
+            -0.05942986777416378,
+            0.10650010307231904,
+            -0.9925350466668335,
+            0.15029123696955915
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "wall_seconds": 0.5435278510003627,
+        "tick_compute_p50_s": 0.004221001999667351,
+        "tick_compute_p95_s": 0.004627625500006616,
+        "scope": "motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation",
+        "exit_state_valid": true,
+        "native_model_clock": "deterministic",
+        "motion_tracking_pass_2mm_2deg": true,
+        "actual_reference_kind": "ProDMPIntegralBasisReference",
+        "actual_start_stop_ramp_s": 0.8,
+        "profile_sha256": "f9e07c984347e83f7768adf812565bfec119475fc4a0a627043b8c87d4617033",
+        "prodmp_contract": {
+          "phase": "s=t/tau",
+          "lambda": 5.0,
+          "basis": "4 normalized RBFs, centers [0.12,0.36,0.64,0.88], width 55, exp(-3s) gate",
+          "weights": "minimum-norm endpoint position and normalized-velocity solution",
+          "twist": "analytic world-frame 6D geometric twist from fixed SE3 anchor"
+        },
+        "prefix_restore_wall_seconds": 0.0,
+        "prefix_reconstruction_max_abs_error": {
+          "q": 0.0,
+          "qdot": 0.0,
+          "acceleration": 0.0
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "index": 1,
+      "goal_local": [
+        0.0,
+        0.004,
+        0.08
+      ],
+      "duration_s": 0.44836673717811093,
+      "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/motion_validation/prodmp_segment_1_trace.npz",
+      "result": {
+        "schema": "ultrapoc_motion_qp_path_v1",
+        "provenance": "ProDMP short local segment 1",
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "speed_m_s": 0.02,
+        "soft_start_ramp_s": 0.4,
+        "settle_s": 0.1,
+        "dt_s": 0.005,
+        "nominal_path_duration_s": 0.4483667371781114,
+        "simulated_duration_s": 0.55,
+        "integrated_duration_s": 0.555,
+        "n_steps": 111,
+        "failures": [],
+        "qp1_status_counts": {
+          "solved": 111
+        },
+        "position_error_mean_m": 0.004480121699372076,
+        "position_error_p95_m": 0.008555454812927483,
+        "position_error_max_m": 0.00868475546346914,
+        "rotation_error_p95_rad": 0.013411750392620771,
+        "endpoint_position_error_m": 0.002389550516167388,
+        "endpoint_rotation_error_rad": 0.0023378542543804233,
+        "max_arm_step_rad": 0.002740329618699411,
+        "max_rail_step_m": 0.00031921491384939715,
+        "velocity_max_abs_by_coordinate": [
+          0.06415281772775215,
+          0.12030968367645635,
+          0.14758044301239992,
+          0.1606190262054774,
+          0.3747700089985856,
+          0.24793154490157715,
+          0.19576438077768182,
+          0.5480659237398906
+        ],
+        "derivative_history_schema": "continuous_command_fd_v2",
+        "qdot_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.28550208299059215,
+          2.9999881144071594,
+          2.9999729770880585,
+          2.9544044191703867,
+          3.000000000005004,
+          3.00000000000189,
+          3.000000000003325,
+          3.000000000005709
+        ],
+        "jerk_max_abs_by_coordinate": [
+          16.970206978234035,
+          300.03607052346086,
+          300.02276684297334,
+          300.01202027898296,
+          300.02559315640553,
+          300.0284506094657,
+          300.0120459122995,
+          300.0136905649331
+        ],
+        "velocity_limit_by_coordinate": [
+          0.4,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005
+        ],
+        "acceleration_limit_by_coordinate": [
+          1.6,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "jerk_limit_by_coordinate": [
+          320.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0
+        ],
+        "velocity_margin_min": 0.33584718227224786,
+        "acceleration_margin_min": -5.709210881832405e-12,
+        "jerk_margin_min": -0.03607052346086448,
+        "joint_limit_min_margin_by_coordinate": [
+          0.36424963812175554,
+          1.518732705894256,
+          0.6868596100843651,
+          1.9679645483873256,
+          0.6756751075509448,
+          1.5474209778881038,
+          1.1244248715259595,
+          4.4944406493851154
+        ],
+        "minimum_self_collision_distance_m": 0.0395835502095482,
+        "self_collision_gate_m": 0.01,
+        "self_collision_sampled_at_every_control_tick": true,
+        "self_collision_pairs_per_tick": 35,
+        "qp_hard_residual_max": 9.0176308652299e-07,
+        "task_paused_count": 0,
+        "task_progress_p05": 0.0,
+        "q_exit": [
+          0.41534182711783485,
+          -1.5802847662190318,
+          -1.5656052872480957,
+          1.1243546257417818,
+          1.6241229799091426,
+          1.4782764441440792,
+          1.089362874463746,
+          1.7779852056501118
+        ],
+        "qdot_exit": [
+          -0.015070457660995379,
+          0.07387275389338543,
+          0.11369863330753426,
+          0.14544930257937416,
+          0.14145298847417806,
+          -0.0679363153923499,
+          -0.170926376987555,
+          -0.11153176590007838
+        ],
+        "acceleration_exit": [
+          -0.18838407881858718,
+          -1.3440777395581998,
+          0.25761114615422687,
+          2.0343986997584107,
+          -1.8038244649728141,
+          -2.039956606613151,
+          -2.8042100867319952,
+          2.891771497084444
+        ],
+        "pose_exit": [
+          [
+            -0.96945829563217,
+            0.2331489850677146,
+            0.07610626644281787,
+            0.40691124008571833
+          ],
+          [
+            0.23984040181502747,
+            0.9661017760515633,
+            0.09551931724643109,
+            0.22986991227815884
+          ],
+          [
+            -0.05125616730869346,
+            0.11085535202196042,
+            -0.9925139274795657,
+            0.15102889780133394
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "wall_seconds": 0.522120430999621,
+        "tick_compute_p50_s": 0.004260344999693189,
+        "tick_compute_p95_s": 0.004494285999953718,
+        "scope": "motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation",
+        "exit_state_valid": true,
+        "native_model_clock": "deterministic",
+        "motion_tracking_pass_2mm_2deg": false,
+        "actual_reference_kind": "ProDMPIntegralBasisReference",
+        "actual_start_stop_ramp_s": 0.8,
+        "profile_sha256": "f9e07c984347e83f7768adf812565bfec119475fc4a0a627043b8c87d4617033",
+        "prodmp_contract": {
+          "phase": "s=t/tau",
+          "lambda": 5.0,
+          "basis": "4 normalized RBFs, centers [0.12,0.36,0.64,0.88], width 55, exp(-3s) gate",
+          "weights": "minimum-norm endpoint position and normalized-velocity solution",
+          "twist": "analytic world-frame 6D geometric twist from fixed SE3 anchor"
+        },
+        "prefix_restore_wall_seconds": 0.0,
+        "prefix_reconstruction_max_abs_error": {
+          "q": 0.0,
+          "qdot": 0.0,
+          "acceleration": 0.0
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "index": 2,
+      "goal_local": [
+        -0.004,
+        0.003,
+        -0.08
+      ],
+      "duration_s": 0.5604584214726387,
+      "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/motion_validation/prodmp_segment_2_trace.npz",
+      "result": {
+        "schema": "ultrapoc_motion_qp_path_v1",
+        "provenance": "ProDMP short local segment 2",
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "speed_m_s": 0.02,
+        "soft_start_ramp_s": 0.4,
+        "settle_s": 0.1,
+        "dt_s": 0.005,
+        "nominal_path_duration_s": 0.5604584214726441,
+        "simulated_duration_s": 0.665,
+        "integrated_duration_s": 0.67,
+        "n_steps": 134,
+        "failures": [],
+        "qp1_status_counts": {
+          "solved": 134
+        },
+        "position_error_mean_m": 0.0022637978640031677,
+        "position_error_p95_m": 0.005001882854153332,
+        "position_error_max_m": 0.005111658055583503,
+        "rotation_error_p95_rad": 0.007589302489427291,
+        "endpoint_position_error_m": 0.002194690898369895,
+        "endpoint_rotation_error_rad": 0.0028978954443049146,
+        "max_arm_step_rad": 0.0022584292147747043,
+        "max_rail_step_m": 0.00018489922353243093,
+        "velocity_max_abs_by_coordinate": [
+          0.03698763323701179,
+          0.10233873815231552,
+          0.25536744994581856,
+          0.2978022590555866,
+          0.162466694601775,
+          0.2864749676558909,
+          0.33804332874437215,
+          0.45168584295492487
+        ],
+        "derivative_history_schema": "continuous_command_fd_v2",
+        "qdot_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.27361973689742236,
+          2.9357264898668647,
+          2.554946332029667,
+          2.2091421408592047,
+          2.999999999998022,
+          3.0000000000036655,
+          2.8800724475216226,
+          3.0000000000020455
+        ],
+        "jerk_max_abs_by_coordinate": [
+          16.468297489106693,
+          300.03388589669424,
+          300.0013287730127,
+          300.01611902719196,
+          300.0004275924339,
+          300.0120927103622,
+          300.01805629494004,
+          300.00569505689253
+        ],
+        "velocity_limit_by_coordinate": [
+          0.4,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005
+        ],
+        "acceleration_limit_by_coordinate": [
+          1.6,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "jerk_limit_by_coordinate": [
+          320.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0
+        ],
+        "velocity_margin_min": 0.3630123667629882,
+        "acceleration_margin_min": -3.665512338102417e-12,
+        "jerk_margin_min": -0.03388589669424391,
+        "joint_limit_min_margin_by_coordinate": [
+          0.38000081550525944,
+          1.5408226292508589,
+          0.706825338241454,
+          1.8740376983547637,
+          0.6507926662584016,
+          1.4823965370903998,
+          1.169349156171937,
+          4.628918527614813
+        ],
+        "minimum_self_collision_distance_m": 0.03913275557757256,
+        "self_collision_gate_m": 0.01,
+        "self_collision_sampled_at_every_control_tick": true,
+        "self_collision_pairs_per_tick": 35,
+        "qp_hard_residual_max": 8.471474173561006e-07,
+        "task_paused_count": 0,
+        "task_progress_p05": 0.0,
+        "q_exit": [
+          0.39156645973481047,
+          -1.5446273761893479,
+          -1.4847060051045238,
+          1.2319623016452361,
+          1.7036598278814454,
+          1.5931595818505773,
+          0.9613716803743256,
+          1.5093403069671896
+        ],
+        "qdot_exit": [
+          -0.012059662030291183,
+          0.09770088439856245,
+          0.2408436467158724,
+          0.2949997545388896,
+          -0.04145127940414561,
+          -0.2308388081197969,
+          -0.33622082485374144,
+          0.040437704619207884
+        ],
+        "acceleration_exit": [
+          -0.012645985302734905,
+          -0.1694161647120912,
+          -0.11877464300248941,
+          -0.3399908338570179,
+          -0.16986561611597312,
+          -0.11584834056935223,
+          0.36450077812614223,
+          0.3181260204645431
+        ],
+        "pose_exit": [
+          [
+            -0.994687383954332,
+            0.07069978533597981,
+            0.07482344923576151,
+            0.4103625201318189
+          ],
+          [
+            0.07778257048693786,
+            0.9922973021683609,
+            0.09641543360811358,
+            0.22370078365541854
+          ],
+          [
+            -0.06743055635640863,
+            0.10172317564273349,
+            -0.9925248186350935,
+            0.15107540583783552
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "wall_seconds": 0.6078364899999542,
+        "tick_compute_p50_s": 0.004119950999893263,
+        "tick_compute_p95_s": 0.0043729414999688744,
+        "scope": "motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation",
+        "exit_state_valid": true,
+        "native_model_clock": "deterministic",
+        "motion_tracking_pass_2mm_2deg": false,
+        "actual_reference_kind": "ProDMPIntegralBasisReference",
+        "actual_start_stop_ramp_s": 0.8,
+        "profile_sha256": "f9e07c984347e83f7768adf812565bfec119475fc4a0a627043b8c87d4617033",
+        "prodmp_contract": {
+          "phase": "s=t/tau",
+          "lambda": 5.0,
+          "basis": "4 normalized RBFs, centers [0.12,0.36,0.64,0.88], width 55, exp(-3s) gate",
+          "weights": "minimum-norm endpoint position and normalized-velocity solution",
+          "twist": "analytic world-frame 6D geometric twist from fixed SE3 anchor"
+        },
+        "prefix_restore_wall_seconds": 0.0,
+        "prefix_reconstruction_max_abs_error": {
+          "q": 0.0,
+          "qdot": 0.0,
+          "acceleration": 0.0
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "index": 3,
+      "goal_local": [
+        0.006,
+        -0.004,
+        0.12
+      ],
+      "duration_s": 0.8083046305540826,
+      "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/motion_validation/prodmp_segment_3_trace.npz",
+      "result": {
+        "schema": "ultrapoc_motion_qp_path_v1",
+        "provenance": "ProDMP short local segment 3",
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "speed_m_s": 0.02,
+        "soft_start_ramp_s": 0.4,
+        "settle_s": 0.1,
+        "dt_s": 0.005,
+        "nominal_path_duration_s": 0.8083046305540782,
+        "simulated_duration_s": 0.91,
+        "integrated_duration_s": 0.915,
+        "n_steps": 183,
+        "failures": [],
+        "qp1_status_counts": {
+          "solved": 183
+        },
+        "position_error_mean_m": 0.001238565608494705,
+        "position_error_p95_m": 0.004535796852232616,
+        "position_error_max_m": 0.004688666723638107,
+        "rotation_error_p95_rad": 0.0070736650263581715,
+        "endpoint_position_error_m": 1.5395756920947298e-05,
+        "endpoint_rotation_error_rad": 0.0006950899148256078,
+        "max_arm_step_rad": 0.0028103235408951655,
+        "max_rail_step_m": 0.00016769059315124846,
+        "velocity_max_abs_by_coordinate": [
+          0.03351114380211327,
+          0.0629197394266863,
+          0.19194194704527986,
+          0.25733314854843886,
+          0.24262195530248676,
+          0.2444891980891501,
+          0.3113791973751333,
+          0.5620647081790202
+        ],
+        "derivative_history_schema": "continuous_command_fd_v2",
+        "qdot_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_entry": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.27680674974385544,
+          2.4556489032523388,
+          2.8945714870419663,
+          2.833288218303441,
+          3.000000000005337,
+          2.726667100706437,
+          2.9999547228154455,
+          3.0000000000055205
+        ],
+        "jerk_max_abs_by_coordinate": [
+          11.496169782259896,
+          300.01271765532067,
+          300.002028116072,
+          300.0014491632652,
+          300.0005191420815,
+          300.0117588600549,
+          300.00528149885406,
+          300.0001809690245
+        ],
+        "velocity_limit_by_coordinate": [
+          0.4,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005,
+          2.5120000000000005
+        ],
+        "acceleration_limit_by_coordinate": [
+          1.6,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "jerk_limit_by_coordinate": [
+          320.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0,
+          300.0
+        ],
+        "velocity_margin_min": 0.36648885619788674,
+        "acceleration_margin_min": -5.520472967646128e-12,
+        "jerk_margin_min": -0.012717655320670929,
+        "joint_limit_min_margin_by_coordinate": [
+          0.37026084603184356,
+          1.5257088733177264,
+          0.6557855162465442,
+          1.9680453278018923,
+          0.6750073001060337,
+          1.5474209778881038,
+          1.0730651733244068,
+          4.440730002536428
+        ],
+        "minimum_self_collision_distance_m": 0.0395835502095482,
+        "self_collision_gate_m": 0.01,
+        "self_collision_sampled_at_every_control_tick": true,
+        "self_collision_pairs_per_tick": 35,
+        "qp_hard_residual_max": 3.179413830163569e-07,
+        "task_paused_count": 0,
+        "task_progress_p05": 0.7919580426207089,
+        "q_exit": [
+          0.40973915396815647,
+          -1.5768778652801096,
+          -1.604956126261163,
+          1.0741210785847541,
+          1.6278986378312852,
+          1.4728364664561369,
+          1.1499325710836372,
+          1.829001575121522
+        ],
+        "qdot_exit": [
+          0.012626634708725363,
+          0.009190494299083675,
+          0.02324923809219692,
+          0.031111403794951236,
+          0.056162793322757414,
+          0.0005268500995621702,
+          -0.037213906981927974,
+          -0.060285443618127994
+        ],
+        "acceleration_exit": [
+          0.011391445103798442,
+          0.0007990136817438709,
+          0.0069699844142984135,
+          0.006044564965846516,
+          0.04667005054027895,
+          0.022045547940235857,
+          -0.013811889773777952,
+          -0.05457765833674355
+        ],
+        "pose_exit": [
+          [
+            -0.9601633709684754,
+            0.269020272398108,
+            0.07559361143181231,
+            0.3993724528643682
+          ],
+          [
+            0.27555519125129624,
+            0.9564618765416311,
+            0.09617699983325294,
+            0.22062842416870318
+          ],
+          [
+            -0.04642884475105541,
+            0.11317584442499969,
+            -0.9924895921941814,
+            0.1497456795894084
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "wall_seconds": 0.8568374790002053,
+        "tick_compute_p50_s": 0.004282102000161103,
+        "tick_compute_p95_s": 0.004425939799921253,
+        "scope": "motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation",
+        "exit_state_valid": true,
+        "native_model_clock": "deterministic",
+        "motion_tracking_pass_2mm_2deg": false,
+        "actual_reference_kind": "ProDMPIntegralBasisReference",
+        "actual_start_stop_ramp_s": 0.8,
+        "profile_sha256": "f9e07c984347e83f7768adf812565bfec119475fc4a0a627043b8c87d4617033",
+        "prodmp_contract": {
+          "phase": "s=t/tau",
+          "lambda": 5.0,
+          "basis": "4 normalized RBFs, centers [0.12,0.36,0.64,0.88], width 55, exp(-3s) gate",
+          "weights": "minimum-norm endpoint position and normalized-velocity solution",
+          "twist": "analytic world-frame 6D geometric twist from fixed SE3 anchor"
+        },
+        "prefix_restore_wall_seconds": 0.0,
+        "prefix_reconstruction_max_abs_error": {
+          "q": 0.0,
+          "qdot": 0.0,
+          "acceleration": 0.0
+        }
+      },
+      "status": "completed"
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+Independent physical-box audit, 2026-11-10
+Scope: saved traces and source only; no native process or hardware rerun.
+
+Status: do not describe the intermediate repairs as complete execution success.
+The single-J1 experiment establishes the first tracking defect, but wider replay
+exposes a separate native command-admission defect. The offline outer bridge
+correctly rejects the illegal proposal before ideal-plant integration. That is
+not a claim that a physical robot moving at the preceding velocity can stop
+instantaneously or that a RealMan vendor controller malfunctioned.
+
+First causal defect: extra posture wall
+Effective native config comparisons show exactly one field changed in the
+single-factor test: qp.branch_barrier.j1_overfold_abs_rad, 2.4434609527920612
+(140 degrees) to 3.106 (the model's physical J1 bound). Initial q, every reference
+pose and model timestamp are bit-identical in each paired motion/hold test.
+inner.cpp:985-994 sets d_ov=0 when a negative branch starts below -140 degrees,
+therefore ruling out negative J1 velocity despite the legal URDF range.
+
+Independent full-trace FK reproduces the motion improvement from 17.058892 mm /
+2.290574 degrees to .012747 mm / .027800 degrees, and the nominal hold improvement
+from 7.702790 mm to .005105 mm. Old path0/path1 still pass at 1.034877/1.022444 mm
+and .076572/.072144 degrees. Their J1 motion initially goes inward toward about
+-128/-126 degrees; the new action needs outward motion toward -158 degrees.
+The old successful cases did not exercise this directional limitation. It is
+incorrect to imply their earlier success has disappeared or was fabricated.
+
+All 15 diagnostic cases were checked with same-tick FK(q_meas_before) versus
+pose_desired, continuous command velocity/acceleration arithmetic and selected
+fresh 35-pair self-collision checks. Loose jerk alone retains 14.860 mm motion
+error; changed task weights improve position while rotation reaches 5.733
+degrees. Neither is the demonstrated full remedy. See causal_trace_audit.json.
+
+QP priority distinction
+branch_barrier modifies the hard qdot box before QP1 (inner.cpp:1035-1047).
+sigma_setbased, joint_comfort and j4_design_comfort preference rows are added
+after QP1 at 1382-1419. QP2 locks J_task qdot to t1 at 1421-1423. These latter
+terms are not QP1 posture penalties in this native source. They may influence
+the redundant configuration over time; removing them by user preference is a
+separate configuration intervention, not evidence that they caused the first
+tracking failure. Ordinary secondary/nullspace control must be distinguished
+from the artificial branch hard wall.
+
+Second causal defect: an empty physical/history intersection is overwritten
+Source lines below refer to the saved pre_physical_conflict_fix/inner.cpp and
+types.hpp, not future edited versions. The complete failure snapshots and
+hashes are in physical_box_failure_checks.json.
+
+native20_minimal, object0/stress, tick168, coordinate5 (J5):
+  q_measured = 3.1024998436108566 rad; true upper bound = 3.106 rad
+  previous velocity = 1.1097802521793831 rad/s; dt = .005 s; a_max = 3 rad/s^2
+  true one-tick velocity upper bound = .7000312778286499 rad/s
+  upper bound with the existing .3-degree margin = -.34716627336797146 rad/s
+  acceleration velocity lower bound = 1.0947802521793832 rad/s
+  jerk velocity lower bound = 1.087280252202296 rad/s
+
+The intersection is empty even without the extra position margin. Lines870-877
+insert the position bounds and 891-892 insert acceleration bounds. At931-933,
+lead is exactly zero; the lead handler sets chi=clo and replaces the physical
+upper bound with 1.0947802521793832. The saved final lo and hi are exactly this
+value. The accepted QP command integrates to 3.107973744871868 rad, beyond URDF.
+This is not merely an inference from tracking residual or solver status.
+
+The later collapse_interval (types.hpp:262-279, called at inner.cpp:1047) can also
+replace an empty intersection by a historical-acceleration-compatible equality.
+Removing only the lead repair therefore does not preserve the physical bound.
+Publication at2135 integrates qdot; the subsequent explicit q-position clamp is
+rail-only. The native publication checks shown at2181-2189 do not independently
+reject an arm proposal outside its physical range. The offline Python bridge
+does reject this actual proposal and leaves ideal measured q unchanged.
+
+At this already-reached state, stopping distance v^2/(2 a_max) is about .2053 rad,
+while only .00350 rad remains. A last-tick clamp cannot simultaneously preserve
+the registered acceleration limit. Required correction boundaries:
+  1. Never convert an empty hard physical/history intersection into a reported
+     feasible box by expanding position/velocity/collision requirements.
+  2. Certify final published all-joint q and relevant physical bounds after every
+     solver/fallback/command mutation; propagate failure explicitly.
+  3. To continue execution, avoid entering this non-viable state through a
+     physically derived braking constraint on the complete task+secondary
+     command. The existing stopping-distance wall_cap is rail-only at851-864;
+     arm linear damping alone did not maintain feasibility on these traces.
+  4. Retain clear failure accounting. A safe rejection is not successful scanning,
+     and an instantaneous frozen ideal plant is not physical braking evidence.
+
+Intermediate full-cohort accounting
+The planned denominator is 20 frozen segments across four episodes.
+  J1-only native20_fixed: 19 attempted, 18 accepted-complete, 1 rejected,
+    1 never attempted. Three episodes reach their last command. Its 15 passing
+    measured prefixes include the rejected segment; do not count that as a
+    complete passing action. Independent full FK therefore counts 14/20 complete
+    passing actions, 4 complete tracking failures, 1 rejected and 1 unattempted.
+  branch-off native20_minimal: 9 attempted, 6 accepted-complete, 3 rejected,
+    11 never attempted. Only one episode completes. All 9 recorded prefixes
+    satisfy the tracking threshold, but only 6 are complete accepted actions.
+
+This blocker concerns true position-limit publication, not the previously
+waived tiny numerical jerk residual. Intermediate jerk diagnostics also remain
+recorded; no blanket assertion that every observed jerk discrepancy is tiny is
+made. Final repair and final replay must be audited separately when sealed.
+
+Latest authorized scope (parent's subsequent user clarification)
+Keep the configured arm-angle/elbow/rail posture preferences and ordinary
+secondary/nullspace behavior. The task-only profile that disables all preferences
+is a diagnostic, not the accepted final repair. The selected offline profile is
+to keep posture_policy=configured while extra_posture_limits=false removes the
+artificial branch hard wall. A new start near the configured nominal posture or
+an optimized leg placement must be a separately identified experiment; it does
+not alter the old 20-command denominator or prove the old stress scene physically
+unreachable. Better placement also cannot excuse an illegal command-admission
+path. This report seals the completed causal/intermediate audit, not an approval
+of a future native fix or future placement-based success.

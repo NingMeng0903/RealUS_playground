@@ -100,9 +100,9 @@ def load_pad_scan_config(path=None) -> dict:
     pad.setdefault('visual_hold_s', 0.)
     pad.setdefault('visual_hold_omega_rad_s', .03)
     pad.setdefault('static_stick_m_s', .01)
-    pad.setdefault('static_visual_omega_rad_s', .04)
-    pad.setdefault('static_commit_s', .80)
-    pad.setdefault('static_committed_omega_rad_s', .12)
+    pad.setdefault('static_visual_omega_rad_s', .12)
+    pad.setdefault('static_commit_s', .20)
+    pad.setdefault('static_committed_omega_rad_s', .16)
     pad.setdefault('relative_spread_floor', .12)
     for name in ('visual_hold_s', 'visual_hold_omega_rad_s', 'static_stick_m_s',
                  'static_visual_omega_rad_s', 'static_commit_s', 'static_committed_omega_rad_s',

@@ -224,7 +224,14 @@ def _make_srs_cfg(spec: RobotModelSpec, default_branch_id: int) -> SrsLabelConfi
     from ird_playground.ird.srs_label import _srs_api
 
     y_rail = float(_srs_api().shoulder_y_from_q_rail(spec.rail_locked_at_m))
-    return SrsLabelConfig(branch_id=int(default_branch_id) & 0b111, y_rail_m=y_rail)
+    return SrsLabelConfig(
+        branch_id=int(default_branch_id) & 0b111,
+        y_rail_m=y_rail,
+        T_flange_tcp=tuple(
+            tuple(float(value) for value in row)
+            for row in spec.tool_frame().T_flange_tcp
+        ),
+    )
 
 
 def build_gpu_pose_gt(

@@ -24,6 +24,7 @@ class Kinematics {
   Mat8 mass() const { return M_; }
   Eigen::Vector3d tcp_xyz() const { return tcp_xyz_; }
   Eigen::Matrix3d tcp_R() const { return tcp_R_; }
+  Vec6 fk_pose_at(const Vec8& q);
   Vec6 fk_pose_at(const Vec8& q) const;
   Eigen::Vector3d joint_origin(const std::string& name) const;
 
@@ -35,9 +36,12 @@ class Kinematics {
   pinocchio::Data& data() { return data_; }
   pinocchio::FrameIndex tcp_id() const { return tcp_id_; }
 
+  double sigma_arm_at(const Vec8& q);
   double sew_psi(const Vec8& q);
 
  private:
+  Vec6 fk_pose_at(const Vec8& q, pinocchio::Data& scratch) const;
+
   pinocchio::Model model_;
   pinocchio::Data data_;
   pinocchio::Data psi_data_;

@@ -144,7 +144,7 @@ pad:
   normal_allocation_margin_m_s: 0.0001
   max_visual_omega_rad_s: 0.16
   angular_max_rad_s: 0.22
-  angular_acceleration_rad_s2: 1.2
+  angular_acceleration_rad_s2: 2.0
   cop_min_force_n: 0.8
   cop_max_m: 0.025
   repair_speed_cap_m_s: 0.02
@@ -161,11 +161,13 @@ pad:
   # Parked residual echo still creeps a leftover wedge; full 0.16 + hold
   # hunts left/right on an already-full window (234620 t=3–14 s).
   static_stick_m_s: 0.01
-  static_visual_omega_rad_s: 0.04
-  # Hunt half-cycles in 234620 were 0.5–0.75 s. A leftover static wedge
-  # keeps one echo sign; only then raise parked Ω. Never hold while parked.
-  static_commit_s: 0.80
-  static_committed_omega_rad_s: 0.12
+  # Parked contact does not turn until the same sign has held
+  # static_commit_s. A sign flip restarts that wait, so static contact
+  # cannot rock left and right. A held one-sided gap then uses the
+  # committed cap.
+  static_visual_omega_rad_s: 0.0
+  static_commit_s: 0.20
+  static_committed_omega_rad_s: 0.16
   max_image_age_s: 0.3
   max_feedback_age_s: 0.08
   command_max_age_s: 0.08

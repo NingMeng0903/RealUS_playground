@@ -1,0 +1,216 @@
+ASTRA V4 RELEASE REVIEW — implementation audit, not efficacy results
+2026-11-11. Read-only production review; no new model, rule or threshold.
+
+The existing DESIGN_PROTOCOL.txt is frozen. The small native development run
+must proceed once its implementation defects are closed. Do not add further
+experiments as a prerequisite to this pilot.
+
+Sufficient attribution for this run
+---------------------------------
+Compare B_rollout_v4 with A_task_v4 on the same subjects and mirrored fixtures,
+with the same fitted belief, public acceptance, option gate, physical checks,
+legal recovery and checkpoint continuation. The B tail must use the same public
+A_task_v4 controller. This isolates the implemented rollout override as a whole.
+Keep A_info and the three complete-pair dwells as external strong comparators.
+It does not independently isolate geometry, memory, anticipation or dwell modules.
+
+Actual B diagnostics must distinguish switch, screened fallback, validation
+fallback and upper-one pruning. If there is no switch, identical A/B trajectories
+are expected under identical public prefixes; planner computation alone is not
+evidence of benefit. At a switch, preserve the pre-action public history, base
+and chosen actions, independent validation counts and subsequent actual outcomes.
+A switch-conditioned success rate is descriptive, not a randomized subgroup test.
+
+The renderer currently shares randomness for identical subject/action prefixes.
+After policies diverge it need not supply the same packet. Subject-paired outcome
+comparisons remain valid with equal marginal observation laws; do not describe
+divergent continuations as identical-observation counterfactuals. The two mirrored
+layouts share an object and are not independent subjects.
+
+Unresolved/administratively stopped or computation-missing cases are not known
+permanent failures. The pilot driver reports success bounds and paired descriptive
+counts. No held-out significance conclusion is available from this development run.
+High A success leaves little absolute room for improvement. Failure to improve
+cannot be converted into a positive result or justified by weakening A.
+
+Blocking source mismatches found in the initial in-progress draft
+---------------------------------------------------------------
+The author and root were notified before any v4 study release:
+1. Planning-world mode must transition before each frame, and clutter probability
+   is conditional on no target; it must not multiply that condition twice.
+2. Rollout tail must include the same terminal gate, retries, replanning and public
+   predicted mechanical exits as A_task, not only repeated static probe choices.
+3. Validation uses 32 new trajectories, independent of selection. The comparison
+   includes unresolved A tails as potential successes. No extra Hoeffding gate.
+4. Evaluate/reuse base selection trajectories once. Upper-base == 1 pruning is
+   exactly output-preserving for the frozen strict lower-versus-upper rule.
+5. Actual pair/retry phase and blacklist fallback must survive guard checkpoints;
+   failed pair checks must not repeatedly select the same blocked action forever.
+   Every arm evaluates each actual fresh packet before a resumable checkpoint.
+
+Status at creation: awaiting the author's corrected source and regression report.
+This is not a release signal. Append the verified release status and source hashes
+after the fixes land; do not rewrite these initial findings as run results.
+
+Release follow-up — corrected source reviewed
+---------------------------------------------
+The blocking draft mismatches above have been closed in the inspected source.
+Actual execution now checkpoints before the next fresh capture and preserves
+pending retry, prescribed pair position, full actual state, evidence, public
+decisions and private renderer mode. Both terminal rejections return to planning.
+Native no-witness recovery is common to all arms and does not consume a frame;
+executed invalid motion retains its actual exit. A public acceptance absorbs
+regardless of the action label or the evaluator's private correctness label.
+
+Rollout uses fitted response/observation parameters, one S/w draw per trajectory,
+before-capture visibility transitions and conditional clutter. Only the simulator
+and reward evaluator inspect the latent; the tail reads public packets, posterior
+and proposed exits. The tail uses the same A_task scoring/tie rule and can recover
+the full public action library at a later state. Selection and validation are
+hash-separated; the latter consists of 32 new paired trajectories. The strict
+S/U screen and discordant validation use unresolved A as a possible success.
+The upper-one return now precedes other candidate simulations. Diagnostic
+Hoeffding intervals are not used as an additional decision gate.
+
+No further scientific-correctness blocker was found in this short source review.
+Release the already specified grouped development pilot; do not add experiments
+or thresholds. Root reports 30 passed / 2 skipped regressions and one successful
+native B smoke. Those are engineering evidence, not group efficacy results.
+The reported first B decision took about 65 seconds with 844 simulated captures;
+this exceeds the stated engineering target and must be included as computation
+cost, not hidden through sample truncation or interpreted as simulated task time.
+
+Inspected SHA-256:
+adaptive_planning.py dba06a4912697da1dee42218c969da24c6d2fdfbae8ffa6843d7bd7b141e429d
+rollout_policy.py af14ebf9d62da6d73e3b7ce1f44ec525d43dde751a167f92a1393afcd958c2e5
+belief_model.py 4abab61038cc2187153ca27e88f00efd2cb5fd0e175501c7270298145edc07c3
+run_adaptive.py befec7ce7fec0d49c694b3cdd9f6ea362cbdff12e0e1b0bb9608d8d174ca609f
+native_adapter.py 740cd538e660615e7a814aca657581ec42819940000721be2d46d1ae1f63de0b
+run_pilot_v4.py 46c07b03c544f67b4ac6f896d69350017450bf17ea02a5d24170eb00e50d03c1
+models/v3/MODEL.json b8dcdbf7d4f57da9b97e10c85334867f964d6c0f19164659426faa53f38cc767
+
+Nonblocking reporting correction, with no policy change: public_missing_count
+currently reads a nonexistent public subobject of privateeval and therefore
+overcounts missing packets. Recompute it from events[].public.detected in the
+independent summary. reacquisition_frames currently counts recovered episodes;
+actual captures until recovery require index differences in privateeval. These
+fields do not change the correct/false completion decisions. Preserve raw fields
+and distinguish corrected derived statistics when reporting the results.
+
+Early grouped-run integrity spot check (not an outcome analysis): the first
+12 written RESULT.json records under study_v4_closed_loop_20261111 had continuous
+private native exit-to-next-entry full-state hashes. Two shared-prefix packets
+available across arms matched field-for-field. All eight production modules had
+one observed source version across those records. Recheck the full completed
+group before final inference. Initial public-prior decision precomputation is
+stored separately in the manifest; per-case planningwall does not include that
+one-time cost, so both must be reported when discussing computational burden.
+
+Observed native-history reconstruction exception during continuation
+------------------------------------------------------------------
+Affected record: study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/
+cases_0000_0003/case0001_guard16.log. The saved eight-frame prefix is unresolved,
+at elapsed 13.13 s, pair position 0, no pending terminal retry. The exception
+originates in qp_replay.QPReplaySession while replaying saved controller history:
+max errors q=0.06274201840644511, qdot=0.012072712383934535,
+acceleration=0.20639484118877144. The restoration check rejects it rather than
+silently treating the reconstructed state as the saved state.
+
+Read-only checkpoint integrity checks found:
+  CONTINUATION.pkl SHA-256
+  843978be9cbed4ce6825dde539b32697823baed337a3be592115041bd8b30704
+  saved native q/qdot/acceleration versus snapshot exit: exactly zero differences;
+  saved q/qdot versus original final native NPZ sample: exactly zero differences;
+  eight history events and eight private frame records present;
+  native and snapshot valid flags true; complete-history-v2 schema retained.
+The error occurs after source/config fingerprint acceptance. The traceback is
+through checked()->capture()->execute_local()->QPReplaySession, not a cache
+fingerprint rejection or an acoustic-model update. These facts support a failure
+of controller-history replay reproducibility, not damaged saved coordinates.
+The exact lower-level cause (for example IPC/solver scheduling) is unproven.
+
+One same-source retry from the identical original checkpoint is a reproducibility
+diagnostic, not a fresh subject or a reroll of the acoustic observations. Preserve
+both attempt logs and the original checkpoint. Do not replace the incoming state,
+relax the reconstruction tolerance or change seeds to get a passing continuation.
+If it remains unresolved, retain it in the full denominator and eventual-success
+bounds. Do not count it as a false declaration, a demonstrated task failure, or
+a B win merely because B completed. Such censoring may depend on the action path,
+so excluding it as a complete-case analysis can bias comparisons. Unaffected
+subjects' saved checkpoints can continue independently even if their batch driver
+returned after this exception. No running policy/model source was changed here.
+
+First-checkpoint mechanism audit — before final-success inference
+----------------------------------------------------------------
+All 16 B initial RESULT.json records were available at inspection. Their logs
+contain 37 rollout decision records: 21 screen_lower_not_above_baseline_upper,
+16 baseline_upper_one_pruned, and zero actual rollout switches. These are logical
+decision records, not 37 independent simulations: zero-history decisions may be
+precomputed once and reused. For all 16 common A_task/B initial records, every
+compared common-prefix actual action and public observation matched exactly.
+
+In fixture 0, case 1, steps 3, 5 and 7 each have baseline S=0, F=0, U=16.
+Each simulates 16*8=128 future packets, then skips the other 11 candidates.
+The chosen actions are respectively side_right(.60), side_left(.60),
+side_left(.60), identical to the base A choices at those public states.
+
+This is a consequence of the frozen rule, not an unclosed implementation bug.
+With S=F=0 and U=16, A's empirical completion envelope is [0,1]. No candidate
+lower value can strictly exceed 1, so returning A is compulsory. This does not
+mean A is predicted to succeed surely, nor that the model is confident in A.
+It means the short rollout did not rule out success after its unresolved end.
+The envelope is computed from finite model samples, not a statistical confidence
+bound on the real mission probability.
+
+I selected this conservative comparison to avoid counting tail truncation as
+task failure. Its cost is now observable: it suppresses speed-only gains and
+can suppress useful exploration precisely where A remains unresolved. This
+implemented conservative finite-tail controller must not be presented as having
+solved the user's full optimal autonomous probing/stopping problem. Zero switching
+cannot show that hypothetical better probes are ineffective, since the upper-one
+branch deliberately does not evaluate them.
+
+In the unchanged no-deadline, zero-time-cost, reversible task, a longer route
+primarily changes elapsed time. If the public route/dIRD proxy still supplies
+the later exits, the future-executability term does not establish an irreversible
+loss of completion opportunities. Actual selected native checking remains real;
+the hypothetical proxy is not a continuous-motion certificate or a calibrated
+whole-mission probability. The .90 score still concerns the local two-attempt
+option, not the entire continuing task.
+
+If the final group also contains zero switches, B's visited-state behavior is
+the base A behavior plus extra planning work. More actual waiting/observations
+then provide both policies the same recovery opportunities and cannot by
+themselves create a B-specific benefit. This would be a negative result for
+this implementation in this world, not proof that all task-aware probing methods
+are useless. Strong-A ceiling, reversible environment and conservative screening
+cannot be separately causally attributed from this one group. No new experiment,
+rule, threshold, final-success rate or significance claim is introduced here.
+
+Evaluator-only fixed-nominal-goal check for the same difficult object
+-------------------------------------------------------------------
+Independently recomputed from HARD_CASE_NOMINAL_GEOMETRY.json; this truth is not
+available to the controller. All 12 diagnostic nominal poses fail the true
+geometry gate for fixture 0, case 1. The nominal left terminal has true center
+error 4.49703806161952 mm, only 0.00296193838048 mm inside the 4.5 mm gate.
+At terminal dwell 1 s, center noise SD is 0.5*sqrt(.15)=0.19364916731037 mm.
+Its conditional public center pass probability is
+  Phi((4.5-4.49703806161952)/0.19364916731037)
+    - Phi((-4.5-4.49703806161952)/0.19364916731037)
+  = 0.50610173746667.
+Quality/axis probabilities are effectively one here. Even with always-present
+visibility and ignoring early false stops, per-frame correct completion is at
+most p=.8*0.50610173746667=0.404881389973336. Independent two-frame completion
+is therefore at most 1-(1-p)^2=0.645833839999932, below the common .90 gate.
+The nominal right terminal's quality tail alone yields a two-frame upper bound
+of approximately 3.84761702923205e-32, despite passing true geometry.
+
+This fixed-pose calculation exposes a local-option versus mission distinction:
+perfect knowledge cannot turn this particular two-frame option into a true .90
+completion option. More diagnostic evidence alone cannot increase its known
+physical observation success probability. An accurate common local gate can
+therefore leave no nominal execution option to release, although a continuing
+mission is a different probability question. This is not a claim that every
+actual exit or every continuous motion is infeasible. The left goal is extremely
+close to the threshold, so actual tracking/exit variations matter. Do not use
+this private audit to select actions, change the shared gate or exclude the case.

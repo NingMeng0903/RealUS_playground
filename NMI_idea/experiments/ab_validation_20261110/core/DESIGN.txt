@@ -1,0 +1,46 @@
+CORE IMPLEMENTATION DESIGN (before comparative outcomes)
+2026-11-10. Frozen protocol is ../CORE_PROTOCOL.json.
+
+A uses independent train/validation/test synthetic worlds (seeds 41101/2/3).
+Observed local context c in [-1,1]^3 and initial 2D feature error e in [-.9,.9]^2.
+Negative control: y=e+u exactly. Positive: y=e+[I+G(c)+E_world]u,
+G=.45[[c0,.5*c1],[-.35*c1,c2]], E_world iid normal std .04.
+Training responses have iid sensor noise std .015, including negative control.
+12 actions per training world are uniform [-1,1]^2. Canonical ridge residual
+uses [u0,u1,c0*u0,c0*u1,...,c2*u1], ridge=1e-3 (fixed).
+Fixed candidate action grid [-1,-.5,0,.5,1]^2 scaled to .04m; actual DMP
+endpoints determine u and actual path lengths determine movement cost.
+Analytic, learned, four-probe online central-difference Jacobian, oracle share
+candidates. Online probes at ±.25 in each local direction have sensor std .003;
+all four additional observations and out-and-return travel are reported/charged.
+Objective for selecting ordinary action: predicted squared error + .002*|u|.
+Report true error separately; charged objective adds .01 per probe and .002
+per normalized probe travel. Training is one-shot and no test retuning occurs.
+This is a synthetic one-step response experiment, not a closed-loop servo.
+
+B is a restricted two-observation finite graph, not continuous control.
+Four persistent latent target identities; three inspection actions with fixed
+finite observation likelihoods including nondetection. Terminal action attempts
+one of four target sites and false acceptance is scored separately. Beliefs
+are broad Dirichlet draws and prespecified concentrated/source-shift examples.
+Three public contexts translate all sites relative to fixed robot by y=0,+.04,
+-.04m, in that order. Sites/targets are fixed before capability outcomes.
+Actual DMP path samples and actual dIRD/exact query determine every edge.
+Each graph node is action-history specific: its pose and q_seed are the exact
+previous path exit, so paths with different incoming robot states are not merged.
+Inspection depth <=2; terminal acquisition possible at every graph node.
+Admissibility is exact sampled kinematics/self-collision validation. dIRD raw
+score contributes cost via fixed softplus(-score) coefficient .05 (unitless);
+physical movement is path_length/.05 m/s; observation=.4s; failure=20 units;
+correct acquisition loss=0, wrong identity=20; terminal observation=.4s.
+All methods can stop with failure=20. Planning is offline/asynchronous; wall time
+and setup queries are reported separately, never called physical-time parity.
+Terminal acquisition verification is synthetic, not real B-mode or contact.
+Methods: full-belief one-step greedy, horizon-matched fixed open-loop sequence,
+entropy, B recourse, no-capability (ignores dIRD cost/feasibility at planning;
+actual infeasible attempts fail at evaluation), collapsed-belief, full-history
+reference. Same original belief is used when evaluating every method.
+Exact tree recursion groups the full belief by public observations before min.
+Noninterference checks use identical public state with compatible hidden labels.
+All 72 public scenarios, including infeasible/tie/no-gain cases, are retained.
+Costs fixed here are modeling choices, not fit from robot or ultrasound data.

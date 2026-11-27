@@ -1,0 +1,44 @@
+{
+  "sources": {
+    "trajectory_v13.py": "79359ff8f731a369594623681a7e1be409367bf970b47826b5f56afa864dbc31",
+    "collect_v13.py": "79009561418505c48c698fbd5851f9ee289ef5220795642e78cb91e25edee578",
+    "reader_v13.py": "d85533259ab80444cf8b5c211c704b9eb135da3c56e089e5d02eb83fc3caab41",
+    "policy_v13.py": "badcd42922058a137f0163878b940336a7f46bfc1e0bfa63ab862d0b306f9114",
+    "run_v13.py": "3e5c1bf3f444bd453bc84b1486fbc2c2c93a813612292d986b91652f9af0d7f0"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "data_freeze_sha256": "06d5bf75c3ad0e535a057e89940b389d1ee4a3895cf2991f3b73796e942c978e",
+  "reader_freeze_sha256": "b3bc76be6697b7533290938ee7bd6cd6f88c396cf6d83b9fa23d5740e58c0cc5",
+  "seeds": {
+    "fit": 8420130000000000,
+    "cal": 8420130001000000,
+    "reader_dev": 8420130002000000,
+    "teach": 8420130003000000,
+    "teach_cal": 8420130004000000,
+    "policy_dev": 8420130005000000,
+    "test": 8420130006000000,
+    "femoral": 8420130007000000
+  },
+  "bands": [
+    null,
+    226208173,
+    226249871
+  ],
+  "n": {
+    "fit": 1024,
+    "cal": 64,
+    "reader_dev": 72,
+    "teach": 120,
+    "teach_cal": 36,
+    "policy_dev": 48,
+    "test": 108,
+    "femoral": 36
+  },
+  "teacher_tapes": [
+    224171631,
+    224191719
+  ],
+  "teacher_proof": 224311873,
+  "primary": "frozen development winner versus actual v12 policy with v10 terminal readout",
+  "matched_reference": "shared legal program menu, geometry threshold matched to mean acquisition time in development"
+}

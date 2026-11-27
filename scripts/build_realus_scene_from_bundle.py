@@ -6,11 +6,15 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import yaml
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SLIDER_SPEC = REPO_ROOT / "rm75_control/rm75_control/control/joint_admittance_8dof/config/slider_rail.yaml"
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -43,44 +47,47 @@ def _camera_scene_entry(name: str, cam: dict[str, Any]) -> dict[str, Any]:
         "up": [float(v) for v in up],
         "fov": fov_v,
         "fov_axis": "vertical",
+        # Synthetic cameras share physical extrinsics/intrinsics, but do not
+        # inherit Brown distortion from the physical lenses.
+        "intrinsics": K.tolist(),
+        "distortion": [0.0] * 5,
+        "world_from_camera": wfc.tolist(),
+        "metadata": {"projection_model": "opencv_pinhole", "source": "realus_calibration_bundle"},
     }
 
 
 def _load_slider_rail(path: Path | None) -> dict[str, Any]:
-    if path is None or not path.is_file():
-        return {
-            "travel_m": 0.6,
-        }
-    payload = _load(path)
-    travel_mm = float(((payload.get("slider_rail") or {}).get("rail") or {}).get("effective_travel_mm", 600))
+    path = path or DEFAULT_SLIDER_SPEC
+    payload = _slider_spec(path)
+    travel_mm = float(payload["rail"]["effective_travel_mm"])
     return {
         "travel_m": travel_mm / 1000.0,
     }
 
 
-def _rail_base_pose(slider_spec_path: Path | None) -> dict[str, list[float]]:
-    default = {
-        "base_pos": [0.0, 0.52, 0.0],
-        "base_quat_wxyz": [-0.7071067811865477, 0.0, 0.0, 0.7071067811865475],
-    }
-    if slider_spec_path is None or not slider_spec_path.is_file():
-        return default
-    try:
-        import subprocess
+def _slider_spec(path: Path) -> dict[str, Any]:
+    # Same pure geometry/calibration code as RailGenesisScene. Never launch a
+    # controller shell, and never silently replace failed calibration with an
+    # obsolete default pose.
+    control_root = str(REPO_ROOT / "rm75_control")
+    if control_root not in sys.path:
+        sys.path.insert(0, control_root)
+    from rm75_control.control.joint_admittance_8dof.param_model.generator import load_spec
+    spec = load_spec(path.resolve())
+    if "base_pos_m" not in (spec.get("world_calib") or {}):
+        raise ValueError(f"Missing calibrated base_link world pose in {path} and its calibrated overlay")
+    return spec
 
-        repo_root = Path(__file__).resolve().parents[1]
-        cmd = (
-            f"cd {repo_root}/rm75_control && source env.sh >/dev/null 2>&1 && "
-            f"python {repo_root}/scripts/compute_rail_base_pose.py --spec {slider_spec_path}"
-        )
-        proc = subprocess.run(["bash", "-lc", cmd], check=True, capture_output=True, text=True)
-        payload = json.loads(proc.stdout)
-        return {
-            "base_pos": [float(v) for v in payload["base_pos"]],
-            "base_quat_wxyz": [float(v) for v in payload["base_quat_wxyz"]],
-        }
-    except Exception:
-        return default
+
+def _rail_base_pose(slider_spec_path: Path | None) -> dict[str, list[float]]:
+    spec = _slider_spec(slider_spec_path or DEFAULT_SLIDER_SPEC)
+    from rm75_control.control.joint_admittance_8dof.param_model.generator import compute_layout
+    from rm75_control.control.joint_admittance_8dof.param_model.placement import entity_pose_from_calib, resolve_world_calib
+    pose = entity_pose_from_calib(resolve_world_calib(spec, compute_layout(spec)))
+    return {
+        "base_pos": [float(v) for v in pose["pos"]],
+        "base_quat_wxyz": [float(v) for v in pose["quat_wxyz"]],
+    }
 
 
 def build_scene(
@@ -91,30 +98,38 @@ def build_scene(
     body_name: str,
     skeletal_mesh_path: str,
 ) -> dict[str, Any]:
-    bed = bundle.get("bed") or {}
-    support = bed.get("support_surface") or {
-        "name": "bed_surface",
-        "pos": [0.0, 0.0, float(bed.get("height_m", 0.28)) - 0.05],
-        "size": list(bed.get("size_m", [1.9, 0.7])) + [0.1],
-    }
+    control_root = str(REPO_ROOT / "rm75_control")
+    if control_root not in sys.path:
+        sys.path.insert(0, control_root)
+    from rm75_control.control.joint_admittance_8dof.viewer.calib_scene import BedSurfaceCalib
+
+    # Use the calibration viewer's actual parametric box, including its color,
+    # rather than the legacy slab hint stored in the exported bundle.
+    support = BedSurfaceCalib.from_bundle(bundle)
+    if support is None:
+        raise ValueError("Bundle must contain a calibrated bed with a positive top height")
+    support_pos = list(support.center)
+    support_size = list(support.size)
     cameras = [_camera_scene_entry(str(k), dict(v)) for k, v in (bundle.get("cameras") or {}).items()]
+    support_yaw = support.rotation_deg
     # 8-DOF: rail prismatic + 7 arm joints
     joint_positions = [0.0] + [0.0] * 7
     return {
         "name": "realus_bed_rail_scene",
         "environment": {
+            "ue_environment_preset": "soft_studio",
+            "ue_ground_plane_color": [0.055, 0.060, 0.070, 1.0],
             "ue_map": "/Game/Bedlam/IBLMap",
             "ue_hdri_name": "abandoned_hopper_terminal_03",
             "ground_plane_color": [0.92, 0.92, 0.92, 1.0],
         },
         "support_surface": {
-            "name": str(support.get("name", "bed_surface")),
-            "pos": [float(v) for v in support.get("pos", [0.0, 0.0, 0.23])],
-            "size": [float(v) for v in support.get("size", [1.9, 0.7, 0.1])],
-            "rotation_deg": float(
-                support.get("rotation_deg", bed.get("rotation_deg", 0.0))
-            ),
-            "color": [0.55, 0.55, 0.57, 1.0],
+            "name": support.name,
+            "pos": support_pos,
+            "size": support_size,
+            "rotation_deg": support_yaw,
+            "quat_xyzw": [0.0, 0.0, math.sin(math.radians(support_yaw) / 2), math.cos(math.radians(support_yaw) / 2)],
+            "color": list(support.color),
             "semantic_role": "bed",
             "spawn_in_genesis": True,
             "spawn_in_ue": True,
@@ -157,7 +172,7 @@ def build_scene(
         },
         "motion": {
             "source_id": "realus_easymocap_subject",
-            "sequence_npz_path": "outputs/ue_bake/subject_shape_tpose.npz",
+            "sequence_npz_path": "assets/human_reference/subject_shape_tpose.npz",
             "fps": 30.0,
             "frame_count": 1,
             "start_frame": 0,
@@ -183,7 +198,9 @@ def build_scene(
             "hidden_material_path": "/Engine/PS/Bedlam/Core/Materials/M_SMPLX_Hidden.M_SMPLX_Hidden",
             "fbx_global_scale": 100.0,
             "subject_betas_path": "outputs/offline_capture/latest/beta_calibration/betas.npy",
-            "note": "After EasyMocap fit, rebake body with subject shapes (see bake_subject_ue_body.py)",
+            "initial_pose": "tpose",
+            "shape_authority": "ue_skeletal_mesh",
+            "note": "BEDLAM skeletal mesh defines rendered shape; subject betas require an explicitly imported subject mesh.",
         },
         "cameras": cameras,
     }
@@ -212,7 +229,7 @@ def build_tracking_calibration(bundle: dict[str, Any], scene_rel: str) -> dict[s
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--bundle", type=Path, required=True)
-    ap.add_argument("--slider-rail", type=Path, default=None)
+    ap.add_argument("--slider-rail", type=Path, default=DEFAULT_SLIDER_SPEC)
     ap.add_argument("--out-scene", type=Path, default=Path("configs/scenes/realus_bed_rail_scene.yaml"))
     ap.add_argument("--out-calib", type=Path, default=Path("configs/calibration/realus_realsense/cameras.yaml"))
     ap.add_argument("--body-name", type=str, default="it_4375_M_2400")

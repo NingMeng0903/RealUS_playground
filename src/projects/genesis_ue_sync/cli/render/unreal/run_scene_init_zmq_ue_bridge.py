@@ -12,7 +12,9 @@ Two scene-apply modes are supported:
 
 - ``apply`` (default): lightweight; static URDF spawn + canonical-driven joints.
   No Bedlam textured avatar, no animation playback.
-- ``prepare``: first sends ``apply_scene_to_level`` so cameras/robot/static
+- ``prepare``: builds the static scene and a textured T-pose avatar, ready for
+  canonical motion. This path does not bake or play an independent animation.
+  With ``--bake-animation``, first sends ``apply_scene_to_level`` so cameras/robot/static
   preview actors appear immediately, then invokes ``ensure_official_retarget_fbx_cached``
   on the host **once per new scene_init payload**, injects the resulting path into
   the augmentation spec as ``character_visual.fallback_animation_path``, and sends
@@ -69,8 +71,9 @@ def parse_args() -> argparse.Namespace:
         type=str,
         choices=("apply", "prepare"),
         default="apply",
-        help="apply = lightweight apply_scene_to_level (default); prepare = bake Bedlam FBX once and run prepare_render_pipeline (textured human + animation).",
+        help="apply = static scene; prepare = textured T-pose avatar driven by canonical ticks.",
     )
+    p.add_argument("--bake-animation", action="store_true", help="Use the legacy offline FBX/Sequencer prepare pipeline.")
     p.add_argument(
         "--bake-output-root",
         type=Path,
@@ -151,8 +154,22 @@ def _enqueue_apply(
     bake_output_root: Path,
     force_rebuild_bake: bool,
     apply_timeout_s: float,
+    bake_animation: bool = False,
 ) -> tuple[EditorCommand, Path, Path | None]:
     scene_path, aug_path = write_scene_init_specs_to_session_dir(message, session_paths.root)
+
+    if scene_apply_mode == "prepare" and not bake_animation:
+        command = EditorCommand(
+            command_type="prepare_tpose_avatar",
+            payload={
+                "scene_spec_path": str(scene_path),
+                "augmentation_spec_path": None if aug_path is None else str(aug_path),
+                "preserve_visible_human": False,
+                "tool_env": amongus_tool_env_for_ue_editor(),
+            },
+        )
+        command.write(session_paths)
+        return command, scene_path, aug_path
 
     if scene_apply_mode == "prepare":
         static_command = EditorCommand(
@@ -301,12 +318,14 @@ def main() -> int:
             message.payload_hash_sha256[:12],
             message.session_id or "(none)",
             args.scene_apply_mode,
-            "prepare_render_pipeline" if args.scene_apply_mode == "prepare" else "apply_scene_to_level",
+            ("prepare_render_pipeline" if args.bake_animation else "prepare_tpose_avatar")
+            if args.scene_apply_mode == "prepare" else "apply_scene_to_level",
         )
         command, scene_path, aug_path = _enqueue_apply(
             session_paths,
             message,
             scene_apply_mode=str(args.scene_apply_mode),
+            bake_animation=bool(args.bake_animation),
             bake_output_root=bake_output_root,
             force_rebuild_bake=bool(args.force_rebuild_bake),
             apply_timeout_s=float(args.apply_timeout_s),

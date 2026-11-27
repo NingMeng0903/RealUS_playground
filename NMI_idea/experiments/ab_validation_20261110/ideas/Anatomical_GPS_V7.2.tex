@@ -1,0 +1,1123 @@
+% !TeX program = xelatex
+% Self-contained research manuscript. Compile twice with XeLaTeX.
+% Requires TeX Live with ctex/Fandol. No external font files are distributed.
+\documentclass[UTF8,fontset=fandol,11pt,a4paper]{ctexart}
+\usepackage[margin=23mm,headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm,mathtools}
+\usepackage{booktabs,tabularx,longtable,array}
+\usepackage{xcolor,hyperref,xurl,fancyhdr,lastpage,enumitem,microtype}
+\usepackage[most]{tcolorbox}
+\definecolor{ink}{HTML}{16324B}\definecolor{teal}{HTML}{087E87}
+\definecolor{pale}{HTML}{EFF6F7}\definecolor{muted}{HTML}{536477}
+\hypersetup{colorlinks=true,linkcolor=ink,citecolor=teal,urlcolor=teal,
+ pdftitle={Anatomical GPS V7.2: 选择相关后继能力、相交实验与连续状态},pdfauthor={NMI research manuscript}}
+\ctexset{section={format=\Large\bfseries\color{ink}},subsection={format=\large\bfseries\color{ink}}}
+\setlength{\parskip}{.3em}\linespread{1.13}\setlength{\emergencystretch}{3em}
+\setlist{nosep,leftmargin=2em,topsep=.35em}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{muted}NMI\quad /\quad V7.2}
+\fancyhead[R]{\small\color{muted}选择相关后继能力与交互编译}
+\fancyfoot[C]{\small\thepage\,/\,\pageref{LastPage}}
+\renewcommand{\headrulewidth}{.3pt}
+\newcommand{\R}{\mathbb R}\newcommand{\N}{\mathcal N}\newcommand{\E}{\mathbb E}
+\newcommand{\Pp}{\mathbb P}\newcommand{\dd}{\mathrm d}\newcommand{\given}{\,|\,}
+\DeclareMathOperator{\Cov}{Cov}\DeclareMathOperator{\im}{im}\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\diag}{diag}\DeclareMathOperator{\tr}{tr}\DeclareMathOperator{\TV}{TV}
+\DeclareMathOperator{\KL}{KL}\DeclareMathOperator{\Short}{Short}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}\newcommand{\gam}[1]{\gamma_{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newtheorem{theorem}{定理}[section]\newtheorem{lemma}[theorem]{引理}
+\newtheorem{proposition}[theorem]{命题}\newtheorem{corollary}[theorem]{推论}
+\theoremstyle{definition}\newtheorem{definition}[theorem]{定义}\newtheorem{assumption}[theorem]{条件}
+\newtheorem{example}[theorem]{例}\theoremstyle{remark}\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+\newtcolorbox{keybox}{enhanced,breakable,colback=pale,colframe=teal,boxrule=.6pt,arc=1mm,left=3mm,right=3mm,top=2mm,bottom=2mm}
+\numberwithin{equation}{section}
+\begin{document}
+\begin{titlepage}
+\vspace*{9mm}
+{\Large\sffamily\color{teal}NMI IDEA\quad /\quad V7.2}\par
+\vspace{14mm}
+{\Huge\bfseries\color{ink}选择相关的后继能力}\par
+\vspace{5mm}
+{\LARGE\bfseries\color{ink}一般相交实验比较\par 与真实连续状态的交互编译}\par
+\vspace{6mm}
+{\large\color{muted}Selection-Dependent Continuation Capability:\\
+Intersecting Experiments and State-Aware Interaction Compilation}\par
+\vspace{11mm}
+\begin{keybox}
+\textbf{核心命题}\par
+保持当前任务响应，不一定保持后继可实现性。需要保存和设计的是响应、选择证据与真实执行状态的联合关系。
+本版将这个命题推进到一般两模式相交剩余子空间，并把实际连续状态纳入可检查的有限表示。
+\end{keybox}
+\vspace{5mm}
+\textbf{本版完成的层次}\par
+一般相交情形的正测度卷积充要刻画；短接矩阵可比时的有限矩阵充要判据和显式实现；含连续状态及相关物理噪声的当步凸编译与闭合更新；与材料坐标和 dIRD 的可验收接口；零专家示教与在线估计的准确数据合同。
+\vfill
+{\large 2026 年 10 月 11 日}\par
+{\color{muted}基于实际 V7.1 文件复核，含完整证明、查重与本轮验证}\par
+\vspace{5mm}
+{\small 一般卷积刻画不是通用有限 SDP。连续状态闭合限于声明的仿射物理类。
+本稿是研究构造，不是期刊评分、临床结果或未经验证的安全声明。}
+\end{titlepage}
+
+\begin{abstract}
+交互程序可能使用局部观测选择持久的物理实现。两个当前实现即使生成相同任务响应并留下相同逐模式信息矩阵，也可能支持不同后继任务。V7.1 用选择关联表达这一现象，但一般相交剩余子空间与连续物理状态尚缺完整接口。本稿首先复核其量词、选择后的概率律和因果动作时序，将创新主张集中于条件实验的后继可实现性，而不把选择高斯滤波或标准协方差优化重新计为原创。针对任意两模式规范指数实验，证明所有非高斯提取自由度均可缩减到两个剩余像空间的交集；一般随机核的存在等价于一组显式正测度卷积及边缘相容关系。对标量阈值选择，进一步得到由短接算子决定的必要矩阵界；两个短接矩阵可比时，该界也是充分条件，涵盖全部一维交集。构造三维例子证明普通投影会错误认证可行性。其次，把真实连续状态与选择变量、规范得分组成联合表示，以控制交叉协方差为变量建立完整当步 SDP，并给出具有相关过程和观测噪声的闭合更新；实际状态被保留，不以统计重采样替代。最后说明材料坐标生成共同任务与观测微分、dIRD 提议物理实现的具体接口，区分无需专家示教、必要标定和在线辨识。精确有理数检查、显式提取采样和含连续状态的八步反馈验证支持本稿构造；一般非可比卷积问题的有限算法、真实非线性扫描和未知模型的精确在线编译仍不被宣称已经完成。
+\end{abstract}
+\noindent\textbf{关键词：}统计实验比较；选择关联；后继任务；短接算子；因果控制；连续状态；机器人超声。
+\clearpage\setcounter{tocdepth}{1}\tableofcontents\clearpage
+
+\section{复核结论：7.1 的核心清楚，但需要重新划定强度}
+\label{sec:audit}
+\subsection{值得保留的主张}
+实际读取的基线是本会话提供的 \texttt{Anatomical\_GPS\_V7.1.tex}、33 页 PDF 和复现包，不是仓库中早期版本的摘要。V7.1 的最有价值部分是一个可被反驳的表示命题：\textbf{当前真实响应与各模式信息矩阵不是后继任务能力的充分描述。}其二维例子提供相同当前分布、相同矩阵余量，但互不兼容的后继方向。该结论不含超声、人体、调和场或 dIRD，因此不是把已有控制方法简单移植到超声。
+
+不过，“信息矩阵不足”不等于“正确的信念空间控制也不足”。保存完整后验和实际物理状态的标准决策框架仍然适用。本方向需要额外交付的是\textbf{可计算的任务族比较、无需重放历史的实现公式，以及必要的后继状态结构}，而不是否定已有充分统计量、POMDP 或主动控制。
+
+\subsection{不独立计为新颖性的部分}
+高斯实验的线性比较与共同机制已有显式矩阵理论\cite{xiao}；数据拆分与充分统计量复用已有直接研究\cite{thinning}；选择高斯在变换、Gaussian 加噪及条件化下的闭合已有滤波理论\cite{naveau,selectionkalman}；一般策略精化已处理完整输出路径的保真\cite{hsa}；主动辨识和协方差控制也已联合设计探索与反馈\cite{dual}。
+
+因此，V7.1 的 Gaussian Schur 补、选择高斯表示和半正定规划形式都应当视为构造工具。本稿争取的实质增量是：\emph{从选择实验导出真正的后继比较障碍，并把该障碍与一套可以反复执行的物理编译运算闭合。}
+
+\subsection{逐项证明复核}
+\begin{table}[ht]\centering\small
+\begin{tabularx}{\linewidth}{p{.25\linewidth}YY}
+\toprule
+V7.1 结果 & 复核判断 & V7.2 的修改\\\midrule
+共同联合高斯编译 LMI & 协方差必要性与显式构造相符 & 保留族内充要量词；扩展到真实状态与欠驱动输入\\
+执行后的信息减法 & 完整物理似然除以公开响应似然可得 & 物理新增信息必须来自完整联合观测\\
+选择后闭合 & 共同 $(T,Y)$ 联合律是拼接的关键 & 保留真实模式与分区平移，不能各分支独立换 $C$\\
+一般随机核障碍 & 完整参数域下的非负指数归一化有效 & 写出公共满测版本、支撑与交集约简\\
+分离剩余子空间 & 判据 $G\preceq D$ 在声明条件下成立 & 推广到交集上的短接信息及一般卷积刻画\\
+多步 SDP & 固定矩阵日程与选择维度下成立 & 连续状态扩展不自动继承全时域联合凸性\\
+通用应用与评分 & 机制具有通用性；评分不是证明结论 & 不把“候选潜力”改写为已获外部 4/5 认可\\
+\bottomrule
+\end{tabularx}
+\caption{复核针对数学对象、量词和接口；本轮没有调用独立审稿代理，也没有把内部复核冒充外部同行评审。}
+\end{table}
+
+\subsection{本版用一个对象连接全部新增结果}
+记交互类型为 $\Xi$，包含共享参数的条件实验、持久模式和实际物理状态。对指定后继合同族 $\mathcal K$，编译的语义为
+\begin{equation}
+\mathsf{Compile}(\Xi;\mathcal T,\mathcal K)
+=\{\pi:\pi\text{ 因果实现当前 }\mathcal T,
+\;\mathcal K\subseteq\mathfrak F(\Xi^\pi)\}.
+\end{equation}
+$\mathfrak F$ 是后继可实现域。第\ref{sec:general}--\ref{sec:comparable}节具体计算其中的统计提取问题，第\ref{sec:state}--\ref{sec:stateupdate}节给出含物理状态的可实现子类。这个语义式不被当成一个已经求解任意非线性问题的算法。
+
+\section{共同模型与 7.1 编译内核}
+\label{sec:core}
+\subsection{参数、内部证据与任务接口}
+$\theta\in\R^p$ 是一段任务中固定但未知的参数。定理逐参数成立，不需要给它先验。“内部/私有”仅指源任务程序没有直接读取该记录，并非隐私保护。机器人控制器可以读取它。公开任务历史记为 $H$，固定本段 $H$ 后省略条件。
+
+选择变量 $T\in\R^k$ 与模式分区 $\{\mathcal C_j\}_{j=1}^K$ 满足：在每个尚未施加选择事件的模式模型中，
+\begin{equation}
+\begin{bmatrix}S_j\\T\end{bmatrix}
+\sim\N\!\left(\begin{bmatrix}J_j\\M\end{bmatrix}\theta,
+\begin{bmatrix}J_j&M^\top\\M&\Lambda\end{bmatrix}\right),
+\qquad \Lambda\succ0.
+\label{eq:base}
+\end{equation}
+真实测度是这些高斯测度分别限制在 $T\in\mathcal C_j$ 后相加。因为各模式的 $T$ 边缘相同且分区覆盖全空间，真实测度归一化。实际的 $S_j\mid j$ 通常不是 Gaussian。
+
+完整记录的似然比为
+\begin{equation}
+L_\theta(j,s,t)
+=\exp\!\left(\theta^\top s-\tfrac12\theta^\top J_j\theta\right).
+\label{eq:lr}
+\end{equation}
+它使 $(j,S_j)$ 对未知参数统计充分；但当后续设备依赖实际状态时，不能仅凭统计充分性重新抽样该物理状态。
+
+\subsection{当前真实响应及选择关联}
+物理响应与目标合同为
+\begin{equation}
+Y=E_j\theta+X_j+\epsilon_j,\quad \epsilon_j\sim\N(0,Q_j),
+\qquad Y\given\theta,H\sim\N(F\theta+f,V).
+\label{eq:physicalbase}
+\end{equation}
+$X_j$ 在新噪声产生前执行。$f$ 可由公开历史非线性决定。在共同联合高斯实现族中，设计各模式相同的 $C=\Cov(T,Y)$。当前合同可实现当且仅当
+\begin{equation}
+\begin{bmatrix}
+J_j&M^\top&(F-E_j)^\top\\
+M&\Lambda&C\\
+F-E_j&C^\top&V-Q_j
+\end{bmatrix}\succeq0\qquad\forall j.
+\label{eq:basegate}
+\end{equation}
+这不是所有非线性随机控制的必要条件；它对声明的共同联合实现族精确。
+
+令 $\Delta_j=F-E_j$、$A_j=\Lambda-MJ_j^\dagger M^\top$，并置
+\begin{align}
+D_j&=C^\top-\Delta_jJ_j^\dagger M^\top,\\
+W_j&=V-Q_j-\Delta_jJ_j^\dagger\Delta_j^\top-D_jA_j^\dagger D_j^\top.
+\end{align}
+式\eqref{eq:basegate}保证伪逆所需的像条件和 $W_j\succeq0$。可直接执行
+\begin{equation}
+X_j=f+\Delta_jJ_j^\dagger S_j+
+D_jA_j^\dagger(T-MJ_j^\dagger S_j)+\eta_j,
+\quad\eta_j\sim\N(0,W_j).
+\label{eq:basecontrol}
+\end{equation}
+未选择模型中的 $(T,Y)$ 均值和协方差相同，按 $T$ 分区求和就得到真实的正确 $Y$ 边缘。反向看，式\eqref{eq:basegate}正是 $(S_j,T,X_j)$ 的协方差，故必要。这给出完整的当步构造与证明。
+
+\subsection{执行后的核心更新}
+真实响应到达后，
+\begin{align}
+S_j^+&=S_j+E_j^\top Q_j^{-1}(Y-X_j)-F^\top V^{-1}(Y-f),\\
+J_j^+&=J_j+E_j^\top Q_j^{-1}E_j-F^\top V^{-1}F,\\
+T^+&=T-CV^{-1}(Y-f),\\
+M^+&=M-CV^{-1}F,\qquad
+\Lambda^+=\Lambda-CV^{-1}C^\top.
+\label{eq:baseupdate}
+\end{align}
+分区相应平移。证明有两条互相核对的路径：完整物理似然除以公开 $Y$ 的似然，得到新规范得分；联合 Gaussian 条件化得到相同的均值和协方差。新噪声必须与既有记录独立，相关的物理观测则应作为一个联合块处理。
+
+式\eqref{eq:baseupdate}中 $J_j^+$ 与 $C$ 无关，$M^+,\Lambda^+$ 却依赖 $C$。这是整个研究问题的出发点：当前关联可以改变后继实验，矩阵信息账本并未完全描述这种改变。
+
+\section{一般两模式比较：把任意随机核约简到交集}
+\label{sec:general}
+\subsection{问题与记号}
+设两个模式 $j=a,b$ 的完整实验有式\eqref{eq:lr}的似然比。以 $\theta=0$ 为参考，记
+\[
+\mu_j(B)=P_0(j,S_j\in B).
+\]
+$\mu_j$ 是正质量的非负有限测度，两个质量之和为 1；零概率模式先删除。目标为规范 Gaussian 实验
+\begin{equation}
+Z\given\theta\sim\N(D\theta,D),\qquad D\succeq0.
+\label{eq:target}
+\end{equation}
+允许任何参数无关随机核读取完整原始记录。记 $\gamma_A=\N(0,A)$，允许 $A$ 奇异；所有支撑均在相应像空间解释。
+
+如果这种核存在，以目标 $Z=z$ 条件化，其剩余 $r=S-Z$ 在参考参数下满足
+\begin{equation}
+\sum_{j=a,b}\int
+\exp\!\left(\theta^\top r-\tfrac12\theta^\top R_j\theta\right)
+\nu_{j,z}(\dd r)=1,
+\qquad R_j=J_j-D.
+\label{eq:norm}
+\end{equation}
+$\nu_{j,z}$ 是给定 $z$ 的带模式子概率测度，不预设 Gaussian。
+
+\begin{lemma}[必要的信息顺序与剩余支撑]
+\label{lem:support}
+每个正概率模式都必须有 $R_j\succeq0$；且 $\nu_{j,z}$ 几乎处处支持在 $\im R_j$。
+\end{lemma}
+\begin{proof}
+若某个方向 $h$ 有 $h^\top R_jh<0$，在该模式内选取 $|h^\top r|\le L$ 的正质量集合；沿 $\theta=th$，非负指数积分至少以 $\exp(\alpha t^2-L|t|)$ 增长，与式\eqref{eq:norm}矛盾。若 $h\in\ker R_j$，沿正、负 $t$ 的相同论证迫使 $h^\top r=0$。对各核空间有限基应用即得支撑结论。条件版本先在可数稠密参数集取共同满测集合；各非负项的局部指数界和矩母函数连续性给出全部参数版本。
+\end{proof}
+
+\subsection{共同方向中的有效信息是短接算子}
+令
+\begin{equation}
+\mathcal U=\im R_a\cap\im R_b.
+\end{equation}
+在正交分解 $\mathcal U\oplus\mathcal U^\perp$ 中写
+\begin{equation}
+R_j=\begin{bmatrix}A_j&B_j\\B_j^\top&C_j\end{bmatrix},\qquad
+K_j=\Short_{\mathcal U}(R_j)
+=\begin{bmatrix}A_j-B_jC_j^\dagger B_j^\top&0\\0&0\end{bmatrix}.
+\label{eq:short}
+\end{equation}
+$K_j$ 是满足 $0\preceq K\preceq R_j$、$\im K\subseteq\mathcal U$ 的最大矩阵。该短接算子及其 Gaussian 条件协方差解释是已有理论\cite{anderson,owhadi}；本稿使用它，绝不把 Schur 补重新声称为原创。
+
+\textbf{它不同于 $P_{\mathcal U}R_jP_{\mathcal U}$。}后者保留了与独占方向的相关部分，可能不被 $R_j$ 支配；把它当成可以独立留给共同方向的信息会错误认证任务。
+
+\begin{lemma}[所有非 Gaussian 自由度只留在交集]
+\label{lem:factor}
+任何满足式\eqref{eq:norm}的正测度，都具有分解
+\begin{equation}
+\boxed{\nu_{j,z}=\gamma_{R_j-K_j}*\lambda_{j,z},}
+\label{eq:factor}
+\end{equation}
+其中 $\lambda_{j,z}$ 为支持在 $\mathcal U$ 的非负有限测度。
+\end{lemma}
+\begin{proof}
+设
+\[
+f_j(\theta)=e^{-\theta^\top R_j\theta/2}
+\int e^{\theta^\top r}\nu_{j,z}(\dd r).
+\]
+因为 $r$ 与 $R_j$ 都支持在 $\im R_j$，$f_j$ 沿 $(\im R_j)^\perp$ 不变。又由 $f_a+f_b=1$，它也沿另一模式的正交补不变。因此二者都只依赖 $P_{\mathcal U}\theta$，因为
+\[
+(\im R_a)^\perp+(\im R_b)^\perp=\mathcal U^\perp.
+\]
+于是 $\nu_{j,z}$ 的矩母函数为
+\[
+\exp(\theta^\top R_j\theta/2)g_j(\theta_{\mathcal U}).
+\]
+把剩余随机向量写成 $(r_U,r_B)$，作变换
+$w=r_U-B_jC_j^\dagger r_B$。其与 $r_B$ 的联合矩母函数分解为
+\[
+\left[e^{t^\top(A_j-B_jC_j^\dagger B_j^\top)t/2}g_j(t)\right]
+ e^{v^\top C_jv/2}.
+\]
+第一因子是 $w$ 自身的正测度矩母函数，而不是任意有符号反卷积；第二因子是 Gaussian。唯一性给出独立分解，将 $w$ 的测度嵌回 $\mathcal U$ 就得到式\eqref{eq:factor}。零质量分支令 $\lambda=0$。半正定块矩阵保证所用像空间关系；奇异 $C_j$ 在其像空间作同样变换。
+\end{proof}
+
+\subsection{一般相交情形的完整充要刻画}
+选任意支持在 $\mathcal U$ 且 $K_0\succeq K_a,K_b$ 的矩阵，例如 $K_0=K_a+K_b$。令 $\tau_z\nu$ 表示测度平移 $r\mapsto z+r$。
+
+\begin{theorem}[一般两模式的正测度卷积判据]
+\label{thm:general}
+目标\eqref{eq:target}可由任意参数无关随机核生成，当且仅当 $R_a,R_b\succeq0$，并存在关于 $z$ 可测、支持在 $\mathcal U$ 的非负有限测度核 $\lambda_{a,z},\lambda_{b,z}$，使
+\begin{equation}
+\boxed{
+\gamma_{K_0-K_a}*\lambda_{a,z}
++\gamma_{K_0-K_b}*\lambda_{b,z}
+=\gamma_{K_0}
+\quad\gamma_D\text{-几乎处处},}
+\label{eq:convnorm}
+\end{equation}
+且两个源边缘同时满足
+\begin{equation}
+\boxed{
+\mu_j=\int\tau_z\!\left(\gamma_{R_j-K_j}*\lambda_{j,z}\right)
+\gamma_D(\dd z),\qquad j=a,b.}
+\label{eq:convmarginal}
+\end{equation}
+该结论允许奇异 $D,J_j$ 和任意维数交集，不把核限制成线性或 Gaussian。
+\end{theorem}
+\begin{proof}
+必要性：用原核在 $\theta=0$ 建立 $(j,S,Z)$ 的联合测度并条件于 $Z$。引理\ref{lem:support}给出顺序与支撑，引理\ref{lem:factor}给出剩余卷积分解。把分解代入式\eqref{eq:norm}，再乘以 $e^{\theta^\top K_0\theta/2}$，由矩母函数唯一性得式\eqref{eq:convnorm}。积分掉 $Z$ 必须恢复原始 $\mu_j$，即式\eqref{eq:convmarginal}。
+
+充分性：由给定正核定义
+\[
+Q_0(j,\dd s,\dd z)=\gamma_D(\dd z)
+\left[\tau_z(\gamma_{R_j-K_j}*\lambda_{j,z})\right](\dd s).
+\]
+式\eqref{eq:convnorm}在零频处给出两个分支质量之和为 1，式\eqref{eq:convmarginal}给出源边缘。标准 Borel 空间的析取给出参数无关核 $Q_0(\dd z\mid j,s)$。按真实源似然\eqref{eq:lr}倾斜该联合测度，$Z$ 的边缘为
+\[
+e^{\theta^\top z-\theta^\top D\theta/2}\gamma_D(\dd z)
+\sum_j\int e^{\theta^\top r-\theta^\top R_j\theta/2}\nu_{j,z}(\dd r).
+\]
+最后一个和由式\eqref{eq:convnorm}等于 1，故得到\eqref{eq:target}。若原始输入比 $(j,S)$ 更丰富，规范充分性使该核同样可用于完整记录。反向构造仅产生统计输出；真实模式 $j$ 不被重新抽样。
+\end{proof}
+
+\begin{keybox}
+\textbf{“完整比较”在本版中的准确含义。}
+定理\ref{thm:general}给出一般两模式相交情形、任意随机核的必要充分条件与由解恢复核的构造。它将非 Gaussian 未知部分限制到交集，但仍是正测度核可行性问题，\textbf{不是对任意交集都已经得到有限 SDP 或高效算法}。
+省略边缘条件\eqref{eq:convmarginal}会错误接受任意分支权重；将 $\lambda$ 默认成 Gaussian 则只得到一个子类。两种跳步都不允许。
+\end{keybox}
+
+\section{可计算的尖锐扩展：标量选择与短接矩阵可比}
+\label{sec:comparable}
+\subsection{明确的内生选择实验}
+固定有限阈值 $b\in\R$。先观测
+\begin{equation}
+T\sim\N(c^\top\theta,1),\quad G=cc^\top,\qquad
+j=\begin{cases}a,&T\ge b,\\b,&T<b,\end{cases}
+\label{eq:selector}
+\end{equation}
+再按实际模式获得独立补充观测
+\begin{equation}
+W_j\given\theta,T,j\sim\N((J_j-G)\theta,J_j-G),
+\qquad S_j=cT+W_j,
+\label{eq:complement}
+\end{equation}
+其中 $J_j\succeq G$。这里模式由真实证据选择，不是可以重新抽样的混合标签。目标仍为\eqref{eq:target}。若当前条件选择变量方差为 $\lambda>0$、参数均值为 $M\theta$，先用 $T/\sqrt\lambda$ 归一化；公开响应只改变阈值，不改变以下判据。
+
+\subsection{任意随机提取的必要短接界}
+\begin{theorem}[选择信息必须能进入目标与共同剩余]
+\label{thm:necessaryshort}
+在式\eqref{eq:selector}--\eqref{eq:complement}下，若任意参数无关核能生成\eqref{eq:target}，则除了 $D\preceq J_a,J_b$，还必须满足
+\begin{equation}
+\boxed{G\preceq D+K_a,\qquad G\preceq D+K_b,}
+\label{eq:necessaryshort}
+\end{equation}
+其中 $K_j=\Short_{\mathcal U}(J_j-D)$，$\mathcal U=\im(J_a-D)\cap\im(J_b-D)$。
+\end{theorem}
+\begin{proof}
+由定理\ref{thm:general}的边缘关系，存在正有限测度 $\alpha_j$ 使
+\[
+\mu_j=\gamma_{R_j-K_j}*\alpha_j.
+\]
+采用特征函数 $\widehat\mu(\xi)=\int e^{i\xi^\top s}\mu(\dd s)$。由实际采集模型，
+\begin{equation}
+\widehat\mu_j(\xi)
+=e^{-\xi^\top(J_j-G)\xi/2}I_j(c^\top\xi),\quad
+I_a(t)=\int_b^\infty e^{itv}\phi(v)\dd v,
+\quad I_b(t)=\int_{-\infty}^b e^{itv}\phi(v)\dd v,
+\end{equation}
+$\phi$ 为标准正态密度。Gaussian 特征函数不为零，因此
+\begin{equation}
+\widehat\alpha_j(\xi)
+=e^{-\xi^\top(D+K_j-G)\xi/2}I_j(c^\top\xi).
+\label{eq:deconvchar}
+\end{equation}
+若 $H_j=D+K_j-G$ 有负二次方向 $h$，沿 $\xi=th$ 考察。$c^\top h=0$ 时，$I_j(0)>0$，右侧指数无界。$c^\top h\ne0$ 时，在有限阈值处两次分部积分给
+\[
+I_j(v)=\frac{\pm\phi(b)e^{ivb}}{iv}+O(|v|^{-2})
+\qquad(|v|\to\infty).
+\]
+因 $\phi(b)>0$，其绝对值对充分大的 $|v|$ 至少为 $\phi(b)/(2|v|)$。指数增长仍不能被抵消。正有限测度的特征函数绝对值不超过其总质量，与\eqref{eq:deconvchar}矛盾。故 $H_j\succeq0$。证明允许奇异剩余和奇异目标，且没有约束生成核的函数形式。
+\end{proof}
+
+这个必要条件的含义是：选择证据不一定全部进入当前目标；但没有进入目标的部分，必须能安放在两个模式真正共享的剩余方向中。可用的共享部分受相关性限制，正是短接矩阵，而非投影后的边际方差。
+
+\subsection{可比情形的完整有限判据与显式核}
+\begin{theorem}[短接矩阵可比时的充要条件]
+\label{thm:comparable}
+在上述标量阈值实验中，设 $D\preceq J_a,J_b$，且 $K_a\preceq K_b$ 或 $K_b\preceq K_a$。以 $K_{\min}$ 表示较小者，则
+\begin{equation}
+\boxed{\exists\text{任意参数无关提取核}
+\quad\Longleftrightarrow\quad G\preceq D+K_{\min}.}
+\label{eq:completefinite}
+\end{equation}
+它包括 $\mathcal U=\{0\}$ 的 V7.1 结果，以及全部 $\dim\mathcal U=1$ 的情形。满足条件时可用两个显式 Gaussian 拆分完成，不需解正测度优化。
+\end{theorem}
+\begin{proof}
+必要性是定理\ref{thm:necessaryshort}。充分性令 $L=D+K_{\min}$，则
+\[
+G\preceq L,\quad D\preceq L,\quad L\preceq J_a,J_b.
+\]
+对实际 $W_j$ 先提取 $A\sim\N((L-G)\theta,L-G)$。具体地，任意 $0\preceq B\preceq P$、$W\sim\N(P\theta,P)$ 时，核
+\begin{equation}
+\mathsf{Thin}_{B\leftarrow P}(W)
+=BP^\dagger W+\zeta,
+\qquad\zeta\sim\N(0,B-BP^\dagger B)
+\label{eq:thin}
+\end{equation}
+生成 $\N(B\theta,B)$；像条件由 $B\preceq P$ 保证。使用 $P=J_j-G,B=L-G$，每个 $T,j$ 条件下 $A$ 的分布都相同，因此 $A$ 与 $T$ 在给定 $\theta$ 时独立。于是 $H=cT+A\sim\N(L\theta,L)$，再用 $P=L,B=D$ 得到目标 $Z$。
+
+上述核只读取实际 $T,W_j,j$ 及独立随机性，不读取未知参数，不更换模式，也不增加新的含参数测量。式\eqref{eq:thin}的均值、协方差可直接验证；其 Gaussian 信息拆分本身是经典工具\cite{xiao,thinning}。
+\end{proof}
+
+\subsection{一般非可比情形：必要条件与可计算充分域分开}
+一个可计算的充分测试为
+\begin{equation}
+\exists K:\quad0\preceq K\preceq K_a,K_b,
+\qquad G\preceq D+K.
+\label{eq:innerSDP}
+\end{equation}
+它是有限 SDP；找到 $K$ 后仍用上述显式核。可比时它精确。非可比时，本稿没有证明它对全部随机核必要，不能以求解失败代替定理\ref{thm:general}的完整比较。
+
+这个差别并非空洞提醒。取
+\begin{equation}
+D=\tfrac12I_2,\quad
+K_a=\diag(1,\tfrac1{10}),\quad
+K_b=\diag(\tfrac1{10},1),\quad c=(\tfrac35,\tfrac35)^\top,
+\quad J_j=D+K_j.
+\label{eq:gap}
+\end{equation}
+两个必要矩阵 $D+K_j-G$ 都严格正定，行列式为 $18/125$。但\eqref{eq:innerSDP}不可行。证明如下：如存在 $K$，对交换两个坐标作对称化，可令 $K=\bigl[\begin{smallmatrix}k&l\\l&k\end{smallmatrix}\bigr]$。由 $0\preceq K\preceq K_a,K_b$，
+\[
+0\le k\le\tfrac1{10},\quad |l|\le k,
+\quad l^2\le(1-k)(\tfrac1{10}-k).
+\]
+沿单位和方向可达到的最大 $k+l$ 为 $2/11$。对 $k\le1/11$，用 $l\le k$；对 $k\ge1/11$，函数 $k+\sqrt{(1-k)(1/10-k)}$ 单调下降，均得到该界。另一方面，$D+K\succeq G$ 要求 $k+l\ge11/50>2/11$，矛盾。
+
+\textbf{本例证明必要短接测试与共同 Gaussian 中间实验并不等价；它不判定任意非 Gaussian 核是否存在。}对这类实例，定理\ref{thm:general}仍是完整判据。把这个未完成的有限化问题说清楚，比把一个充分 SDP 错写成普遍充要条件更重要。
+
+\section{新增三维反例与原后继取舍的完整关系}
+\label{sec:examples}
+\subsection{同一共同方向，交叉相关性改变真正可用的信息}
+取
+\begin{equation}
+D=I_3,\quad R_a=\begin{bmatrix}1&0&4/5\\0&0&0\\4/5&0&1\end{bmatrix},\quad
+R_b=\begin{bmatrix}0&0&0\\0&1&4/5\\0&4/5&1\end{bmatrix},\quad J_j=D+R_j.
+\label{eq:threeD}
+\end{equation}
+剩余像空间分别为 $\operatorname{span}(e_1,e_3)$ 与 $\operatorname{span}(e_2,e_3)$，交集为 $\operatorname{span}(e_3)$。两个短接矩阵相同：
+\begin{equation}
+K_a=K_b=\frac9{25}e_3e_3^\top,
+\qquad P_{\mathcal U}R_jP_{\mathcal U}=e_3e_3^\top.
+\end{equation}
+令 $c=\alpha e_3$、选择阈值取任意有限值。定理\ref{thm:comparable}给出精确条件
+\begin{equation}
+\boxed{\alpha^2\le1+\frac9{25}=\frac{34}{25}.}
+\end{equation}
+当 $\alpha=11/10$，$G\npreceq D$，但可以利用共同剩余完成目标；裕量为 $3/20$。当 $\alpha=6/5$，源实验依旧合法，各 $J_j-G$ 的相关二维行列式为 $12/25>0$；但任何随机核都不能生成目标，真实裕量为 $-2/25$。若错误使用普通投影，则会得到 $14/25>0$ 并错判可行。
+
+这里没有人体或机器人特定名称。它展示了一个一般实验比较中可验证的缺口：共同信息不能只按方向有无和边际大小记账，独占方向与共同方向的相关性会消耗可独立复用的部分。
+
+\subsection{V7.1 的当前响应相同、后继不可比例}
+令 $p=2$、$M=(1,0)$、$\Lambda=1$，初始信息为
+\[
+J_{a,0}=\diag(3,2),\qquad J_{b,0}=\diag(2,3).
+\]
+实际当前端口 $Y_1=U_1+\epsilon_1$，$\epsilon_1\sim\N(0,\tfrac1{10}I_2)$；要求 $Y_1\given\theta\sim\N(\theta,I_2)$。取 $s\in\{-1,+1\}$，设计
+\begin{equation}
+C_s=(\tfrac35,-s\tfrac25).
+\end{equation}
+两个实现的各模式\eqref{eq:basegate}都严格正定；相应 $5\times5$ 行列式为 $24/125$ 和 $131/500$。执行后
+\begin{align}
+J_a^+&=\diag(2,1),&J_b^+&=\diag(1,2),\\
+M_s^+&=(\tfrac25,s\tfrac25),&\Lambda^+&=\tfrac{12}{25},\\
+G_s^+&=\tfrac13\begin{bmatrix}1&s\\s&1\end{bmatrix}.
+\end{align}
+当前响应与 $J_j^+$ 都不区分 $s$，选择关联却区分。
+
+后继物理端口为 $Y_2=U_2+\omega_2$，$\omega_2\sim\N(0,1/2)$，目标合同为
+\begin{equation}
+Y_2\given\theta,Y_1\sim\N(\theta_1+s\theta_2,2).
+\label{eq:futures}
+\end{equation}
+新噪声独立且发生在控制之后，Gaussian 特征函数非零，故合同迫使
+$U_2\given\theta,Y_1\sim\N(\theta_1+s\theta_2,3/2)$。对应规范信息为
+\begin{equation}
+D_s=\frac23\begin{bmatrix}1&s\\s&1\end{bmatrix}.
+\end{equation}
+两个 $J_j^+-D_s$ 的像为不同直线，交集为零。定理\ref{thm:comparable}退化为 $G\preceq D_s$：匹配 $s$ 时成立，反号时失败。由此，反号后继对\textbf{任何读取完整已有记录的参数无关随机控制器}都不可实现；它不是线性反馈基线失效。要求仍然是动作前没有新增未声明的含参数探查。
+
+\subsection{不存在兼顾两个后继的当前共同联合实现}
+对任意当前共同关联 $C$，\eqref{eq:basegate}的 $(T,U_1)$ 主块要求 $\norm C^2\le9/10$，所以更新后 $\Lambda^+\ge1/10$。两个后继都成功会要求
+\[
+G^+=\frac{(M-C)^\top(M-C)}{1-CC^\top}\preceq D_+,D_-.
+\]
+两目标像空间交集为零，故 $G^+=0$，从而 $C=M=(1,0)$，与 $\norm C^2\le9/10$ 冲突。
+
+这个“没有第三种兼顾实现”的结论限于当前共同联合 Gaussian 类；固定一个当前实现之后的错误后继不可能性，才覆盖全部后继随机核。这一区别在正文、实验和结论中都保持。
+
+\subsection{为什么是任务能力，而不只是分布形状的区别}
+后继合同\eqref{eq:futures}规定了当前输出以后、具有真实新噪声的物理结果。仅匹配 $Y_2$ 的无条件边缘可能使用不同的前后相关性，不等于匹配合同。这个条件接口适用于需要对一族后续任务复用技能的场景；单次只要求位置大致居中的控制问题可能并不需要如此强的合同。理论的使用价值要按任务需要判断，不能为了制造分离而强迫所有超声控制都保持一个任意精确 Gaussian 分布。
+
+\section{真实连续物理状态：联合类型与当步凸编译}
+\label{sec:state}
+\subsection{保留状态本身，而不是仅保留其统计信息}
+设机器人当前实际可测状态为 $x\in\R^d$，可以包含关节/轨道偏差、接触作用点局部坐标、速度和有限维执行器记忆。对固定公开历史和模式，令
+\begin{equation}
+\zeta_j=\begin{bmatrix}S_j\\T\\x-\ell_j\end{bmatrix},\quad
+\E[\zeta_j\given\theta]=\mathsf A_j\theta,
+\quad\mathsf A_j=\begin{bmatrix}J_j\\M\\L_j\end{bmatrix},
+\label{eq:statezeta}
+\end{equation}
+其未选择 Gaussian 协方差为
+\begin{equation}
+\Sigma_j=
+\begin{bmatrix}
+J_j&M^\top&L_j^\top\\
+M&\Lambda&K_j^x\\
+L_j&(K_j^x)^\top&P_j
+\end{bmatrix}\succeq0.
+\label{eq:statecov}
+\end{equation}
+本节 $K_j^x=\Cov(T,x)$，与前文短接矩阵 $K_j$ 不同。$\ell_j$ 可以依赖公开历史；$M,\Lambda$ 及选择分区在不同模式中共同。真实分布仍限制在 $T\in\mathcal C_j$ 后相加。
+
+规范关系
+\begin{equation}
+\Sigma_j(:,S)=\mathsf A_j
+\label{eq:scoreidentity}
+\end{equation}
+保证 $S_j$ 是完整统计记录的得分。它是类型的可检查约束。对于任意实际连续状态，不能不加检查就将其均值、协方差填入该模型；必须由初始化实验、仿射状态演化或经检验的近似构造得到该类型。实际执行一直保留 $x$，不会从 $P_j$ 重新抽样一个“等价机器人位置”。
+
+\subsection{动力学与观测的同一个物理创新块}
+令输入 $u\in\R^m$，真实离散时间模型为
+\begin{align}
+x'&=A_jx+B_j^xu+D_j^x\theta+a_j+w_j,\\
+Y&=H_jx+B_j^yu+E_j\theta+e_j+\epsilon_j,
+\label{eq:statephysical}\\
+\begin{bmatrix}w_j\\\epsilon_j\end{bmatrix}
+&\sim\N(0,\Omega_j),\qquad
+\Omega_j=\begin{bmatrix}Q_j^x&Q_j^{xy}\\(Q_j^{xy})^\top&Q_j^y\end{bmatrix}\succ0.
+\label{eq:jointnoise}
+\end{align}
+新联合噪声独立于既有记录及控制随机性。过程与图像噪声可以相关，不能当作两个独立来源重复计信息。$x'$ 和 $Y$ 均在本段执行后可测。部分不可测状态不直接适用本定理。
+
+本段矩阵由声明的模式和公开上下文给定；不允许在未说明时把任意私有 $x$ 依赖的非线性 Jacobian 当成固定矩阵。目标为 $Y\given\theta,H\sim\N(F\theta+f,V)$，$V\succ0$。输入通道 $B_j^y$ 可欠驱动，不假定它可逆。
+
+\subsection{用控制矩而不是反馈增益作变量}
+定义变量
+\begin{equation}
+b_j=\E[u\given\theta=0],\quad
+\mathcal R_j=\Cov(\zeta_j,u)
+=\begin{bmatrix}\mathcal R_{S,j}\\\mathcal R_{T,j}\\\mathcal R_{x,j}\end{bmatrix},
+\quad U_j=\Cov(u).
+\end{equation}
+所有协方差指未选择模型。对固定 $\Sigma_j$，一个仿射 Gaussian 控制具有这些矩，当且仅当
+\begin{equation}
+\boxed{\begin{bmatrix}\Sigma_j&\mathcal R_j\\\mathcal R_j^\top&U_j\end{bmatrix}\succeq0.}
+\label{eq:momentLMI}
+\end{equation}
+其实现公式为
+\begin{equation}
+\boxed{u=b_j+\mathcal R_j^\top\Sigma_j^\dagger\zeta_j+\eta_j,\quad
+\eta_j\sim\N(0,U_j-\mathcal R_j^\top\Sigma_j^\dagger\mathcal R_j).}
+\label{eq:statecontrol}
+\end{equation}
+由\eqref{eq:scoreidentity}与半正定像条件，控制的参数均值为
+\begin{equation}
+\E[u\given\theta]=b_j+\mathcal R_{S,j}^\top\theta.
+\label{eq:controlmean}
+\end{equation}
+这个恒等式把原本含反馈增益的约束改成对控制矩的线性约束。
+
+\begin{theorem}[含真实状态的当步有限 SDP]
+\label{thm:statecompile}
+固定类型\eqref{eq:statezeta}--\eqref{eq:statecov}、物理模型\eqref{eq:statephysical}--\eqref{eq:jointnoise}与目标。在共同未选择 $(T,Y)$ 联合 Gaussian 实现族内，真实因果控制存在当且仅当有 $b_j,\mathcal R_j,U_j$ 及各模式共同的 $C$，满足\eqref{eq:momentLMI}和
+\begin{align}
+H_j\ell_j+B_j^yb_j+e_j&=f,\label{eq:meanconstant}\\
+H_jL_j+B_j^y\mathcal R_{S,j}^\top+E_j&=F,\label{eq:meanslope}\\
+H_jP_jH_j^\top+H_j\mathcal R_{x,j}(B_j^y)^\top
++B_j^y\mathcal R_{x,j}^\top H_j^\top
++B_j^yU_j(B_j^y)^\top+Q_j^y&=V,\label{eq:outputcov}\\
+K_j^xH_j^\top+\mathcal R_{T,j}(B_j^y)^\top&=C.\label{eq:crossC}
+\end{align}
+该可行性问题为有限 SDP。任何可行解由\eqref{eq:statecontrol}生成真实控制，不需读取未知参数，也不重置实际连续状态。
+\end{theorem}
+\begin{proof}
+必要性：任意该族控制的 $(\zeta_j,u)$ 联合协方差必满足\eqref{eq:momentLMI}。规范关系给出\eqref{eq:controlmean}；对物理输出求均值、协方差及与 $T$ 的交叉协方差，逐项得到\eqref{eq:meanconstant}--\eqref{eq:crossC}。
+
+充分性：半正定 Schur 条件使\eqref{eq:statecontrol}的独立噪声协方差合法，并保证 $\mathcal R_j$ 位于 $\Sigma_j$ 的像中。重建后控制具有规定矩和参数均值。与独立物理噪声相加后，$(T,Y)$ 在所有未选择模式中均为相同的 Gaussian 联合分布。将其分别限制到 $T\in\mathcal C_j$ 再求和，实际 $Y$ 便具有目标律。控制使用的是旧记录和独立随机性，故在新物理噪声发生前可实施。所有约束对变量仿射或半正定，因此当步为凸问题。
+\end{proof}
+
+可加入凸的控制能量或相对于旧控制的偏好目标。例如固定一个仅用于代价的设计先验 $\theta\sim\N(m_0,P_0)$，则
+\[
+\E\norm u^2=\norm{b_j+\mathcal R_{S,j}^\top m_0}^2+
+\tr U_j+\tr(\mathcal R_{S,j}^\top P_0\mathcal R_{S,j})
+\]
+是凸函数。该先验不改变逐参数正确性，也不是把患者后验当作控制自由度。对实际选择后总能量，须用选择分布重新求期望；上式不能直接当作选择后每模式的真实代价。
+
+\section{执行后的连续状态闭合、后继组合与限制}
+\label{sec:stateupdate}
+\subsection{完整创新更新：相关噪声只计一次}
+实际 $x',Y$ 到达后，定义
+\begin{equation}
+o_j=\begin{bmatrix}
+x'-A_jx-B_j^xu-a_j\\Y-H_jx-B_j^yu-e_j
+\end{bmatrix},\qquad
+\overline E_j=\begin{bmatrix}D_j^x\\E_j\end{bmatrix}.
+\end{equation}
+在完整既有记录与已执行控制条件下，$o_j=\overline E_j\theta+\N(0,\Omega_j)$。完整数据新增得分及信息为
+\begin{align}
+S_j^{\mathrm{full}}&=S_j+\overline E_j^\top\Omega_j^{-1}o_j,\\
+J_j^{\mathrm{full}}&=J_j+\overline E_j^\top\Omega_j^{-1}\overline E_j.
+\end{align}
+相对于已经公开的目标响应 $Y$，余下的条件实验用
+\begin{align}
+\boxed{S_j^+=S_j^{\mathrm{full}}-F^\top V^{-1}(Y-f),}\label{eq:stateSupdate}\\
+\boxed{J_j^+=J_j^{\mathrm{full}}-F^\top V^{-1}F}\label{eq:stateJupdate}
+\end{align}
+表示。若先分别以 $Q^x,Q^y$ 更新，再忽略 $Q^{xy}$，通常得到错误信息；正确更新使用整个 $\Omega$。
+
+\subsection{真实状态的预测矩与条件矩}
+以下量由编译后的控制矩直接计算，仍指未选择 Gaussian 模型：
+\begin{align}
+\ell_j'&=A_j\ell_j+B_j^xb_j+a_j,\\
+L_j'&=A_jL_j+B_j^x\mathcal R_{S,j}^\top+D_j^x,\label{eq:stateLprime}\\
+P_j'&=A_jP_jA_j^\top+A_j\mathcal R_{x,j}(B_j^x)^\top
++B_j^x\mathcal R_{x,j}^\top A_j^\top+B_j^xU_j(B_j^x)^\top+Q_j^x,\\
+(K_j^x)'&=K_j^xA_j^\top+\mathcal R_{T,j}(B_j^x)^\top,\\
+N_j&=\Cov(x',Y)\nonumber\\
+&=A_jP_jH_j^\top+A_j\mathcal R_{x,j}(B_j^y)^\top
++B_j^x\mathcal R_{x,j}^\top H_j^\top+B_j^xU_j(B_j^y)^\top+Q_j^{xy}.
+\label{eq:stateN}
+\end{align}
+公开真实 $Y$ 后，更新选择与状态类型为
+\begin{align}
+T^+&=T-CV^{-1}(Y-f),\nonumber\\
+M^+&=M-CV^{-1}F,\qquad\Lambda^+=\Lambda-CV^{-1}C^\top,\label{eq:stateTM}\\
+\ell_j^+&=\ell_j'+N_jV^{-1}(Y-f),\label{eq:ellplus}\\
+L_j^+&=L_j'-N_jV^{-1}F,\label{eq:Lplus}\\
+P_j^+&=P_j'-N_jV^{-1}N_j^\top,\label{eq:Pplus}\\
+(K_j^x)^+&=(K_j^x)'-CV^{-1}N_j^\top.\label{eq:Kplus}
+\end{align}
+$\ell_j^+$ 是表示中的条件偏移，不是控制器把机器人移到了一个新位置。实际保存并交给下一步的是测得的同一个 $x'$；新的中心化变量只是 $x'-\ell_j^+$。
+
+\begin{theorem}[真实连续状态的有限闭合]
+\label{thm:stateclosure}
+在定理\ref{thm:statecompile}的条件下，执行实际控制并按\eqref{eq:stateSupdate}--\eqref{eq:Kplus}更新后，
+\[
+\zeta_j^+=\begin{bmatrix}S_j^+\\T^+\\x'-\ell_j^+\end{bmatrix}
+\]
+在每个未选择的条件模型中仍具有\eqref{eq:statezeta}--\eqref{eq:statecov}的规范 Gaussian 类型。真实分布通过相应平移后的选择事件获得，真实模式与状态不被重采样。若后续每段继续满足同类物理模型，且 $p,k,d,K$ 固定，则统计类型与实际运行值的尺寸不随步数增长。
+\end{theorem}
+\begin{proof}
+先看完整似然。控制是既有数据的参数无关随机核，新增参数信息仅来自 $o_j$。相乘得到 $S_j^{\mathrm{full}},J_j^{\mathrm{full}}$；除以正确公开响应的似然 $\exp(\theta^TF^TV^{-1}(Y-f)-\theta^TF^TV^{-1}F\theta/2)$，得到\eqref{eq:stateSupdate}--\eqref{eq:stateJupdate}。
+
+再独立检查全部协方差。由\eqref{eq:scoreidentity}、真实创新独立性及物理方程可得
+\[
+\Cov(S_j^{\mathrm{full}},Y)=F^\top,\quad
+\Cov(S_j^{\mathrm{full}},x')=(L_j')^\top,\quad
+\Cov(S_j^{\mathrm{full}},T)=M^\top,
+\]
+且 $\Cov(S_j^{\mathrm{full}})=J_j^{\mathrm{full}}$。因此将 $Y-f$ 的线性回归项扣除，$S_j^+,T^+,x'-\ell_j^+$ 在未选择 Gaussian 模型中与 $Y$ 独立；均值参数块分别为 $J_j^+,M^+,L_j^+$。Gaussian 条件协方差公式给出所有新块，包括
+\[
+\Cov(S_j^+,T^+)=(M^+)^\top,
+\qquad\Cov(S_j^+,x'-\ell_j^+)=(L_j^+)^\top.
+\]
+故规范类型保持，联合协方差自动半正定。原选择条件等价于
+\[
+T^+\in\mathcal C_j-CV^{-1}(Y-f).
+\]
+因为 $(T,Y)$ 的未选择联合分布共同，新的选择边缘与平移分区仍可一致拼接。最后归纳每一段即可；没有在证明中重新抽样 $j$ 或 $x'$。
+\end{proof}
+
+对固定模式数，类型存储为 $O(K(p+k+d)^2)$；实际值为 $p+k+d$ 个数，另加模式、时间戳、公共程序状态和类型元数据。这个规模不包括一个任意复杂源程序自己的记忆。闭合也不等于求解器具有固定最坏时延。
+
+\subsection{任务为什么要条件于已经公开的响应}
+信息更新中的“减法”不是销毁原始传感数据。公开 $Y$ 加上残余实验仍可恢复相应的完整信息。这里比较的是：给定已经执行的公开任务历史，是否还可产生规定的后继响应。因此，相同完整统计实验可以因输出接口的关联不同而留下不同的\emph{条件}能力。
+
+若后续任务只约束无条件终点、不关心与当前输出的相关性，某些分离会消失。采用条件合同的合理场景包括：模块串接要求新的误差创新律、不同任务要求下复用同一接口，或规定了可组合的输出轨迹分布。普通一次性图像居中不一定需要这个合同。可以让 $V$ 属于任务容许集合并优化，避免强制精确复制一个没有业务意义的方差；但相应合同变化后，需要重算比较域。
+
+\subsection{一次多步编译与在线重编译的不同难度}
+当没有持续物理状态、矩阵日程已经固定时，V7.1 的块 Schur 构造可同时优化所有 $C_t$。本版加入状态之后，未来的 $\Sigma_{j,t}$ 本身依赖当前控制矩，未来反馈又与它相乘。\textbf{当步问题是 SDP，不代表完整非线性有限时域问题也自动是一个 SDP。}
+
+可验证的运行方式是：在当前类型上求本段控制；用闭合更新获得下一段类型；对已声明的后继合同逐一验收，或在有限预定计划库中做联合检查。矩阵日程固定时可利用专门的协方差规划构造；若需要一般全时域最优性，则必须另证，不能从本定理的局部凸性推得。
+
+途中改变任务时，以当前 $(j,S,T,x,\Xi)$ 为输入，更换 $F,f,V$ 或允许的动作集合，重新执行当步编译和后继验收。若任一新合同失败，返回需要探查、调整实现或不可验收状态。已执行前缀继续保留；既有证据不会被当成新观测重复使用。
+
+\subsection{有限闭合的可检查条件与失效方式}
+\begin{table}[ht]\centering\small
+\begin{tabularx}{\linewidth}{p{.25\linewidth}YY}
+\toprule
+条件 & 可以检查的量 & 不满足时的正确处理\\\midrule
+固定有限状态及模式 & 状态维数、模式定义、动力学记忆 & 增广必要状态；不隐藏持续物理变量\\
+共同参数与规范得分 & $\Sigma(:,S)=\mathsf A$，完整创新似然 & 重新建模或保留近似等级\\
+仿射段模型 & 给定矩阵、局部残差及有效域 & 明确线性化误差，不宣称任意非线性精确闭合\\
+共同选择边缘 & 所有模式的 $M,\Lambda,\mathcal C_j$ & 不把模式各自的高斯边缘随意拼接\\
+新物理噪声因果独立 & 联合噪声模型、采集时间、已有记录 & 相关项并入同一创新块\\
+有界延迟记忆 & 最多待处理帧数、执行器滞后阶数 & 使用有限队列/状态增广；无界队列不称固定维\\
+没有无限新增内部选择 & 固定 $k,K$ 或显式闭合重置 & 新选择可能使维数增长，需重新编译类型\\
+\bottomrule
+\end{tabularx}
+\caption{连续状态被纳入并不免除模型检查。任意私有状态驱动的分段切换通常不保持固定选择维数。}
+\end{table}
+
+例如 $x'=x^2$ 会将非退化 Gaussian 状态变为非 Gaussian 状态；一般神经图像观测和碰撞裁剪同样不保留本类型。对标准非线性 Markov 系统，$(x,\text{完整参数后验})$ 仍可能是充分信息状态，但完整后验未必有限维。不能把这一一般充分性和本稿的有限维 Gaussian 选择闭合混同。
+
+\section{局部近似、硬约束与安全接口}
+\label{sec:robust}
+\subsection{局部误差不能继续沿用精确分布结论}
+精确编译需要指定的仿射物理核。机器人与超声的非线性可以在独立验收的局部域内近似；此时应报告整路径分布误差，而不是把小余项写在模型末尾却仍声称精确实现。
+
+\begin{proposition}[同一因果控制下的有限路径误差]
+\label{prop:kernelerror}
+设真实与名义初始律的总变差不超过 $\epsilon_0$。在所有共同有效历史和允许动作上，完整一步物理/观测核满足
+\[
+\sup_{h,u}\TV(K_t(\cdot\given h,u),\widehat K_t(\cdot\given h,u))\le\epsilon_t.
+\]
+对同一已编译的参数无关因果策略，长度 $N$ 的完整路径律满足
+\begin{equation}
+\TV(P_{0:N},\widehat P_{0:N})
+\le\min\{1,\epsilon_0+\sum_{t=0}^{N-1}\epsilon_t\}.
+\label{eq:pathTV}
+\end{equation}
+若这些界仅在某有效域/参数置信事件内成立，另加离开该事件的联合概率上界。任何可测输出接口都不增加此距离。
+\end{proposition}
+\begin{proof}
+将两过程以最大耦合构造：共同历史下使用相同策略随机性，再耦合下一物理核。尚未分离时，本步分离概率至多 $\epsilon_t$。对首次分离求并集界并加入初始差异得\eqref{eq:pathTV}；有效域之外另计。投影到输出是一个共同随机核，由总变差的数据处理性质不增大距离。该证明是标准核扰动工具，不作为独立新颖性。
+\end{proof}
+
+对于具有相同\emph{非奇异}协方差 $\Omega$ 的 Gaussian 核，若均值误差不超过 $r$，则 Gaussian 相对熵和 Pinsker 不等式给
+\begin{equation}
+\KL\le\frac{r^2}{2\lambda_{\min}(\Omega)},
+\qquad \TV\le\frac{r}{2\sqrt{\lambda_{\min}(\Omega)}}.
+\label{eq:GaussianTV}
+\end{equation}
+存在参数或数值模型选择时，需要误差在被优化选择的整个候选域上有效。只测训练集平均误差不能用于上述统一结论。
+
+对于完全确定性状态更新，两个很近但不同的 Dirac 核的总变差仍为 1。因此不能用式\eqref{eq:GaussianTV}处理任意小确定性几何误差。此时应改用实际状态误差管、Wasserstein 距离或 Lipschitz 任务损失界，并与原有接触和运动安全分析分别组合。
+
+\subsection{有限控制幅度与 Gaussian 响应的根本范围}
+一般 Gaussian 控制有无界支撑。硬速度、位移、力界与精确无截断 Gaussian 端口不能被无条件同时许诺。现实部署需要先声明允许的概率风险或局部工作域，再由独立安全过滤保证真实输入合法。
+
+在有界参数域内，可以对每个未选择模型建立控制/状态违规概率界 $\delta_{j,t}$。真实选择后
+\[
+P(\text{违规})=\sum_jP_j(T\in\mathcal C_j,\text{违规})
+\le\sum_j\delta_{j,t}.
+\]
+不能把未选择模型的 Gaussian 分位数直接当成实际 $u\mid j$ 的条件分位数。跨时域需计入联合事件，不能逐时独立相乘。
+
+若名义编译策略触发安全过滤的概率有上界 $\delta_{\rm override}$，可在不触发时耦合完全相同的行为，将 $\delta_{\rm override}$ 加到任务路径分布误差中。触发后的真实安全性由过滤器/接触控制器的独立合同承担。本文没有从信息矩阵或 Gaussian 协方差推出患者端无源性、无碰撞或不弹跳。
+
+\subsection{“当前响应协方差”与“患者后验协方差”不能混用}
+$V$ 是任务规定或允许优化的输出随机律；$Q$ 是真实端口噪声；$P_\theta$ 是参数后验。前两者的差决定能否以因果控制合成任务；后者描述当前认识。估计更确定可能改变策略选择，但不能把 $P_\theta$ 任意填进 $V$，也不能为了满足 LMI 将观测噪声写得更小。
+
+这一区分尤其重要：当机器人的目的只是低误差追踪，并不需要规定随机响应时，可将精确目标类作为可认证子集或比较工具；最终实际任务仍由成像、接触与覆盖要求定义。不能用“匹配了一个设计 Gaussian”替代成功扫描。
+
+\section{与调和材料坐标、dIRD 和超声控制的具体结合}
+\label{sec:integration}
+\subsection{三层职责必须通过同一个物理模型相接}
+本轮核对 RealUS\_playground 主分支，固定提交为
+\begin{center}\small\texttt{dde0c14f3f0832d550588e879e36d57162476070}\end{center}
+其 dIRD README 明确区分可达裕量代理与真实碰撞/可执行证书，保留完整姿态 IK、碰撞验收和八自由度轨迹提升\cite{realus}。AMONG\_US 的调和坐标模块提供表面 Laplace--Beltrami 与体积 FEM 的实现基础\cite{among}。本轮没有修改、推送或运行这两个完整机器人仓库。
+
+\begin{table}[ht]\centering\small
+\begin{tabularx}{\linewidth}{p{.23\linewidth}YY}
+\toprule
+模块 & 向 7.2 提供的对象 & 7.2 反向提供的需求\\\midrule
+调和材料图册与身体对应 & 同一局部目标的地址、位置映射、合法导数及误差 & 哪个材料片段需要继续观测，哪种目标关系应保持\\
+超声分割与关联 & 真实采集时刻的局部特征、有效性、选择证据 & 需要的探查方向、允许的观测日程\\
+dIRD 与真实运动学 & 可执行模式候选、完整状态、输入映射、连续连接 & 当前及后继所需的响应方向和物理控制余量\\
+7.2 编译器 & 选择相关实验与实际状态的联合类型 & 因果控制矩、需要补充的真实探查与不可验收原因\\
+现有接触/内环控制 & 实际输入响应、硬约束与安全回退 & 经验证的低维名义动作，不覆盖其独立安全职责\\
+\bottomrule
+\end{tabularx}
+\caption{接口可以自然连接，但任何模块名称本身都不保证精确模型成立。}
+\end{table}
+
+\subsection{材料坐标提供共同参数，而不是内部真值}
+在固定有效材料图中，定义局部目标先验
+\begin{equation}
+\Gamma_\theta(s)=\Gamma_0(s)+B(s)\theta,
+\qquad p_\theta(s,c)=P_c(\Gamma_\theta(s)).
+\label{eq:materialtarget}
+\end{equation}
+$\Gamma_0$ 是预定义血管/目标条带；$\theta$ 是同一患者在当前窗口中的局部偏差。$P_c$ 将材料位置映到当前身体。非线性 $P_c$ 会使物理目标一般不再对 $\theta$ 仿射；精确理论可在具有相应仿射结构的局部类使用，其他情形通过导数与余项界近似。
+
+SMPL-X 描述外部人体形状、姿态、手和面部表达\cite{smplx}；它不由定义提供患者内部器官位置。材料图册使不同探头姿态下的观测约束同一个 $\theta$，却不能假设内部血管始终和皮肤完全同动。滑移、压迫和呼吸的持续成分应加入实际状态或有界模型误差。
+
+已有调和模块可以保留。不需要为使用 7.2 强行改造成一张覆盖全身的全局新坐标。其正逆映射和 Jacobian 必须在工作片区有效；三维逐分量调和并无一般单射保证\cite{laugesen}。本稿没有证明调和坐标比所有其他有效材料表示更优，也没有利用换坐标制造信息增益。
+
+\subsection{从真实切片得到任务观测微分}
+令成像平面原点为 $o(q)$、法向为 $n(q)$，图像横向/深度投影为 $\Pi_{xz}R(q)^\top$。当前交点 $s_*$ 满足
+\begin{equation}
+n(q)^\top[p_\theta(s_*,c)-o(q)]=0.
+\end{equation}
+在关联唯一且 $|n^\top p_s|\ge\eta>0$ 的局部域，固定探头位姿求参数微分，得到
+\begin{equation}
+D_\theta h=
+\Pi_{xz}R^\top
+\left(I-\frac{p_s n^\top}{n^\top p_s}\right)D_\theta p.
+\label{eq:USderivative}
+\end{equation}
+这是对交点方程的隐式微分：$D_\theta s_*=-n^\top D_\theta p/(n^\top p_s)$，再代入图像坐标即可。它不是假定分割网络直接读出了已知材料相位的三维标记点。
+
+对机器人状态、姿态及身体上下文同样求完整微分，形成局部 $H_j,B_j^y,E_j$。例如接触允许的关节速度写为
+\[
+\dot q=\dot q_{\rm contact}+Z_c v,
+\]
+一个短采样段中可取 $B_j^y\simeq\Delta t\,D_qh\,Z_c$，其线性化误差需在相同位姿和接触管上界定。真实执行滞后可以用有限状态增广进入 $x$；简单把指令当成已实现速度会破坏观测回归。
+
+由式\eqref{eq:USderivative}可见，材料映射与图像规则决定哪些未知量影响任务；机器人运动学和接触约束决定可实现的动作。dIRD 的梯度选择的是候选物理实现，不能改变目标后验，也不能代替图像噪声和响应参数的标定。
+
+\subsection{方向偏好与内部遮挡：可以不重建全解剖，但要有可验证的局部作用模型}
+不同方向的移动可以形成不同模式 $j$，具有不同的观测增益、执行方向、可见性与噪声。模型可直接描述这些局部作用，无需先构建完整 CT 式内部结构。但“局部作用可估计”与“它一定满足 7.2 的有限 Gaussian 类型”是两件事。
+
+最适合验证本理论的情形是：机器人根据带噪局部证据选择某个可重复、具有持续后果的声窗或接触实现；该选择与当前图像响应的关联，确实改变后续需要的校正方向或探查权限。若模式只是由确定性已知机器人几何选出，与任何未知证据无关，则选择偏差的核心机制可能不存在，应使用相应退化的普通控制模型。
+
+遮挡导致的失检概率若依赖 $\theta$，就产生删失似然；不能把失检帧删除后仍使用未删失 Gaussian 更新。可以显式增加离散有效性事件或局部模式，但新的选择可能增加 $k,K$。在没有固定维闭合构造时，保留混合/近似后验并标记证据等级。完全未知且从未被感知的任意内部障碍，不会因有一个粗目标先验就被自动预测。
+
+\subsection{dIRD 最适合做外层物理候选，不应被伪装成统计模型}
+建议先利用 dIRD 与精确运动学生成有限的、从当前真实 $q$ 可连接的候选。在每个候选局部域中独立建立式\eqref{eq:statephysical}，再用 7.2 判断当前与后继合同。内层固定模型编译是凸的，外层姿态、轨道、声窗与分支选择一般仍非凸。
+
+仓库中已有整路径 SQP、真实 FK/Jacobian、接触法向与硬验证余量输出\cite{realus}，可以承担输入映射和候选验收。但本轮并未证明某条实际 RM75 长血管路径满足全部条件，也未获得新控制器的硬实时频率。原来的快速力控/QPIK 环应保留，编译器作为较慢的事件驱动层；没有新的可行合同前，不让它绕过已有安全回退。
+
+材料非线性映射、连续姿态优化和实时重新估计会改变模型。如果对当前私有状态任意重选矩阵，严格有限闭合可能失效；必须把变化放入声明的公共上下文、扩展模式，或使用第\ref{sec:robust}节的局部误差合同。不能仅因每一步都运行了 SDP 就声称整段精确。
+
+\section{零专家示教、在线估计与最少准备工作}
+\label{sec:data}
+\subsection{对用户问题的明确回答}
+\begin{keybox}
+\textbf{可以不采集大量专家运动示教来离线训练 7.2。}
+它的任务要求、局部动力学、有限基和编译运算可以由解析模型、仿真和局部在线辨识构造。
+
+\textbf{但“分割网络 + SMPL-X + 一条预定义血管/器官位置”并不自动构成完整可部署输入。}
+还需机器人/探头/图像的空间与时间标定、可靠接触执行、目标关联、可用输入范围，以及初始响应和噪声的模型或保守界。这些主要是系统标定与模型验证，不等于大规模专家示教数据。
+\end{keybox}
+
+跟踪超声系统的标定、采集与多设备时序已有成熟工程接口，例如 PLUS 项目\cite{plus}。将已有感知模型用在自己的场景，还需验证其输出误差；预训练模型已经使用过训练数据，“本项目无需新增大规模 demo”不能写成“整个系统没有学习或数据”。
+
+\begin{table}[ht]\centering\small
+\begin{tabularx}{\linewidth}{p{.27\linewidth}p{.22\linewidth}Y}
+\toprule
+准备项 & 是否需要大量专家 demo & 能否主要在线处理\\\midrule
+分割网络及其有效性评估 & 不需要机器人示教；网络本身可能需标注图像 & 可在线推理，误差模型仍需独立验证\\
+SMPL-X/相机人体跟踪 & 可直接采用已有模型 & 在线更新表面与姿态；不直接观测内部目标\\
+目标先验与任务规则 & 可人工指定或程序化生成 & 局部位置可在线纠偏；身份、切面和覆盖语义需给定\\
+机器人、TCP、图像外参与时延 & 不需要专家轨迹示教 & 可小规模标定及慢修正，不应未标定即强保证接触执行\\
+接触力、速度和有效域 & 不需要大规模 demo & 在线监测；初始安全界与执行能力需已知\\
+局部响应参数和噪声 & 可由体模/仿真初始化，不必患者离线训练 & 可递推估计，但需要可辨识激励、先验界与失效检测\\
+dIRD & 可用运动学/碰撞生成标签 & 模型主要离线建立；场景与任务在线查询\\
+\bottomrule
+\end{tabularx}
+\caption{减少的是专家技能示教依赖，不是删除感知、标定和安全所需的信息。}
+\end{table}
+
+器官只给一个位置通常不足以定义任务：还需标准切面、解剖标志或扫描条带及覆盖规则。一个一维目标模型可以描述某条器官扫描条带，但不自动完成未知三维器官形状重建。预定义血管必须包含可关联的目标身份，不能仅靠最近空间点跨越分叉。
+
+\subsection{参数在线估计可以精确递推，但不要重复利用证据}
+对静态线性参数模型，完整原生历史的规范得分与信息记为 $S_t^{\rm all},J_t^{\rm all}$。若设计采用 Gaussian 先验 $\theta\sim\N(m_0,P_0)$，则
+\begin{equation}
+P_{\theta,t}=(P_0^{-1}+J_t^{\rm all})^{-1},\qquad
+m_{\theta,t}=P_{\theta,t}(P_0^{-1}m_0+S_t^{\rm all}).
+\label{eq:onlineposterior}
+\end{equation}
+每个实际条件创新贡献一次 $E^TQ^{-1}r$ 和 $E^TQ^{-1}E$；观测日程可以因果选择，回归矩阵须在该观测到达前已知。正文残余 $S_j,J_j$ 已除去公开任务似然，不能直接当作全部患者证据；须合并公开任务部分，或单独维护完整账本。重复使用同一图像或将其分割结果再当独立测量会过度计数。
+
+在线递推估计不是新的理论贡献，主动协方差控制已有相关 RLS 构造\cite{dual}。本稿的额外问题是：得到何种条件实验、真实状态如何持续作用，以及这个实验能否支持指定后继任务。
+
+\subsection{“其他参数全部实时估计”不能无条件成立}
+如果 $A,B,E,Q$ 本身未知，替换成当前估计值后，精确编译定理一般不再成立。一个最小反例是未区分的两种执行器增益 $a_1\ne a_2$，在同样数据历史下需要 $a_1u=g$ 与 $a_2u=g$，非零 $g$ 不能由同一个确定均值输入同时满足。在线估计必须先获得能区分它们的合法激励，或接受任务误差。
+
+允许的做法是：使用已有标定的名义模型加明确误差界；对有限候选模型作共同鲁棒验收；或增加真实探查并在误差收缩后更新编译。未知噪声、组织非平稳性与接触模式误配同理。递推估计得到小协方差，不自动证明模型正确，也不能保证未激励方向已被识别。
+
+若 $\theta$ 在任务中变化，应声明时间模型并增广状态或重建窗口。一个静态潜参数后验不能同时被用来解释任意快速组织运动。忘记因子可以是工程近似，但改变了原静态似然，不能继续引用未经修改的精确实验比较。
+
+\subsection{实时性结论目前到哪里}
+给定小维数矩阵，得分更新与闭合公式不随历史增长，这使实时实现有合理起点。但求解器、图像处理、真实几何查询、模型切换和通信的最坏时延需要测量；本轮没有测得 200 Hz 或其他实机硬实时性能。
+
+推荐沿用已有快速接触/关节控制层，在有效图像或任务变化事件上更新低维估计与编译。所选段必须包含时戳、有效期、入口状态和保持/回退动作。迟到图像使用采集时刻位姿；最多保留一个事先规定大小的迟到队列。平均图像更新频率本身不是最大延迟保证。
+
+\section{本轮实际完成的验证与未执行部分}
+\label{sec:validation}
+\subsection{验证协议与来源}
+配套 \texttt{verification/verify\_v72.py} 是本轮新增脚本，依赖 NumPy、SciPy、SymPy。运行环境为 Python 3.13.5、NumPy 2.3.5、SciPy 1.17.0、SymPy 1.14.0。固定随机种子分别写在函数参数中；运行后写出 \texttt{v72\_results.json}。原 V7.1 后继取舍检查脚本也已独立复制并重跑。
+
+本轮只运行解析和合成模型。没有执行真实超声图像、SMPL-X 追踪、dIRD checkpoint 或机器人驱动。没有通用 SDP 求解器可用，因此以显式构造的可行矩验证编译条件与实际控制；不把“检查 LMI 成立”称作已运行一般最优 SDP。一般相交的正测度可行性算法没有被实现。
+
+\subsection{交集与短接的精确有理数验证}
+对\eqref{eq:threeD}，用精确有理数分别计算两种独立 Schur 表达式，得到相同短接 $\diag(0,0,9/25)$。检查三个源相关矩阵、像空间维数及所有非空主子式，确认通过与失败例的源实验均合法。
+
+\begin{table}[ht]\centering\small
+\begin{tabular}{lrrr}
+\toprule
+选择系数 $\alpha$ & 真实精确裕量 & 投影错误裕量 & 结论\\\midrule
+$11/10$ & $3/20$ & $79/100$ & 存在显式提取核\\
+$6/5$ & $-2/25$ & $14/25$ & 任意核均不可能\\
+\bottomrule
+\end{tabular}
+\caption{同一交集下，忽略跨方向相关性会在第二行错误认证可行。}
+\end{table}
+
+另外，80 组随机五维正定协方差以独立的 Gaussian 回归残差计算验证短接矩阵，最大恒等式误差为 $5.063\times10^{-14}$。这是数值实现核对，不替代前文全域证明。非可比例\eqref{eq:gap}的必要条件和共同 Gaussian 中间实验不可行性也用有理数检查；任意非 Gaussian 提取是否存在不在其数值结论中。
+
+\subsection{真实选择后执行显式提取}
+在三维通过例取阈值 $b=0.2$，分别固定
+\[
+\theta=(0,0,0),\quad(0.3,-0.4,0.7),\quad(-0.6,0.2,-0.5).
+\]
+每组生成 40,000 条源路径，按真实 $T$ 选择实际模式，获得该模式的 $W_j$，执行两次\eqref{eq:thin}。没有将已经选择的模式换成独立重采样模式。
+
+\begin{table}[ht]\centering\small
+\begin{tabular}{lrrr}
+\toprule
+参数组 & 最大均值误差/标准误 & 协方差最大绝对误差 & 模式 $b$ 比例\\\midrule
+$(0,0,0)$ & 1.802 & 0.005639 & 0.57795\\
+$(0.3,-0.4,0.7)$ & 0.716 & 0.007335 & 0.287425\\
+$(-0.6,0.2,-0.5)$ & 0.631 & 0.005103 & 0.769875\\
+\bottomrule
+\end{tabular}
+\caption{输出与目标 $\N(\theta,I_3)$ 的 Monte Carlo 核对。模式比例随参数变化，验证不依赖把选择事件假设成参数无关。}
+\end{table}
+
+\subsection{实际二维连续状态的八步反馈与任务变化}
+新增测试保留二维参数、一个选择变量、两个持续模式和二维实际状态。每组固定参数执行 30,000 条、每条八步的路径。两模式具有不同 $A,B^x,H,D^x,E$；过程/输出噪声有非零交叉项。控制使用当前真实状态创新，公开反馈项为 $0.1\tanh(Y_{t-1})+0.02t$。第 4 步之后，目标参数行从 $(0.5,-0.3)$ 改为 $(-0.2,0.45)$，继续复用同一状态与得分。全部数值矩阵见脚本，未隐藏一个额外估计器。
+
+每步用两条独立计算路径比较新类型：一条使用正文闭合公式，另一条直接对完整未选择联合 Gaussian 变量作线性块变换和条件化。还从完整原始记录重新计算得分与控制，作为具有相同模式、噪声和真实状态的强正确基线。
+
+\begin{table}[ht]\centering\small
+\begin{tabularx}{\linewidth}{Yr}
+\toprule
+检查量 & 实际结果\\\midrule
+模式--步条件协方差检查次数 & 48\\
+闭合公式与独立完整块变换最大误差 & $3.553\times10^{-15}$\\
+编译均值、协方差与共同关联约束最大误差 & $4.441\times10^{-16}$\\
+紧凑得分与完整历史重算最大误差 & $1.066\times10^{-14}$\\
+实际控制与完整历史重算最大误差 & $8.882\times10^{-16}$\\
+构造的控制矩 LMI 最小特征值 & $0.0299003$\\
+每路径新增原始观测标量数 & 24\\
+运行的得分/选择/实际状态数 & $2+1+2$\\
+\bottomrule
+\end{tabularx}
+\caption{运行尺寸之外还保存模式、偏移和固定大小类型。该测试验证真实状态的持续使用，不是从分布生成一个替代状态。}
+\end{table}
+
+三组参数下，八步标准化响应创新的最大均值误差分别为 1.271、2.315、1.666 个 Monte Carlo 标准误；联合创新协方差相对单位阵的最大绝对差分别为 0.012916、0.016481、0.025261。数值与目标一致的解析保证来自定理，有限采样只做实现核对。
+
+整个验证脚本一次运行记录约 0.321 秒；这是当前容器里向量化合成验证的墙钟时间，\textbf{不是单步 SDP、机器人实时闭环或图像处理延迟}。换机器重新运行会改变该数字。
+
+\subsection{正确基线与性能主张}
+完整历史基线保留相同观测、内部模式、非线性公开反馈和实际连续状态；它没有被弱化为开环。与它逐样本一致支持“紧凑表示与更新没有丢失声明信息”，不证明比最佳主动控制器任务完成率更高。
+
+用于判断实际方法价值的下一组对照应保持相同传感与执行权限：完整历史/信念状态反馈、相同任务的主动控制、仅保留 $J_j$ 的压缩、以及本稿联合类型。比较应分开报告响应合同差、连续状态约束、补探查次数、重编译成本和实际成像/覆盖。只显示解析反例或更小矩阵不能替代这些实用性指标。
+
+\section{扩充后的先例审查与创新判断}
+\label{sec:novelty}
+\subsection{按理论功能比较，而不是只按应用名称比较}
+\begin{longtable}{p{.25\linewidth}p{.33\linewidth}p{.34\linewidth}}
+\toprule
+核查对象 & 原文已覆盖的相关内容 & 本版应承担的增量与阅读范围\\\midrule
+\endfirsthead
+\toprule 核查对象 & 已覆盖的相关内容 & 本版增量与阅读范围\\\midrule
+\endhead
+\bottomrule\endfoot
+Xiao 等，Common Mechanism，PVLDB 2023\cite{xiao}
+& 线性 Gaussian 机制的矩阵可回答性、共同机制和剩余机制；原文定理 3.5、5.2 及证明已核对
+& 不能声称信息拆分首次出现。本版处理选择之后的实验及任意随机核，新增交集因子化、阈值短接障碍与物理后继合同\\
+Dharamshi 等，JASA 2025\cite{thinning}
+& 通过充分统计量拆成独立部分，扩展数据 thinning；出版摘要及作者稿记录核对
+& 不能把数据复用/拆分称为新基元。差异须是内生选择下哪些拆分不可能，以及能保持哪个后继任务\\
+Naveau 等，JMVA 2005\cite{naveau}
+& closed skew-normal 的变换、加噪、条件化与状态空间递归；相关闭合和维数讨论核对
+& 连续状态的 Gaussian/选择闭合不独立计新颖。需要补的是可设计的真实响应关联及因果动作条件\\
+Conjard、Omre，2021\cite{selectionkalman}
+& selection Gaussian 状态与观测的时空反演、条件化和采样；原文模型与算法部分核对
+& 本稿不是另一套 selection Kalman filter，而是带后继比较的控制编译；一般选择维数增长仍需承认\\
+Anderson；Owhadi、Scovel\cite{anderson,owhadi}
+& 短接算子与 Gaussian 条件协方差解释；定义及作者摘要核对
+& 不声称新发明短接。它在本稿进入选择实验可提取性的尖锐必要/充分判据\\
+Haesaert 等，SIAM JCO 2017\cite{hsa}
+& gMDP 相似关系、策略精化及输出路径的概率保持；原文相关定理和证明核对
+& “完整路径保真”本身已有基础。具体增量是某选择实验类的有限可计算接口与不可实现见证\\
+Knaup、Tsiotras，2024\cite{dual}
+& 主动参数估计与协方差控制；在线 RLS 及反馈适配；作者公开全文核对
+& 不再主张首次学习与控制联合。比较必须允许正确反馈与主动探查\\
+Kolchinsky，2026 年 10 月预印本\cite{kolchinsky}
+& 公开摘要称对多变量 Gaussian 的 Blackwell 冗余/协同给出优化结果及控制例子
+& 仅核实摘要与条目，本轮全文抓取失败，不能宣称已完成逐定理排除。选择后的非 Gaussian 实验仍是应重点比较的对象\\
+\end{longtable}
+
+最近检索围绕 Gaussian 实验比较、Blackwell 顺序、自适应实验、选择 Gaussian、充分统计量拆分、短接算子及协方差控制展开。部分宽检索只返回间接或无关结果，没有据此断言无人研究该问题。正文只使用可核对的原始论文、作者稿、正式出版信息和项目原代码。
+
+\subsection{哪些结果构成同一条理论贡献}
+本稿最有支撑的贡献表述应收紧为三项，均服务同一个后继能力对象。
+
+\textbf{第一，选择实验的交集约简与尖锐比较。}任意随机核的非 Gaussian 剩余被证明只能位于共同剩余子空间；在标量选择和短接可比类中得到有限的必要充分判据。它不依赖机器人超声这个应用名称。普通投影的错误接受例说明，该结构会实际改变可行/不可行结论。
+
+\textbf{第二，当前响应关联决定后继合同。}两个当前正确实现留下相同信息账本但不同条件任务域；因此选择关联不能被任意删除。该必要性证据使表示量具有操作意义，而不是为了丰富符号增加状态。
+
+\textbf{第三，含真实物理状态的可执行闭合接口。}通过控制矩建立当步精确编译，实际状态持续参与控制并随真实噪声演化。Gaussian 工具本身不新，但它把前两项的比较结果连接到了一个可以执行、更新和重编译的控制对象。
+
+这三项如果分散写成“新统计分布 + 新滤波 + 新机器人优化”，仍会显得拼接。论文应让每个新增量都回答同一个问题：\emph{当前正确完成任务以后，究竟留下哪类可以继续实现的任务？}
+
+\subsection{对理论价值的判断与不成立的强说法}
+目前有理由认为这是一个有意义的理论候选：第\ref{sec:comparable}节给出了并非从逐模式信息顺序直接得到的精确比较边界；第\ref{sec:examples}节给出对任意后继核的物理分离；连续状态接口排除了“统计等价就能换掉真实设备状态”的错误。它比单纯将 GP、零空间和 dIRD 组合更具体。
+
+但下列强说法仍不成立：
+\begin{enumerate}
+\item 已经证明所有一般相交问题都能高效有限求解。完整卷积刻画仍有正测度核变量，非可比情形的有限化没有完成。
+\item 已经替代任意完整信念空间控制。正确的完整后验与实际状态控制器可以实现相同策略；本稿追求的是可复用结构与验收，不是排他性控制能力。
+\item 已经证明真实超声只需三个现成模块，且其余参数均可从零实时估计。初始标定、安全输入、可识别性及模型有效域均不能删除。
+\item 已经获得独立 IJRR 创新性和理论各 4/5 的认可。当前是有证明和验证的研究构造；同行新颖性与通用重要性判断不能由自己规定分数保证。
+\end{enumerate}
+
+也不能因为基础工具已有，就自动把所有具体结果判为工程组合。应比较的是：已发表定理是否已经推出这里的任意核短接条件、相同信息账本的后继分离，以及真实状态下的同一可执行接口。当前核查尚未确认这条完整链被某项先例覆盖，但对仅获取摘要的最新预印本仍保留不确定性。
+
+\subsection{理论主张与超声结合的最强、最弱情形}
+\textbf{最强情形：}局部成像证据决定持续声窗/接触模式，未来任务在相同当前图像质量下存在不同可实现方向；小维共享参数与模式响应可校准，近似模型误差可控制。这时材料地址、dIRD 物理实现和 7.2 的选择相关后继能力有清楚分工。
+
+\textbf{最弱情形：}每帧只做单一图像居中，没有持续选择效应，没有需要保持的后继条件律，所有候选都能由普通视觉伺服稳定跟踪。这时 7.2 可能只增加代数成本，理论不应被硬塞进任务。首先确认机制是否在实际任务中存在，比继续增加更复杂的概率指标重要。
+
+\section{7.2 的更新结论}
+\label{sec:conclusion}
+本版保留的核心已经清晰：\textbf{任务响应、选择证据与真实物理状态的关联决定后继能力；逐模式信息矩阵不足以独立描述它。}理论的中心不是新的超声控制器，也不是另一个表示患者几何的网络。
+
+本次完成了两项实质扩展。一般两模式相交剩余子空间的比较具有正测度卷积充要刻画；其短接可比子类具有完整有限矩阵判据，特别覆盖所有一维交集。真实连续状态在声明的可测仿射模型中进入有限联合类型，得到当步 SDP、显式真实输入和执行后闭合更新。两个扩展均有完整证明和不同计算路径的验证。
+
+同时保留真实边界：一般非可比情形尚不是通用有限算法；任意非线性身体/声学模型、连续私有状态驱动的任意模式切换，以及未知噪声的无条件精确在线编译不在已证明范围内。新增数据不能代替这些结构条件。
+
+对当前项目的实际建议是：继续使用已有调和材料地址、分割与 SMPL-X、dIRD 和接触控制；用局部物理辨识把它们接入本稿矩阵接口。专家运动 demo 可以为零，必要标定、有效观测和安全模型不能为零。先在体模上证明选择相关的后继差异确实出现，再决定是否把 7.2 作为通用理论论文的主要应用。
+
+\appendix
+\section{证明与实现的进一步自检}
+\label{app:checks}
+\subsection{短接算子的最大性}
+在 $\mathcal U\oplus\mathcal U^\perp$ 中，任意支持在 $\mathcal U$ 的正矩阵为 $\widetilde K=\diag(K_U,0)$。条件 $R-\widetilde K\succeq0$ 经广义 Schur 补等价于
+\[
+K_U\preceq A-BC^\dagger B^\top,
+\qquad\im B^\top\subseteq\im C.
+\]
+后一个像条件由 $R\succeq0$ 已经成立，因此\eqref{eq:short}给出最大者。已知可逆参数变换下，PSD 顺序与支撑子空间同步作合同/线性变换，最大性保持；选择正交坐标只是为了展示 Schur 公式，物理判据不依赖坐标名称。
+
+\subsection{一般卷积判据的有限参数与无界参数区别}
+任意核比较的证明要求同一个核对全部 $\theta\in\R^p$ 实现该 Gaussian 实验；负方向指数和 Fourier 障碍均在这一模型类中陈述。若用户只要求有限个参数点、一个特殊受限参数集合，或仅要求平均 Bayesian 风险，必要性可能变弱，应重新定义比较问题。本文没有把全参数下界自动扩张为任何局部物理参数范围上的精确下界。
+
+\subsection{模式数大于二时为什么不能直接照搬交集引理}
+两模式证明使用 $f_a+f_b=1$，使 $f_a$ 同时沿两个正交补不变。三个以上模式只有 $\sum_jf_j=1$，某个函数沿一个方向的变化可能由多个函数共同抵消，不能逐项推出只依赖所有像空间的共同交集。一般规范归一化判据仍成立，但本版因子化定理明确限定两模式。不能将同一个公式无证明推广到任意多模式。
+
+\subsection{线性参数回归闭合不等于闭环实验类型闭合}
+即使回归矩阵依据实际已知状态自适应选择，完整似然关于静态参数仍可能是二次型，因此 Gaussian 参数后验可保持。但作为随机变量的 $(S,J,T,x)$ 未必保持本文有限选择 Gaussian 类型，尤其 $J$ 可能具有连续、历史依赖的随机变化。统计参数可递推与整族实验可编译是不同结论。正文严格型要求固定的模式/公开矩阵日程；超出时使用近似或更丰富类型。
+
+\subsection{重新发布实际状态为公开量会改变合同}
+将 $x$ 纳入任务程序可直接读取的公开输出不是一个无代价技巧：它改变了公开历史及需要保持的联合任务律。若新接口确实允许公开实际机器人状态，应同时重写目标条件和初始化实验；不能通过宣布一个变量公开，继续沿用之前仅对 $Y$ 证明的合同。本版选择持续保留实际状态于执行器内部，避免用条件化替代真实状态动力学。
+
+\section{复现、来源与交付清单}
+\label{app:reproduce}
+本源文件自包含正文、证明和参考文献。需要含 \texttt{ctex/Fandol} 的 TeX Live 与 XeLaTeX；不附带字体文件。完整包包括：
+\begin{center}\small
+\begin{tabularx}{\linewidth}{p{.45\linewidth}Y}
+\toprule
+文件 & 用途\\\midrule
+\texttt{Anatomical\_GPS\_V7.2.tex/.pdf} & 完整更新稿\\
+\texttt{verification/verify\_v72.py} & 本次新推导与真实状态合成验证\\
+\texttt{verification/v72\_results.json} & 已运行原始结果\\
+\path{verification/v71_future_tradeoff_check.py} 及对应 JSON & 对原二维核心反例的复核\\
+\texttt{source\_audit/SOURCE\_AUDIT.md} & 文献阅读范围及检索边界\\
+\texttt{README.md}、\texttt{manifest.json} & 使用说明、来源校验与文件哈希\\
+\bottomrule
+\end{tabularx}
+\end{center}
+运行命令：
+\begin{verbatim}
+python verification/verify_v72.py
+python verification/v71_future_tradeoff_check.py
+xelatex -interaction=nonstopmode Anatomical_GPS_V7.2.tex
+xelatex -interaction=nonstopmode Anatomical_GPS_V7.2.tex
+\end{verbatim}
+重新运行会覆盖对应 JSON，请先保留原始交付结果。本文验证不调用外部模型、不需机器人资产，也没有隐藏的患者真值输入供控制器使用；模拟器当然使用固定 $\theta$ 生成真实数据，控制器只使用其获得的记录。
+
+本轮没有调用独立审稿代理。推导采用似然/条件协方差两条计算路径、有理数与随机浮点两种核验方式；这些不能冒充外部盲审。PDF 生成后进行了渲染与排版检查，交付状态在包内说明中记录。
+
+\begin{thebibliography}{99}
+\small
+\bibitem{xiao} Y. Xiao, G. Wang, D. Zhang, D. Kifer.
+Answering Private Linear Queries Adaptively Using the Common Mechanism.
+\emph{Proceedings of the VLDB Endowment}, 16(8):1883--1896, 2023.
+\url{https://doi.org/10.14778/3594512.3594519}; author manuscript: \url{https://arxiv.org/abs/2212.00135}.
+
+\bibitem{thinning} A. Dharamshi, A. Neufeld, K. Motwani, L. L. Gao, D. Witten, J. Bien.
+Generalized Data Thinning Using Sufficient Statistics.
+\emph{Journal of the American Statistical Association}, 120(549):511--523, 2025 (online 2024).
+\url{https://doi.org/10.1080/01621459.2024.2353948}.
+
+\bibitem{naveau} P. Naveau, M. G. Genton, X. Shen.
+A skewed Kalman filter. \emph{Journal of Multivariate Analysis}, 94(2):382--400, 2005.
+\url{https://doi.org/10.1016/j.jmva.2004.06.002}; author copy: \url{https://marcgenton.github.io/2005.NGS.JMVA.pdf}.
+
+\bibitem{selectionkalman} M. Conjard, H. Omre.
+Spatio-Temporal Inversion Using the Selection Kalman Model.
+\emph{Frontiers in Applied Mathematics and Statistics}, 7:636524, 2021.
+\url{https://doi.org/10.3389/fams.2021.636524}.
+
+\bibitem{hsa} S. Haesaert, S. E. Z. Soudjani, A. Abate.
+Verification of General Markov Decision Processes by Approximate Similarity Relations and Policy Refinement.
+\emph{SIAM Journal on Control and Optimization}, 55(4):2333--2367, 2017.
+\url{https://doi.org/10.1137/16M1079397}.
+
+\bibitem{dual} J. W. Knaup, P. Tsiotras.
+Adaptive Dual Covariance Steering with Active Parameter Estimation.
+Author preprint, 2024.
+\url{https://arxiv.org/abs/2403.15590}.
+
+\bibitem{anderson} W. N. Anderson, Jr.
+Shorted Operators. \emph{SIAM Journal on Applied Mathematics}, 20(3):520--525, 1971.
+\url{https://doi.org/10.1137/0120053}.
+
+\bibitem{owhadi} H. Owhadi, C. Scovel.
+Conditioning Gaussian measure on Hilbert space. Author preprint, 2015.
+\url{https://arxiv.org/abs/1506.04208}.
+
+\bibitem{kolchinsky} A. Kolchinsky.
+Redundancy and synergy in multivariate Gaussians via the Blackwell order.
+Preprint, submitted 5 October 2026.
+\url{https://arxiv.org/abs/2610.07360}.
+本轮仅核查公开摘要与元数据，未完成全文逐定理复核。
+
+\bibitem{smplx} G. Pavlakos, V. Choutas, N. Ghorbani, T. Bolkart, A. A. A. Osman, D. Tzionas, M. J. Black.
+Expressive Body Capture: 3D Hands, Face, and Body from a Single Image.
+\emph{CVPR}, 2019.
+\url{https://arxiv.org/abs/1904.05866}; official project: \url{https://smpl-x.is.tue.mpg.de/index.html}.
+
+\bibitem{laugesen} R. S. Laugesen.
+Injectivity can fail for higher-dimensional harmonic extensions.
+\emph{Complex Variables, Theory and Application}, 28(4):357--369, 1996.
+\url{https://doi.org/10.1080/17476939608814865}.
+
+\bibitem{plus} Plus Toolkit developers.
+Plus: data acquisition, pre-processing and calibration for image-guided interventions.
+Official project description, accessed 11 October 2026.
+\url{https://plustoolkit.github.io/about.html}.
+
+\bibitem{realus} NingMeng0903.
+RealUS\_playground: \texttt{ird\_playground/README.md}.
+Fixed commit \texttt{dde0c14f3f0832d550588e879e36d57162476070}.
+\url{https://github.com/NingMeng0903/RealUS_playground/blob/dde0c14f3f0832d550588e879e36d57162476070/ird_playground/README.md}.
+
+\bibitem{among} NingMeng0903.
+AMONG\_US: harmonic leg volume coordinate implementation.
+\texttt{src/projects/genesis\_ue\_sync/anatomy\_retarget/leg\_volume\_coordinates/harmonic.py}.
+Read file blob \texttt{df5ce7cf811bc990ffdf36303bbfb3231b0abf65}; repository snapshot identified as \texttt{f1ffc5078d6a08c32b59107ab16086a7bbde488e}.
+\url{https://github.com/NingMeng0903/AMONG_US/blob/f1ffc5078d6a08c32b59107ab16086a7bbde488e/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py}.
+\end{thebibliography}
+\end{document}

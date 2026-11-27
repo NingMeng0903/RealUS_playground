@@ -1,0 +1,206 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\KL}{KL}
+\DeclareMathOperator{\TV}{TV}
+\DeclareMathOperator{\diag}{diag}
+\newcommand{\E}{\mathbb E}
+\newcommand{\G}{\mathcal G}
+\newcommand{\Prob}{\mathbb P}
+\title{Anatomical GPS: Material Coordinates, Graph Inference and Embodied Decisions}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+
+\paragraph{Model.}
+On a compact metric graph $\G$ with the vascular landmark vertices, let
+$h_v\sim\mathcal N(\bar h_v,\sigma_h^2)$ independently ($\sigma_h=25\,\mathrm{mm}$)
+and $h_e(\tau)=(1-\tau)h_u+\tau h_v$ along oriented edge $e=(u,v)$.
+Use a common material chart $\xi=(\theta,h,d)$, locally lifted from the circle in $\theta$.
+In a first-order displacement model with independent component priors, write
+\[
+ c_e=\Phi_{\beta,q}(\bar\xi_e)+G_{\beta,q}(\bar\xi_e)
+ \big[u_s(h_e)+\delta_e(\tau)+g_e(\tau,u_t;\kappa_e)+z_{e,t}\big].
+\]
+Incident edges share the same nominal endpoint/frame and the same endpoint
+values of $g$ and $z$ (edge-specific terms may instead vanish there).
+The shared field $u_s$ is Mat\'ern-$3/2$ with $\ell_s=180\,\mathrm{mm}$ and
+$\sigma_s=35\,\mathrm{mm}$. The relative field is defined by the Kirchhoff
+Laplacian, with covariance $a^2(\kappa^2-\Delta_{\G})^{-2}$,
+$\kappa=1/(45\,\mathrm{mm})$, and $a$ scaled to a knot-average variance of
+$(6\,\mathrm{mm})^2$ on the reference discretization. Kirchhoff eigenfunctions
+have continuous vertex traces and zero total outward derivative (Neumann at
+leaves). A shared vertex value does not impose pointwise balance of piecewise
+linear slopes for every finite-element draw.
+
+\begin{theorem}[Material gauge and discrete graph precision]\label{thm:graph}
+At a common station $h$, a difference of aligned material residuals removes
+$u_s(h)$ exactly. In a common output frame, the linearized pose Jacobian of
+a relative difference has norm at most $L_q\|\xi_a-\xi_b\|$ if $J_q$ is
+$L_q$-Lipschitz in the chart. On a bounded-degree graph with lumped linear
+finite elements and an augmented Mat\'ern state, the joint prior precision
+has $O(N)$ nonzeros. For systems of bounded elimination width the Gaussian
+factorization and solve cost is $O(N)$. Raw simulation draws from that same
+conditional prior have zero prior KL divergence.
+\end{theorem}
+\begin{proof}
+Subtract $G_e^{-1}(c_e-\Phi_e)$ at the two vessels. In the world frame the
+uncancelled shared term would be $(G_a-G_b)u_s(h)$.
+The first-order pose term is $(J_q(\xi_a)-J_q(\xi_b))\Delta q$;
+apply the Lipschitz inequality. If $D$ is the lumped mass and $K$ the
+stiffness, define $B=\kappa^2D+K$. For independent standard normals $\epsilon$,
+$B\delta=aD^{1/2}\epsilon$ gives $\Lambda_{\G}=a^{-2}BD^{-1}B$ by inverting its
+covariance. The same degree of freedom is used on every edge incident to a
+vertex; the stiffness uses the Kirchhoff weak form. The sparsity pattern has
+at most two-hop entries in the knot graph. For the shared chain, with
+$\lambda=\sqrt{3}/\ell_s$, keep $x_i=(u_s(h_i),u_s'(h_i))$ on distinct
+ordered knots fixed independently of the latent landmarks.
+The stationary transition is $F_i=\exp(A\Delta h_i)$, where
+$A=\left[\begin{smallmatrix}0&1\\-\lambda^2&-2\lambda\end{smallmatrix}\right]$,
+and the innovation covariance is $P_\infty-F_i P_\infty F_i^\top$, with
+$P_\infty=\diag(\sigma_s^2,\sigma_s^2\lambda^2)$. The initial density and
+pair factors give block tridiagonal precision. Independent landmarks add a
+diagonal block. The elimination-width cost follows from a bounded number of
+neighbors per eliminated state block. Identical conditional Gaussian measures
+have $\KL=0$, and exact posterior mass averages to prior-predictive coverage
+by iterated expectation. Shape-dependent rejection, nonlinear conditioning,
+or dense posterior fill need not preserve these conclusions.
+\end{proof}
+
+\noindent\textit{Annular material implementation.}
+The canonical neutral chart uses unconstrained offsets in
+$\tilde{\xi}=(\theta,h,\eta_d)$, with
+$d=d_{\min}+(d_{\max}-d_{\min})\sigma(\eta_d)$. Shared offsets cancel
+at a common nominal station before the nonlinear world transport, using
+the same reference radius to convert arc length to angle. Per-channel
+scaling preserves the sparse CSC Kirchhoff/Mat\'ern-3/2 precision
+construction and the raw latent generation--inference match. The annular
+decoder reduces rejection against independent skin and bone queries;
+empirical yield is not a containment guarantee, and acceptance
+conditioning still changes the prior law.
+
+\begin{theorem}[Conditional dynamic pullback evidence]\label{thm:pullback}
+Condition on history, a fixed linearization and the association $m$. Let
+$y=b_m+H_m x+J_q\Delta q+\epsilon$, where the centered Gaussian tracker and
+echo innovations have covariances $\Sigma_q$ and $R_{\rm US}$ and are
+conditionally independent of each other and of $x$. Then the linear-model
+observation covariance is $R_{\rm eff}=R_{\rm US}+J_q\Sigma_qJ_q^\top$.
+For a normalized effective likelihood $\bar R=R_{\rm eff}/\rho$,
+$\rho\in(0,1]$, and information prior $(\Lambda,\eta)$,
+\begin{align*}
+ \Lambda'&=\Lambda+H_m^\top\bar R^{-1}H_m, &
+ \eta'&=\eta+H_m^\top\bar R^{-1}(y-b_m),\\
+ S_m&=\bar R+H_m\Lambda^{-1}H_m^\top, &
+ e_m&=y-b_m-H_m\Lambda^{-1}\eta,\\
+ \log p(y\mid m)&=-\tfrac12\big[e_m^\top S_m^{-1}e_m+
+ \log\det S_m+k\log(2\pi)\big].
+\end{align*}
+Here $k$ counts geometric coordinates; appearance, clutter and association
+factors must also have valid densities and priors on a common data measure.
+To append such terms by simple multiplication, assume they do not depend
+on $x$ conditional on the hypothesis and history. A latent-geometry merge
+trigger can truncate the prior, and then exact evidence requires joint
+integration; freezing a merge probability at a nominal geometry is an
+approximation.
+\end{theorem}
+\begin{proof}
+Use the Jacobian of the full pullback residual, including any uncertain
+frame and origin. Covariance addition gives $R_{\rm eff}$, including the
+cross-echo blocks for a shared pose error. Completing the Gaussian square
+proves the information equations; affine Gaussian propagation gives the
+normalized marginal density. An OU transition with stationary covariance
+$\Sigma_z$ uses multiplier $b=\exp(-\Delta t/1.5\,\mathrm{s})$ and noise
+covariance $(1-b^2)\Sigma_z$, while the static shape block is unchanged.
+Normalization for $\rho$ does not make the effective discount exact for a
+correlated physical process. Nonlinear unknown landmarks, approximate
+tracker models, and beam truncation are outside the exact claim.
+\end{proof}
+
+\begin{proposition}[Belief-IPE attenuation]\label{prop:ipe}
+If $X$ is a Gaussian material contrast with mean $\mu$ and covariance
+$\Sigma$, its integrated sine and cosine at frequency $p$ are the
+corresponding functions at $p^\top\mu$ times $\exp(-p^\top\Sigma p/2)$.
+A PSD increase of $\Sigma$ can only shrink this envelope, quadratically in
+frequency in the exponent. With common-chart contrasts and intrinsic graph
+features this representation is invariant to a common translation of
+positions and anchor.
+\end{proposition}
+\begin{proof}
+Take the real and imaginary parts of the Gaussian characteristic function.
+Choose $p$ along scaled axes at frequencies $2^0,\ldots,2^5$; use integer
+angular harmonics on circular coordinates. A common additive displacement
+cancels in each contrast. For a random anchor the contrast covariance
+includes the negative cross-covariance terms. Absolute IPE without
+co-centering is not invariant, and attenuation by itself is not a bound on
+prediction error.
+\end{proof}
+
+\begin{theorem}[Joint segment risk and embodied sufficiency]\label{thm:risk}
+\textnormal{(i)} Let a frozen predictor and segment score be evaluated on
+$n$ exchangeable calibration segments and a new segment. The closed joint
+predictive set with cutoff at order statistic
+$\lceil(n+1)(1-\alpha)\rceil$ (or $+\infty$ if this exceeds $n$) has
+miscoverage at most $\alpha$. If all realizations in that set pass the
+geometric verifier, joint false certification has probability at most
+$\alpha$; conditional risk among certified segments requires separate
+selection-aware control.
+An independent selected-segment audit of a frozen rule may use a one-sided
+binomial upper bound on independent accepted audit units; clustered tapes
+are not independent units.
+
+\textnormal{(ii)} For balanced binary truth, a symmetric early experiment of
+accuracy $p$, and a common remaining budget $T$, require continuation success
+$s(T)$ for $m=\theta$ and $r(T)$ otherwise conditional on \emph{each}
+evidence value. Assume established entries or impose this same symmetry on
+complete per-cell success including establishment failure and cost. Then
+the four-cell completion contrast is
+$\Gamma_{\mathcal R}(T)=2(2p-1)(s(T)-r(T))$. The V8.3 matched physical defect
+is $\Gamma_{\mathcal R}/2$ under the V8.3 reflection and no-reconnection
+contract in the window $s=1,r=0$. If every successful legal policy has to
+choose the correct branch at a precommitment stopping time, then
+\[
+ (1-\alpha)\frac{1+\mathcal I_{\rm in}(T)}2
+ \le V^*_{\mathcal R}(T)\le\frac{1+\mathcal I_{\rm out}(T)}2
+\]
+for inner prefix experiments with both branches constructively feasible and
+success at least $1-\alpha$ uniformly conditional on history and correct
+branch, and outer prefix experiments covering all legal policies in scope.
+Each $\mathcal I$ is the supremum of stopped-history TV in its family.
+The history laws are defined strictly before branch execution and include
+deadline-truncated no-commit outcomes with a marker. The inner guarantee
+must hold on the full retained history law.
+\end{theorem}
+\begin{proof}
+For (i), ranking the new score jointly with the calibration scores, with
+random tie breaking for ranks, gives the miscoverage bound. False
+certification requires miscoverage. For deterministic $W\succeq0$ the risk
+Gram satisfies $\E[A^\top W A]=\bar A^\top W\bar A+
+\E[(A-\bar A)^\top W(A-\bar A)]$, but it measures expected cost, not a
+chance constraint. Pointwise calibration is insufficient: two independent
+$.8$-coverage points have joint coverage $.64$.
+
+For (ii), mode assignment uses only early evidence and independent noise.
+The diagonal and off-diagonal cells therefore have means $ps+(1-p)r$ and
+$(1-p)s+pr$. Interventions define each cell even if a deterministic policy
+would not visit it. Matching and antimatching differ by $\Gamma/2$ in value;
+matching and independent assignment differ by $\Gamma/4$. With no allowed
+physical mode switch, projecting to mode gives a TV deficiency lower bound
+of $2p-1$. Reflection of the allowed statistic reaches that lower bound for
+the symmetric binary (or V8.3 Gaussian) experiment.
+Here only the allowed control statistic, actual mode/configuration and
+retained completion budget are matched; an immutable raw log is not among
+the matched fields. A conversion can spend at most $T-t_0<d_0$ after
+reserving completion time $t_0$, where $d_0$ lower-bounds reconnection time.
+Classical statistical comparison alone can freely relabel modes; it does
+not move the robot.
+Finally, under the irreversible cut, success is contained in correct branch
+selection. The binary Bayes rule on precommitment history has accuracy
+$(1+\TV(Q_+,Q_-))/2$. Supremizing gives the outer bound. Bayes selection and
+the certified continuation on each inner prefix give the lower bound by
+conditioning on correct selection. A regime with wrong-branch recovery is
+not by itself a witness for the cut.
+\end{proof}
+\end{document}

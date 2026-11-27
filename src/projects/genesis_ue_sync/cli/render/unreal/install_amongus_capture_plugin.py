@@ -1,10 +1,10 @@
 """Install AmongUsRealtimeCapture C++ plugin into the BE_IBL UE project (idempotent).
 
 Steps performed:
-1. Copy the plugin source tree into ``<project>/Plugins/AmongUsRealtimeCapture``.
-2. Optionally compile it offline via ``RunUAT.sh BuildPlugin`` so the editor finds the
+1. Stage the plugin source and optionally compile it via ``RunUAT.sh BuildPlugin`` so the editor finds the
    Linux binary at startup (UE 5.3 launched with ``-stdout`` does not show the
    "Missing modules - rebuild?" prompt and would otherwise abort).
+2. Back up and replace ``<project>/Plugins/AmongUsRealtimeCapture`` after a successful build.
 3. Patch ``<project>.uproject`` to mark the plugin enabled.
 
 Run once per UE engine + project after pulling fresh source. Safe to re-run.
@@ -18,11 +18,10 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import uuid
 from pathlib import Path
 
-DEFAULT_PROJECT_PATH = Path(
-    "assets/humans/bedlam2/unreal/projects/BE_IBL/BE_IBL.uproject"
-)
 PLUGIN_SOURCE_REL = Path(
     "src/projects/genesis_ue_sync/integrations/ue/cpp_plugin/AmongUsRealtimeCapture"
 )
@@ -57,6 +56,10 @@ def _patch_uproject(uproject_path: Path, plugin_name: str) -> dict:
     if plugin_name not in existing_names:
         plugins.append({"Name": plugin_name, "Enabled": True})
         added = True
+    else:
+        for entry in plugins:
+            if str((entry or {}).get("Name", "")) == plugin_name:
+                entry["Enabled"] = True
     data["Plugins"] = plugins
     uproject_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return {"uproject": str(uproject_path), "added_entry": bool(added)}
@@ -152,30 +155,51 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = parse_args()
     repo = _resolve_repo_root()
-    uproject = (args.uproject or (repo / DEFAULT_PROJECT_PATH)).resolve()
+    if str(repo / "src") not in sys.path:
+        sys.path.insert(0, str(repo / "src"))
+    from common.project import project_paths
+    uproject = (args.uproject or project_paths(__file__).bedlam_unreal_project_file).resolve()
+    if not uproject.is_file():
+        raise FileNotFoundError(f"UE project not found: {uproject}")
     plugin_src = (args.plugin_source or (repo / PLUGIN_SOURCE_REL)).resolve()
 
     plugin_dst = uproject.parent / "Plugins" / PLUGIN_NAME
     plugin_dst.parent.mkdir(parents=True, exist_ok=True)
 
-    # First detach the .uproject entry so a previous failed launch state cannot block this run.
-    _unpatch_uproject(uproject, PLUGIN_NAME)
-
-    copy_summary = _copy_plugin_tree(plugin_src, plugin_dst)
-    if args.keep_source_only:
-        for sub in ("Binaries", "Intermediate"):
-            target = plugin_dst / sub
-            if target.exists():
-                shutil.rmtree(target)
-
     build_summary: dict | None = None
-    if not args.skip_build:
-        run_uat = _resolve_run_uat(args.unreal_root)
-        targets = [item.strip() for item in str(args.target_platforms).split("+") if item.strip()]
-        uplugin_path = plugin_dst / f"{PLUGIN_NAME}.uplugin"
-        build_summary = _build_plugin_in_place(uplugin_path, run_uat, targets)
-
-    patch_summary = _patch_uproject(uproject, PLUGIN_NAME)
+    # Compile before replacing the installed plugin. A failed build must not
+    # disable the user's working UE project or erase its existing binaries.
+    token = uuid.uuid4().hex[:12]
+    with tempfile.TemporaryDirectory(prefix="realus_plugin_stage_") as tmp:
+        stage = Path(tmp) / PLUGIN_NAME
+        _copy_plugin_tree(plugin_src, stage)
+        if args.keep_source_only:
+            for sub in ("Binaries", "Intermediate"):
+                target = stage / sub
+                if target.exists():
+                    shutil.rmtree(target)
+        if not args.skip_build:
+            run_uat = _resolve_run_uat(args.unreal_root)
+            targets = [item.strip() for item in str(args.target_platforms).split("+") if item.strip()]
+            build_summary = _build_plugin_in_place(stage / f"{PLUGIN_NAME}.uplugin", run_uat, targets)
+        pending = plugin_dst.with_name(f".{PLUGIN_NAME}.install-{token}")
+        shutil.copytree(stage, pending)
+    backup = uproject.parent / "Saved/RealUSPluginBackups" / token / PLUGIN_NAME
+    if plugin_dst.exists():
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(plugin_dst, backup)
+    try:
+        os.replace(pending, plugin_dst)
+        patch_summary = _patch_uproject(uproject, PLUGIN_NAME)
+    except Exception:
+        if plugin_dst.exists():
+            shutil.rmtree(plugin_dst)
+        if backup.exists():
+            os.replace(backup, plugin_dst)
+        raise
+    copy_summary = {"plugin_dir": str(plugin_dst), "backup_dir": str(backup) if backup.exists() else None}
+    if build_summary is not None:
+        build_summary["binaries_dir"] = str(plugin_dst / "Binaries")
 
     out = {"plugin": copy_summary, "build": build_summary, "uproject": patch_summary}
     logging.info("AmongUsRealtimeCapture installed: %s", json.dumps(out))

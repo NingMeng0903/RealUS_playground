@@ -1,0 +1,91 @@
+{
+  "sealed_utc": "2026-11-10T09:20:34.431668+00:00",
+  "no_prescan_manifest": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/manifest.json",
+    "bytes": 6801,
+    "sha256": "e28bcdd03a49f48e9fea94bbe3d274c19855e1ed2f45da94876c1eb4ab43d633"
+  },
+  "no_prescan_files_checked": {
+    "report": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "protocol": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "prior_permission_amendment": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "protocol_snapshot_v1": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "protocol_snapshot_v2": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "benchmark_source": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "contract_tests": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "test_log": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "current_results": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "current_run_log": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "superseded_fixed_sequence_source": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "superseded_fixed_sequence_results": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "superseded_fixed_sequence_log": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "parent_protocol": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "actual_dmp_module": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "report_v1_before_audit_wording": {
+      "sha256_matches": true,
+      "size_matches": true
+    },
+    "report_v2_before_endpoint_audit_wording": {
+      "sha256_matches": true,
+      "size_matches": true
+    }
+  },
+  "qp_input_manifest": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/input_manifest.json",
+    "bytes": 1691,
+    "sha256": "48ebb43425935d96a9194e5490a972b31659070a3695969bd8d88eb1bb6329ad"
+  },
+  "qp_file_backed_input_entries_checked": {
+    "native_client": true,
+    "qp_replay": true,
+    "config": true,
+    "native_binary": true,
+    "reference": true
+  },
+  "no_prescan_source_protocol_results_unchanged_from_independent_audit": true
+}

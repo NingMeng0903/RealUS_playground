@@ -20,6 +20,157 @@ def _boxes_to_xyxy_list(boxes: np.ndarray, img_shape: tuple[int, ...]) -> list[l
     return arr.tolist()
 
 
+def _real_detector_boxes(boxes: np.ndarray) -> np.ndarray:
+    """Return finite, positive-size detector boxes suitable for history.
+
+    Detector output is intentionally treated as untrusted at the history
+    boundary.  In particular, the empty result must never become the implicit
+    full-image crop used by ``onnxpose.preprocess`` and then be cached as a
+    temporal detection.
+    """
+    try:
+        arr = np.asarray(boxes, dtype=np.float32)
+        if arr.size == 0:
+            return np.empty((0, 4), dtype=np.float32)
+        arr = arr.reshape(-1, 4)
+    except (TypeError, ValueError):
+        return np.empty((0, 4), dtype=np.float32)
+    finite = np.all(np.isfinite(arr), axis=1)
+    positive = np.logical_and(arr[:, 2] > arr[:, 0], arr[:, 3] > arr[:, 1])
+    return np.ascontiguousarray(arr[np.logical_and(finite, positive)], dtype=np.float32)
+
+
+def _boxes_metadata(boxes: np.ndarray) -> list:
+    """Convert detector/crop boxes to JSON-friendly diagnostics."""
+    try:
+        arr = np.asarray(boxes, dtype=np.float32)
+        if arr.size == 0:
+            return []
+        if arr.size % 4 == 0:
+            return arr.reshape(-1, 4).tolist()
+        return arr.tolist()
+    except (TypeError, ValueError):
+        return []
+
+
+def _bbox_iou(reference: np.ndarray, candidates: np.ndarray) -> np.ndarray:
+    """Compute IoU between one valid xyxy box and candidate boxes."""
+    ref = np.asarray(reference, dtype=np.float32).reshape(4)
+    boxes = np.asarray(candidates, dtype=np.float32).reshape(-1, 4)
+    left_top = np.maximum(boxes[:, :2], ref[:2])
+    right_bottom = np.minimum(boxes[:, 2:], ref[2:])
+    intersection_size = np.maximum(right_bottom - left_top, 0.0)
+    intersection = intersection_size[:, 0] * intersection_size[:, 1]
+    reference_area = max(float(ref[2] - ref[0]), 0.0) * max(float(ref[3] - ref[1]), 0.0)
+    candidate_area = np.maximum(boxes[:, 2] - boxes[:, 0], 0.0) * np.maximum(
+        boxes[:, 3] - boxes[:, 1], 0.0
+    )
+    union = reference_area + candidate_area - intersection
+    return intersection / np.maximum(union, 1e-12)
+
+
+def _resolve_temporal_boxes(
+    images: list[np.ndarray],
+    camera_ids: list[str],
+    boxes_list: list[np.ndarray],
+    *,
+    temporal_bbox_fallback: bool,
+    previous_boxes_by_camera: dict[str, np.ndarray] | None,
+    previous_bbox_shapes_by_camera: dict[str, tuple[int, int]] | None,
+) -> tuple[list[np.ndarray], list[dict[str, Any]]]:
+    """Resolve pose crops and diagnostics without changing detector outputs.
+
+    Only one finite, positive-size current detector result is written to the
+    opt-in history.  When there is a previous selection, the current result
+    with the highest IoU is associated to it; a weak association retains the
+    previous selection without overwriting history.  Empty/invalid results
+    may use the previous real result.  With the flag disabled, the original
+    detector boxes pass through unchanged.
+    """
+    pose_boxes: list[np.ndarray] = []
+    diagnostics: list[dict[str, Any]] = []
+    history = previous_boxes_by_camera if previous_boxes_by_camera is not None else {}
+    history_shapes = (
+        previous_bbox_shapes_by_camera if previous_bbox_shapes_by_camera is not None else {}
+    )
+
+    for image, camera_id, raw_boxes in zip(images, camera_ids, boxes_list):
+        raw = np.asarray(raw_boxes, dtype=np.float32)
+        real = _real_detector_boxes(raw)
+        image_shape = tuple(int(x) for x in np.asarray(image).shape[:2])
+
+        # A changed raster shape invalidates pixel-space history for this
+        # camera before considering the current detector result.
+        if temporal_bbox_fallback and history_shapes.get(camera_id) not in (None, image_shape):
+            history.pop(camera_id, None)
+        if temporal_bbox_fallback:
+            history_shapes[camera_id] = image_shape
+
+        detector_miss = bool(real.shape[0] == 0)
+        association_miss = False
+        association_iou: float | None = None
+        if not temporal_bbox_fallback:
+            # Preserve the pre-existing path byte-for-byte in behavior when
+            # the opt-in flag is disabled, including multiple detector boxes
+            # and the official full-frame fallback for an empty result.
+            resolved = raw
+            source = "detector" if not detector_miss else "full_frame"
+        elif real.shape[0] > 0:
+            previous = _real_detector_boxes(history.get(camera_id, np.empty((0, 4))))
+            if previous.shape[0] > 0:
+                previous_selected = previous[:1]
+                ious = _bbox_iou(previous_selected[0], real)
+                selected_index = int(np.argmax(ious))
+                association_iou = float(ious[selected_index])
+                if association_iou >= 0.1:
+                    resolved = real[selected_index : selected_index + 1].copy()
+                    source = "detector"
+                    history[camera_id] = resolved.copy()
+                else:
+                    association_miss = True
+                    resolved = previous_selected.copy()
+                    source = "temporal_previous_unmatched"
+                    # Do not let a likely false positive replace the tracked
+                    # person box in the temporal state.
+                    history[camera_id] = previous_selected.copy()
+            else:
+                # On the first valid frame retain the detector's old first
+                # box selection, while making the cached choice explicit.
+                resolved = real[:1].copy()
+                source = "detector"
+                history[camera_id] = resolved.copy()
+        elif camera_id in history:
+            previous = _real_detector_boxes(history[camera_id])
+            if previous.shape[0] > 0:
+                resolved = previous[:1].copy()
+                history[camera_id] = resolved.copy()
+                source = "temporal_previous"
+            else:
+                history.pop(camera_id, None)
+                resolved = np.empty((0, 4), dtype=np.float32)
+                source = "full_frame"
+        else:
+            # With the opt-in path enabled, malformed non-empty detector
+            # output is treated as a miss too; passing it into the cropper
+            # would defeat the finite/size check at the history boundary.
+            resolved = np.empty((0, 4), dtype=np.float32)
+            source = "full_frame"
+
+        pose_boxes.append(np.asarray(resolved, dtype=np.float32))
+        diagnostics.append(
+            {
+                "detector_boxes": _boxes_metadata(raw),
+                "pose_boxes": _boxes_metadata(resolved),
+                "detector_box_count": int(real.shape[0]),
+                "detector_miss": detector_miss,
+                "association_miss": association_miss,
+                "association_iou": association_iou,
+                "bbox_source": source,
+            }
+        )
+    return pose_boxes, diagnostics
+
+
 def _preprocess_pose_batch(
     images: list[np.ndarray],
     boxes_list: list[np.ndarray],
@@ -153,6 +304,9 @@ def infer_multiview_body25(
     retain_simcc: bool = False,
     simcc_topk: int = 5,
     build_simcc_candidates: bool = True,
+    temporal_bbox_fallback: bool = False,
+    previous_boxes_by_camera: dict[str, np.ndarray] | None = None,
+    previous_bbox_shapes_by_camera: dict[str, tuple[int, int]] | None = None,
 ) -> tuple[dict[str, np.ndarray], dict[str, Any], dict[str, Any]]:
     """Run YOLO per view + one batched pose ONNX call; return Body25 per camera."""
     images = [np.asarray(images_by_id[cid], dtype=np.uint8) for cid in camera_ids]
@@ -174,6 +328,16 @@ def infer_multiview_body25(
             boxes_list.append(np.asarray(inference_detector(session_det, image)))
             yolo_ms += (time.perf_counter() - t_y0) * 1000.0
     t_det = time.perf_counter()
+
+    raw_boxes_list = [np.asarray(boxes, dtype=np.float32) for boxes in boxes_list]
+    boxes_list, bbox_diagnostics = _resolve_temporal_boxes(
+        images,
+        camera_ids,
+        raw_boxes_list,
+        temporal_bbox_fallback=bool(temporal_bbox_fallback),
+        previous_boxes_by_camera=previous_boxes_by_camera,
+        previous_bbox_shapes_by_camera=previous_bbox_shapes_by_camera,
+    )
 
     h, w = session_pose.get_inputs()[0].shape[2:]
     model_input_size = (int(w), int(h))
@@ -214,11 +378,13 @@ def infer_multiview_body25(
                 "person_count": 0,
                 "selected_person": None,
                 "timing_ms": {"yolo_det_ms": yolo_ms / max(len(camera_ids), 1)},
+                **bbox_diagnostics[i],
             }
             post_ms += (time.perf_counter() - t_post0) * 1000.0
             continue
 
         body25, meta = decode_body25_fn(kp_view, sc_view, confidence_threshold)
+        meta.update(bbox_diagnostics[i])
         per_yolo = yolo_ms / max(len(camera_ids), 1)
         meta["timing_ms"] = {
             "yolo_det_ms": round(per_yolo, 3),
@@ -295,6 +461,9 @@ def infer_multiview_easymocap(
     retain_simcc: bool = False,
     simcc_topk: int = 5,
     build_simcc_candidates: bool = True,
+    temporal_bbox_fallback: bool = False,
+    previous_boxes_by_camera: dict[str, np.ndarray] | None = None,
+    previous_bbox_shapes_by_camera: dict[str, tuple[int, int]] | None = None,
 ) -> tuple[dict[str, dict[str, np.ndarray]], dict[str, Any], dict[str, Any]]:
     """Batched pose ONNX with UCOCO-133 -> EasyMocap bodyhandface per view."""
     from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import ucoco133_to_easymocap_annot
@@ -337,6 +506,9 @@ def infer_multiview_easymocap(
         retain_simcc=retain_simcc,
         simcc_topk=simcc_topk,
         build_simcc_candidates=bool(build_simcc_candidates),
+        temporal_bbox_fallback=bool(temporal_bbox_fallback),
+        previous_boxes_by_camera=previous_boxes_by_camera,
+        previous_bbox_shapes_by_camera=previous_bbox_shapes_by_camera,
     )
     annots_by_camera: dict[str, dict[str, np.ndarray]] = {}
     for cid in camera_ids:

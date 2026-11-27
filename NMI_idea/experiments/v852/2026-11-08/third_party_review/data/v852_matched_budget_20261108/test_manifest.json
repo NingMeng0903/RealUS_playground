@@ -1,0 +1,332 @@
+[
+  {
+    "case_id": "basic:test_20265308_0000",
+    "level": "basic",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265308_0000",
+      "geometry_seed": 202653080000,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.09120312967320944,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20265308_0001",
+    "level": "basic",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265308_0001",
+      "geometry_seed": 202653080001,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.11273256992566782,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20265308_0002",
+    "level": "basic",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265308_0002",
+      "geometry_seed": 202653080002,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.0841680333829895,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20265308_0003",
+    "level": "basic",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265308_0003",
+      "geometry_seed": 202653080003,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.10238924130769023,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20265308_0004",
+    "level": "basic",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265308_0004",
+      "geometry_seed": 202653080004,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.09901902154555398,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20265308_0005",
+    "level": "basic",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265308_0005",
+      "geometry_seed": 202653080005,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.11124258897760031,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20265308_0006",
+    "level": "basic",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265308_0006",
+      "geometry_seed": 202653080006,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.08691195825340836,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "basic:test_20265308_0007",
+    "level": "basic",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265308_0007",
+      "geometry_seed": 202653080007,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.09274536022969128,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0000",
+    "level": "stress",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265318_0000",
+      "geometry_seed": 202653180000,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.20611802104816257,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0001",
+    "level": "stress",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265318_0001",
+      "geometry_seed": 202653180001,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.2638096341921411,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0002",
+    "level": "stress",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265318_0002",
+      "geometry_seed": 202653180002,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.18427942853902268,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0003",
+    "level": "stress",
+    "group": "known_pose",
+    "spec": {
+      "object_id": "test_20265318_0003",
+      "geometry_seed": 202653180003,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 0.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.16149858077614787,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0004",
+    "level": "stress",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265318_0004",
+      "geometry_seed": 202653180004,
+      "u": -1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.19815787236467314,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0005",
+    "level": "stress",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265318_0005",
+      "geometry_seed": 202653180005,
+      "u": -1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": -0.16800414588204615,
+    "chain": [
+      "b",
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0006",
+    "level": "stress",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265318_0006",
+      "geometry_seed": 202653180006,
+      "u": 1,
+      "v": -1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.16880666964711488,
+    "chain": [
+      "a",
+      "f"
+    ]
+  },
+  {
+    "case_id": "stress:test_20265318_0007",
+    "level": "stress",
+    "group": "new_pose",
+    "spec": {
+      "object_id": "test_20265318_0007",
+      "geometry_seed": 202653180007,
+      "u": 1,
+      "v": 1,
+      "knee_deg": 60.0,
+      "width_scale": 1.0,
+      "length_scale": 1.0,
+      "amplitude_scale": 1.0
+    },
+    "near": 0.24863614037998946,
+    "chain": [
+      "a",
+      "b",
+      "f"
+    ]
+  }
+]

@@ -1,0 +1,50 @@
+{
+  "path0_smooth_baseline": {
+    "tick": 882,
+    "coordinate": 3,
+    "v": 0.6238655212348727,
+    "box_lo": 0.6238661216336969,
+    "box_hi": 0.6388661216336968,
+    "box_violation_rad_s": 6.003988242131442e-07,
+    "lower_jerk_bound_using_native_history": 0.6238661216336969,
+    "upper_jerk_bound_using_native_history": 0.6388661216336968,
+    "native_history_vs_actual_two_previous_commands_max": 0.0,
+    "jerk_excess_rad_s3": 0.02401595296657888
+  },
+  "path0_smooth_unit": {
+    "tick": 1112,
+    "coordinate": 5,
+    "v": 0.1271411057537197,
+    "box_lo": 0.1271416791206288,
+    "box_hi": 0.13941366522995075,
+    "box_violation_rad_s": 5.733669090901561e-07,
+    "lower_jerk_bound_using_native_history": 0.1271416791206288,
+    "upper_jerk_bound_using_native_history": 0.1421416791206288,
+    "native_history_vs_actual_two_previous_commands_max": 0.0,
+    "jerk_excess_rad_s3": 0.022934676363263407
+  },
+  "path1_smooth_baseline": {
+    "tick": 1099,
+    "coordinate": 4,
+    "v": 0.018961718962437667,
+    "box_lo": 0.018961892366974112,
+    "box_hi": 0.03288388785033337,
+    "box_violation_rad_s": 1.734045364451542e-07,
+    "lower_jerk_bound_using_native_history": 0.018961892366974112,
+    "upper_jerk_bound_using_native_history": 0.03396189236697411,
+    "native_history_vs_actual_two_previous_commands_max": 0.0,
+    "jerk_excess_rad_s3": 0.006936181457831481
+  },
+  "path1_smooth_unit": {
+    "tick": 908,
+    "coordinate": 4,
+    "v": 0.00825540126606612,
+    "box_lo": 0.008256145216302357,
+    "box_hi": 0.01588093119144498,
+    "box_violation_rad_s": 7.439502362378836e-07,
+    "lower_jerk_bound_using_native_history": 0.008256145216302357,
+    "upper_jerk_bound_using_native_history": 0.023256145216302357,
+    "native_history_vs_actual_two_previous_commands_max": 0.0,
+    "jerk_excess_rad_s3": 0.02975800944943785
+  }
+}

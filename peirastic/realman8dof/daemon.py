@@ -717,13 +717,14 @@ class ControllerService:
     @staticmethod
     def _is_latched_fault(reason: str) -> bool:
         text = str(reason or "").lower()
+        if "p0_conflict" in text or "qsend_position" in text:
+            return True
         if "publication_infeasible" in text:
             return False
         tokens = (
             "watchdog",
             "native_timeout",
             "uncertified",
-            "p0_conflict",
             "qpik_fault",
             "feedback_stale",
             "rail_feedback",
@@ -1398,7 +1399,7 @@ class ControllerService:
                     done_seq=self._cmd_seq,
                     err_code=-6,
                 )
-            elif result.stop_reason == "uncertified_brake":
+            elif self._is_latched_fault(result.stop_reason):
                 self._trip_hardware(
                     rail,
                     result.stop_reason,
@@ -1408,10 +1409,11 @@ class ControllerService:
                     status=Status.ESTOP,
                     mode=self.mode,
                     estop=True,
-                    msg=result.stop_reason,
+                    msg=result.stop_reason[:90],
                     done_seq=self._cmd_seq,
                     err_code=-6,
                 )
+                continue
             elif self._pending_dof is not None:
                 if result.stop_reason and not is_handoff_stop(
                     result.stop_reason, pending_commanded=True
@@ -1432,21 +1434,6 @@ class ControllerService:
             ):
                 pass
             elif result.stop_reason:
-                if self._is_latched_fault(result.stop_reason):
-                    self._trip_hardware(
-                        rail,
-                        result.stop_reason,
-                        robot=getattr(sess, "robot", None),
-                    )
-                    self.hub.publish(
-                        status=Status.ESTOP,
-                        mode=self.mode,
-                        estop=True,
-                        msg=result.stop_reason[:90],
-                        done_seq=self._cmd_seq,
-                        err_code=-6,
-                    )
-                    continue
                 self._cancel_pending_transitions(
                     result.stop_reason,
                     err_code=1,

@@ -1,0 +1,320 @@
+{
+  "passed": true,
+  "scope": "Posthoc privileged diagnostic integrity, parameterization and record audit only; no actor/IK/native rerun",
+  "input_sha256": {
+    "continuous_mismatch/oracle_diagnostic/run_corrected_parameterization_20261110/RESULTS.json": "70b423baaf48f5e15a0a984f55a908366e8edcc57f369ebe60fbc6ba4a464165",
+    "continuous_mismatch/oracle_diagnostic/run_20261110/RESULTS.json": "7f3b71a8629c2dd599b7851eb85c3ff5c288fb584a9bc7ff493fd9d585e3b9af",
+    "continuous_mismatch/formal_run_20261110/RESULTS.json": "6da6319338367651d235a9c82b245dedea987888484ee02e87bc87b976f4adbe",
+    "planning/test_frozen/results.json": "913be5af55c0d85b969e203635bdbb0979413ccfbd4e1192668bec9efd69ab85",
+    "continuous_mismatch/oracle_diagnostic/CORRECTION.txt": "f519d29363e75c09dc7c36de0d8bdeeaea9447bf3a80f5bf1468cca8d2b5fe41",
+    "continuous_mismatch/oracle_diagnostic/run_corrected_parameterization_20261110.py": "50fdb47771bf83a3bfa7f4cf751832920581e40185bd17c0c4c258fed5b37f60",
+    "continuous_mismatch/oracle_diagnostic/run_oracle_diagnostic.py": "6c455ded20e6808f9226b4e9fcdf63314d61781486557fe3da56ffa8746fdae0",
+    "continuous_mismatch/oracle_diagnostic/PROTOCOL.txt": "e2dda68a3335276a0adb99fdf228ae7badbc84efff278d250c33d5e1bd320325",
+    "observation/environment.py": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+    "planning/system.py": "c9983d1fd606223612d7f6b3dffac132bf4f8bd176c8d1ac46a88ae5be7c29c7",
+    "planning/PROTOCOL.json": "a1221257b245977bbf8888d996e76f2213cc3002e3b156c967e62797fd900d84",
+    "continuous_mismatch/oracle_diagnostic/run_corrected_parameterization_20261110.log": "deb90e8627cdbb8fd663e92517df260ca04baf478917d0a0e604809952e85083"
+  },
+  "private_gt_sha256": {
+    "iid": "6f1778bc40e68ad60fa36a98983717769ffcc4f9f58e52383e455281c919d21d",
+    "shifted": "fe76fcb645c95051032c9c07d7faaa063fde2e64f7b049afdca322a6bd7ae313"
+  },
+  "equivalence": [
+    {
+      "condition": "iid",
+      "object": 0,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "iid",
+      "object": 1,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "iid",
+      "object": 2,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "iid",
+      "object": 3,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "iid",
+      "object": 4,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "iid",
+      "object": 5,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "iid",
+      "object": 6,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "iid",
+      "object": 7,
+      "points_max_abs_m": 0.0,
+      "dense_1001_x_spline_max_abs_m": 0.0,
+      "prediction_error": {
+        "means": 0.0,
+        "p_source": 0.0,
+        "p_visible": 0.0,
+        "geometric_length": 0.0,
+        "angle_audit": 0.0
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 1
+    },
+    {
+      "condition": "shifted",
+      "object": 0,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 3.469446951953614e-18,
+      "prediction_error": {
+        "means": 7.874804974772331e-12,
+        "p_source": 7.341349750333848e-15,
+        "p_visible": 3.1086244689504383e-15,
+        "geometric_length": 1.8388068845354155e-16,
+        "angle_audit": 5.995204332975845e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    },
+    {
+      "condition": "shifted",
+      "object": 1,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 3.469446951953614e-18,
+      "prediction_error": {
+        "means": 5.386389251293977e-12,
+        "p_source": 3.774758283725532e-15,
+        "p_visible": 3.774758283725532e-15,
+        "geometric_length": 3.469446951953614e-17,
+        "angle_audit": 6.994405055138486e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    },
+    {
+      "condition": "shifted",
+      "object": 2,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 3.469446951953614e-18,
+      "prediction_error": {
+        "means": 5.611609787958827e-11,
+        "p_source": 3.4416913763379853e-15,
+        "p_visible": 3.4416913763379853e-15,
+        "geometric_length": 4.683753385137379e-17,
+        "angle_audit": 3.552713678800501e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    },
+    {
+      "condition": "shifted",
+      "object": 3,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 6.938893903907228e-18,
+      "prediction_error": {
+        "means": 3.319165775561572e-11,
+        "p_source": 1.9984014443252818e-15,
+        "p_visible": 1.9984014443252818e-15,
+        "geometric_length": 3.8163916471489756e-17,
+        "angle_audit": 5.6066262743570405e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    },
+    {
+      "condition": "shifted",
+      "object": 4,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 3.469446951953614e-18,
+      "prediction_error": {
+        "means": 2.334031579120932e-11,
+        "p_source": 2.6645352591003757e-15,
+        "p_visible": 2.55351295663786e-15,
+        "geometric_length": 9.8879238130678e-17,
+        "angle_audit": 6.106226635438361e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    },
+    {
+      "condition": "shifted",
+      "object": 5,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 6.938893903907228e-18,
+      "prediction_error": {
+        "means": 2.048926332418044e-10,
+        "p_source": 2.4424906541753444e-15,
+        "p_visible": 2.55351295663786e-15,
+        "geometric_length": 2.2551405187698492e-17,
+        "angle_audit": 3.7192471324942744e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    },
+    {
+      "condition": "shifted",
+      "object": 6,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 3.469446951953614e-18,
+      "prediction_error": {
+        "means": 2.1911195080548396e-11,
+        "p_source": 7.549516567451064e-15,
+        "p_visible": 7.549516567451064e-15,
+        "geometric_length": 5.551115123125783e-17,
+        "angle_audit": 6.716849298982197e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    },
+    {
+      "condition": "shifted",
+      "object": 7,
+      "points_max_abs_m": 6.938893903907228e-18,
+      "dense_1001_x_spline_max_abs_m": 3.469446951953614e-18,
+      "prediction_error": {
+        "means": 1.9137461615414963e-09,
+        "p_source": 1.970645868709653e-15,
+        "p_visible": 9.992007221626409e-16,
+        "geometric_length": 6.938893903907228e-17,
+        "angle_audit": 5.717648576819556e-15
+      },
+      "initial_template_candidates": 1,
+      "initial_uncorrected_template_candidates": 0
+    }
+  ],
+  "max_source_points_residual_m": 6.938893903907228e-18,
+  "max_dense_spline_residual_m": 6.938893903907228e-18,
+  "max_prediction_mean_residual": 1.9137461615414963e-09,
+  "max_prediction_p_source_residual": 7.549516567451064e-15,
+  "records": {
+    "episodes": 16,
+    "blocks": 58,
+    "frames": 290,
+    "exceptions": 0,
+    "all_unique_cases_completed": true,
+    "max_clock_error_s": 0.0,
+    "max_cost_error_s": 8.881784197001252e-16,
+    "false_stops": [
+      {
+        "condition": "iid",
+        "object": 0,
+        "all_sources_target": true,
+        "max_angle_deg": 13.774358067126817,
+        "max_abs_u_m": 0.000985048472766392
+      },
+      {
+        "condition": "shifted",
+        "object": 3,
+        "all_sources_target": true,
+        "max_angle_deg": 11.731504629965686,
+        "max_abs_u_m": 0.00027144919468741245
+      }
+    ],
+    "iid_original_outcomes_actions_and_nontime_public_fields_identical": true
+  },
+  "summary": {
+    "iid": {
+      "n": 8,
+      "completed": 8,
+      "failures": 0,
+      "correct_public_stops": 5,
+      "false_public_stops": 1,
+      "public_stops": 6,
+      "ever_audit_quality": 7,
+      "mean_RMT_s": 23.68482822745292,
+      "actions": 24
+    },
+    "shifted": {
+      "n": 8,
+      "completed": 8,
+      "failures": 0,
+      "correct_public_stops": 5,
+      "false_public_stops": 1,
+      "public_stops": 6,
+      "ever_audit_quality": 7,
+      "mean_RMT_s": 24.638282922916495,
+      "actions": 34
+    }
+  },
+  "exclusion": "ORACLE_LEAKED_TRUTH: never include these rows in legal A/B or treat this heuristic as an optimal upper bound",
+  "historical_preflight": "Retained log traceback occurs in all-particle validation before first episode/write; current source refuses existing output. Original failed guard source is not independently archived; see provenance report."
+}

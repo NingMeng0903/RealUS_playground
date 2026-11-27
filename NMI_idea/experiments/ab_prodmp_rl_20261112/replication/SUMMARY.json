@@ -1,0 +1,104 @@
+{
+  "training_cases_with_transitions": 128,
+  "transitions": 2329,
+  "training_nonrule_actions": 720,
+  "evaluation_cases": 48,
+  "arms": {
+    "rule": {
+      "n": 48,
+      "success": 41,
+      "false_stops": 7,
+      "no_stops": 0,
+      "mean_rechecks": 35.0625,
+      "mean_travel_m": 1.7350633321249092,
+      "mean_undiscounted_return": 0.6972885000604211,
+      "suffix_changes": 0,
+      "executed_tails": 830,
+      "cases_changed_suffix": 0,
+      "success_by_40_captures_and_2_5_m": 40
+    },
+    "immediate": {
+      "n": 48,
+      "success": 40,
+      "false_stops": 8,
+      "no_stops": 0,
+      "mean_rechecks": 35.145833333333336,
+      "mean_travel_m": 1.7340876732437014,
+      "mean_undiscounted_return": 0.6763372830044817,
+      "suffix_changes": 12,
+      "executed_tails": 832,
+      "cases_changed_suffix": 12,
+      "success_by_40_captures_and_2_5_m": 39
+    },
+    "rl": {
+      "n": 48,
+      "success": 39,
+      "false_stops": 9,
+      "no_stops": 0,
+      "mean_rechecks": 36.333333333333336,
+      "mean_travel_m": 1.7580059709342344,
+      "mean_undiscounted_return": 0.6519330347866216,
+      "suffix_changes": 163,
+      "executed_tails": 860,
+      "cases_changed_suffix": 44,
+      "success_by_40_captures_and_2_5_m": 35
+    }
+  },
+  "paired": {
+    "rule": {
+      "wins": 0,
+      "losses": 2,
+      "success_delta_pp": -4.166666666666666,
+      "exact_p_two_sided": 0.5,
+      "success_bootstrap_95_pp": [
+        -10.416666666666668,
+        0.0
+      ],
+      "travel_delta_m": 0.022942638809325042,
+      "travel_bootstrap_95_m": [
+        -0.013491082728138435,
+        0.0609026131955109
+      ],
+      "recheck_delta": 1.2708333333333333,
+      "same_action_sequences": 4
+    },
+    "immediate": {
+      "wins": 1,
+      "losses": 2,
+      "success_delta_pp": -2.083333333333333,
+      "exact_p_two_sided": 1.0,
+      "success_bootstrap_95_pp": [
+        -8.333333333333332,
+        4.166666666666666
+      ],
+      "travel_delta_m": 0.023918297690533347,
+      "travel_bootstrap_95_m": [
+        -0.015417461404844209,
+        0.06664868794093588
+      ],
+      "recheck_delta": 1.1875,
+      "same_action_sequences": 4
+    }
+  },
+  "visualization_seed": 1254992102,
+  "sample": {
+    "rule": {
+      "complete": true,
+      "online_stop": true,
+      "map_max_error_mm": 1.6402972539405378,
+      "recheck_path_mm": 2049.1383832618803
+    },
+    "immediate": {
+      "complete": true,
+      "online_stop": true,
+      "map_max_error_mm": 1.6402972539405378,
+      "recheck_path_mm": 2049.1383832618803
+    },
+    "rl": {
+      "complete": false,
+      "online_stop": true,
+      "map_max_error_mm": 1.3938398559675063,
+      "recheck_path_mm": 2103.8841515624695
+    }
+  }
+}

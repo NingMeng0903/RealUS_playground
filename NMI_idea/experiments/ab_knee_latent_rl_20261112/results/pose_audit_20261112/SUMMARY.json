@@ -1,0 +1,69 @@
+{
+  "pairs": 64,
+  "seed_base": 31310492,
+  "methods": {
+    "dynamic_us": {
+      "checkpoint_z_rmse_mm": 0.5618316333834794,
+      "future_point_rmse_mm": 0.8416243791468195,
+      "future_z_rmse_mm": 0.26493951963307166,
+      "future_coordinate_coverage": 0.9587673611111112,
+      "per_horizon": {
+        "2.5": {
+          "point_rmse_mm": 0.8079669660035862,
+          "z_rmse_mm": 0.3086709897472128,
+          "coordinate_coverage": 0.9600694444444444
+        },
+        "3.0": {
+          "point_rmse_mm": 0.8739865977207538,
+          "z_rmse_mm": 0.2123867185472802,
+          "coordinate_coverage": 0.9574652777777778
+        }
+      }
+    },
+    "no_z_us": {
+      "checkpoint_z_rmse_mm": 1.113262807702737,
+      "future_point_rmse_mm": 1.5174115852545371,
+      "future_z_rmse_mm": 0.5181259862005293,
+      "future_coordinate_coverage": 0.4856770833333333,
+      "per_horizon": {
+        "2.5": {
+          "point_rmse_mm": 1.5570110060947964,
+          "z_rmse_mm": 0.629077443175477,
+          "coordinate_coverage": 0.4557291666666667
+        },
+        "3.0": {
+          "point_rmse_mm": 1.4767506780188202,
+          "z_rmse_mm": 0.37572682315792494,
+          "coordinate_coverage": 0.515625
+        }
+      }
+    },
+    "dynamic_withheld": {
+      "checkpoint_z_rmse_mm": 0.3420299428281157,
+      "future_point_rmse_mm": 1.6740327272183726,
+      "future_z_rmse_mm": 0.2162537400016978,
+      "future_coordinate_coverage": 0.8702256944444444,
+      "per_horizon": {
+        "2.5": {
+          "point_rmse_mm": 1.6589510872608557,
+          "z_rmse_mm": 0.23492908702410992,
+          "coordinate_coverage": 0.8654513888888888
+        },
+        "3.0": {
+          "point_rmse_mm": 1.688979701971693,
+          "z_rmse_mm": 0.19580522005161669,
+          "coordinate_coverage": 0.875
+        }
+      }
+    }
+  },
+  "history_spread_mm": {
+    "ground_truth": 0.8571953245651771,
+    "dynamic_us_prediction": 0.9122620916821591,
+    "no_z_us_prediction": 0.4472684711360448,
+    "dynamic_withheld_prediction": 0.8836224059989767
+  },
+  "equal_checkpoint_readings": true,
+  "equal_checkpoint_actual_readings": true,
+  "equal_checkpoint_public_readings": true
+}

@@ -256,6 +256,29 @@ def _window_yhat(w: StaticWindow, fit: StaticFitResult) -> np.ndarray:
     return static_design(w.g_L, include_drift=fit.drift_enabled, t_s=_rel_t(w, t_ref)) @ theta
 
 
+def force_outlier_windows(
+    windows: list[StaticWindow],
+    fit: StaticFitResult,
+    *,
+    limit_n: float,
+) -> list[tuple[StaticWindow, np.ndarray]]:
+    """Poses whose mean force is not the gravity model. Cable tug or contact.
+
+    The Huber fit already down-weights them. They still dominate the reported
+    RMS, and a later weighting change could let one pose move m, h, b.
+    """
+
+    limit = float(limit_n)
+    if not np.isfinite(limit) or limit <= 0:
+        return []
+    bad: list[tuple[StaticWindow, np.ndarray]] = []
+    for window in windows:
+        error = np.asarray(window.wrench_L, dtype=float).reshape(6) - _window_yhat(window, fit)
+        if float(np.linalg.norm(error[:3])) > limit:
+            bad.append((window, error))
+    return bad
+
+
 def _window_errors(w: StaticWindow, fit: StaticFitResult) -> np.ndarray:
     yhat = _window_yhat(w, fit)
     if w.samples is not None and len(w.samples):

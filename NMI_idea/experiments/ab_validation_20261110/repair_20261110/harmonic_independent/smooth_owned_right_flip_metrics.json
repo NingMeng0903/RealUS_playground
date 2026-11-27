@@ -1,0 +1,1013 @@
+{
+  "input": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_independent/smooth_owned_right_cap_mesh.npz",
+  "cap_only_flips": [
+    {
+      "edge": [
+        1,
+        7367
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        2,
+        7371
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        2,
+        7374
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        3,
+        7377
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        3,
+        7379
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        4,
+        7383
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        4,
+        7386
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 15
+    },
+    {
+      "edge": [
+        477,
+        10142
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        477,
+        10143
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        481,
+        10166
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        481,
+        10167
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        484,
+        10184
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        484,
+        10185
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        487,
+        10202
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        487,
+        10203
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1863,
+        10142
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1867,
+        7367
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1867,
+        10143
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1868,
+        10166
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1871,
+        7371
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1871,
+        10167
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1872,
+        7374
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1872,
+        10184
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1875,
+        7377
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1875,
+        10185
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1876,
+        7379
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1876,
+        10202
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1879,
+        7383
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1879,
+        10203
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        1880,
+        7386
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 15
+    },
+    {
+      "edge": [
+        7392,
+        18439
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        7400,
+        18461
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        7417,
+        7418
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        7417,
+        18499
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        7418,
+        18501
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        10091,
+        10092
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        10248,
+        10249
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        10248,
+        18440
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        10249,
+        18462
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        10332,
+        18502
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        18439,
+        18440
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        18461,
+        18462
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        18499,
+        18500
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    },
+    {
+      "edge": [
+        18501,
+        18502
+      ],
+      "accepted": false,
+      "reason": "new cap creates proper CGAL intersections",
+      "intersection_count": 13
+    }
+  ],
+  "unchanged_original_skin_faces": true,
+  "original_vertex_displacement_max_m": 0.0,
+  "topology": {
+    "vertices": 29287,
+    "faces": 58570,
+    "boundary_edges": 0,
+    "boundary_components": 0,
+    "boundary_component_vertices": [],
+    "boundary_degrees_not_two": 0,
+    "nonmanifold_edges": 54,
+    "inconsistent_interior_winding": 0,
+    "unused_vertices": 0,
+    "watertight": false,
+    "boundary_vertex_ids": []
+  },
+  "cgal_intersections": {
+    "complete_detect_only": true,
+    "cgal_intersecting_face_pairs": 13,
+    "categories": {
+      "tag1_tag2_shared1": 4,
+      "tag2_tag1_shared1": 2,
+      "tag1_tag2_shared0": 7
+    },
+    "examples": [
+      {
+        "faces": [
+          19175,
+          58242
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -4.696669293480227e-07,
+            -0.5200778841972351,
+            0.10106652230024338
+          ],
+          [
+            -0.0009285330888815224,
+            -0.5200751423835754,
+            0.101072296500206
+          ],
+          [
+            -5.456044505081081e-07,
+            -0.5206982493400574,
+            0.10029969364404678
+          ]
+        ],
+        "vertices_b": [
+          [
+            0.0009460654691793025,
+            -0.5221573710441589,
+            0.09847269207239151
+          ],
+          [
+            -0.0009285330888815224,
+            -0.5200751423835754,
+            0.101072296500206
+          ],
+          [
+            0.0009337065857835114,
+            -0.5210053324699402,
+            0.0999184399843216
+          ]
+        ]
+      },
+      {
+        "faces": [
+          58103,
+          6
+        ],
+        "tags": [
+          2,
+          1
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -4.696669293480227e-07,
+            -0.5200778841972351,
+            0.10106652230024338
+          ],
+          [
+            0.0009337065857835114,
+            -0.5210053324699402,
+            0.0999184399843216
+          ],
+          [
+            -0.0009285330888815224,
+            -0.5200751423835754,
+            0.101072296500206
+          ]
+        ],
+        "vertices_b": [
+          [
+            -4.696669293480227e-07,
+            -0.5200778841972351,
+            0.10106652230024338
+          ],
+          [
+            -5.456044505081081e-07,
+            -0.5206982493400574,
+            0.10029969364404678
+          ],
+          [
+            0.0009275719057768583,
+            -0.520075261592865,
+            0.10107250511646271
+          ]
+        ]
+      },
+      {
+        "faces": [
+          6,
+          58242
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 0,
+        "vertices_a": [
+          [
+            -4.696669293480227e-07,
+            -0.5200778841972351,
+            0.10106652230024338
+          ],
+          [
+            -5.456044505081081e-07,
+            -0.5206982493400574,
+            0.10029969364404678
+          ],
+          [
+            0.0009275719057768583,
+            -0.520075261592865,
+            0.10107250511646271
+          ]
+        ],
+        "vertices_b": [
+          [
+            0.0009460654691793025,
+            -0.5221573710441589,
+            0.09847269207239151
+          ],
+          [
+            -0.0009285330888815224,
+            -0.5200751423835754,
+            0.101072296500206
+          ],
+          [
+            0.0009337065857835114,
+            -0.5210053324699402,
+            0.0999184399843216
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8843,
+          58380
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -3.547885683019558e-07,
+            -0.5142157077789307,
+            -0.055609360337257385
+          ],
+          [
+            -4.3366014779167017e-07,
+            -0.5145848393440247,
+            -0.05423087626695633
+          ],
+          [
+            -0.0005203943001106381,
+            -0.5145441293716431,
+            -0.05474685877561569
+          ]
+        ],
+        "vertices_b": [
+          [
+            -3.547885683019558e-07,
+            -0.5142157077789307,
+            -0.055609360337257385
+          ],
+          [
+            -0.09599458426237106,
+            -0.48902183771133423,
+            -0.12410562485456467
+          ],
+          [
+            -0.00018837733659893274,
+            -0.5154749751091003,
+            -0.05136501416563988
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8846,
+          58380
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 0,
+        "vertices_a": [
+          [
+            -4.3366014779167017e-07,
+            -0.5145848393440247,
+            -0.05423087626695633
+          ],
+          [
+            -0.0004065518733114004,
+            -0.5148888826370239,
+            -0.05342888832092285
+          ],
+          [
+            -0.0005203943001106381,
+            -0.5145441293716431,
+            -0.05474685877561569
+          ]
+        ],
+        "vertices_b": [
+          [
+            -3.547885683019558e-07,
+            -0.5142157077789307,
+            -0.055609360337257385
+          ],
+          [
+            -0.09599458426237106,
+            -0.48902183771133423,
+            -0.12410562485456467
+          ],
+          [
+            -0.00018837733659893274,
+            -0.5154749751091003,
+            -0.05136501416563988
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8844,
+          58380
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 0,
+        "vertices_a": [
+          [
+            -4.928903081236058e-07,
+            -0.5149285197257996,
+            -0.05301940068602562
+          ],
+          [
+            -0.0004065518733114004,
+            -0.5148888826370239,
+            -0.05342888832092285
+          ],
+          [
+            -4.3366014779167017e-07,
+            -0.5145848393440247,
+            -0.05423087626695633
+          ]
+        ],
+        "vertices_b": [
+          [
+            -3.547885683019558e-07,
+            -0.5142157077789307,
+            -0.055609360337257385
+          ],
+          [
+            -0.09599458426237106,
+            -0.48902183771133423,
+            -0.12410562485456467
+          ],
+          [
+            -0.00018837733659893274,
+            -0.5154749751091003,
+            -0.05136501416563988
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8849,
+          58380
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 0,
+        "vertices_a": [
+          [
+            -4.928903081236058e-07,
+            -0.5149285197257996,
+            -0.05301940068602562
+          ],
+          [
+            -0.0003028350474778563,
+            -0.5152007341384888,
+            -0.05229615047574043
+          ],
+          [
+            -0.0004065518733114004,
+            -0.5148888826370239,
+            -0.05342888832092285
+          ]
+        ],
+        "vertices_b": [
+          [
+            -3.547885683019558e-07,
+            -0.5142157077789307,
+            -0.055609360337257385
+          ],
+          [
+            -0.09599458426237106,
+            -0.48902183771133423,
+            -0.12410562485456467
+          ],
+          [
+            -0.00018837733659893274,
+            -0.5154749751091003,
+            -0.05136501416563988
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8837,
+          58380
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 0,
+        "vertices_a": [
+          [
+            -4.928903081236058e-07,
+            -0.5149285197257996,
+            -0.05301940068602562
+          ],
+          [
+            -5.32536319042265e-07,
+            -0.515224039554596,
+            -0.05203835293650627
+          ],
+          [
+            -0.0003028350474778563,
+            -0.5152007341384888,
+            -0.05229615047574043
+          ]
+        ],
+        "vertices_b": [
+          [
+            -3.547885683019558e-07,
+            -0.5142157077789307,
+            -0.055609360337257385
+          ],
+          [
+            -0.09599458426237106,
+            -0.48902183771133423,
+            -0.12410562485456467
+          ],
+          [
+            -0.00018837733659893274,
+            -0.5154749751091003,
+            -0.05136501416563988
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8838,
+          58380
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -0.00018837733659893274,
+            -0.5154749751091003,
+            -0.05136501416563988
+          ],
+          [
+            -0.0003028350474778563,
+            -0.5152007341384888,
+            -0.05229615047574043
+          ],
+          [
+            -5.32536319042265e-07,
+            -0.515224039554596,
+            -0.05203835293650627
+          ]
+        ],
+        "vertices_b": [
+          [
+            -3.547885683019558e-07,
+            -0.5142157077789307,
+            -0.055609360337257385
+          ],
+          [
+            -0.09599458426237106,
+            -0.48902183771133423,
+            -0.12410562485456467
+          ],
+          [
+            -0.00018837733659893274,
+            -0.5154749751091003,
+            -0.05136501416563988
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8820,
+          58403
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 0,
+        "vertices_a": [
+          [
+            1.0129163285910181e-07,
+            -0.5127381086349487,
+            -0.06242639943957329
+          ],
+          [
+            -2.1710921060957844e-08,
+            -0.5130694508552551,
+            -0.060576535761356354
+          ],
+          [
+            -0.001118793967179954,
+            -0.513107419013977,
+            -0.06135937198996544
+          ]
+        ],
+        "vertices_b": [
+          [
+            -0.0016155355842784047,
+            -0.5106579065322876,
+            -0.07381699979305267
+          ],
+          [
+            -0.08942381292581558,
+            -0.48927533626556396,
+            -0.12593191862106323
+          ],
+          [
+            -1.43909318239821e-07,
+            -0.5134397149085999,
+            -0.058809421956539154
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8823,
+          58403
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 0,
+        "vertices_a": [
+          [
+            -2.1710921060957844e-08,
+            -0.5130694508552551,
+            -0.060576535761356354
+          ],
+          [
+            -0.0009435563115403056,
+            -0.5134439468383789,
+            -0.05954480916261673
+          ],
+          [
+            -0.001118793967179954,
+            -0.513107419013977,
+            -0.06135937198996544
+          ]
+        ],
+        "vertices_b": [
+          [
+            -0.0016155355842784047,
+            -0.5106579065322876,
+            -0.07381699979305267
+          ],
+          [
+            -0.08942381292581558,
+            -0.48927533626556396,
+            -0.12593191862106323
+          ],
+          [
+            -1.43909318239821e-07,
+            -0.5134397149085999,
+            -0.058809421956539154
+          ]
+        ]
+      },
+      {
+        "faces": [
+          8821,
+          58403
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -1.43909318239821e-07,
+            -0.5134397149085999,
+            -0.058809421956539154
+          ],
+          [
+            -0.0009435563115403056,
+            -0.5134439468383789,
+            -0.05954480916261673
+          ],
+          [
+            -2.1710921060957844e-08,
+            -0.5130694508552551,
+            -0.060576535761356354
+          ]
+        ],
+        "vertices_b": [
+          [
+            -0.0016155355842784047,
+            -0.5106579065322876,
+            -0.07381699979305267
+          ],
+          [
+            -0.08942381292581558,
+            -0.48927533626556396,
+            -0.12593191862106323
+          ],
+          [
+            -1.43909318239821e-07,
+            -0.5134397149085999,
+            -0.058809421956539154
+          ]
+        ]
+      },
+      {
+        "faces": [
+          58405,
+          8820
+        ],
+        "tags": [
+          2,
+          1
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -2.1710921060957844e-08,
+            -0.5130694508552551,
+            -0.060576535761356354
+          ],
+          [
+            -0.0016155355842784047,
+            -0.5106579065322876,
+            -0.07381699979305267
+          ],
+          [
+            -1.43909318239821e-07,
+            -0.5134397149085999,
+            -0.058809421956539154
+          ]
+        ],
+        "vertices_b": [
+          [
+            1.0129163285910181e-07,
+            -0.5127381086349487,
+            -0.06242639943957329
+          ],
+          [
+            -2.1710921060957844e-08,
+            -0.5130694508552551,
+            -0.060576535761356354
+          ],
+          [
+            -0.001118793967179954,
+            -0.513107419013977,
+            -0.06135937198996544
+          ]
+        ]
+      }
+    ],
+    "seconds": 0.2883303960006742
+  }
+}

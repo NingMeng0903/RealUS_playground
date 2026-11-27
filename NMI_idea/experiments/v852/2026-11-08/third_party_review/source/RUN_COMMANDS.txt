@@ -1,0 +1,36 @@
+V8.5.2 核心实验实现（2026-11-08）
+
+本包实现并运行三个不同证据层：
+1) finite kernel：两变量可辨识、三变量两两不可辨识、共同策略LP与A/B/C option机制核验；
+2) native SMPL-X几何切片+Cartesian lag执行：局部-only训练、同对象束、正/零/负关联设计总体、三档压力、真正release gate、fresh、恢复、事前预测与强/消融对照；
+3) Genesis measured-joint PD：完整入口+路径执行；joint_core进一步检验当前公开放置/程序库是否支持全链，失败也保存。
+真实接触、真实B-mode质量与硬件均未执行；候选bootstrap envelope不是严格置信集。
+
+主实验：
+PYTHONPATH=work OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python -m leg_program_bench.run_core_suite --output outputs/new_core_run --train-pool 48 --test-objects 16 --levels basic,variable,stress --models 9 --seed 20261208
+报告：
+PYTHONPATH=work python -m leg_program_bench.report_core_suite --input outputs/new_core_run --output outputs/new_core_run/figures
+合同审计：
+PYTHONPATH=work python -m leg_program_bench.audit_core_results --input outputs/new_core_run
+数学边界：
+PYTHONPATH=work python -m leg_program_bench.core_identifiability --help
+关节路径：
+PYTHONPATH=work /media/camp/EXT_DRIVE/envs/genesis/bin/python -m leg_program_bench.run_joint_execution --help
+关节全链边界：
+PYTHONPATH=work /media/camp/EXT_DRIVE/envs/genesis/bin/python -m leg_program_bench.run_joint_core --help
+--output必须是新目录；模型和测试数据可追溯。原SMPL-X/图册依赖从Among_US既有路径读取。
+
+主实验的算法对照：
+joint_robust：观测near/probe符号的结构化对象束+bootstrap共同策略+主值不下降的代价次目标。
+joint_nominal：同对象模型的名义规划，一致性参考。
+full_history：同可见标量历史的连续RBF联合对象模型，在同一固定策略树库内；不是宣称通用神经世界模型均已比较。
+shuffled_robust：同stratum内仅打乱near配对，保留程序内联合行，并保留正/负coupling情景，不假装关联已识别。
+independent：同probe类别下跨程序重新抽对象，作持续关联消融。
+time_factorized：状态/成功/出口仍来自同对象，但时间从同probe类别另抽，作结果-时间依赖消融。
+identify_execute：考虑预算选预注册probe树，有同样恢复权限。
+fixed_reference：固定实现工程参考。
+joint_n8/n16：嵌套局部训练样本预算曲线。
+
+早/晚/隐藏组共享同一个已采内容hash、采集成本和fresh要求。晚组仍能先行动、等待和恢复。每个T按预先保存的混合策略取值，完成率曲线并非必然是一条固定策略CDF。
+测试按完整anatomy配置分组，多个树/信息干预不是多个独立对象。受控总体按审计U/V分层权重评价；U/V只用于采样和结果审计，禁止进入策略。
+事后最佳已运行树仅为乐观的有限树库参考，不能称任意机器人控制器的能力上界。

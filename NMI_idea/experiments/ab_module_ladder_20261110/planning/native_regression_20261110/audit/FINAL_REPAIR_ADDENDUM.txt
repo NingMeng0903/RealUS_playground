@@ -1,0 +1,104 @@
+独立审计补充：native 物理位置认证与新摆放回放
+2026-11-10
+
+结论
+本次物理位置发布修复、保留姿态偏好的离线入口，以及新公开先验布局下的
+20 段回放，通过本审计的限定检查。新布局为 20/20 完整动作通过，不能改写为
+原起始条件已从 8/20 变成 20/20。此前报告和所有失败结果完整保留。
+没有真机试验，也没有证据表明 RealMan 厂家控制器失效。
+
+为什么旧两路径通过，新动作却失败
+独立单因素配置比较确认：原来额外 140° J1 branch 规则，禁止合法起始
+J1=-149.168° 继续负转。旧两路径主要向内侧转至约 -128/-126°，没有覆盖
+新首段需要向外转至约 -158° 的情形。仅对齐该限制的中间对照，首段误差由
+17.058892 mm / 2.290574° 降至 .012747 mm / .027800°。
+前轮“局部动态盒限制任务”是正确现象，但尚不是唯一根因定位；本轮明确了
+该额外 branch 规则。原 8/20 是具体策略配置和初始化下的回放结果，不能
+外推为 native、实际机器人或所有路径普遍不能跟踪。
+
+中间方案暴露的真实缺陷已单独处理
+原 lead/collapse 分支会把物理位置界与历史加速度界的空交集改成可行等值盒，
+从而提出超过 URDF 的 arm q_send；Python 外层拒绝了它。新 inner.cpp：
+  - arm 冲突不再被 lead/collapse 吞掉，明确返回 P0 conflict；
+  - 普通 QP 与 direct-PTP 的最终 q_send 均检查全部关节位置及有限性；
+  - 非法发布不静默夹值后宣称成功，而恢复已提交历史并报告失败。
+这修复位置发布合同，不证明任何已经不可制动的状态都能继续完成任务，也
+不等同真实运动中的紧急制动验证。rail 的旧区间修补未整体重写。
+审计独立执行三个真实 native 回归：冻结冲突拒绝、direct 越界拒绝、合法
+direct 命令保留，3/3 通过；最终离线 profile 工厂合同 8/8 独立复跑通过，
+包括保留全部 secondary 配置的新增回归。
+
+最终配置的实际范围
+保留 posture_policy=configured，关闭 extra_posture_limits 对应的 branch
+硬墙。实际 native cfg 与旧两路径基线逐字段比较，只有 branch_barrier.enabled
+由 1 改为 0；task weights、真实 q/v/a/jerk、collision 与 secondary 偏好参数
+均保持。sigma/joint/J4 comfort、arm_angle、psi_retarget 仍 enabled。
+后三类 preference 行在 QP2 中，A2=J_task、b2=t1 锁住一级任务；本审计未把
+它们错误称作 QP1 姿态惩罚。禁用全部偏好的 task_only 方案仅保留为诊断。
+独立构建的 native binary 已用于回放；全局 controller.yaml 和原 production
+binary 哈希均保持原值，没有替换真机运行配置或连接硬件。
+默认入口已直接指向受测独立 binary，无需调用者额外传参。本审计核对
+默认 smoke 的实际 binary/profile 哈希及完整 native cfg，后者与受测最终
+路径配置逐字相同。root 留存的 smoke 比较记录显示 33 个非墙钟数组全等；
+因未单独保存默认 smoke trace，本审计未第二次重算该数组比较或重跑轨道。
+完整 20 段使用显式相同 binary 的较早 profile；最终 profile 只追加默认
+binary 路径，移除此行后的字节哈希与 20 段保存的 profile 哈希完全一致。
+
+新布局的来源与限制
+命令集布局搜索使用 9 个 q_nominal 附近候选、原 20 条公开动作的 820 个
+DMP 节点和 8 个独立端点。随后单独运行的 prior-only 分支不打开已完成
+episode 文件，只使用公开 seed720502 的 32 假设、4 模式摘要、3 个站位和
+3 个 yaw 扰动：36 个端点、1476 个路径节点。两次均选中 q2+5°、rail=.4 m；
+选中的 q 和体表局部面变换逐值相同。
+本审计独立重算两组全部 9 候选的 dIRD 分数、名义姿态偏差惩罚与选择结果，
+并重新检查 9 个初始 q 的 FK/限位/35 对自碰撞。没有重跑全部有限 IK 搜索；
+端点 found 计数来自封存记录。prior-only 复核消除了对未来已记录动作的必要
+输入依赖，但它仍是事后开展的有限候选诊断，不是全局最优摆放、任意患者
+覆盖或连续可达路径的证明。dIRD raw calibrated margin 也不是米制间隙。
+
+新布局完整回放的独立复算
+同一新摆放/起始 q 下，保留原四份动作序列，共 20 段、5098 ticks：
+  完整动作通过：20/20；无拒绝、无缺失段、无 pause；
+  最大同刻位置误差：.037457949556 mm；
+  最大同刻角度误差：.0549747090°；
+  全部记录自碰撞距离 >= .0390906564 m（门 .01 m）；
+  实际 q 增量速度最小余量 +.3603610918，跨段加速度余量 -1.89e-12；
+  reported command 加速度余量 -5.84e-12，属于数值精度；
+  jerk 最小余量 -.0233726，仅记录，不据此阻断。
+所有误差重新由 FK(q_meas_before[t]) 对 pose_desired[t] 计算。完整 q_out、
+速度/加速度历史、事件前缀、5 ms 时钟跨段衔接均核验；逐帧位置/速度/
+加速度和全部保存碰撞值重计，35 对碰撞在各段代表点重新计算一致。
+独立从真实 ideal q 增量另算 v/a，避免仅信 published qdot 遥测。
+
+旧两条路径用新 binary 和 branch-off profile 的回归仍通过：
+  path0：.0329868780 mm / .035648865°；
+  path1：.0330094115 mm / .035222725°。
+这同时保留了旧路径成功证据和新布局成功证据；没有把改变布局后的结果
+归为 dIRD 单独增益，也没有把原四个初始条件冒充仍被测试。
+
+新布局保持姿态的补充单例也独立通过：2101 ticks，全 solved、无 pause/
+拒绝，最大误差 .004762435 mm / .000090489°。请求 settle=10 s，记录的
+采样时刻实际为 0–10.5 s（另含 .5 s nominal duration），积分 10.505 s。
+
+dIRD 合同的明确收缩
+顺读独立代码/数据探索者的 DIRD_CONTRACT_FINDING.txt，其 checkpoint 与
+canonical 数据哈希核对表明当前标签混合 selected-witness 的 branch/psi
+条件，而条件未进入 9D 网络输入。它不能称为每个位姿全分支存在性并集，
+也不包含当前 q/qdot/控制历史来保证连续执行。本审计未重复其大数据核验，
+以该独立证据作明确归属；这里仅独立复算实际加载代理的布局分数。
+保留其排序作用，并以实际执行验证；既不声称全局可达证书，也不把各点
+独立有 IK 见证说成存在同一连续执行路径。
+
+适用范围
+这是 production 运动学与实际 native 控制代码在 ideal measured-joint plant
+中的运动回放。一套局部平面摆放、四份记录动作序列，并非 20 个独立对象，
+也不是完整 SMPL-X 腿/血管/超声/力接触闭环。原 L0 图像未按 native 实际
+轨迹重新生成；合法连续对象零成功及 B 未优于强 A 的任务结论不因此改变。
+
+复算文件
+FINAL_NATIVE_REPRODUCTION.json / check_final_native.py
+ACTUAL_Q_DERIVATIVE_AUDIT.json / check_actual_q_derivatives.py
+native_position_tests_independent.log / final_profile_tests_independent.log
+ENTRYPOINT_HOLD_CHECKS.json 记录最终入口/保持单例及核验层级。
+原故障证据仍见 PHYSICAL_BOX_BLOCKER.txt 与 STAGE_AUDIT_MANIFEST.json。
+本补充的最终哈希与入口核验见 FINAL_REPAIR_MANIFEST.json。

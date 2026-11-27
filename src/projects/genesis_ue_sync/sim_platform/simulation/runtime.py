@@ -24,6 +24,12 @@ from projects.genesis_ue_sync.sim_platform.core.messages import (
 from projects.genesis_ue_sync.sim_platform.control.motion import MotionInterface
 from projects.genesis_ue_sync.sim_platform.embodiments.profiles import EmbodimentProfile, SensorProfile
 from projects.genesis_ue_sync.sim_platform.scenes.entity_commands import SceneEntityCommand, SceneEntityRegistry
+from projects.genesis_ue_sync.sim_platform.simulation.calibrated_camera import (
+    FullKCameraAdapter,
+    camera_intrinsics_to_matrix,
+    full_k_from_camera_metadata,
+    install_full_k_raster_camera,
+)
 
 
 def genesis_morph_quat_wxyz_from_xyzw(quat_xyzw: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
@@ -156,6 +162,7 @@ class GenesisPlatformRuntime:
         self.cameras: dict[str, Any] = {}
         self.camera_sensor_profiles: dict[str, SensorProfile] = {}
         self._camera_mounts: dict[str, StaticCameraConfig] = {}
+        self._calibrated_cameras: dict[str, FullKCameraAdapter] = {}
         self._external_wrenches: dict[str, np.ndarray] = {}
         self.dynamic_entities = SceneEntityRegistry()
         self._injected_observation: ObservationBundle | None = None
@@ -530,6 +537,23 @@ class GenesisPlatformRuntime:
         if self.scene is None:
             self.initialize()
         self.scene.build(n_envs=n_envs, env_spacing=env_spacing)
+        self._calibrated_cameras = {}
+        for camera_name, mount in self._camera_mounts.items():
+            sensor_profile = self.camera_sensor_profiles.get(camera_name)
+            profile_K = camera_intrinsics_to_matrix(sensor_profile.intrinsics) if sensor_profile is not None else None
+            metadata_K = full_k_from_camera_metadata(mount.metadata, resolution=mount.res)
+            if profile_K is None and metadata_K is None:
+                continue
+            source = "scene_camera_metadata" if metadata_K is not None else "sensor_profile"
+            adapter = install_full_k_raster_camera(
+                self.cameras[camera_name],
+                metadata=mount.metadata,
+                resolution=mount.res,
+                intrinsics=profile_K,
+                source=source,
+            )
+            if adapter is not None:
+                self._calibrated_cameras[camera_name] = adapter
         self._built = True
         self._apply_camera_mounts()
 
@@ -617,6 +641,7 @@ class GenesisPlatformRuntime:
         self.cameras = {}
         self.camera_sensor_profiles = {}
         self._camera_mounts = {}
+        self._calibrated_cameras = {}
         self._external_wrenches = {}
         self._injected_observation = None
         self._built = False
@@ -964,6 +989,10 @@ class GenesisPlatformRuntime:
             )
             sensor_profile = self.camera_sensor_profiles.get(camera_name)
             if "rgb" in rendered:
+                camera_metadata = {"render_modalities": list(include_modalities)}
+                calibrated = self._calibrated_cameras.get(camera_name)
+                if calibrated is not None:
+                    camera_metadata.update(calibrated.metadata)
                 sensor_frames[camera_name] = SensorFrame(
                     sensor_name=camera_name,
                     modality="rgb",
@@ -975,7 +1004,7 @@ class GenesisPlatformRuntime:
                     data=rendered["rgb"],
                     intrinsics=self._camera_intrinsics(camera_name, sensor_profile),
                     extrinsics=self._camera_extrinsics(camera_name),
-                    metadata={"render_modalities": list(include_modalities)},
+                    metadata=camera_metadata,
                 )
         return sensor_frames
 
@@ -985,12 +1014,41 @@ class GenesisPlatformRuntime:
         sensor_profile: SensorProfile | None,
     ) -> CameraIntrinsics | None:
         if sensor_profile is not None and sensor_profile.intrinsics is not None:
+            calibrated = self._calibrated_cameras.get(camera_name)
+            if calibrated is not None:
+                intrinsics = calibrated.intrinsics
+                width, height = calibrated.width, calibrated.height
+                return CameraIntrinsics(
+                    width=width,
+                    height=height,
+                    fx=float(intrinsics[0, 0]),
+                    fy=float(intrinsics[1, 1]),
+                    cx=float(intrinsics[0, 2]),
+                    cy=float(intrinsics[1, 2]),
+                    skew=float(intrinsics[0, 1]),
+                )
             return sensor_profile.intrinsics
+        calibrated = self._calibrated_cameras.get(camera_name)
+        if calibrated is not None:
+            intrinsics = calibrated.intrinsics
+            return CameraIntrinsics(
+                width=calibrated.width,
+                height=calibrated.height,
+                fx=float(intrinsics[0, 0]),
+                fy=float(intrinsics[1, 1]),
+                cx=float(intrinsics[0, 2]),
+                cy=float(intrinsics[1, 2]),
+                skew=float(intrinsics[0, 1]),
+            )
         camera = self.cameras[camera_name]
         intrinsics = self._to_numpy(camera.intrinsics)
         if intrinsics.shape != (3, 3):
             return None
-        width, height = sensor_profile.resolution if sensor_profile and sensor_profile.resolution else (0, 0)
+        if sensor_profile is not None and sensor_profile.resolution:
+            width, height = sensor_profile.resolution
+        else:
+            mount = self._camera_mounts.get(camera_name)
+            width, height = mount.res if mount is not None else (0, 0)
         return CameraIntrinsics(
             width=width,
             height=height,

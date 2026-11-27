@@ -99,6 +99,7 @@ class MultiviewTrackPoseV1(TypedDict, total=False):
     pose_aa: list[float]
     betas: list[float]
     translation_m: list[float]
+    pelvis_world_m: list[float]
 
 
 def track_clear_to_dict(
@@ -125,6 +126,7 @@ def track_pose_to_dict(
     pose_aa: Any,
     betas: Any,
     translation_m: Any = None,
+    pelvis_world_m: Any = None,
 ) -> dict[str, Any]:
     """Serialize SMPL pose (axis-angle 72 + betas) for the Genesis mesh overlay."""
     import numpy as np
@@ -139,6 +141,11 @@ def track_pose_to_dict(
     }
     if translation_m is not None:
         out["translation_m"] = [float(v) for v in np.asarray(translation_m, dtype=np.float32).reshape(3).tolist()]
+    if pelvis_world_m is not None:
+        pelvis = np.asarray(pelvis_world_m, dtype=np.float32).reshape(-1)
+        if pelvis.size != 3 or not np.all(np.isfinite(pelvis)):
+            raise ValueError("pelvis_world_m must contain three finite values")
+        out["pelvis_world_m"] = [float(v) for v in pelvis.tolist()]
     return _with_clock(out, timestamp_ns)
 
 
@@ -154,6 +161,7 @@ def track_mesh_vertices_to_dict(
     Th: Any = None,
     poses: Any = None,
     smplx_pose_aa_165: Any = None,
+    pelvis_world_m: Any = None,
     betas: Any = None,
     gender: str | None = None,
     shape_hash: str | None = None,
@@ -186,6 +194,11 @@ def track_mesh_vertices_to_dict(
         if pose.size != 165:
             raise ValueError(f"smplx_pose_aa_165 must contain 165 values, got {pose.size}")
         out["smplx_pose_aa_165"] = [float(v) for v in pose.tolist()]
+    if pelvis_world_m is not None:
+        pelvis = np.asarray(pelvis_world_m, dtype=np.float32).reshape(-1)
+        if pelvis.size != 3 or not np.all(np.isfinite(pelvis)):
+            raise ValueError("pelvis_world_m must contain three finite values")
+        out["pelvis_world_m"] = [float(v) for v in pelvis.tolist()]
     if betas is not None:
         out["betas"] = [float(v) for v in np.asarray(betas, dtype=np.float32).reshape(-1)[:10].tolist()]
     if gender is not None:

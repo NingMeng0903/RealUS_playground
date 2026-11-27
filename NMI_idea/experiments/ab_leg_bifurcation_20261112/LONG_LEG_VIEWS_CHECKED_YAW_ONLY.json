@@ -1,0 +1,303 @@
+{
+  "audit_output": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_VIEWS_CHECKED_YAW_ONLY.json",
+  "checked_lateral_offsets_nominal_mm": [
+    -24.0,
+    -16.0,
+    -8.0,
+    0.0,
+    8.0,
+    16.0,
+    24.0
+  ],
+  "checked_public_placement": {
+    "base_anchor": [
+      [
+        -0.9853855957027937,
+        0.1527459384942238,
+        0.07539168425609982,
+        0.4058983753071562
+      ],
+      [
+        0.15963494404680753,
+        0.982510211759051,
+        0.09586640928062412,
+        0.22358551217316117
+      ],
+      [
+        -0.05942989500769194,
+        0.10650052611469263,
+        -0.9925349996431717,
+        0.1505291678470127
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "base_placement": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_regression_20261110/public_prior_layout/SELECTED.json",
+    "checked_anchor": [
+      [
+        0.9853855957027937,
+        -0.1527459384942238,
+        0.07539168425609982,
+        0.4058983753071562
+      ],
+      [
+        -0.15963494404680753,
+        -0.982510211759051,
+        0.09586640928062412,
+        0.22358551217316117
+      ],
+      [
+        0.05942989500769194,
+        -0.10650052611469263,
+        -0.9925349996431717,
+        0.1505291678470127
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "interpretation": "contact-facing inward axis unchanged; long/lateral axes reversed",
+    "rotation_deg": 180.0,
+    "rotation_local_axis": "inward/TCP-z"
+  },
+  "frame_columns": [
+    "longitudinal_tangent",
+    "lateral",
+    "inward"
+  ],
+  "input_asset": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_ASSETS.npz",
+    "sha256": "bc257945ad87e0343526b16eb27df3a8abdb1be9ef73630b32c51f12b5fdbb63"
+  },
+  "input_asset_metadata": {
+    "contiguous_supported_runs": [
+      {
+        "end_index": 103,
+        "internal_length_m": 0.2521758257053436,
+        "internal_length_mm": 252.17582570534358,
+        "label_end": "R_POPV",
+        "label_start": "R_SUPFEMV",
+        "point_count": 75,
+        "repaired_d_max": 0.9643320249988983,
+        "repaired_d_min": 0.6189626492192829,
+        "repaired_h_end": 0.4462669549853398,
+        "repaired_h_start": 0.1404699396431306,
+        "skin_length_m": 0.32605488537277016,
+        "skin_length_mm": 326.0548853727702,
+        "source_global_index_end": 580,
+        "source_global_index_start": 442,
+        "start_index": 29
+      },
+      {
+        "end_index": 220,
+        "internal_length_m": 0.3926723787363621,
+        "internal_length_mm": 392.67237873636213,
+        "label_end": "R_POST_TIB_V",
+        "label_start": "R_POPV",
+        "point_count": 115,
+        "repaired_d_max": 0.995709370704139,
+        "repaired_d_min": 0.1259640906387393,
+        "repaired_h_end": 0.9376474635257113,
+        "repaired_h_start": 0.4569156277624795,
+        "skin_length_m": 0.41887397248688013,
+        "skin_length_mm": 418.8739724868801,
+        "source_global_index_end": 697,
+        "source_global_index_start": 583,
+        "start_index": 106
+      }
+    ],
+    "decode_checks": {
+      "strict_internal_invalid_count": 44,
+      "strict_internal_inverse_residual_max_m": 2.2291027918243403e-16,
+      "strict_internal_valid_count": 190,
+      "surface_address_decode_max_error_m": 4.443059973708341e-16,
+      "surface_address_decode_median_error_m": 6.938893903907228e-18
+    },
+    "full_ordered_path_length_m": 0.794869033655085,
+    "full_ordered_path_length_mm": 794.869033655085,
+    "full_ordered_skin_length_m": 0.8935127703732761,
+    "full_ordered_skin_length_mm": 893.5127703732761,
+    "internal_contract": "strict containing-tetra inverse on repaired atlas_right; no nearest projection",
+    "old_xi_warning": "legacy_xi is retained only as provenance/debug; do not use it as repaired internal coordinates",
+    "ordering": [
+      "R_COM_FEM_V",
+      "R_SUPFEMV",
+      "R_POPV",
+      "R_POST_TIB_V"
+    ],
+    "repaired_atlas_domain": {
+      "d": [
+        0.0,
+        1.0
+      ],
+      "h": [
+        0.14000000059604645,
+        0.9399999976158142
+      ],
+      "theta": "periodic radians"
+    },
+    "row_count": 234,
+    "schema": "long_leg_assets_v1",
+    "source_assets": {
+      "baked_internal_source_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/servo/prepared_scene/prebake/right_thigh_patch_and_vessels.npz",
+        "sha256": "02ef26d9daf561328958af37417736b24b5a11e476717d38ffb96b19d6d62dc6"
+      },
+      "legacy_vessel_material_asset": {
+        "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/vessels/vessel_material_coordinates.npz",
+        "role": "upstream source provenance only; its old xi_skin labels were not used"
+      },
+      "repaired_atlas_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+        "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+      },
+      "surface_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+        "sha256": "1f98c55cd623adc6e060680f5aec60b9f11366e9b6b03cd770726c8e8b532da8"
+      },
+      "template_prior_asset": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/right_template_prior_chart_addresses.npz",
+        "sha256": "5589b4565c772915a946d96b31c71bb29094b7ad8171e2ca2c9f943fa87ac7c6"
+      }
+    },
+    "source_internal_bake_summary": {
+      "baked_internal_field_keys": [
+        "vessel_points",
+        "vessel_surface_points",
+        "vessel_theta",
+        "vessel_h"
+      ],
+      "baked_trunk_label": "LEG_VESSEL_CHAIN",
+      "baked_trunk_points": 255
+    },
+    "status": "bounded_repaired_internal_attachment",
+    "surface_contract": "full retained right-leg contact multichart surface, d=0 only"
+  },
+  "internal_scope": "internal_valid/internal_xi copied from strict repaired atlas inverse; invalid rows remain NaN",
+  "lateral_offsets_nominal_mm": [
+    -16.0,
+    -8.0,
+    0.0,
+    8.0,
+    16.0
+  ],
+  "lateral_sign": "cross(inward,longitudinal), sign continuity; inward dot(actual vessel-skin) > 0",
+  "output": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_VIEWS_CHECKED_YAW_ONLY.npz",
+  "pose_deg": 0,
+  "pose_scope": "canonical fixed pose; no simulated tissue/probe dynamics",
+  "public_robot": {
+    "candidate_count_per_view": 8,
+    "candidate_static_found_count": 183,
+    "candidate_total_count": 1568,
+    "chosen_static_found_count": 64,
+    "chosen_view_count": 196,
+    "dird_margin_chosen_max": 5.763602771637083,
+    "dird_margin_chosen_min": -14.06725179810486,
+    "placement_rotation": "local inward/TCP-z yaw \u03c0",
+    "static_requested": true
+  },
+  "robot_scope": "public CapabilityEvaluator score + finite _static_pose endpoint; no anatomy collision/path/native claim",
+  "row_slice": [
+    106,
+    220
+  ],
+  "schema": "long_leg_views_checked_v1",
+  "source_label_span": [
+    "R_POPV",
+    "R_POST_TIB_V"
+  ],
+  "source_original_table": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_VIEWS.npz",
+    "sha256": "1963cacd3c7c9bf29c30c1929fb91a9e83bbfbd7fbb5a22b363e8f3d2abbe46b"
+  },
+  "source_path_length_m": 0.39267237873636196,
+  "source_path_length_mm": 392.67237873636196,
+  "source_row_count": 115,
+  "station_count": 28,
+  "station_row_ids": [
+    106,
+    110,
+    115,
+    119,
+    125,
+    129,
+    133,
+    138,
+    142,
+    146,
+    150,
+    155,
+    159,
+    163,
+    168,
+    172,
+    176,
+    181,
+    185,
+    189,
+    193,
+    198,
+    202,
+    206,
+    211,
+    215,
+    219,
+    220
+  ],
+  "station_s_mm": [
+    0.0,
+    13.415987017408725,
+    30.296817395344622,
+    43.81996905695129,
+    61.27012729423144,
+    75.23002582615824,
+    89.16584931661389,
+    106.61073178363374,
+    120.56691625874164,
+    134.49083493227485,
+    148.44996323250126,
+    165.88367331083526,
+    179.83868889222717,
+    193.79842241105806,
+    211.24361025103036,
+    225.20374038541163,
+    239.15601133418275,
+    256.60285116753056,
+    270.5622961266103,
+    284.51195377087834,
+    298.47154254761836,
+    315.91883511763905,
+    329.8762503576636,
+    343.836372311481,
+    361.2774815188665,
+    375.23718467140446,
+    389.1907437059492,
+    392.67237873636196
+  ],
+  "station_selection": "nearest original LONG_LEG_ASSETS row to arc-length grid, always including run ends",
+  "station_step_requested_mm": 15.0,
+  "status": "geometry_and_public_robot_static_ik_checked_public_inward_yaw_pi",
+  "surface_projection": {
+    "asset": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+    "contract": "full retained right-leg contact multichart d=0 surface",
+    "projection_tolerance_mm": 5.0,
+    "query": "SurfaceMaterialAtlas.query(project=True) followed by exact decode(chart_id, coordinate_uv_m)",
+    "residual_is_retained": true
+  },
+  "vessel_depth_mm": {
+    "max": 56.877674967168865,
+    "median": 25.3245848192692,
+    "min": 3.13178845659307
+  },
+  "view_projection_residual_max_mm": 17.586014168384803,
+  "view_projection_residual_median_mm": 2.8208780530589728,
+  "view_projection_total_count": 196,
+  "view_projection_within_tolerance_count": 136
+}

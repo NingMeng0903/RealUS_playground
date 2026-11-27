@@ -1,0 +1,17 @@
+{
+  "created_utc": "2026-11-10T17:28:14.030400+00:00",
+  "files": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/BRIDGE_AUDIT.txt": "13533ba72072f762229f3522469ef7c85b8500858baf45e66bfab8a444500d37",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/BRIDGE_AUDIT_checks.json": "683324682cd9b343654c08858fa227298ee18365a230b972ddeccd911f12e38e"
+  },
+  "read_only_inputs": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/transport_response_bridge/MANIFEST.json": "99aac52177bde7a5c074adb682e02fcda2b7834f4099a48a137a2b60cd10a031",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/transport_response_bridge/run_bridge.py": "4e1e162aac922ecd370ec975c1033d51eac0659d24f6f48369fbf43347294459",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/transport_response_bridge/PROTOCOL.txt": "2955de307fa0f0563b5bb1cb93abfea831e77828423fd021cd3e65666c8ad413",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/transport_response_bridge/RESULTS.json": "ad1b4e7ac37c7d4ee890d7cf5c8a523ab1860c11b0367a5f463267335cb67f3f",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/transport_response_bridge/REPORT.txt": "b16e6d4414cd5c7f0e0de0e0907b2f103e6180bad08a3d7fad3231884e2389cb",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/run_corrected.py": "8847cf71d435dec087e8039ffaac23e062d549b57d9e3c563c34d805b15effc1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/run_benchmark.py": "67db72a203310be0a1ef946c2a92db1ed7b1dd637b65fa979e7d61bf86f10bba",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/theory/vendor/e3nn/o3/_tensor_product/_sub.py": "64e7edec7f2e0e38cbcdac54d38b2e98aba58fa561ffd3fb01eff34d16e78be1"
+  }
+}

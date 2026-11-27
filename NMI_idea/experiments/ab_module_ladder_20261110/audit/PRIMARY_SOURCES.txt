@@ -1,0 +1,15 @@
+Bounded primary-source check, 2026-11-10
+
+1. Kaelbling, Littman & Cassandra, Planning and acting in partially observable stochastic domains, Artificial Intelligence 101 (1998), 99-134.
+   Author-hosted paper: https://people.csail.mit.edu/lpk/papers/aij98-pomdp.pdf
+   Checked pp.100-101: actions can both affect the world and reveal information; future decision value includes both effects. Checked pp.107-109: Bayes belief update, sufficient belief-MDP state and observation-conditioned policy trees. Used only to delimit already-established POMDP principles.
+
+2. Poupart & Boutilier, Value-Directed Compression of POMDPs, NIPS 2002.
+   Official proceedings: https://proceedings.neurips.cc/paper_files/paper/2002/file/14ea0d5b0cf49525d1866cb1e95ada5d-Paper.pdf
+   Checked Section3, equations2-5 and Theorem1: current reward plus next compressed-state closure permits lossless policy evaluation; linear/invariant-space specializations are already known. Used to reject generic “decision-relevant belief compression” novelty claims without new task structure.
+
+3. Subramanian, Sinha, Seraj & Mahajan, Approximate Information State for Approximate Planning and Reinforcement Learning in Partially Observed Systems, JMLR23(12), 2022, 1-83.
+   Official paper: https://www.jmlr.org/papers/volume23/20-1165/20-1165.pdf
+   Checked Definition7, Proposition8, Theorem9 (pdf pp.14-17) and TV/IPM convention (pp.13-14): reward/transition approximations yield a backward value-error recurrence and twice that bound for the lifted approximate optimum. Their TV/IPM convention uses full L1; THEORY_CONDITIONS explicitly uses half L1 and rederives the finite-horizon bounded-cost specialization.
+
+No broad literature survey or claim of exhaustive novelty clearance was attempted. These three directly relevant sources are enough to identify the general principles as prior art. A new anatomical/robot operator still needs its own structural claim, proof, identification conditions and independent empirical comparison.

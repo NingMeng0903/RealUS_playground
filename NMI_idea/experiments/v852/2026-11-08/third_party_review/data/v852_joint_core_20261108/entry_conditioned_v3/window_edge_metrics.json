@@ -1,0 +1,32 @@
+{
+  "early": {
+    "predicted_completion_at20": 1.0,
+    "measured_completion_at20": 0.5,
+    "predicted_completion_at40": 1.0,
+    "measured_completion_at40": 1.0,
+    "observed_durations": [
+      19.879999999999665,
+      21.55999999999963
+    ]
+  },
+  "late": {
+    "predicted_completion_at20": 1.0,
+    "measured_completion_at20": 0.5,
+    "predicted_completion_at40": 1.0,
+    "measured_completion_at40": 1.0,
+    "observed_durations": [
+      19.879999999999665,
+      21.55999999999963
+    ]
+  },
+  "hide": {
+    "predicted_completion_at20": 1.0,
+    "measured_completion_at20": 0.5,
+    "predicted_completion_at40": 1.0,
+    "measured_completion_at40": 1.0,
+    "observed_durations": [
+      19.879999999999665,
+      21.55999999999963
+    ]
+  }
+}

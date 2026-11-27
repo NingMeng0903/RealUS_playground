@@ -1,0 +1,13 @@
+{
+  "files_sha256": {
+    "PROTOCOL.txt": "77243ae043bce32dd173880d006bb980e92bb55cddebd807e868585c2187699d",
+    "RAW_RESULTS.npz": "f651b055d3b7f0ff6a6f33dac474da58f025a16068ee7581237bd14bf39ad79e",
+    "REPORT.txt": "7e6f2c06946bdf29cfc489b5e40d63b8c4bb8c585deab336ffc2af3245a5551f",
+    "RESULTS.json": "bfe9d3bc50896c15c986f150669319585db1f641bc68c71d1d7ac4f4c13163a2",
+    "run_identification.py": "0e0546920016f861a1535914239fec34a22c5e8a09adf8b53181ffeff01e3b53",
+    "test_identification.py": "14859e5bbe804c6a45ab1b9780a4b5fb7e7065838ed0191aac2a35f80bbfbc46"
+  },
+  "numpy": "2.2.6",
+  "python": "3.10.20",
+  "seed": 720940
+}

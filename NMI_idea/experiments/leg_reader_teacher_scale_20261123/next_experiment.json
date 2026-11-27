@@ -1,0 +1,14 @@
+{
+  "femoral": {
+    "reader_gate": true,
+    "teacher_gate": false,
+    "next_experiment": "Collect across-window/anchor views at public ambiguous prefixes; verify more reproducible rescue than loss before supervision.",
+    "candidates_with_two_tape_rescue": 0
+  },
+  "groin_to_distal_calf": {
+    "reader_gate": false,
+    "teacher_gate": false,
+    "next_experiment": "Trace false top candidates on held-out routes; fit alternate-window association supervised on new development layouts.",
+    "candidates_with_two_tape_rescue": 2
+  }
+}

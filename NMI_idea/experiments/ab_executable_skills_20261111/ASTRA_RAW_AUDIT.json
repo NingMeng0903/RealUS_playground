@@ -1,0 +1,126 @@
+{
+  "record_count": 5376,
+  "checks": {
+    "programs": 34624,
+    "events": 75988,
+    "no_lookahead_identity_pairs": 768
+  },
+  "source_manifest_verified": true,
+  "all_public_packet_and_hidden_world_draws_replayed": true,
+  "all_saved_program_continuations_replayed": true,
+  "all_checkpoint_cursors_verified": true,
+  "groups": {
+    "A_task/recoverable": {
+      "correct": 631,
+      "frames": 3059,
+      "returns": 70,
+      "retreats": 181,
+      "switches": 437,
+      "wrong_stop": 9
+    },
+    "A_fixed_goal/recoverable": {
+      "correct": 630,
+      "frames": 3049,
+      "returns": 62,
+      "retreats": 177,
+      "switches": 428,
+      "wrong_stop": 10
+    },
+    "B_actual/recoverable": {
+      "correct": 632,
+      "frames": 2819,
+      "returns": 81,
+      "retreats": 155,
+      "switches": 462,
+      "wrong_stop": 8
+    },
+    "B_nominal/recoverable": {
+      "correct": 632,
+      "frames": 3351,
+      "returns": 164,
+      "retreats": 254,
+      "switches": 610,
+      "wrong_stop": 8
+    },
+    "B_no_lookahead/recoverable": {
+      "correct": 631,
+      "frames": 3059,
+      "returns": 70,
+      "retreats": 181,
+      "switches": 437,
+      "wrong_stop": 9
+    },
+    "B_MAP/recoverable": {
+      "correct": 633,
+      "frames": 2883,
+      "returns": 87,
+      "retreats": 169,
+      "switches": 474,
+      "wrong_stop": 7
+    },
+    "A_legacy/recoverable": {
+      "correct": 630,
+      "frames": 2792,
+      "returns": 30,
+      "retreats": 139,
+      "switches": 362,
+      "wrong_stop": 10
+    },
+    "A_task/permanent": {
+      "unresolved": 123,
+      "frames": 7884,
+      "returns": 548,
+      "retreats": 672,
+      "switches": 672,
+      "wrong_stop": 5
+    },
+    "A_fixed_goal/permanent": {
+      "unresolved": 123,
+      "frames": 7884,
+      "returns": 447,
+      "retreats": 571,
+      "switches": 571,
+      "wrong_stop": 5
+    },
+    "B_actual/permanent": {
+      "unresolved": 122,
+      "frames": 7831,
+      "returns": 523,
+      "retreats": 647,
+      "switches": 647,
+      "wrong_stop": 6
+    },
+    "B_nominal/permanent": {
+      "unresolved": 121,
+      "frames": 7778,
+      "returns": 616,
+      "retreats": 740,
+      "switches": 740,
+      "wrong_stop": 7
+    },
+    "B_no_lookahead/permanent": {
+      "unresolved": 123,
+      "frames": 7884,
+      "returns": 548,
+      "retreats": 672,
+      "switches": 672,
+      "wrong_stop": 5
+    },
+    "B_MAP/permanent": {
+      "unresolved": 122,
+      "frames": 7831,
+      "returns": 499,
+      "retreats": 623,
+      "switches": 623,
+      "wrong_stop": 6
+    },
+    "A_legacy/permanent": {
+      "unresolved": 123,
+      "frames": 7884,
+      "returns": 1869,
+      "retreats": 2031,
+      "switches": 1993,
+      "wrong_stop": 5
+    }
+  }
+}

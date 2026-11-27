@@ -1,0 +1,66 @@
+{
+  "manifest_entries": 25,
+  "all_hashes_match": true,
+  "checks": {
+    "SMOOTH_REFERENCE_PROTOCOL.txt": true,
+    "MIDSCAN_EVALUATION_PROTOCOL.txt": true,
+    "SMOOTH_REFERENCE_REPORT.txt": true,
+    "run_smooth_reference.py": true,
+    "evaluate_aligned_tracking.py": true,
+    "smooth_reference_results.json": true,
+    "time_aligned_tracking.json": true,
+    "scan_tracking_profile.yaml": true,
+    "smooth_reference.log": true,
+    "aligned_evaluation.log": true,
+    "path0_smooth_baseline_aligned_errors.npz": true,
+    "path0_smooth_baseline_native_config.txt": true,
+    "path0_smooth_baseline_trace.npz": true,
+    "path0_smooth_unit_aligned_errors.npz": true,
+    "path0_smooth_unit_native_config.txt": true,
+    "path0_smooth_unit_trace.npz": true,
+    "path1_smooth_baseline_aligned_errors.npz": true,
+    "path1_smooth_baseline_native_config.txt": true,
+    "path1_smooth_baseline_trace.npz": true,
+    "path1_smooth_unit_aligned_errors.npz": true,
+    "path1_smooth_unit_native_config.txt": true,
+    "path1_smooth_unit_trace.npz": true,
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/scan_reference.py": true,
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/tests/test_scan_pose_reference.py": true,
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt": true
+  },
+  "aligned_npz_core_arrays_and_all_middle_metrics_match": true,
+  "middle_differences": {
+    "path0_smooth_baseline": {
+      "samples": 0,
+      "position_max_mm": 0.0,
+      "position_p95_mm": 6.938893903907228e-18,
+      "angle_max_deg": 6.5780714209040525e-15,
+      "angle_p95_deg": 7.979727989493313e-17,
+      "normal_max_mm": 0.0
+    },
+    "path0_smooth_unit": {
+      "samples": 0,
+      "position_max_mm": 0.0,
+      "position_p95_mm": 3.469446951953614e-18,
+      "angle_max_deg": 6.647460359943125e-15,
+      "angle_p95_deg": 9.645062526431047e-16,
+      "normal_max_mm": 6.938893903907228e-18
+    },
+    "path1_smooth_baseline": {
+      "samples": 0,
+      "position_max_mm": 0.0,
+      "position_p95_mm": 0.0,
+      "angle_max_deg": 7.931155732165962e-15,
+      "angle_p95_deg": 9.992007221626409e-16,
+      "normal_max_mm": 6.938893903907228e-18
+    },
+    "path1_smooth_unit": {
+      "samples": 0,
+      "position_max_mm": 0.0,
+      "position_p95_mm": 3.469446951953614e-18,
+      "angle_max_deg": 8.881784197001252e-15,
+      "angle_p95_deg": 3.8163916471489756e-16,
+      "normal_max_mm": 6.938893903907228e-18
+    }
+  }
+}

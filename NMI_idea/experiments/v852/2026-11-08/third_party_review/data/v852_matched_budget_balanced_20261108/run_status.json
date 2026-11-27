@@ -1,0 +1,13 @@
+{
+  "finished": "2026-11-08T06:54:36.042476+00:00",
+  "wall_seconds": 171.54265738400136,
+  "n_local_configurations": 96,
+  "n_local_programs": 672,
+  "n_test_configurations": 24,
+  "n_complete_chain_interventions": 960,
+  "n_precommitted_deployments": 2016,
+  "predictions_unchanged": true,
+  "real_hardware": false,
+  "finite_kernel_report": "../v852_finite_limits_20261108",
+  "joint_execution_report": "../v852_joint_execution_20261108"
+}

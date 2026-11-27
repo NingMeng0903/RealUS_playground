@@ -1,0 +1,50 @@
+离线真实运动QP桥接，冻结版本2026-11-10
+
+运行：/media/camp/EXT_DRIVE/envs/genesis/bin/python
+添加本目录至sys.path，from qp_replay import QPReplayBridge, QPReplaySession
+bridge = QPReplayBridge(backend='native', tcp_mode='urdf')
+out = bridge.query_pose_path(T_tcp_railbase, q_seed, speed_m_s=.02, settle_s=2.,
+    provenance='实际候选路径出处', return_trace=False,
+    initial_state=None, return_state=True)
+
+输入：T_tcp_railbase[W,4,4]为实际几何TCP路径，米、rail_base；q_seed[8]为
+[raw rail_y米,j1..j7弧度]。主协议保持原路径/branch0初始q，2cm/s、.4s软启动、
+dt=.005s、末端保持2s。真实controller在线自由分配rail；原dIRD优化的rail数组
+不能冒充实际执行rail，本接口不强行设定它。
+
+实现：生产WorldPolylineReference(Slerp)→生产build_track_cartesian_phase/
+CartesianTrackOuterLoop→实际JointIkController.update。只模拟理想q反馈和上一
+rail速度反馈；未回放接触/图像/力外环、设备、执行延迟、真人/外部障碍。
+主协议固定参考时间i*dt；未运行完整硬件phase governor/publication链。
+native SHM模型t_mono=1000+step*.005，IPC超时保持真实wall clock；因此native
+ipc_wait_ms不是物理延迟指标。无硬件连接或TCP同步，URDF显式匹配checkpoint。
+
+输出：q_exit、qdot_exit、pose_exit；轨迹/末端位置和姿态误差；QP状态/fault；
+逐坐标速度/加速度/jerk、URDF余量、全35 mesh对每tick自碰撞、实际计算耗时。
+motion_tracking_pass_2mm_2deg是预先声明的工程诊断门（最大误差2mm/2°加
+相关数值门），不是生产默认arrival gate、连续碰撞证明或临床合格成像。
+生产cartesian_track采用duration语义。请分别查看所有余量，不能以solved代替
+合法命令。遇非有限、URDF越界或速度越界立即拒绝proposal，保留完整native
+input/output/boxes/timestamp，非法q_send不进入理想测量，exit_state.valid=false。
+
+重要剩余阻断：原native二进制在一条branch4敏感性输入上可重复返回非法rail
+（tick684 q_meas=.312m而q_send=−3.300m，qdot仅.00755m/s，仍报solved）。
+Python同冻结输入未见越界；独立同源只读仪表编译未再现。具体生产赋值尚未
+定位，因此本桥接器不得用于证明整个系统可执行；新B图须等待该异常和坐标
+资产契约核验完成。所有旧输出/未通过项完整保留。
+
+连续状态：out['exit_state']可JSON序列化。下一边传
+initial_state=out['exit_state'], q_seed=out['q_exit']。
+state保存root_q、完整path/hold事件、q/qdot出口、valid及源码/配置/工具/二进制
+fingerprint；恢复时从root在实际controller重放全部update，不是每边静止reset，
+也不是声称只导出几个私有变量就恢复了完整状态。恢复q/qdot误差>1e−7即拒绝。
+短motion→.4s hold→motion的Python和native严格回归整条q/出口q/qdot均0差；
+这不消除长路径native异常。观察hold调用
+held=bridge.hold(out['exit_state'],duration_s=.4)，恰好80个5ms update；所有观察
+分支共享这个实际物理出口。无效状态拒绝继续。
+
+持久会话：with QPReplaySession(bridge,q_seed) as s:
+    a=s.step_path(path,...); h=s.hold(.4); state=s.snapshot()
+s.fork()通过完整历史重放创建分支；不是不完整私有状态复制。prefix恢复的实际
+计算成本另在prefix_restore_wall_seconds，图评估需记录它。主21/192边B复评
+由core拥有，本模块不重写旧图，也不把旧SRS门继续当UltraPOC机械可执行性。

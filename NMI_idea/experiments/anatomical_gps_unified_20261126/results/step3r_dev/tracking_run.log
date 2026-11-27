@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/media/camp/EXT_DRIVE/envs/genesis/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/media/camp/EXT_DRIVE/envs/genesis/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dev_tracking_interventions.py", line 579, in <module>
+    raise SystemExit(main())
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dev_tracking_interventions.py", line 526, in main
+    cells = {key: _replay(reader, episode, truth, key, tape_sha256) for key, reader in readers.items()}
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dev_tracking_interventions.py", line 526, in <dictcomp>
+    cells = {key: _replay(reader, episode, truth, key, tape_sha256) for key, reader in readers.items()}
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dev_tracking_interventions.py", line 243, in _replay
+    estimate = reader.step(frame.obs, frame.probe_pose, frame.f_contact, q, cov, frame.dt)
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dynamic_factor_graph.py", line 908, in step
+    proposals = self._propose(frame, design, parents, seeds, rho)
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dev_tracking_interventions.py", line 182, in _propose
+    proposals = super()._propose(frame, design, parents, seeds, rho)
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dynamic_factor_graph.py", line 829, in _propose
+    for a in self._associate(frame, design, seed, pred, solved=rhs):
+  File "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/anatomical_gps_unified_20261126/reader/dev_tracking_interventions.py", line 200, in _associate
+    self.per_slot_admissible |= admissible
+TypeError: ufunc 'bitwise_or' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''

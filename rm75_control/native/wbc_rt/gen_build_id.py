@@ -14,6 +14,8 @@ _SOURCES = (
     _NATIVE / "include" / "wbc_rt" / "inner.hpp",
     _NATIVE / "include" / "wbc_rt" / "types.hpp",
     _NATIVE / "include" / "wbc_rt" / "notification.hpp",
+    _NATIVE / "include" / "wbc_rt" / "kinematics.hpp",
+    _NATIVE / "src" / "kinematics.cpp",
     _NATIVE / "src" / "inner.cpp",
     _NATIVE / "src" / "main.cpp",
     _PKG / "protocol.py",

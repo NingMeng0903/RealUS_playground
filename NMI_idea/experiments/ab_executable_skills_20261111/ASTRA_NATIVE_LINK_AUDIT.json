@@ -1,0 +1,7 @@
+{
+  "complete_checkpoint_continuity": true,
+  "both_raw_trace_exits_match_checkpoints": true,
+  "selected_native_replay_passes": true,
+  "unselected_proposal_sets_are_not_native_certificates": true,
+  "independent_scope": "raw checkpoint/trace and label audit; fresh native solver execution performed by witness producer, not repeated by auditor"
+}

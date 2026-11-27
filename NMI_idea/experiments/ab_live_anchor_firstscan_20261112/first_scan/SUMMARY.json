@@ -1,0 +1,693 @@
+{
+  "cases": 128,
+  "indices": [
+    512,
+    513,
+    514,
+    515,
+    516,
+    517,
+    518,
+    519,
+    520,
+    521,
+    522,
+    523,
+    524,
+    525,
+    526,
+    527,
+    528,
+    529,
+    530,
+    531,
+    532,
+    533,
+    534,
+    535,
+    536,
+    537,
+    538,
+    539,
+    540,
+    541,
+    542,
+    543,
+    544,
+    545,
+    546,
+    547,
+    548,
+    549,
+    550,
+    551,
+    552,
+    553,
+    554,
+    555,
+    556,
+    557,
+    558,
+    559,
+    560,
+    561,
+    562,
+    563,
+    564,
+    565,
+    566,
+    567,
+    568,
+    569,
+    570,
+    571,
+    572,
+    573,
+    574,
+    575,
+    576,
+    577,
+    578,
+    579,
+    580,
+    581,
+    582,
+    583,
+    584,
+    585,
+    586,
+    587,
+    588,
+    589,
+    590,
+    591,
+    592,
+    593,
+    594,
+    595,
+    596,
+    597,
+    598,
+    599,
+    600,
+    601,
+    602,
+    603,
+    604,
+    605,
+    606,
+    607,
+    608,
+    609,
+    610,
+    611,
+    612,
+    613,
+    614,
+    615,
+    616,
+    617,
+    618,
+    619,
+    620,
+    621,
+    622,
+    623,
+    624,
+    625,
+    626,
+    627,
+    628,
+    629,
+    630,
+    631,
+    632,
+    633,
+    634,
+    635,
+    636,
+    637,
+    638,
+    639
+  ],
+  "seed_range": [
+    9560270,
+    4235983487
+  ],
+  "protocol": {
+    "task": "first-scan Y-window selection only; not full scan reorder",
+    "fork_sites": [
+      4,
+      3,
+      2
+    ],
+    "station_order": [
+      27,
+      26,
+      25,
+      24,
+      23,
+      22,
+      21,
+      20,
+      19,
+      18,
+      17,
+      16,
+      15,
+      14,
+      13,
+      12,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "one_frame_per_station": true,
+    "fixed_nonfork_view": 3,
+    "shared_estimator": true,
+    "no_fisher": true,
+    "fork_timestamps_common": true,
+    "prefix_hashes_common_per_case": true
+  },
+  "arms": {
+    "fixed_rule": {
+      "n": 128,
+      "strict_pass": 116,
+      "strict_rate": 0.90625,
+      "both_correct": 118,
+      "wrong_accept": 5,
+      "wrong_clutter": 5,
+      "wrong_branch": 0,
+      "partial_or_no_confirmation": 5,
+      "prefix_provisional_wrong": 0,
+      "prefix_confident_wrong": 0,
+      "prefix_wrong_replaced": 0,
+      "prefix_clutter_replaced": 0,
+      "prefix_branch_replaced": 0,
+      "prefix_confident_wrong_replaced": 0,
+      "new_confident_wrong": 5,
+      "current_rmse_mm": 1.0537874515418912,
+      "future_half_s_rmse_mm": 1.0950311270268616,
+      "future_one_s_rmse_mm": 1.281376507999786,
+      "common_clock_rmse_mm": 2.6874257079230786,
+      "mean_duration_s": 3.0642422518555064,
+      "mean_total_time_s": 11.538543539533485,
+      "mean_travel_mm": 86.9506707175611,
+      "mean_fork_travel_mm": 40.27023285230963,
+      "mean_prefix_travel_mm": 327.987115891018,
+      "mean_full_scan_travel_mm": 414.93778660857913,
+      "mean_captures": 5.0,
+      "fork_timestamp_mismatch": 0
+    },
+    "belief_rule": {
+      "n": 128,
+      "strict_pass": 113,
+      "strict_rate": 0.8828125,
+      "both_correct": 116,
+      "wrong_accept": 6,
+      "wrong_clutter": 6,
+      "wrong_branch": 0,
+      "partial_or_no_confirmation": 6,
+      "prefix_provisional_wrong": 0,
+      "prefix_confident_wrong": 0,
+      "prefix_wrong_replaced": 0,
+      "prefix_clutter_replaced": 0,
+      "prefix_branch_replaced": 0,
+      "prefix_confident_wrong_replaced": 0,
+      "new_confident_wrong": 6,
+      "current_rmse_mm": 1.0570699928971048,
+      "future_half_s_rmse_mm": 1.0991497857343648,
+      "future_one_s_rmse_mm": 1.2868234859337049,
+      "common_clock_rmse_mm": 2.694049847691611,
+      "mean_duration_s": 3.0642422518555064,
+      "mean_total_time_s": 11.538543539533485,
+      "mean_travel_mm": 86.9506707175611,
+      "mean_fork_travel_mm": 40.27023285230963,
+      "mean_prefix_travel_mm": 327.987115891018,
+      "mean_full_scan_travel_mm": 414.93778660857913,
+      "mean_captures": 5.0,
+      "fork_timestamp_mismatch": 0
+    },
+    "cql_firstscan_29": {
+      "n": 128,
+      "strict_pass": 112,
+      "strict_rate": 0.875,
+      "both_correct": 117,
+      "wrong_accept": 6,
+      "wrong_clutter": 6,
+      "wrong_branch": 0,
+      "partial_or_no_confirmation": 5,
+      "prefix_provisional_wrong": 0,
+      "prefix_confident_wrong": 0,
+      "prefix_wrong_replaced": 0,
+      "prefix_clutter_replaced": 0,
+      "prefix_branch_replaced": 0,
+      "prefix_confident_wrong_replaced": 0,
+      "new_confident_wrong": 6,
+      "current_rmse_mm": 1.0222241981875628,
+      "future_half_s_rmse_mm": 1.0666235025986035,
+      "future_one_s_rmse_mm": 1.2588233036224037,
+      "common_clock_rmse_mm": 2.6835499240793537,
+      "mean_duration_s": 3.0642422518555064,
+      "mean_total_time_s": 11.538543539533485,
+      "mean_travel_mm": 88.14649009843279,
+      "mean_fork_travel_mm": 41.127046096688645,
+      "mean_prefix_travel_mm": 327.987115891018,
+      "mean_full_scan_travel_mm": 416.1336059894508,
+      "mean_captures": 5.0,
+      "fork_timestamp_mismatch": 0
+    },
+    "cql_firstscan_7": {
+      "n": 128,
+      "strict_pass": 109,
+      "strict_rate": 0.8515625,
+      "both_correct": 113,
+      "wrong_accept": 7,
+      "wrong_clutter": 6,
+      "wrong_branch": 1,
+      "partial_or_no_confirmation": 8,
+      "prefix_provisional_wrong": 0,
+      "prefix_confident_wrong": 0,
+      "prefix_wrong_replaced": 0,
+      "prefix_clutter_replaced": 0,
+      "prefix_branch_replaced": 0,
+      "prefix_confident_wrong_replaced": 0,
+      "new_confident_wrong": 7,
+      "current_rmse_mm": 1.0335171975589128,
+      "future_half_s_rmse_mm": 1.071794720872483,
+      "future_one_s_rmse_mm": 1.259953966704338,
+      "common_clock_rmse_mm": 2.684021750351656,
+      "mean_duration_s": 3.0642422518555064,
+      "mean_total_time_s": 11.538543539533485,
+      "mean_travel_mm": 88.51190018194137,
+      "mean_fork_travel_mm": 41.35520408166759,
+      "mean_prefix_travel_mm": 327.987115891018,
+      "mean_full_scan_travel_mm": 416.49901607295936,
+      "mean_captures": 5.0,
+      "fork_timestamp_mismatch": 0
+    }
+  },
+  "paired_vs_fixed_rule": {
+    "belief_rule": {
+      "strict": {
+        "mean": -0.0234375,
+        "ci95": [
+          -0.0859375,
+          0.03125
+        ],
+        "wins": 6,
+        "losses": 9
+      },
+      "both_correct": {
+        "mean": -0.015625,
+        "ci95": [
+          -0.0703125,
+          0.0390625
+        ],
+        "wins": 6,
+        "losses": 8
+      },
+      "wrong_accept": {
+        "mean": 0.0078125,
+        "ci95": [
+          -0.03125,
+          0.046875
+        ],
+        "wins": 4,
+        "losses": 3
+      },
+      "travel_mm": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "full_scan_travel_mm": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "elapsed_s": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "current_rmse_delta_mm": {
+        "mean": 0.003282541355213553,
+        "ci95": [
+          -0.09736146237255616,
+          0.10327346080173128
+        ]
+      },
+      "future_half_s_rmse_delta_mm": {
+        "mean": 0.0041186587075032755,
+        "ci95": [
+          -0.0962695467070318,
+          0.10279972876208754
+        ]
+      },
+      "common_clock_rmse_delta_mm": {
+        "mean": 0.006624139768532267,
+        "ci95": [
+          -0.035007101056503266,
+          0.049001991098260415
+        ]
+      }
+    },
+    "cql_firstscan_29": {
+      "strict": {
+        "mean": -0.03125,
+        "ci95": [
+          -0.1015625,
+          0.0390625
+        ],
+        "wins": 8,
+        "losses": 12
+      },
+      "both_correct": {
+        "mean": -0.0078125,
+        "ci95": [
+          -0.0703125,
+          0.0546875
+        ],
+        "wins": 8,
+        "losses": 9
+      },
+      "wrong_accept": {
+        "mean": 0.0078125,
+        "ci95": [
+          -0.03125,
+          0.046875
+        ],
+        "wins": 4,
+        "losses": 3
+      },
+      "travel_mm": {
+        "mean": 1.1958193808716922,
+        "ci95": [
+          0.6890464753505265,
+          1.7366061688877081
+        ],
+        "wins": 19,
+        "losses": 0
+      },
+      "full_scan_travel_mm": {
+        "mean": 1.1958193808716917,
+        "ci95": [
+          0.6890464753505261,
+          1.7366061688877064
+        ],
+        "wins": 19,
+        "losses": 0
+      },
+      "elapsed_s": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "current_rmse_delta_mm": {
+        "mean": -0.03156325335432841,
+        "ci95": [
+          -0.12158647018772256,
+          0.05206215639413925
+        ]
+      },
+      "future_half_s_rmse_delta_mm": {
+        "mean": -0.02840762442825806,
+        "ci95": [
+          -0.11909738253872935,
+          0.057437180642117246
+        ]
+      },
+      "common_clock_rmse_delta_mm": {
+        "mean": -0.0038757838437248893,
+        "ci95": [
+          -0.04581827870329481,
+          0.03528908599162349
+        ]
+      }
+    },
+    "cql_firstscan_7": {
+      "strict": {
+        "mean": -0.0546875,
+        "ci95": [
+          -0.1328125,
+          0.015625
+        ],
+        "wins": 8,
+        "losses": 15
+      },
+      "both_correct": {
+        "mean": -0.0390625,
+        "ci95": [
+          -0.109375,
+          0.03125
+        ],
+        "wins": 8,
+        "losses": 13
+      },
+      "wrong_accept": {
+        "mean": 0.015625,
+        "ci95": [
+          -0.03125,
+          0.0625
+        ],
+        "wins": 6,
+        "losses": 4
+      },
+      "travel_mm": {
+        "mean": 1.5612294643802926,
+        "ci95": [
+          0.9237104187631167,
+          2.27675200877964
+        ],
+        "wins": 23,
+        "losses": 1
+      },
+      "full_scan_travel_mm": {
+        "mean": 1.5612294643802929,
+        "ci95": [
+          0.9237104187631168,
+          2.2767520087796376
+        ],
+        "wins": 23,
+        "losses": 1
+      },
+      "elapsed_s": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "current_rmse_delta_mm": {
+        "mean": -0.020270253982978437,
+        "ci95": [
+          -0.1122087330644364,
+          0.06655861264426628
+        ]
+      },
+      "future_half_s_rmse_delta_mm": {
+        "mean": -0.023236406154378608,
+        "ci95": [
+          -0.11491175279267024,
+          0.06292987747122009
+        ]
+      },
+      "common_clock_rmse_delta_mm": {
+        "mean": -0.0034039575714226444,
+        "ci95": [
+          -0.04609775049935042,
+          0.0363001708078631
+        ]
+      }
+    }
+  },
+  "paired_vs_belief_rule": {
+    "cql_firstscan_29": {
+      "strict": {
+        "mean": -0.0078125,
+        "ci95": [
+          -0.0546875,
+          0.0390625
+        ],
+        "wins": 4,
+        "losses": 5
+      },
+      "both_correct": {
+        "mean": 0.0078125,
+        "ci95": [
+          -0.0390625,
+          0.0546875
+        ],
+        "wins": 5,
+        "losses": 4
+      },
+      "wrong_accept": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "travel_mm": {
+        "mean": 1.1958193808716922,
+        "ci95": [
+          0.7152255388823725,
+          1.7330212966131777
+        ],
+        "wins": 19,
+        "losses": 0
+      },
+      "full_scan_travel_mm": {
+        "mean": 1.1958193808716917,
+        "ci95": [
+          0.7152255388823723,
+          1.733021296613177
+        ],
+        "wins": 19,
+        "losses": 0
+      },
+      "elapsed_s": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "current_rmse_delta_mm": {
+        "mean": -0.034845794709541966,
+        "ci95": [
+          -0.09071568363317903,
+          0.008823512900541099
+        ]
+      },
+      "future_half_s_rmse_delta_mm": {
+        "mean": -0.032526283135761336,
+        "ci95": [
+          -0.08671175115267475,
+          0.009588020190571657
+        ]
+      },
+      "common_clock_rmse_delta_mm": {
+        "mean": -0.010499923612257156,
+        "ci95": [
+          -0.032829707085690114,
+          0.007254856371327935
+        ]
+      }
+    },
+    "cql_firstscan_7": {
+      "strict": {
+        "mean": -0.03125,
+        "ci95": [
+          -0.0859375,
+          0.0234375
+        ],
+        "wins": 4,
+        "losses": 8
+      },
+      "both_correct": {
+        "mean": -0.0234375,
+        "ci95": [
+          -0.0703125,
+          0.0234375
+        ],
+        "wins": 4,
+        "losses": 7
+      },
+      "wrong_accept": {
+        "mean": 0.0078125,
+        "ci95": [
+          -0.015625,
+          0.0390625
+        ],
+        "wins": 2,
+        "losses": 1
+      },
+      "travel_mm": {
+        "mean": 1.5612294643802926,
+        "ci95": [
+          0.9352037111421133,
+          2.2571625409227867
+        ],
+        "wins": 23,
+        "losses": 1
+      },
+      "full_scan_travel_mm": {
+        "mean": 1.5612294643802929,
+        "ci95": [
+          0.9352037111421134,
+          2.2571625409227862
+        ],
+        "wins": 23,
+        "losses": 1
+      },
+      "elapsed_s": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "wins": 0,
+        "losses": 0
+      },
+      "current_rmse_delta_mm": {
+        "mean": -0.02355279533819199,
+        "ci95": [
+          -0.0848459527186862,
+          0.025156639435905525
+        ]
+      },
+      "future_half_s_rmse_delta_mm": {
+        "mean": -0.027355064861881884,
+        "ci95": [
+          -0.08552330218359556,
+          0.01792369027959062
+        ]
+      },
+      "common_clock_rmse_delta_mm": {
+        "mean": -0.010028097339954911,
+        "ci95": [
+          -0.03301112241904873,
+          0.008580073698118912
+        ]
+      }
+    }
+  },
+  "bootstrap": {
+    "replicates": 4000,
+    "seed": 93681,
+    "unit": "case-paired"
+  }
+}

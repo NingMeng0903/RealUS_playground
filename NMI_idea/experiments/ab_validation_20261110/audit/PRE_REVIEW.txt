@@ -1,0 +1,194 @@
+INDEPENDENT PRE-RESULT REVIEW
+Reviewer role: Astra max independent checker; scope limited to audit/.
+Date: 2026-11-10.
+Evidence read: preregistered PLAN.txt; relevant theory/control sections of
+Anatomical_GPS_V6.1.tex, V9.3.tex and V9.4.tex. No experiment performance results
+were available to this review. This is a design audit, not a route endorsement.
+
+1. OVERALL ASSESSMENT AND SCOPE
+
+PLAN correctly separates hidden truth, public evidence, patient belief, response,
+motion and capability. Its intended controls and failure reporting are sound.
+It is a preregistered conceptual protocol, not yet a confirmatory statistical
+protocol: primary endpoint, evaluation populations, world counts, fixed seeds,
+training budgets, execution/compute budgets, practical superiority margins,
+confidence construction and stop/acceptance thresholds are not fixed here.
+Freeze these before inspecting comparative performance, with an amendment log.
+If choices follow observed results, call that portion exploratory/development
+and retain untouched test worlds for the final comparison.
+
+Three evidence labels are mandatory and cannot be promoted by combining them:
+SYNTHETIC MECHANISM: abstract/simulated observations, losses and first-acquisition
+outcomes, including a synthetic acoustic proxy.
+PRODUCTION KINEMATICS: actual imported primitive/dIRD code and real robot assets,
+coordinate contracts, numerical behavior and available exact mechanical checks.
+TRUE PHYSICAL ULTRASOUND: actual probe motion/contact and acquired ultrasound
+on independent objects with a defensible first-qualified-image endpoint.
+The third category is absent in the stated offline scope. Actual dIRD weights
+plus synthetic observations remain mixed first/second-category evidence.
+
+2. EXACT GAMMA / OBSERVATION VALUE EXAMPLE
+
+Define loss ell(a,X)=(X-a)^2, actions a in the real line, r=X, B=-1 and W=1.
+P(X=-1)=P(X=1)=1/2. Q(X=0)=2/3 and Q(X=±sqrt(3))=1/6 each.
+Both have E[X]=0, E[X^2]=1 and Gamma=E[[r,B]^T[r,B]]=diag(1,1).
+Thus every current quadratic action risk is R(a)=1+a^2 and min_a R(a)=1.
+Define the observation explicitly as binary Y=1{X>0}; do not write only sign(X).
+Under P, each outcome identifies X, so expected posterior optimal MSE is 0.
+Under Q, Y=1 occurs with probability 1/6 and has zero conditional variance.
+Y=0 occurs with probability 5/6. Conditional mean is -sqrt(3)/5, second moment
+3/5, and variance 3/5-3/25=12/25. Weighted residual MSE is (5/6)(12/25)=2/5.
+For observation cost 4/5, observe costs 4/5 under P and 6/5 under Q; skipping
+costs 1. The optimal decisions therefore differ. A binary >=0 convention also
+works by symmetry. A ternary sign with a distinct zero outcome reveals X in
+both cases and destroys this example.
+
+Valid conclusion: this current quadratic-risk matrix is not, in general, a
+sufficient recursive state for observation-conditioned decision value.
+Invalid conclusions: all moment representations fail, the full posterior is
+the only possible sufficient statistic, A cannot retain belief, B is always
+better, or a robot/ultrasound benefit is demonstrated. This is an existence
+counterexample with fixed actions and costless physical relocation, not a
+physical experiment or novelty claim for value of information.
+An independent Fraction-based reproduction is check_moment_example.py.
+
+3. A VERSUS B: DEFINE THE ACTUAL COMPARISON
+
+V9.3 already contains a two-step lookahead equation and same-world rollouts.
+Therefore do not equate A with all of V9.3 and B with the first introduction of
+Bayesian short planning. Define A concretely as the implemented one-step or
+open-loop-recourse baseline; define B by observation-conditioned recourse.
+Both should receive the same full belief, response, candidate action permissions,
+public observations, low-level controller, stopping logic and exact validator.
+Only the designated planning feature should differ in the main comparison.
+Belief-compressed or no-capability methods are secondary ablations, not the sole
+main baseline. If A is intentionally simpler, state the induced limitation.
+
+B can validly establish a causal advantage of choosing an observation whose
+public result changes a later feasible decision, under a declared model and
+budget. It can show capability changes alter the useful observation/action and
+that preserving unresolved modes matters in specified cases. It cannot by that
+alone establish new general control theory, necessity of every architecture
+module, physical ultrasound transfer, or superiority over all strong A variants.
+
+The exact full-belief enumerator must have the same root actions, observation
+alphabet, horizon, terminal objective, admissible history policies and exit
+states as B. If it is a larger-horizon oracle, label the bound rather than demand
+equality. Include a horizon-matched open-loop plan (same two-step costs, second
+action not observation-conditioned) to separate horizon benefit from information
+recourse. Include a forced-observation replay with common observations as a
+diagnostic of recourse; do not give its unseen data to online baselines for free.
+
+4. HIDDEN-TRUTH AND COUNTERFACTUAL LEAKAGE TESTS
+
+Controllers must have no hidden-world or evaluator reference through constructor,
+closure, candidate generation, training feature, cost label, termination flag,
+random seed, object ID, or renderer method. Posterior sample hypotheses are
+legitimate; the realized hidden sample index is not.
+Run a behavioral noninterference test: identical public histories and robot
+states with different compatible hidden truths give identical policy outputs
+using the same planner randomness. This includes VERIFY/STOP decisions.
+In exact trees, group hidden worlds by the same public observation history
+before minimizing continuation cost. E_Y min_a E[loss|Y] is legitimate;
+E_hidden min_a loss is clairvoyant. Policy branch keys cannot contain truth IDs.
+Draw one persistent world (geometry, bias, occlusion/response state) per rollout;
+do not independently redraw the patient after each action.
+No-detection is an outcome with its own likelihood, not missing evidence erased
+from the tree and not a fake zero center measurement. Likelihoods must sum to
+one per world/action; impossible outcomes are skipped only when predictive
+probability is exactly zero under the declared model.
+The simulation evaluator may use truth to score a false stop, but policy stopping
+must depend on public data. Reset states and priors cannot use true targets.
+
+5. BUDGETS, COSTS AND BASELINES
+
+Report two resources independently: executed acquisition time/actions and
+planning compute/model/primitive/dIRD/exact-validator queries. Equal candidate
+counts do not imply equal work when B expands many observation branches.
+Use a fixed shared physical deadline and charge every acquired observation,
+movement, recovery, return transition, verification and false stop. Charge actual
+planning wall time to acquisition time if the deployment blocks motion while
+planning; otherwise state the asynchronous timing model. Cache setup and reuse
+rules must be shared. Offline table generation is not a free production query.
+Report an equal-compute comparison or an explicit performance/compute frontier;
+do not claim equal budget solely from identical physical action sets.
+Normalize heterogeneous units once before test. Do not tune capability weights,
+sensor costs or observation likelihoods on test cases to produce B's preference.
+When capability changes, recompute genuine robot-relative inputs and outputs.
+An obstacle penalty must remain distinct from fixed dIRD reachability; changing
+an unrelated hand-coded cost is not evidence of dIRD/observation coupling.
+
+Meaningful negative controls: exact analytic response with zero residual need;
+uninformative observation; perfect prior; observation cost too high; one available
+continuation action; capability identical for all candidates; strong common
+feedback. B may tie or lose when extra work has no decision value. Every module
+is optional unless independently demonstrated to solve a failure in the scope.
+
+6. SUPPORT, CALIBRATION AND MODULE NECESSITY
+
+Split by independent world/patient geometry, including shared registration and
+response biases. More frames from one world are not independent test samples.
+Include train/validation/test hashes and generation parameters. The same
+analytic generator as the fitted response can check implementation but does not
+establish generalization; independently perturbed held-out mechanisms and
+declared out-of-support cases are needed to examine response robustness.
+Broad prior support must cover allowed test targets and registration variation.
+Report misspecification/failure when truth lies outside support; do not silently
+inject the true mode, jitter around true target, or reset to truth after failure.
+Check posterior normalization, repeated-data IDs, persistent correlated bias,
+and no-detection updates. Approximation may be acceptable but must be labeled.
+Measure detection log loss/Brier/calibration and conditional feature errors on
+held-out executed or paired actions, with reliability counts. Also measure
+calibration on selected/accepted actions, where optimization can exploit model
+error. Average prediction error does not establish a uniform risk certificate.
+Finite differences versus autodiff check the same mathematical implementation,
+not correctness of acoustic physics or safety. For local risk claims retain
+cross terms and assess the actual composed command after all corrections.
+
+Compare harmonic/other body representations with the same correspondence and
+registration information. Common SE(3) changes test coordinate consistency;
+moving only the body changes physical reachability and is not an invariance
+violation. Nonrigid generalization is a different claim. Local coordinates can
+provide invariance without e3nn; no necessity claim from omitted strong baselines.
+Importing DMP/KMP/dIRD is insufficient integration evidence: show outputs are
+used in policy candidates, action timing/exit state or feasibility, and trace a
+changed output through a changed decision. A straight-line wrapper is not a full
+production primitive. A constant queried dIRD scalar is not meaningful coupling.
+
+7. STATISTICS AND AUDITABLE DECISION GATES
+
+Primary outcome should be mean deadline-truncated first-qualified-image time,
+with failed/false-stopped runs charged the deadline; separately report success,
+false identity and false stop. Do not report only successful-run mean time.
+Use paired world-level effects and uncertainty intervals. Pairing simulation
+randomness must preserve each method's own data-generating law; counters keyed
+by world/action/repetition are safer than assuming one sequential RNG draw has
+the same physical meaning after policies diverge. Predefine handling of ties,
+timeouts, infeasible actions and computational failures.
+Report all prespecified regimes and ablations, including non-improvements.
+Retuning after observing outcomes must be logged as development, not erased.
+
+Gate 1 — module correctness: real module/weight/asset provenance plus appropriate
+independent numerical/mathematical checks and coordinate contracts.
+Gate 2 — A mechanism: held-out action selection benefits where model mismatch
+exists; analytic negative control does not invent an advantage; strong feedback
+and canonical geometric baselines are retained.
+Gate 3 — B synthetic mechanism: noninterference and observation grouping pass;
+horizon-matched exact solution agrees; high-cost/no-information controls behave;
+same-budget gain versus A is interpretable without withheld actions/data.
+Gate 4 — B production integration: real primitive and dIRD quantities enter both
+the planner and actual executed synthetic trajectories; state-dependent calls,
+costs and exact checking limitations are traced, with useful ablations.
+Gate 5 — physical claim: independent physical ultrasound acquisition evidence.
+
+If Gate 3 alone passes, verdict is B prototype/mechanism support only. If A is
+not usable or Gate 4 fails, B cannot be selected as a demonstrated integrated
+system. If Gates 1–4 pass with stable practically meaningful benefits, B may be
+the better offline research direction, with Gate 5 still explicitly missing.
+An absent/inapplicable module need not be fabricated to pass a narrative gate;
+reduce the claimed scope. An inconclusive or adverse result must remain visible.
+
+NEXT AUDIT
+Inspect implementation and manifests; independently recompute exact branches,
+critical gradients and main metrics; verify causal module use, public-state
+policy behavior, budgets and held-out split. Final judgment remains pending.

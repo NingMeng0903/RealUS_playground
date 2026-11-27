@@ -1,0 +1,212 @@
+{
+  "scope": "Experimental right shaft rebake. Same skin and centerline, same original vessel XYZ.",
+  "inner_fraction_before": 0.04,
+  "inner_fraction_after": 0.01,
+  "old": {
+    "valid_rows": 190,
+    "continuous_runs": [
+      [
+        29,
+        103,
+        252.17582570534358
+      ],
+      [
+        106,
+        220,
+        392.67237873636213
+      ]
+    ]
+  },
+  "new": {
+    "valid_rows": 192,
+    "continuous_runs": [
+      [
+        29,
+        220,
+        654.9711327978316
+      ]
+    ]
+  },
+  "old_knee_intervals": [
+    [
+      [
+        0.0,
+        0.9703140045165679
+      ]
+    ],
+    [],
+    [
+      [
+        0.8522933691989835,
+        1.0
+      ]
+    ]
+  ],
+  "new_knee_intervals": [
+    [
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    [
+      [
+        0.0,
+        1.0
+      ]
+    ],
+    [
+      [
+        0.0,
+        1.0
+      ]
+    ]
+  ],
+  "rebound_rows": {
+    "104": {
+      "original_xyz_m": [
+        -0.08873802423477173,
+        -0.8103295564651489,
+        -0.021230250597000122
+      ],
+      "tet_index": 122481,
+      "barycentric": [
+        0.14840565531990002,
+        0.5100365725827157,
+        0.2842023926317157,
+        0.05735537946566849
+      ],
+      "rebound_theta_h_d": [
+        0.06151444328763833,
+        0.44974605419370745,
+        0.9706830629072851
+      ],
+      "roundtrip_m": 0.0
+    },
+    "105": {
+      "original_xyz_m": [
+        -0.0901908427476883,
+        -0.8126205205917358,
+        -0.023236235603690147
+      ],
+      "tet_index": 123010,
+      "barycentric": [
+        0.6612011951931687,
+        0.19507056659295074,
+        0.07098871506903492,
+        0.07273952314484562
+      ],
+      "rebound_theta_h_d": [
+        5.186171937541848,
+        0.45329496593247864,
+        0.9895662725555917
+      ],
+      "roundtrip_m": 0.0
+    }
+  },
+  "bake_metrics": {
+    "vertices": 62208,
+    "tets": 322056,
+    "det_min": 5.327148389727306e-10,
+    "det_max": 7.76553331451074e-07,
+    "material_J_min": -152629.373525883,
+    "material_J_max": -69.98649358071667,
+    "nonpositive_tets": 0,
+    "material_fold_tets": 0,
+    "max_curvature_times_radius": 0.2746167261010111,
+    "ray_hit_count_min": 1,
+    "ray_hit_count_max": 1,
+    "harmonic_relative_residual": 4.233686291528348e-06
+  },
+  "boundary_topology": {
+    "tetra_count": 322056,
+    "boundary_face_count": 33696,
+    "unique_face_count": 660960,
+    "boundary_edge_count": 50544,
+    "boundary_edges_not_twice": 0,
+    "boundary_edges_min_incidence": 2,
+    "boundary_edges_max_incidence": 2
+  },
+  "poses": [
+    {
+      "knee_deg": 0,
+      "min_det_ratio": 0.995431407167013,
+      "nonpositive_tets": 0,
+      "boundary_intersection_pairs": 0,
+      "recovered_knee_row_tet_counts": [
+        1,
+        1
+      ],
+      "max_barycentric_roundtrip_error": 1.9206858326015208e-13
+    },
+    {
+      "knee_deg": 15,
+      "min_det_ratio": 0.9010429336412137,
+      "nonpositive_tets": 0,
+      "boundary_intersection_pairs": 0,
+      "recovered_knee_row_tet_counts": [
+        1,
+        1
+      ],
+      "max_barycentric_roundtrip_error": 5.861977570020827e-14
+    },
+    {
+      "knee_deg": 30,
+      "min_det_ratio": 0.775341416937954,
+      "nonpositive_tets": 0,
+      "boundary_intersection_pairs": 0,
+      "recovered_knee_row_tet_counts": [
+        1,
+        1
+      ],
+      "max_barycentric_roundtrip_error": 8.597567102697212e-13
+    },
+    {
+      "knee_deg": 45,
+      "min_det_ratio": 0.631427028188988,
+      "nonpositive_tets": 0,
+      "boundary_intersection_pairs": 0,
+      "recovered_knee_row_tet_counts": [
+        1,
+        1
+      ],
+      "max_barycentric_roundtrip_error": 1.290079154614432e-13
+    },
+    {
+      "knee_deg": 60,
+      "min_det_ratio": 0.4791223368398258,
+      "nonpositive_tets": 0,
+      "boundary_intersection_pairs": 0,
+      "recovered_knee_row_tet_counts": [
+        1,
+        1
+      ],
+      "max_barycentric_roundtrip_error": 1.3642420526593924e-12
+    },
+    {
+      "knee_deg": 75,
+      "min_det_ratio": 0.3278763695276895,
+      "nonpositive_tets": 0,
+      "boundary_intersection_pairs": 0,
+      "recovered_knee_row_tet_counts": [
+        1,
+        1
+      ],
+      "max_barycentric_roundtrip_error": 7.069900220812997e-13
+    },
+    {
+      "knee_deg": 90,
+      "min_det_ratio": 0.1871535020264874,
+      "nonpositive_tets": 0,
+      "boundary_intersection_pairs": 0,
+      "recovered_knee_row_tet_counts": [
+        1,
+        1
+      ],
+      "max_barycentric_roundtrip_error": 3.5704772471945034e-12
+    }
+  ],
+  "old_sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+  "new_sha256": "b8a0e1395786774aac66f6bb621725e771a00af461e7a678266c2ebea9254aa5",
+  "new_attachments_sha256": "7ce2dcc3c5aaca37da7c9e48813fab3b396ba28245ea5c3daed977380e1b1524"
+}

@@ -1,0 +1,983 @@
+                                                                                                                                                                                                 1
+
+
+
+
+                                                        DopUS-Net: Quality-Aware Robotic
+                                                   Ultrasound Imaging based on Doppler Signal
+                                                                      Zhongliang Jiang*, Felix Duelmer*, and Nassir Navab, Fellow, IEEE
+
+
+
+
+                                            Abstract—Medical ultrasound (US) is widely used to evaluate
+                                         and stage vascular diseases, in particular for the preliminary
+                                         screening program, due to the advantage of being radiation-free.
+arXiv:2305.08938v1 [cs.CV] 15 May 2023
+
+
+
+
+                                         However, automatic segmentation of small tubular structures
+                                         (e.g., the ulnar artery) from cross-sectional US images is still
+                                         challenging. To address this challenge, this paper proposes the
+                                         DopUS-Net and a vessel re-identification module that leverage the
+                                         Doppler effect to enhance the final segmentation result. Firstly,
+                                         the DopUS-Net combines the Doppler images with B-mode
+                                         images to increase the segmentation accuracy and robustness of
+                                         small blood vessels. It incorporates two encoders to exploit the
+                                         maximum potential of the Doppler signal and recurrent neural
+                                         network modules to preserve sequential information. Input to
+                                         the first encoder is a two-channel duplex image representing
+                                         the combination of the grey-scale Doppler and B-mode images                    Fig. 1. (a) A scene of robotic US scanning of a volunteer’s arm; (b) and
+                                         to ensure anatomical spatial correctness. The second encoder                   (c) are B-mode and corresponding color Doppler images, respectively; (d) is
+                                         operates on the pure Doppler images to provide a region proposal.              the 3D view of tracked binary segmentation results in real-time; (e) is the
+                                         Secondly, benefiting from the Doppler signal, this work first in-              reconstructed 3D vessel of interest.
+                                         troduces an online artery re-identification module to qualitatively
+                                         evaluate the real-time segmentation results and automatically
+                                         optimize the probe pose for enhanced Doppler images. This                      also be used to support clinical diagnosis. We believe the proposed
+                                         quality-aware module enables the closed-loop control of robotic                quality-aware autonomous screening system is important for the
+                                         screening to further improve the confidence and robustness                     development of large-scale robotic US screening programs. It will
+                                         of image segmentation. The experimental results demonstrate                    not only benefit the examination of limb arteries but also other
+                                         that the proposed approach with the re-identification process                  vascular structures, e.g., carotid or aorta.
+                                         can significantly improve the accuracy and robustness of the                     Index Terms—Robotic ultrasound, vessel segmentation, Ultra-
+                                         segmentation results (dice score: from 0.54 to 0.86; intersection              sound segmentation, 3D visualization
+                                         over union: from 0.47 to 0.78). The Code1 and Video2 are publicly
+                                         accessible.
+                                            Note to Practitioners—The Doppler signal is important for the                                        I. I NTRODUCTION
+                                         diagnosis of vascular disease, e.g., peripheral arterial disease, in
+                                         clinical practices, nevertheless it is not of similar significance
+                                         for state-of-the-art robotic ultrasound (US) examination systems
+                                         yet. This paper explores various neural network structures
+                                                                                                                        P    ERIPHERAL arterial disease (PAD) refers to the patho-
+                                                                                                                             logical process causing obstruction to blood flow in the
+                                                                                                                        arteries. It is a chronic disease of the aortic, iliac, and limb
+                                         to effectively extract the blood vessels from US images by                     arteries (see Fig. 1) [1]. Stenosis is one of the most common
+                                         incorporating the Doppler signal into the segmentation process.                PAD, which narrows the blood vessel due to the plaque build-
+                                         The final DopUS structure with two encoders extracting dif-
+                                         ferentiated information from two different inputs and fusing
+                                                                                                                        ing up inside arteries; thereby, restricting the supply of blood.
+                                         the latent feature representations in the bottleneck layer can                 This can result in stroke and amputation in the worst cases.
+                                         also inspire other tasks like multi-senor fusion. In addition,                 PAD affects approximately 20% of the population older than
+                                         this work developed a Doppler-based tracker to assess the                      55 years [2]. However, the patient awareness of PAD diagnosis
+                                         quality of the segmentation results in real-time. The assessment               is low, particularly for the cases with mild symptoms, e.g.,
+                                         is subsequently used for a quality-aware module that enables
+                                         closed-loop control of the robotic screening. Preliminary physical
+                                                                                                                        numbness, muscle shrinking, and ulcers [2]. Thereby, a regular
+                                         experiments suggest that the quality-aware robotic screening                   screening program for PAD will benefit early detection, which
+                                         system can improve the confidence and robustness of autonomous                 can further lead to the improvement of long-term life quality
+                                         US examination results. In the future, the Doppler signal could                and a decrease in systemic cardiovascular risk.
+                                                                                                                           Preliminary screening for PAD is often performed in pri-
+                                           ∗ Authors with equal contributions.
+                                                                                                                        mary care practices using the ankle-brachial index (ABI).
+                                           Z. Jiang, F. Duelmer, and N. Navab are with the Chair for Computer Aided
+                                         Medical Procedures and Augmented Reality (CAMP), Technical University
+                                                                                                                        The ABI examines the blood pressure in the extremities
+                                         of Munich (TUM), 85748 Garching, Germany. (zl.jiang@tum.de)                    but may result in an underdiagnosis of PAD [2]. Although
+                                           This work involved human subjects in its research. Approval of all ethical   the ABI method is cheap, it cannot provide the location
+                                         and experimental procedures and protocols was granted by Institutional
+                                         Review Board, No. 2022-87-S-KK, Declaration of Helsinki.
+                                                                                                                        of the stenosis and is highly user-dependent. Conversely,
+                                           1 Code: https://github.com/Felixduelmer/DopUs                                computed tomography angiography (CTA), or magnetic res-
+                                           2 Video: https://www.youtube.com/watch?v=ZH7K63GngdA                         onance angiography (MRA) [3] can provide accurate clinical
+2
+
+
+
+information. However, MRA is costly and CTA has ionizing              • We first present an online segmentation quality-aware
+radiation. Therefore, both of them are not suitable for extensive       module based on the Doppler signal. Such a module
+preliminary screening programs, where a large part of the               enables close monitoring of imaging quality of robotic
+participants are healthy. Considering the aforementioned con-           screening to improve the confidence and robustness of
+straints, ultrasound (US) imaging has been seen as a promising          image segmentation, which can effectively improve the
+alternative for examining the extremity artery tree due to              accuracy and completeness of the reconstructed 3D ves-
+the absence of contraindications [4]. Furthermore, US has               sel.
+been extensively utilized for visualizing internal lesions and        • We visualize the tubular structure of interest in a 3D view
+organ abnormalities due to its ability to provide rapid and             [see Fig. 1 (e)] to facilitate the intuitive assessment of
+straightforward diagnosis [5]. Regarding PAD, US imaging                clinicians. Due to the short segmentation time (9 ms),
+can provide information on the degree of calcification [4].             the 3D visualization process can be seen as real-time.
+Nevertheless, nonnegligible inter- and intra-operator variations    The experiments are performed on seven healthy volunteers
+limit the clinical acceptance of the traditional US examination.    and the experimental results demonstrate that the proposed
+   To tackle this shortage, robotic US systems (RUSS) have          DopUS-Net can outperform existing methods [14], [15] in
+been seen as a promising solution to provide accurate, stable,      terms of dice score. The online evaluation of the Doppler
+and clinician-independent diagnosis results [6]–[10]. Specific      signals’ stability and quality helps to improve the robustness
+to the RUSS developed for screening tubular structures, Jan-        and quality of the resulting 3D compounding image.
+vier et al. employed a 6-DoF industrial robotic arm to hold            The rest of this paper is organized as follows. Section II
+a US probe and evaluated the performance of their proposed          presents related work. The dataset preparation and the imple-
+RUSS on a lower-limb mimicking phantom [11]. The experi-            mentation details of the DopUS-Net are presented in Section
+mental results demonstrated that the RUSS could be of value         III. Section IV describes the details of robotic scanning and
+for the clinical evaluation of lower limb vessels over long and     the online artery re-identification approach. The experimental
+tortuous segments below the knee by accurately identifying the      results on seven volunteers are provided in Section V. Finally,
+stenosis section. Compared to the traditional 2D images, 3D         the summary of this study is presented in Section VI.
+images are more intuitive for clinicians to identify lesion loca-
+tions based on the reconstructed 3D anatomy. To characterize
+the geometry of the vessel, Merouche et al. segmented vessel                             II. R ELATED W ORK
+lumen using a fast marching method based on gradients [12].
+                                                                    A. Feature-based Ultrasound Vessel Segmentation
+However, the efficiency of this approach is limited as the
+process takes 15 minutes to scan 156 mm of a femoral artery.
+Since the aforementioned work was validated using a phantom            Compared to other popular medical imaging modalities,
+without any blood flow, no color Doppler images are present.        e.g., CT or MRI, US often suffers from inconsistent quality,
+Yet, Doppler imaging is widely used in real scenarios for           speckle, and artifacts due to the intrinsic physics of wave
+vascular examination and provides valuable information to           propagation, like interference and scattering effects [16]. To
+facilitate both blood vessel detection and clinical analytical      optimize the acoustic coupling performance, sonographers
+diagnosis.                                                          need to carefully adjust the pressure and probe orientation
+   To bridge this gap, we propose a novel RUSS combining            to avoid acoustic shadow and improve the imaging contrast.
+Doppler with B-mode images to facilitate the real-time and          These factors contribute to making US one of the most
+accurate segmentation of small vessels like the radial artery       challenging modalities for robust and accurate segmentation.
+(mean±SD diameter: 2.4 ± 0.4 mm [13]). To fully take ad-            Regarding the segmentation of blood vessels from cross-
+vantage of the Doppler effect, a deep neural network (DopUS-        sectional US images, the Frangi filter [17] was developed
+Net) consisting of two encoders and one decoder is proposed.        based on the Hessian matrix in the early studies. Such an
+The Doppler image is first concatenated to the synchronized         approach allows real-time segmentation, but presents limited
+B-mode image to form a two-channel image to be used as              segmentation accuracy.
+one of the inputs to the DopUS-Net. The other input is the             Since the shape of vascular structures on cross-sectional
+individual Doppler image, which is further used to provide          images are close to the ellipse, Smistad et al. proposed a
+coarse vessel locations and therefore acts as a region proposal     template-based approach to automatically segment the object
+module to increase the overall robustness and reliability. The      of interest [18]. Yet, this approach is limited with regard to
+main contributions of this work are summarized as follows:          the segmentation accuracy because the segmented shapes are
+   • We explore the optimal way to take advantage of the            forced to be ellipse. To further enable accurate detection of
+      Doppler signal beside B-mode images to facilitate the         vessel boundaries, Karami et al. proposed an adaptive polar
+      accurate and robust segmentation of small limb arter-         active contours method to segment the jugular vein [19].
+      ies. The DopUS-Net with two encoders is proposed to           They introduced a set of energy functions to consider local
+      effectively fuse the Doppler and B-mode images. The           information, which enables robust segmentation of vessels
+      two encoders with two-channel duplex images (Doppler          even when the imaging quality is poor. However, this method
+      and B-mode) and pure Doppler images are designed to           requires a manual initialization of the object on the first frame.
+      accurately extract the artery boundary and provide the        In addition, Abolmaesumi et al. compared the performance of
+      coarse region proposal, respectively.                         five popular feature tracking approaches (the cross-correlation,
+                                                                                                                                      3
+
+
+
+the sequential similarity detection, the Star algorithm, the Star-   necessary across multiple US sweeps, yet, this is challenging
+Kalman algorithm, and the discrete snake algorithm) on carotid       even for experienced sonographers. The advantage of multiple
+arteries [20]. The experimental results demonstrated that the        sensing sources and precise adjustment of servomotors allows
+Similarity Detection method and the Star-Kalman algorithm            robotic manipulators to accurately repeat the US acquisitions.
+can achieve noted tracking performance, while the Correlation        To obtain high-quality US images, Gilbertson et al. presented
+and Star algorithms result in poorer performance with higher         a compliant controller for a one degree of freedom (DoF)
+computational cost.                                                  mechanism to stabilize images during examinations [6]. Pier-
+                                                                     rot et al. proposed a hybrid force/position controller for a
+B. Learning-based Ultrasound Vessel Segmentation                     7-DoF RUSS based on an external force/torque sensor [7].
+                                                                     A low-level embedded joint controller incorporating a PID
+   Compared with traditional feature-based approaches,
+                                                                     algorithm was employed. The outer control loop, driven by
+learning-based approaches have been seen as a promising
+                                                                     the PID algorithm, was executed on an external workstation
+alternative for the accurate segmentation of US images
+                                                                     and utilized either force or position as the reference variable.
+in recent years. Thanks to the inventions related to
+                                                                     This significantly improved the adaptability to other robotic
+the convolutional neural network (CNN), learning-
+                                                                     manipulators. Regarding the optimization of probe orientation,
+based approaches have achieved phenomenal success on
+                                                                     Z. Jiang et al. quantitatively measured the effects of probe
+various computer vision tasks as well as medical imaging
+                                                                     orientation on the resulting images and proposed a mechanical,
+segmentation [21]. Specific to biomedical image segmentation,
+                                                                     model-based, approach to automatically identify the normal
+U-Net and its variants have been widely used [14], [22],
+                                                                     direction of an unknown constrained surface [8]. Due to the
+[23]. Such U-shape networks are based on fully convolutional
+                                                                     intrinsic physics of wave signal propagation, the orthogonal
+neural networks (FCN). Multiple skip connections are used to
+                                                                     orientation of the probe can lead to US images with higher
+pass the information from the encoder to the decoder assisting
+                                                                     contrast because more signals can be reflected back to the
+in accurate boundary extraction. To achieve automatic and
+                                                                     US probe rather than scattering away [26]. To provide stable
+accurate segmentation of US images, Mishra et al. proposed
+                                                                     image quality during scans, particularly for soft tissue like the
+a FCN trained to learn structural boundary definitions to
+                                                                     breast, Tan et al. proposed a flexible RUSS and an online force
+extract vessels from US images [16]. Considering that the
+                                                                     adjustment approach based on real-time image feedback [9].
+biomedical anatomy is continuous, Chen et al. employed
+                                                                        To quantify limb arterial stenosis, Janvier et al. used a
+a recurrent unit to preserve the historical information to
+                                                                     6-DoF robotic manipulator to control and standardize the
+assist the real-time segmentation [24]. To improve generality,
+                                                                     3D US acquisition process for large scanning distances [11].
+the salient image features were extracted from each spatial
+                                                                     The scanning path is generated in manual teaching mode for
+resolution level within the encoder-decoder structure. Yet,
+                                                                     individual patients. To identify the stenosis location, the inner
+it is still challenging to accurately segment small vessels
+                                                                     diameters of the vascular phantom were computed. Janvier et
+from B-mode images. To tackle this problem, B. Jiang et
+                                                                     al. further proved clinical feasibility on volunteers by compar-
+al. used both B-mode and color Doppler images to train
+                                                                     ing 3D vascular volumes computed from B-mode and Doppler
+the VesNetSCT++ for small vessels, e.g., femoral and tibial
+                                                                     images, respectively, to the pre-scanned CTA [27]. To realize
+artery [15]. To effectively leverage the spatiotemporal context
+                                                                     autonomous scanning, Merouche et al. moved the probe in
+in the image sequences to improve the segmentation of small-
+                                                                     a given direction step by step and computed the in-plane
+scale arteries, VesNetSCT+ incorporates temporal, spatial,
+                                                                     movement based on the segmented lumen to centralize the
+and feature-aware contextual embedding from two-channel
+                                                                     vessel of interest [12]. Based on both in-vitro and in-vivo
+images consisting of B-mode and Color Doppler images.
+                                                                     validations, the feasibility of applying RUSS to reconstruct
+Compared with classic approaches, learning-based approaches
+                                                                     limb vessels in a clinical context was investigated.
+demonstrated advantages in time efficiency and segmentation
+                                                                        To further eliminate the requirements of manual selection
+accuracy.
+                                                                     of the scanning start and end point, Virga et al. employed
+                                                                     a surface registration to transfer a generic scanning path
+C. Robotic US Screening System                                       planned on a preoperative MRI to the current environment
+   The traditional free-hand US examination suffers from inter-      for autonomous aortic screening [28]. To guarantee the overall
+and intra-operator variations, which significantly impair the        imaging quality, they optimized the contact force by maximiz-
+clinical acceptance of the US modality. Benefiting from the          ing the overall confidence value of the resulting images. The
+controllable robotic mechanism, accurate and repeatable US           US confidence value is often used to approximate the strength
+images can be achieved by properly tuning the acquisition            of US signal at each pixel, which can be computed based
+parameters. The characteristic of reproducibility is crucial for     on [29]. Since the screening trajectory was fixed during the
+clinical applications requiring long-term care, e.g., monitor-       scanning, the resulting image quality decayed significantly if
+ing the changes of vascular plaque or internal tumors [25].          the objects moved during the scan. Regarding the examination
+In addition, the development of RUSS has the potential to            of objects that extend over a large distance, i.e., limb arteries,
+relieve sonographers from tedious and burdensome workloads,          sonographers even need to actively adjust patients’ limbs
+thereby reducing work-related musculoskeletal disorders.             to fully visualize the complete arterial tree. To tackle this
+   To achieve reproducible US images, similar acquisition            practical challenge, Z. Jiang et al. proposed a motion-aware
+parameters (i.e., contact force, and probe orientation) are          system based on an RGB-D camera and passive markers to
+4
+
+
+
+monitor and compensate for potential movements of the patient       on a flat table. Every patient was scanned two times from the
+during the scans [30].                                              start of the brachial artery at the inner side of the shoulder
+   Recently, Z. Jiang et al. presented an end-to-end RUSS to        joint towards the wrist. Both scans include the section from
+automatically scan limb arteries based on the real-time image       the shoulder to the bifurcation of the brachial artery into the
+feedback [22]. The probe orientation adjustment was calcu-          radial and ulnar arteries. Thereafter, one scan followed the
+lated, estimating the local vascular diameters and consequently     ulnar artery, while the other focused on the radial artery. Thus,
+solving a set of modeled optimization equations. The results        the major arteries of the upper limb are present in the dataset.
+demonstrated that their approach can effectively improve the           The scans were carefully evaluated and manually annotated
+accuracy and stability of scans compared with the free-hand         under the supervision of an experienced physician. As a
+US manner. Huang et al. imitated clinical protocols to auto-        consequence two of them were discarded due to improper
+matically move the probe along the longitudinal direction of        image quality. A total of 12 sweeps with 400 − 500 images
+the carotid artery [23]. To automatically search for the standard   per sweep were used for the dataset. Due to the fact that a
+longitudinal plane of tubular structures, Bi et al. proposed a      recurrent structure is used in the network, sequential data is
+reinforcement learning network [31]. The segmented binary           required. The sweeps were therefore split into 279 sequences
+masks generated by a classic U-Net [14] were used as the state      with a fixed length of 20 images/sequence. All in all 5580
+representation. This can bridge the gap between the simulated       labeled images, with corresponding color Doppler images and
+training environment and the real scenario, thereby achieving       B-mode images, were used for training.
+good generalization ability.
+
+                III. V ESSEL S EGMENTATION
+   Accurate segmentation of tubular structures from cross-
+sectional B-mode images is crucial for achieving accurate
+geometry of the vessel of interest; thereby, realizing accurate
+diagnosis and evaluation of PAD. Due to the difficulties
+implied by US artifacts such as speckle and occlusion, it
+is challenging to obtain a robust, reliable, and repeatable         Fig. 2. Illustration of the pre-processing pipeline.
+segmentation process [16]. This limits the development of              2) Duplex Data Pre-Processing: The frame grabber can
+the autonomous screening program for PAD. To improve the            only provide access to the same images displayed on the US
+segmentation performance, we propose a DopUS network                machine screen Fig. 2 (a). In order to segment the US images
+using two encoders and one decoder to fully take advantage of       and further visualize the segmented binary masks in 3D in
+the two modalities present in the duplex US images. Finally,        real-time, online pre-processing was necessary. The received
+the proposed DopUS Network is compared to the standard              images [Fig. 2 (a)] were processed to generate B-mode images
+U-Net and other reference structures.                               [Fig. 2 (b)] and Doppler images [Fig. 2 (c)], respectively. To
+                                                                    extract Doppler features, the recorded images were converted
+A. Dataset                                                          to the HSV color space. Thereby, the colored Doppler features
+                                                                    (blue or red in Fig. 2 (a)) can be easily extracted by setting a
+   1) US Data Recording: In this work, all US images were           threshold in terms of saturation (≥ 100) and value (≥ 20). To
+recorded from an ACUSON Juniper US machine (Siemens                 reduce the number of input parameters, both duplex images
+Healthineers, Germany) using a linear probe 12L3 (Siemens           were compressed to 320 × 320 pixels for the segmentation
+Healthineers, Germany, acquisition width: 51.3 mm). To ac-          network. The original size of the images was 497×733 pixels.
+cess the duplex images, a frame grabber (Epiphan Video,             It should be noted that this downsampling procedure may
+Canada) was used to connect the US machine and the main             introduce some degree of distortion and possible information
+workstation via a USB interface. Due to the generation of           loss. However, we deem it acceptable given that the blood
+color Doppler images, a small recording frequency (10 f ps)         vessels in question occupy a contiguous area that remains
+was used. Since the main limb arteries are located close to         discernible in the lower-resolution representation. The imple-
+the skin surface, the image depth for the transducer was set to     mentation of the pre-processing pipeline was done using the
+45 mm. The other acquisition parameters were set as follows:        open-source library OpenCV [32].
+Tissue Harmonic Imaging (THI): 8.4 M Hz, Dynamic Range
+(DynR): 75 dB, US imaging focus: 20 mm. The focus defines           B. Network Architecture
+the region with the highest imaging quality on the resulting           Benefiting from the development of deep learning, neural
+images. The THI is the method often used to increase contrast       networks have been widely employed to solve real-time image
+resolution, and the DynR represents the difference between the      segmentation tasks. In the field of medical image segmen-
+largest and smallest signals, which governs the images’ gray        tation, U-Net [14] is one of the most commonly used and
+scale levels.                                                       successful networks. The U-Net and its variants have also been
+   The US images were recorded from seven volunteers in-            used for US vessel segmentation tasks [22], [24].
+cluding two females and five males. For sweep recording, the           In this work, the proposed DopUS-Net also uses the classic
+volunteers were asked to sit comfortably and put their left arm     U-shape backbone for the encoder and decoder (see Fig. 3).
+                                                                                                                                 5
+
+
+
+
+Fig. 3. The architecture of the proposed DopUS-Net.
+
+
+
+Contrary to other networks which also take the Doppler inputs     have been developed by using multiple gates internally to
+into account [15], [24], the DopUS-Net uses two separate          keep track of important information meanwhile discarding
+encoders. The paired duplex image is considered as a two-         irrelevant data. Chung et al. tested both RNNs and claimed that
+channel input of the top encoder, while the bottom encoder        GRU networks are less complex while maintaining comparable
+only uses the pre-processed color Doppler images. Since only      performance to an LSTM [37]. Thereby, GRUs are used in
+Doppler images are used in the bottom encoder, the network is     the proposed network structure, which leads to fewer compu-
+forced to filter out the noise and focus on the main artifacts.   tations and therefore better inference time. To further reduce
+This structure can limit the negative impact of the unstable      the number of parameters needed, Ballas et al. introduced the
+Doppler signal (e.g., spatial accuracy and consistency), but      convolutional gated recurrent unit (convGRU) network [38].
+still preserves the functionality of a region proposal signal.    The hidden state ht extracted from sequential inputs is com-
+The skip connections between the top encoder and decoder          puted as follows:
+are used to ensure the spatial correctness of the B-mode image
+                                                                                 zt = σ(Wz [xt , ht−1 ]T )
+meanwhile also including the region proposal functionality
+of the Doppler images, respectively. This extensive use of                       rt = σ(Wr [xt , ht−1 ]T )
+                                                                                                                               (1)
+the Doppler signal in both encoders proved to be beneficial                      h̃t = tanh(W[xt , (rt       ht−1 )]T )
+in terms of performance, which also indicates its usefulness.                    ht = (1 − zt )ht−1 + zt h̃t
+Besides, DopUS-Net employs batch normalization instead of
+dropout between the layers as suggested by [33], where it is      where is an element-wise multiplication, xt is the sequential
+claimed that using dropout can have detrimental effects on        input, ht−1 is the hidden state computed in the last iteration,
+CNN training.                                                     zt is an update gate that dominates the degree to which the
+                                                                  unit refreshes its content, and rt represents the reset gate. Wz
+   Due to the continuity of vascular tissues, recurrent neu-      and Wr are the weights for the update gate and reset gate,
+ral network (RNN) structures are employed to facilitate the       respectively. h̃t further operates on combining the input with
+segmentation task by taking advantage of sequential historic      an updated hidden state of the previous time step. The final
+information. Due to the weight update rule, gradient exploding    hidden state ht is computed based on the result of the update
+or vanishing can happen when working with long input se-          gate.
+quences [34]. To tackle this problem, long short-term memory
+(LSTM) [35] and gated recurrent unit (GRU) [36] networks            The convGRU is used at the bottleneck in both encoders
+6
+
+
+
+to enable state tracking functionality. The bottom encoder
+is, therefore, able to filter out noise and speckles from the                  2|Ỹ ∩ Y | + 1
+                                                                                                           PN
+                                                                                                       2 ∗ i=1 ỹ ∗ y + 1
+Doppler effect meanwhile maintaining a representative view of        L=1−                       = 1 − PN        PN 2        (2)
+the recurring pulsation of the Doppler artifacts in the arteries.              |Ỹ | + |Y | + 1              2
+                                                                                                       i=1 ỹ +   i=1 y + 1
+The top encoder can use its historic information to emphasize       where N represents the total amount of pixels, y and ỹ
+previously found vessel locations in the current segmentation.      symbolize the target value (ground truth) and predicted label
+The fusion of the two encoders and their respective recurrent       value, respectively.
+unit is done via a concatenation. Afterward, a convolution             3) Training Details: To optimize the weights of DopUS
+ties the input together and reduces the feature dimensionality.     network, the Adam [42] optimizer is used in this work.
+Consequently, the result of the combined bottleneck is fed          Additionally, mixed-precision training [43] is enabled to speed
+into the decoder where a 1 × 1 convolution is used at the           up the training process. This form of auto casting weight pre-
+initial image resolution to generate the binary output mask         cision reduces the overall memory requirements and therefore
+(see Fig. 3).                                                       increases the training speed significantly. There are 20 images
+                                                                    in each sequence data set. Since the robot moved at a pace of
+                                                                    10 mm/s and the duplex images are recorded in 10 f ps, the
+C. Training                                                         length of each sequence is around 20 mm. The parameters for
+                                                                    the training epoch and the batch size are set to 1000 and 16,
+   1) Data Augmentation: In this work, data augmentation            respectively. The initial learning rate is 1e-4 and halved every
+is applied during the training process to improve robustness        250 iterations. The use of a small learning rate at the end of
+and reduce potential overfitting [39]. To maintain a constant       the training can benefit the accurate convergence. To prevent
+augmentation pattern for the complete sequence, the same            unnecessary training epochs, an early stopping mechanism was
+parameters were applied to all images in the same sequence.         implemented. If the validation loss is not decreasing within 15
+The spatial augmentations parameters are listed in TABLE I.         epochs, the algorithm is assumed to have converged and no
+During the training, a random number is chosen among                further improvements are expected. Since recurrent structures
+the given ranges. We empirically determined that applying           are present in the network, truncated backpropagation through
+horizontal and vertical shifts of only ±1% was optimal for          time is applied. Every 4 steps the weights of the network are
+our model’s performance. Larger shifts, in combination with         updated. This value represented a good compromise between
+the other parameters, decreased the model’s efficacy on real        performance and training time.
+US data, although further optimization is possible in future
+work.
+                                                                             IV. ROBOTIC US S CANNING AND A RTERY
+                           TABLE I
+                                                                                      R E -I DENTIFICATION
+         A PPLIED AUGMENTATIONS TO THE IMAGE SEQUENCE                  To guarantee the patient’s safety and image quality, the
+                                                                    robotic scans are performed using compliant control [22]. The
+        Augmentation Method             Range / Value
+                                                                    scan trajectory is manually defined by selecting the start and
+        Horizontal Shift                  [-1% , 1%]
+                                                                    end position on the patient’s skin. To achieve a highly accurate
+        Vertical Shift                    [-1% , 1%]
+                                                                    3D visual representation of the artery tree, Doppler images and
+        Rotation                          [-15◦ , 15◦ ]
+                                                                    B-mode images are used jointly to extract the vessel from the
+        Scale                            [80%, 120%]
+                                                                    cross-sectional images. A stable and continuous Doppler signal
+        Horizontal Flip Probability          50%
+                                                                    is beneficial for the performance of the proposed DopUS-
+                                                                    Net. To account for unstable Doppler signals and problems
+   2) Loss Function: In medical binary segmentation prob-           introduced by the blood pulsation, a tracking algorithm is
+lems, binary cross entropy (BCE) is the most commonly               developed in Section IV-B. Based on this tracker, an online
+used loss function [40]. The pixel-wise approach of class           image check is activated to guarantee sufficient quality of
+probabilities leads to a smooth gradient curve. However, BCE        the Doppler signal. Once this check identifies poor Doppler
+is sensitive to imbalanced classes. Particularly in our case, the   signal, which is often accompanied by unstable segmentation
+limb arteries are very small in comparison to the background.       results, a re-identification procedure is performed to relocate
+The area recorded by the US probe is around 2300 mm2                the Doppler signals (see Section IV-C).
+(transducer length: 52 mm, depth: 45 mm), while the radial
+or the ulnar artery only covers approx 5 − 10 mm2 (diameter:
+                                                                    A. Compliant Control Architecture
+2 − 2.5 mm [13]) of this region. This leads to a possible class
+imbalance of 1 : 250. To tackle this problem, the soft dice
+loss function [41] is used instead in this work. The soft dice         The impedance controller is often used to maintain the
+loss for all classes is then averaged to obtain a final score.      contact force between the probe and the contact surface [22],
+Besides, Bertels et al. also reported that the soft dice loss       [44]. Due to the use of built-in joint torque sensors in all seven
+is recommended when using the dice score as a performance           joints, the impedance control law can be defined as follows:
+index [40]. The computation of the soft dice loss L is presented
+in Eq. (2).                                                                         τ = JT [Fd + Km e + Dė + Më]                (3)
+                                                                                                                                       7
+
+
+
+where τ is the computed torque, J T is the transposed Jacobian         the current frame with the smallest distance to a respective
+matrix, e = (xd − xc ) is the pose error (position and                 tracking object’s center point, Ctall (j), will become its new
+orientation) between the current pose xc and the target pose xd        center point. To avoid arbitrary center point assignment, a
+in Cartesian space, Fd is the supposed exerted force/torque at         distance limit Td of maximal 30 pixels is empirically set,
+end-effector, Km , D and M represent the matrices of stiffness,        which means 4.2 mm maximum deviation from the previous
+damping and inertia terms, respectively. According to [44], the        center point. For all center points that could not be matched to
+stiffness in the direction of the probe centerline is usually set      an existing tracking object, a new tracking object is created.
+in the range [125, 500] N/m for human tissues.                         If, on the other hand, no Doppler signal could be assigned
+                                                                       to a tracking object, the center point of the previous frame
+B. Doppler Signal Tracker                                              is stored. Additionally, this value will be labeled so that a
+                                                                       distinction between a tracked value and a copied value can be
+                                                                       made.
+   Due to the heart pulsation, the Doppler images are not as
+stable as B-mode images. Regarding the scanning of limb
+                                                                        Algorithm 1: Doppler Signal Tracker
+arteries, both the accuracy and strength of Doppler signals
+are influenced by factors like the contact condition and the              Input: previous tracking object Ot−1 , extracted vessel
+probe orientation. This may impair the performance of the                         centers on previous and current images Ct−1
+                                                                                                                           all
+segmentation. However, the ability to automatically identify                      and Ctall
+the flow location in the US image is important, particularly              Output: current tracking object Ot
+                                                                            t
+for developing autonomous scanning programs. The inclusion              1 O ←  − Ot−1 ;
+                                                                                                 t−1
+of the Doppler signal enables quality-aware robotic screening,          2 for i = 1; i ≤ len(O       ); i + + do
+which can assess the segmentation results online and leads to           3
+                                                                                t
+                                                                              Di ←  − CalDis(Ct−1 i   , Ctall ) [Eq. (4)];
+improved 3D reconstruction results across the scans.                    4     dmin ←  − min(Di ) = Dti (j);
+                                                                                               t
+
+   To assess the quality of real-time Doppler signals, we               5     if dmin ≤ Td then
+monitor the centers of detected flow areas [see Fig. 2 (c)].            6         Ot (i) ←− Ctall (j) ;
+Due to the continuity of the objects, the corresponding centers         7     else
+should be close to each other on consecutive frames. To                 8         Ot ←  − [Ot , Ctall (j)];
+compute the centers, all pre-processed Doppler images are               9     end
+examined for contours using the minimum enclosing circle               10 end
+algorithm, which is a standard algorithm wrapped in the
+open-source library OpenCV [32]. Considering the inevitable
+Doppler noise, only the contours above a certain empirical
+threshold (radius > 1.2 mm) are kept. Afterward, the centers           C. Artery Location Re-Identification
+are assigned to tracking objects capturing the historical infor-
+                                                                          Compared with existing vessel segmentation and tracking
+mation of the Doppler signal. To further process the potential
+                                                                       approaches, the use of the Doppler signal enables quality-
+case that multiple vessels are displayed on a single image,
+                                                                       aware robotic scanning, leading to robust and accurate 3D
+the centers need to be assigned to an existing tracking object
+                                                                       visualization. Although some learning-based approaches have
+Ot−1 ∈ RN ×1 or to be considered as a new object, where N
+                                                                       been proposed to achieve accurate segmentation, there is no
+is the number of the tracked objects, namely blood vessels. To
+                                                                       approach that can evaluate the segmentation results online.
+this end, the distance between the centers extracted from the
+                                                                       Regarding pure segmentation tasks from images, a large seg-
+images recorded at time t − 1, Ct−1 ∈ RN ×2 , and the centers
+                                                         0             mentation error on a few slices would not affect the overall per-
+computed on the current images at time t, Ct ∈ RN ×2 , is
+                                                                       formance. However, such errors may lead to incorrect robotic
+computed as follows:
+                                                                       motion when the segmentation is further used to control a
+                                                                       robotic manipulator. Thereby, it is necessary to re-identify the
+                    Dti = CalDis(Ct−1
+                                  i   , Ctall )                 (4)
+                                                                       artery location once the segmentation quality is inadequate.
+where CalDis() represents the operation to compute Euclidean           Here we consider imaging quality to be insufficient when
+distances between one point and each element in a point set.           the real-time segmentation results are not consistent with the
+i = 1, 2, ..., N is the iterator referring to the centers of tracked   Doppler images. To ensure a consistently high segmentation
+objects, Ct−1
+            i   ∈ R1×2 is the i-th center saved at Ot−1 , Ctall ∈      performance, a re-identification procedure is developed (see
+  N 0 ×2                                                               Fig. 4).
+R        is the set of centers computed based on the Doppler
+image obtained at time t, N 0 is the filtered number of contours          To evaluate the segmentation performance, Doppler images
+                                     0
+present at time t, and Dti ∈ RN ×1 is the distances between            and real-time segmentation results are jointly used as inputs.
+Ct−1
+  i    and all elements of Ctall . The minimum distance dmin           The imaging quality is determined by comparing the last center
+is stored with its associated index j and used to update the           point of the tracking object O to the segmentation mask. A
+tracking object Ot−1 as described in Algorithm 1.                      tracking object is only considered if at least 20% of its center
+   The tracking object O is updated based on the distance              points within the last 15 frames represent new values (not a
+between the contours’ centers calculated in the last frame             copy from the last one). The threshold is determined based on
+t − 1 and the current frame t [Eq. (4)]. The center point of           empirical studies and the assumption that a flow is visible in
+8
+
+
+
+                                                                     orientation.
+
+
+
+
+Fig. 4. The flow chart of the artery re-identification procedure.
+
+
+
+the last 15 frames. Considering that the images are recorded         Fig. 5. The illustration of the out-of-plane rotation for the re-identification
+in 10 f ps, 15 frames correspond to a time window of 1.5 s           process.
+Note that the interval is based on the assumption that at least
+one heartbeat can occur within that time frame and may need
+to be adjusted for patients with slower heart rates.
+   Furthermore, if at least one of the tracked center points of                                     V. R ESULTS
+the valid tracking objects is within the areas of the predicted      A. Experimental Setup
+vessels, the quality is assumed to be sufficient. Otherwise, we
+                                                                        The overall setup is visualized in Fig. 6. A linear probe
+consider that the tracker and real-time segmentation results are
+                                                                     is rigidly attached to the robot manipulator (LBR iiwa 14
+in conflict and thereby automatically start the re-identification
+                                                                     R820, KUKA GmbH, Germany). The connector between the
+algorithm. In this case, the current probe pose is referred to as
+                                                                     transducer and the end-effector of the robotic arm is a custom-
+the original orientation for this re-identification procedure (see
+                                                                     designed probe holder. To guarantee safety and imaging qual-
+Fig. 5). Due to the physical principles of the Doppler signal, its
+                                                                     ity, the robotic arm is controlled using impedance control
+quality gets better when the beam of the US probe is aligned
+                                                                     during scans (see Section IV-A). The desired force in the probe
+with the direction of the vessel flow. Better Doppler imaging
+                                                                     centerline is set to 1 N , and the stiffness is 200 N/m. The
+quality can further facilitate the segmentation performance of
+                                                                     main objective of using a non-zero force is to ensure firm
+the proposed DopUS network. Thereby, once the system is
+                                                                     contact between the probe and patients during scans, while
+aware that the imaging quality is not good enough, an out-
+                                                                     force could be varied from 1 N . However, during the re-
+of-plane fan motion is performed to obtain better imaging
+                                                                     identification process, the control mode automatically switches
+quality (see Fig. 5). However, the contrast of the B-mode
+                                                                     to a position control strategy to maintain the same position
+images decreases when tilting the probe away from the optimal
+                                                                     when restarting.
+perpendicular pose. In order to keep both the US and Doppler
+image quality as high as possible, the fan motion should only           Regarding the image processing part, the duplex images
+rotate as far as necessary.                                          are recorded and fed to the DopUS-Net for real-time vessel
+   Taking that into account, the probe is rotated in the out-        segmentation. The inference time of DopUS-Net, including
+of-plane direction in 5◦ steps every time. In total, a range of      pre-processing and the online imaging quality evaluation pro-
+±10◦ from the current probe orientation can be covered. After        cess, is around 20 ms on average, which is quick enough to
+every step, the robot stops for two seconds to be notified if        process the real-time US images captured at 10 f ps (100 ms).
+the Doppler quality check reports a good signal. A maximum           In addition, the segmentation masks are stacked in 3D based
+of five different orientations (out-of-plane rotation deviation      on the robotic tracking information and visualized in real-time
+from the current pose: [−10◦ , −5◦ , 0, 5◦ , 10◦ ]) are visited,     on a visualization platform (ImFusion Suite, ImFusion GmbH,
+assuming that no sufficient quality of the Doppler signal            Germany).
+is detected. In this case, the robot returns to its original
+orientation and continues the sweep. In order to move on             B. Segmentation Performance on Volunteers
+to a potentially better location for the Doppler signal the re-
+identification process is blocked for at least three seconds. If       The network was trained on a workstation (GPU: GeForce
+on the other hand the Doppler signal relocalizes the vessel          GTX Titan X, CPU: Intel i7-4820K). To measure the similarity
+during the re-identification process, the current orientation        between the manually annotated ground truth data Y (see
+is used to update the trajectory orientation and the sweep           Section III-A) and the binary segmentation result Ỹ , the Dice-
+is continued. Finally, to prevent the robot from moving too          Score Cdice is applied (Eq. 5).
+close to the human arm, a security threshold referring to the
+original direction is implemented. So the out-of-plane rotation                                            2|Ỹ ∩ Y |
+is stopped if it deviates more than 20◦ compared to the original                                Cdice =                                         (5)
+                                                                                                           |Ỹ | + |Y |
+                                                                                                                                           9
+
+
+
+                                                                    TABLE II
+                                                           C OMPARISON OF THE RESULTS
+
+                             Top       Bottom            #                                  Patient                         Dice Score
+       Network
+                           Encoder    Encoder        Parameters        0       1      2        3        4      5       6    Mean (SD)
+       U-Net                   B          -            0.6 M         0.61    0.51   0.45     0.40     0.45   0.29    0.38   0.44 (0.09)
+       U-Net                  BD          -            0.6 M         0.83    0.59   0.54     0.52     0.49   0.39    0.45   0.55 (0.13)
+    DopUS-Net(0)              BD         D             1.3 M         0.83    0.61   0.58     0.60     0.54   0.43    0.47   0.58 (0.12)
+      VesNet               BD-RNN         -            2.6 M         0.80    0.62   0.60     0.43     0.33   0.42    0.43   0.52 (0.15)
+      VesNet+              BD-RNN         -            6.3 M         0.80    0.62   0.68     0.58     0.58   0.47    0.53   0.61 (0.10)
+       U-Net               BD-RNN         -            3.0 M         0.86    0.61   0.71     0.66     0.68   0.60    0.50   0.66 (0.10)
+      U-Net+               BD-RNN         -            6.5 M         0.78    0.58   0.37     0.40     0.36   0.32    0.41   0.46 (0.15)
+    DopUS-Net(1)            B-RNN     D-RNN♣           6.2 M         0.78    0.54   0.45     0.56     0.55   0.27    0.18   0.48 (0.19)
+    DopUS-Net(2)              BD      D-RNN            3.7 M         0.87    0.69   0.76     0.76     0.72   0.56    0.61   0.71 (0.10)
+    DopUS-Net(3)            B-RNN     D-RNN            6.1 M         0.88    0.71   0.79     0.76     0.75   0.57    0.61   0.72 (0.10)
+    DopUS-Net(4)           BD-RNN     D-RNN            6.1 M         0.88    0.69   0.79     0.78     0.76   0.62    0.60   0.73 (0.09)
+*Nomenclature: B:B-Mode, D: Doppler, RNN: convGRU module, +: increased parameters, DopUS-Net(x) : specific DopUS-Net
+version, ♣ : additional skip connections from the bottom encoder to the decoder.
+
+
+                                                                            NetSCT++ [15]. It must be noted, that the VesNetSCT++
+                                                                            architecture is a custom re-implementation as the source code
+                                                                            was not publicly available. Results should be treated with care.
+                                                                            The self-developed VesNetSCT++ is carefully implemented by
+                                                                            following the architecture presented in [15]. The final version
+                                                                            achieved comparable dice scores on small blood vessels (di-
+                                                                            ameter is 2-3 mm) with respect to the original paper [15]. To
+                                                                            maintain simplicity, the VesNetSCT++ [15] is referred to as
+                                                                            VesNet in the remaining part of this work.
+                                                                               As all involved network architectures use the U-shape
+                                                                            backbone, descriptions of their top and bottom encoders are
+                                                                            used to facilitate the understanding of the key differentia-
+                                                                            tion aspects. The top encoder represents the encoder in the
+Fig. 6. The experimental setup: robot manipulator with attached linear US   U-Net/VesNet architecture. Since the proposed DopUS-Net
+probe and the used US machine.                                              follows the approach of two separate encoders, the second
+                                                                            one is described as the bottom encoder (see Fig. 3). The
+   We employed the leave-one-out-cross-validation (LOOCV)                   corresponding inputs of these two encoders used in different
+method [44] to optimize the performance of the DopUS net-                   networks are specified in TABLE II. The letter “B” and “D”
+work with a limited training dataset. LOOCV entails training                are B-mode and Doppler images, respectively. BD represents a
+the model on data from six patients and validating it on                    two-channel tensor consisting of the combined duplex images.
+the remaining one, iteratively for each patient. This reduces               RNN corresponds to the convGRU module, which is used
+the potential bias of the model compared with conventional                  before the bottleneck at the highest feature dimensionality
+approaches that split the data into fixed training and test sets.           space.
+LOOCV ensures that the model is evaluated on data from all                     1) Effectiveness of Doppler Signal on Vessel Segmentation:
+seven patients, albeit at a higher computational cost. It yields a          To validate whether the Doppler signal can enhance the
+more robust and reliable estimate of the network performance.               segmentation accuracy from US images, the classic U-Net [14]
+   To compare the performance with existing networks and                    is used as a baseline in this study. In the first two rows of
+further explore the most effective way to incorporate the                   TABLE II, we compare the effect of pure B-Mode image
+Doppler signal, the performances of different network archi-                input to a two-channel Doppler and B-Mode tensor input. The
+tectures have been investigated. All presented networks are                 average segmentation results are improved from 0.44 to 0.55
+implemented using PyTorch3 , and they are trained from scratch              in terms of dice score. Such improvement is consistent with the
+based on the same data set in each case. The results have                   results reported by B. Jiang et al. using VesNet [15]. Then, the
+been summarised in TABLE II. To ensure a valid comparison                   additional bottom encoder using the Doppler images as input
+throughout the study, all the models are trained using the                  is tested. The double encoder approach further improved the
+same configuration on the same dataset. The baseline and                    segmentation results to 0.58. It is noteworthy that DopUS-
+comparison networks represented are U-Net [14] and Ves-                     Net0 consists of a classic U-Net and an additional encoder
+                                                                            with the same architecture as the upper encoder. Thereby, we
+  3 https://pytorch.org/                                                    consider the use of Doppler signals can significantly improve
+10
+
+
+
+the segmentation performance.                                        C. Validation of the Artery Re-Identification Process
+    2) Effectiveness of RNN on Vessel Segmentation: Due to the          To further validate whether the proposed artery location re-
+continuity of blood vessels, RNNs are used to take advantage         identification approach can improve the robustness and final
+of historical information in this study. To evaluate the impact      3D compounding results, experiments were carried out on
+of adding an RNN, we compare the performance of the U-Net            various volunteers. To quantitatively compare the difference
+with and without the RNN module. Based on the experimental           between the scans with and without the re-identification
+results in TABLE II, the performance is significantly improved       process, two robotic scans with the same initial scanning
+from 0.55 (2-nd row) to 0.66 (6-th row) when the RNN                 trajectory were performed on the same volunteer. The initial
+module is used. Similarly, the best performing version of            trajectory was manually given by selecting the start and end
+the DopUS-Net(4) with RNN for both encoders increases                points. The ulnar artery on the arm was selected as the
+its performance by roughly 15%. Thereby, we consider the             anatomy of interest. Representative results of two scans with
+RNN to be beneficial for the achievement of accurate vessel          and without the re-identification process, respectively, on the
+segmentation.                                                        same volunteer, are depicted in Fig. 7. To avoid misleading
+    To account for parameter differences introduced by the           information, it is noteworthy that the segmentation noise of
+different structures, the network parameters of the comparison       the DopUS-Net has been removed to focus on the vessel of
+networks have been increased by increasing the number of             interest. The heatmap intuitively shows the geometric offset
+filters in each layer. The version with increased parameters         between the segmentation result of the DopUS-Net and the
+of U-Net and VesNet are marked as U-Net+ and VesNet+,                manually annotated ground truth. Similar to the dataset used
+respectively. The parameter numbers of U-Net+ (6.3 M ) and           for training and evaluation of the proposed network structure,
+VesNet+ (6.5 M ) roughly match the size of the final DopUS-          the ground truth annotation for the artery re-identification vali-
+Net (6.1 M ). Based on the experimental results, the VesNet+         dation was performed under the supervision of an experienced
+achieved a better result (0.61), while the U-Net+ performed          sonographer.
+significantly worse than the baseline (only 0.46). We consider
+this to be caused by the overfitting when the number of                                         TABLE III
+parameters (U-Net) significantly increased. To address this                   S EGMENTATION RESULTS OVER VOLUME [M EAN (SD)]
+issue, necessary fine-tuning and regularization would be re-
+quired, e.g., dropout, which in turn would result in a parameter              Re-Identification     Dice Score           IoU
+reduction. Therefore, the better performing version with fewer                    Enabled           0.86 (0.14)      0.78 (0.16)
+parameters is used for further comparison.                                        Disabled          0.54 (0.39)      0.47 (0.37)
+    3) Effectiveness of Network Structures on Vessel Segmen-
+tation: To further explore the most effective way of incorpo-           It can be seen from Fig. 7 that the re-identification process
+rating the Doppler signals to facilitate segmentation accuracy,      (case 2) can result in a relatively complete 3D compounding
+four different versions of DopUS-Net have been investigated.         result, while the scan (case 1) without the re-identification
+DopUS-Net(1) and DopUS-Net(3) only use the Doppler signal            process performed poorly. By monitoring the real-time seg-
+in the bottom encoder, while DopUS-Net(2) and DopUS-Net(4)           mentation masks and Doppler images, the system with the
+use Doppler signals in both encoders. First, we quantitatively       re-identification process can be aware of sub-optimal seg-
+evaluated the effect of the skip connections. DopUS-Net(1)           mentation results. Thereby, automatic probe optimization is
+incorporates additional skip connections from the bottom             performed to achieve good segmentation results for an accurate
+encoder to the decoder. Compared to DopUS-Net(3) , which             3D reconstruction. This characteristic is important to improve
+only has the skip connections from the top encoder to the            the robustness of the automatic US scanning program. Regard-
+decoder, the performance of DopUS-Net(1) is significantly            ing case 2, three re-identification procedures were performed.
+reduced, deteriorating the dice score by 0.24. We consider           Qualitatively, the colored geometric distance [see Fig. 7 (a) and
+that this is because of the inherent characteristic instability of   (d)] demonstrate that the distance offsets of some segmentation
+the Doppler signal. The results affirm the assumption that the       results in case 1 are larger than 2 mm, while the maximum
+Doppler signal can be seen as a good region proposal without         offset in Case 2 is around 0.5 mm.
+spatial accurateness. In addition, compared to the final version        To further quantitatively compare the results, the Dice Score
+DopUS-Net(4) , DopUS-Net(2) and DopUS-Net(3) remove the              and IoU are used as performance indicators. The scores for
+RNN module and Doppler signal, respectively, from the top            individual frames in the sweeps are depicted in Fig. 7 (b) and
+encoder. Although the experimental result demonstrated that          (e). The changing tendency in both indicators is consistent with
+DopUS-Net(4) achieved better performance than DopUS-Net(2)           the corresponding distance offset heatmaps. To statistically
+and DopUS-Net(3) , the improvement is minor. All of these            summarize the performance scores, we group the scores in ten
+three networks significantly improve the state-of-the-art results    bins ([0, 0.1), [0.1, 0.2) ,..., [0.9, 1]) as can be seen in Fig. 7 (c)
+(U-Net: 0.66, VesNet: 0.61) to 0.71, 0.72 and 0.73. Overall          and (d). Based on the histogram, there are 204 frames (62
+the insight can be taken, that the second encoder forces the         for [0.8,0.9) and 142 for [0.9, 1.0]) of 242 frames in total
+network to emphasize on the Doppler effect. The results show         (84.3%) which achieved a high dice score in case 2, while at
+that the intuitive inclusion and emphasized weight on the            the same time there are only 88 frames (38 for [0.8,0.9) and
+Doppler signal is justified in practice. More segmentation           50 for [0.9, 1.0]) of 183 respective total frames (48.1%) that
+results of live US frames can be found in the online video.          achieved a high dice score in case 2. As for the IoU indicator,
+                                                                                                                                                         11
+
+
+
+
+Fig. 7. A representative comparison between the robotic scans with and without artery location re-identification process. (a) is the heatmap of the geometry
+difference between the automatic segmentation results and the ground truth. (b) and (c) are the dynamic and statistically summarized Dice/IoU scores,
+respectively. (d), (e) and (f) are the results obtained when scanning with enabled re-identification process.
+
+                                                               TABLE IV
+                                  OVERALL P ERFORMANCE OF THE ROBOTIC S CREENING F RAMEWORK [M EAN (SD)]
+
+                             Time efficiency                                          Re-identification                                  Sweep
+      Objects
+                      Total (s) Compounding (s)                  Occurrences        Re-identification steps        Success rate      distance (mm)
+    Volunteer 1        39(12)        0.41(0.17)                   2.5(1.1)                1.1(0.3)                    86%               103(14)
+    Volunteer 2        49(15)        0.54(0.17)                   2.8(1.3)                1.4(0.9)                    92%                113(9)
+
+
+it has a similar tendency as the dice score. In addition, many                 proportional increase in compounding time (0.54 ± 0.17s vs
+results are distributed in the range of [0, 0.5] for case 1, while             0.41 ± 0.17s). Overall, the experiments demonstrated that the
+the segmentation scores for case 2 are mainly distributed in                   robotic scans can be completed within a minute, meeting the
+the upper part. Finally, the average results are summarized in                 standard of clinical practices in terms of time efficiency.
+TABLE III. The experimental results demonstrated that the re-
+                                                                                  To validate the necessity of the re-identification procedure,
+identification procedure can effectively improve the robustness
+                                                                               we count how often the procedure was activated during
+and accuracy of the segmentation result (dice score: from 0.54
+                                                                               scans and also how many out-of-plane adjustment steps were
+to 0.86; IoU: from 0.47 to 0.78).
+                                                                               necessary to re-identify a good Doppler signal. It can be seen
+                                                                               from TABLE-IV that the average occurrences and required
+D. Performance of the Proposed Quality-Aware Blood Vessel                      steps in each re-identification procedure on volunteer 1 and
+Screening Framework                                                            volunteer 2 are 2.5±1.1 times vs 2.8±1.3 times and 1.1±0.3
+   To further quantitatively analyze the overall performance                   times vs 1.4±0.9 times, respectively. These statistical numbers
+of the whole framework, we test the proposed quality-aware                     obtained independently from two different volunteers are very
+robotic screening approach on the forearm of two healthy                       similar. The re-identification procedure was activated over two
+volunteers. Ten independent experiments are carried out on                     times on average per scan for both volunteers, emphasizing
+each volunteer (in total 20 times). Considering the clinical                   its crucial role in order to maintain a high segmentation
+scenarios, we investigate the effectiveness of the Doppler-                    performance. To ensure the accuracy and completeness of
+based re-identification procedure and the time efficiency of                   the reconstructed vessel (see Fig. 7), the Doppler-based re-
+the whole scanning. The results have been summarized in                        identification is activated. The results demonstrate that after
+TABLE IV.                                                                      less than two steps of out-of-plane adjustment (1.1 and 1.4
+   In order to evaluate the efficacy of the proposed method,                   for volunteers 1 and 2, respectively), the system can recover
+experiments were conducted in which the start and end                          a good Doppler signal. In addition, if the system cannot
+points of the scan trajectory were set manually. The average                   revive good Doppler results after five searching steps, we
+sweep distance of volunteer 1 and 2 were 103 ± 14mm and                        consider the re-identification procedure failed. The success
+113 ± 9mm, respectively. The time efficiency was analyzed                      rate is 86% (successful / total = 22/25) and 92% (26/28) on
+by measuring the compounding time for the 3D reconstruction                    volunteers 1 and 2, respectively. Factors affecting the success
+and the total time required for the entire workflow. The greater               rate can include variations in the positioning of the probe
+sweep distance for volunteer 2 resulted in a longer scanning                   over the artery, differences in blood pressure which affects the
+time (49 ± 15s) compared to volunteer 1 (39 ± 12s), and a                      blood speed, and variations in tissue depth and composition
+12
+
+
+
+above the arteries. The experimental results demonstrate that                                  VII. C ONCLUSION
+the presented re-identification procedure can effectively and
+                                                                        This work presents a novel approach using duplex images
+quickly adjust the probe to relocate to the orientation leading
+                                                                     to facilitate the accurate segmentation of small blood vessels
+to good Doppler signal quality.
+                                                                     from cross-sectional US images on volunteers’ limbs. To
+                        VI. D ISCUSSION                              explore the most effective way to incorporate the Doppler sig-
+                                                                     nals, various versions of the DopUS-Net have been proposed
+   We present a novel quality-aware robotic US screening
+                                                                     and compared to the U-Net [14] and VesNet [15] in terms
+framework for tubular structures. Leveraging the Doppler sig-
+                                                                     of dice score. The final version of DopUS-Net has two en-
+nal, the vascular segmentation performance is improved using
+                                                                     coders with different inputs (two-channel “BD” and pure “D”
+the proposed DopUS-Net, and the accuracy and completeness
+                                                                     images), and two convGRUs applied at the bottleneck layer to
+of the reconstructed 3D vessel of interest are significantly en-
+                                                                     exploit the continuity properties of the anatomy from previous
+hanced on multiple volunteers. The novel structure of DopUS-
+                                                                     frames. In addition, based on the Doppler signal, an online
+Net can also inspire other studies with multiple inputs, such as
+                                                                     artery re-identification module is developed to qualitatively
+combining the frequency and image domain with OCT image
+                                                                     assess the performance of the real-time image segmentation.
+segmentation [45]. However, there are some limitations that
+                                                                     Thereby, the quality-aware robotic screening program is devel-
+are worth noting. First, the patient’s motion is not considered
+                                                                     oped to further improve the confidence and robustness of the
+in this work, but such motion could result in disconnected
+                                                                     image segmentation. The experimental results demonstrate that
+blood vessels in the 3D view. To further address this challenge,
+                                                                     the overall performance of the scan with the re-identification
+previous work on motion-aware RUSS [30], [46], [47] could
+                                                                     process is significantly improved over the scan without the re-
+be integrated to monitor and compensate for comparatively
+                                                                     identification process on the same volunteer (dice score: from
+large patient motion. Then advanced computational 3D com-
+                                                                     0.54 to 0.86; IoU: from 0.47 to 0.78). The Doppler-based
+pounding methods [48], [49] need to be developed to tackle
+                                                                     quality-aware screening significantly improved the accuracy
+the pixel-wise misplacement to guarantee local continuities.
+                                                                     and robustness of the 3D compounding results; thereby, we
+Second, the re-identification is only performed in the out-of-
+                                                                     anticipate that it may further improve the acceptance of the
+plane direction to recover the Doppler signal in this work. This
+                                                                     autonomous US scanning programs in the future.
+is the compromised result to reduce the complexity of the re-
+identification solution, thereby ensuring the time efficiency to
+meet the requirement for further clinical translation. In the                              ACKNOWLEDGMENT
+future, if we can access the low-level control of the used
+                                                                        The authors would like to acknowledge Dr. Med. Reza
+US machine, another promising solution is to maintain the
+                                                                     Ghotbi and Dr. Med. Angelos Karlas for their insightful dis-
+probe normal to the constraint surface and directly change
+                                                                     cussions and valuable clinical feedback. Besides, we want to
+the emitted US wave direction. This will further improve
+                                                                     thank the Editors and reviewers for their implicit contributions
+the time efficiency by eliminating the need to adjust the
+                                                                     to the improvement of this article.
+probe orientation physically while maintaining stable contact
+between the probe and the surface. However, it must be noted
+that this approach requires specialized transducers and cannot                                     R EFERENCES
+be achieved using standard US probes.
+                                                                      [1] G. J. Hankey, P. E. Norman, and J. W. Eikelboom, “Medical treatment
+   In addition, data collection and labeling are often bur-               of peripheral arterial disease,” Jama, vol. 295, no. 5, pp. 547–553, 2006.
+densome and expensive tasks, particularly in the field of             [2] A. T. Hirsch, M. H. Criqui, D. Treat-Jacobson, J. G. Regensteiner, M. A.
+medical image processing. To improve data efficiency, data                Creager, J. W. Olin, S. H. Krook, D. B. Hunninghake, A. J. Comerota,
+                                                                          M. E. Walsh et al., “Peripheral arterial disease detection, awareness,
+augmentation is one of the most popular methods used [50].                and treatment in primary care,” Jama, vol. 286, no. 11, pp. 1317–1324,
+To improve the generalization capability of a trained model               2001.
+on unseen data, representation disentanglement [51], [52] is          [3] K. J. Rocha-Singh, T. Zeller, and M. R. Jaff, “Peripheral arterial cal-
+                                                                          cification: prevalence, mechanism, detection, and clinical implications,”
+investigated to explicitly disentangle the feature in latent space        Catheterization and Cardiovascular Interventions, vol. 83, no. 6, pp.
+against the domain shift. This is particularly useful for US              E212–E220, 2014.
+images because US images are very sensitive to the machine,           [4] E. Favaretto, C. Pili, and et al., “Analysis of agreement between duplex
+                                                                          ultrasound scanning and arteriography in patients with lower limb artery
+US machine setting, and also real-time contact conditions.                disease,” J. Cardiovasc. Med., vol. 8, no. 5, pp. 337–341, 2007.
+In addition, considering the shortage of data, an emerging            [5] J. Guo, C. Shi, and H. Ren, “Ultrasound-assisted guidance with force
+concept of federated learning is proposed to enable the train-            cues for intravascular interventions,” IEEE Trans. Autom. Sci. Eng.,
+ing across multiple decentralized servers holding local data              no. 99, pp. 1–8, 2018.
+                                                                      [6] M. W. Gilbertson and B. W. Anthony, “Force and position control system
+examples [53]. Currently, real-time segmentation of ultrasound            for freehand ultrasound,” IEEE Trans. Robot., vol. 31, no. 4, pp. 835–
+images is mainly performed on 2D images due to their superior             849, 2015.
+accuracy in capturing local features like boundaries. However,        [7] F. Pierrot, E. Dombre, E. Dégoulange, L. Urbain, P. Caron, S. Boudet,
+                                                                          J. Gariépy, and J.-L. Mégnien, “Hippocrate: A safe robot arm for medical
+once 3D ultrasound probes generate high-quality volumetric                applications with force feedback,” Med. Image Anal., vol. 3, no. 3, pp.
+images, 3D segmentation algorithms [54], [55] can potentially             285–300, 1999.
+improve segmentation performance by maintaining the accu-             [8] Z. Jiang, M. Grimm, M. Zhou, Y. Hu, J. Esteban, and N. Navab,
+                                                                          “Automatic force-based probe positioning for precise robotic ultrasound
+racy of local features and enabling anatomical continuity in              acquisition,” IEEE Transactions on Industrial Electronics, vol. 68,
+three dimensions.                                                         no. 11, pp. 11 200–11 211, 2020.
+                                                                                                                                                                13
+
+
+
+ [9] J. Tan, B. Li, Y. Li, B. Li, X. Chen, J. Wu, B. Luo, Y. Leng, Y. Rong,         [30] Z. Jiang, H. Wang, and et al., “Motion-aware robotic 3d ultrasound,” in
+     and C. Fu, “A flexible and fully autonomous breast ultrasound scanning              Proc. IEEE Int. Conf. Robot. Automat. (ICRA). IEEE, 2021.
+     system,” IEEE Transactions on Automation Science and Engineering,              [31] Y. Bi, Z. Jiang, Y. Gao, T. Wendler, A. Karlas, and N. Navab, “Vesnet-
+     2022.                                                                               rl: Simulation-based reinforcement learning for real-world us probe
+[10] Z. Jiang, M. Grimm, M. Zhou, J. Esteban, W. Simson, G. Zahnd, and                   navigation,” IEEE Robotics and Automation Letters, 2022.
+     N. Navab, “Automatic normal positioning of robotic ultrasound probe            [32] G. Bradski, “The openCV library.” vol. 25, no. 11, pp. 120–123, 2000.
+     based only on confidence map optimization and force measurement,”              [33] C. Garbin, X. Zhu, and O. Marques, “Dropout vs. batch normalization:
+     IEEE Robot. Autom. Lett., vol. 5, no. 2, pp. 1342–1349, 2020.                       an empirical study of their impact to deep learning,” Multimedia Tools
+[11] M.-A. Janvier, L.-G. Durand, M.-H. R. Cardinal, I. Renaud, B. Chayer,               and Applications, vol. 79, no. 19, pp. 12 777–12 815, 2020.
+     P. Bigras, J. De Guise, G. Soulez, and G. Cloutier, “Performance               [34] Y. Bengio, P. Simard, and P. Frasconi, “Learning long-term dependencies
+     evaluation of a medical robotic 3d-ultrasound imaging system,” Medical              with gradient descent is difficult,” IEEE transactions on neural networks,
+     image analysis, vol. 12, no. 3, pp. 275–290, 2008.                                  vol. 5, no. 2, pp. 157–166, 1994.
+[12] S. Merouche, L. Allard, E. Montagnon, G. Soulez, P. Bigras, and
+                                                                                    [35] S. Hochreiter and J. Schmidhuber, “Long short-term memory,” Neural
+     G. Cloutier, “A robotic ultrasound scanner for automatic vessel tracking
+                                                                                         computation, vol. 9, no. 8, pp. 1735–1780, 1997.
+     and three-dimensional reconstruction of b-mode images,” IEEE Trans.
+     Ultrason. Ferroelectr. Freq. Control, vol. 63, no. 1, pp. 35–46, 2015.         [36] K. Cho, B. van Merriënboer, Ç. Gulçehre, D. Bahdanau, F. Bougares,
+[13] S. Beniwal, K. Bhargava, and S. K. Kausik, “Size of distal radial and               H. Schwenk, and Y. Bengio, “Learning phrase representations using
+     distal ulnar arteries in adults of southern rajasthan and their implications        rnn encoder–decoder for statistical machine translation,” in Proceedings
+     for percutaneous coronary interventions,” Indian heart journal, vol. 66,            of the 2014 Conference on Empirical Methods in Natural Language
+     no. 5, pp. 506–509, 2014.                                                           Processing (EMNLP), 2014, pp. 1724–1734.
+[14] O. Ronneberger, P. Fischer, and T. Brox, “U-net: Convolutional networks        [37] J. Chung, C. Gulcehre, K. Cho, and Y. Bengio, “Empirical evaluation
+     for biomedical image segmentation,” in International Conference on                  of gated recurrent neural networks on sequence modeling,” NIPS 2014
+     Medical image computing and computer-assisted intervention. Springer,               Workshop on Deep Learning, 2014.
+     2015, pp. 234–241.                                                             [38] N. Ballas, L. Yao, C. Pal, and A. Courville, “Delving deeper into
+[15] B. Jiang, A. Chen, S. Bharat, and M. Zheng, “Automatic ultrasound                   convolutional networks for learning video representations,” in Int. Conf.
+     vessel segmentation with deep spatiotemporal context learning,” in                  Learn. Represent (ICLR), 2016.
+     International Workshop on Advances in Simplifying Medical Ultrasound.          [39] C. Shorten and T. M. Khoshgoftaar, “A survey on image data augmen-
+     Springer, 2021, pp. 3–13.                                                           tation for deep learning,” Journal of big data, vol. 6, no. 1, pp. 1–48,
+[16] D. Mishra, S. Chaudhury, M. Sarkar, and A. S. Soin, “Ultrasound image               2019.
+     segmentation: a deeply supervised network with attention to boundaries,”       [40] J. Bertels, T. Eelbode, M. Berman, D. Vandermeulen, F. Maes, R. Biss-
+     IEEE Trans. Biomed. Eng., vol. 66, no. 6, pp. 1637–1648, 2018.                      chops, and M. B. Blaschko, “Optimizing the dice score and jaccard
+[17] A. F. Frangi, W. J. Niessen, K. L. Vincken, and M. A. Viergever,                    index for medical image segmentation: Theory and practice,” in Inter-
+     “Multiscale vessel enhancement filtering,” in International conference on           national conference on medical image computing and computer-assisted
+     medical image computing and computer-assisted intervention. Springer,               intervention. Springer, 2019, pp. 92–100.
+     1998, pp. 130–137.                                                             [41] C. H. Sudre, W. Li, T. Vercauteren, S. Ourselin, and M. Jorge Cardoso,
+[18] E. Smistad and F. Lindseth, “Real-time automatic artery segmentation,               “Generalised dice overlap as a deep learning loss function for highly
+     reconstruction and registration for ultrasound-guided regional anaesthe-            unbalanced segmentations,” in Deep learning in medical image analysis
+     sia of the femoral nerve,” IEEE Trans. Med. Imaging, vol. 35, no. 3, pp.            and multimodal learning for clinical decision support. Springer, 2017,
+     752–761, 2015.                                                                      pp. 240–248.
+[19] E. Karami, M. S. Shehata, and A. Smith, “Adaptive polar active contour         [42] D. P. Kingma and J. Ba, “Adam: A method for stochastic optimization,”
+     for segmentation and tracking in ultrasound videos,” IEEE Trans.                    in International Conference on Learning Representations (ICLR), 2015.
+     Circuits Syst. Video Technol., vol. 29, no. 4, pp. 1209–1222, 2018.            [43] P. Micikevicius, S. Narang, J. Alben, G. Diamos, E. Elsen, D. Garcia,
+[20] P. Abolmaesumi, S. E. Salcudean, W.-H. Zhu, M. R. Sirouspour, and                   B. Ginsburg, M. Houston, O. Kuchaiev, G. Venkatesh et al., “Mixed
+     S. P. DiMaio, “Image-guided control of a robot for medical ultrasound,”             precision training,” in International Conference on Learning Represen-
+     IEEE Trans. Robot. Autom., vol. 18, no. 1, pp. 11–23, 2002.                         tations, 2018.
+[21] G. Litjens, T. Kooi, B. E. Bejnordi, A. A. A. Setio, F. Ciompi,                [44] C. Hennersperger, B. Fuerst, and et al., “Towards MRI-based au-
+     M. Ghafoorian, J. A. Van Der Laak, B. Van Ginneken, and C. I. Sánchez,             tonomous robotic us acquisitions: a first feasibility study,” IEEE Trans.
+     “A survey on deep learning in medical image analysis,” Medical image                Med. Imaging, vol. 36, no. 2, pp. 538–548, 2016.
+     analysis, vol. 42, pp. 60–88, 2017.                                            [45] A. Farshad, Y. Yeganeh, P. Gehlbach, and N. Navab, “Y-net: A spa-
+[22] Z. Jiang, Z. Li, M. Grimm, M. Zhou, M. Esposito, W. Wein, W. Stechele,              tiospectral dual-encoder network for medical image segmentation,” in
+     T. Wendler, and N. Navab, “Autonomous robotic screening of tubular                  Medical Image Computing and Computer Assisted Intervention–MICCAI
+     structures based only on real-time ultrasound imaging feedback,” IEEE               2022: 25th International Conference, Singapore, September 18–22,
+     Transactions on Industrial Electronics, 2021.                                       2022, Proceedings, Part II. Springer, 2022, pp. 582–592.
+[23] Y. Huang, W. Xiao, C. Wang, H. Liu, R. Huang, and Z. Sun, “Towards
+                                                                                    [46] Z. Jiang, N. Danis, Y. Bi, M. Zhou, M. Kroenke, T. Wendler, and
+     fully autonomous ultrasound scanning robot with imitation learning
+                                                                                         N. Navab, “Precise repositioning of robotic ultrasound: Improving
+     based on clinical protocols,” IEEE Robot. Autom. Lett., vol. 6, no. 2,
+                                                                                         registration-based motion compensation using ultrasound confidence
+     pp. 3671–3678, 2021.
+                                                                                         optimization,” IEEE Transactions on Instrumentation and Measurement,
+[24] A. I. Chen, M. L. Balter, T. J. Maguire, and M. L. Yarmush, “Deep
+                                                                                         vol. 71, pp. 1–11, 2022.
+     learning robotic guidance for autonomous vascular access,” Nature
+     Machine Intelligence, vol. 2, no. 2, pp. 104–115, 2020.                        [47] Z. Jiang, Y. Gao, L. Xie, and N. Navab, “Towards autonomous atlas-
+[25] T. S. Pheiffer, R. C. Thompson, D. C. Rucker, A. L. Simpson, and                    based ultrasound acquisitions in presence of articulated motion,” IEEE
+     M. I. Miga, “Model-based correction of tissue compression for tracked               Robotics and Automation Letters, 2022.
+     ultrasound in soft tissue image-guided surgery,” Ultrasound in medicine        [48] C. Hennersperger, M. Baust, D. Mateus, and N. Navab, “Computational
+     & biology, vol. 40, no. 4, pp. 788–803, 2014.                                       sonography,” in International conference on medical image computing
+[26] B. Ihnatsenka and A. P. Boezaart, “Ultrasound: Basic understanding and              and computer-assisted intervention. Springer, 2015, pp. 459–466.
+     learning the language,” Int. J. Shoulder Surg., vol. 4, no. 3, p. 55, 2010.    [49] A. L. Y. Hung and J. Galeotti, “Good and bad boundaries in ultra-
+[27] M.-A. Janvier, S. Merouche, L. Allard, G. Soulez, and G. Cloutier, “A               sound compounding: preserving anatomic boundaries while suppressing
+     3-d ultrasound imaging robotic system to detect and quantify lower limb             artifacts,” International Journal of Computer Assisted Radiology and
+     arterial stenoses: in vivo feasibility,” Ultrasound in medicine & biology,          Surgery, vol. 16, no. 11, pp. 1957–1968, 2021.
+     vol. 40, no. 1, pp. 232–243, 2014.                                             [50] L. Zhang, X. Wang, D. Yang, T. Sanford, S. Harmon, B. Turkbey, B. J.
+[28] S. Virga, O. Zettinig, M. Esposito, K. Pfister, B. Frisch, T. Neff,                 Wood, H. Roth, A. Myronenko, D. Xu et al., “Generalizing deep learning
+     N. Navab, and C. Hennersperger, “Automatic force-compliant robotic                  for medical image segmentation to unseen domains via deep stacked
+     ultrasound screening of abdominal aortic aneurysms,” in Proc. IEEE/RSJ              transformation,” IEEE transactions on medical imaging, vol. 39, no. 7,
+     Int. Conf. Intell. Robot. Syst. (IROS). IEEE, 2016, pp. 508–513.                    pp. 2531–2540, 2020.
+[29] A. Karamalis, W. Wein, T. Klein, and N. Navab, “Ultrasound confidence          [51] Y. Bi, Z. Jiang, R. Clarenbach, R. Ghotbi, A. Karlas, and N. Navab, “Mi-
+     maps using random walks,” Med. Image Anal., vol. 16, no. 6, pp. 1101–               segnet: Mutual information-based us segmentation for unseen domain
+     1112, 2012.                                                                         generalization,” arXiv preprint arXiv:2303.12649, 2023.
+14
+
+
+
+[52] Q. Meng, J. Matthew, V. A. Zimmer, A. Gomez, D. F. Lloyd, D. Rueck-                                  Nassir Navab (Fellow, IEEE) received the Ph.D.
+     ert, and B. Kainz, “Mutual information-based disentangled neural net-                                degree in computer and automation with INRIA,
+     works for classifying unseen categories in different domains: Application                            and the University of Paris XI, Paris, France, in
+     to fetal ultrasound imaging,” IEEE transactions on medical imaging,                                  1993.
+     vol. 40, no. 2, pp. 722–734, 2020.                                                                      He is currently a Full Professor and the Director
+[53] C. I. Bercea, B. Wiestler, D. Rueckert, and S. Albarqouni, “Federated                                of the Laboratory for Computer-Aided Medical
+     disentangled representation learning for unsupervised brain anomaly                                  Procedures with the Technical University of Munich,
+     detection,” Nature Machine Intelligence, vol. 4, no. 8, pp. 685–695,                                 Munich, Germany, and an adjunct professor at
+     2022.                                                                                                Johns Hopkins University, Baltimore, MD, USA.
+[54] G. Wang, Y. Yang, H. Zhang, Z. Liu, and H. Wang, “Spherical                                          He has also secondary faculty appointments with
+     interpolated convolutional network with distance–feature density for                                 the both affiliated Medical Schools. He enjoyed
+     3-d semantic segmentation of point clouds,” IEEE Transactions on             two years of a Postdoctoral Fellowship with the MIT Media Laboratory,
+     Cybernetics, vol. 52, no. 12, pp. 13 546–13 556, 2021.                       Cambridge, MA, USA, before joining Siemens Corporate Research (SCR),
+[55] H. Thomas, C. R. Qi, J.-E. Deschaud, B. Marcotegui, F. Goulette, and         Princeton, NJ, USA, in 1994.
+     L. J. Guibas, “Kpconv: Flexible and deformable convolution for point            Dr. Navab is a fellow of the Academy of Europe, MICCAI, IEEE,
+     clouds,” in Proceedings of the IEEE/CVF international conference on          and Asia-Pacific Artificial Intelligence Association (AAIA). He was a
+     computer vision, 2019, pp. 6411–6420.                                        Distinguished Member and was the recipient of the Siemens Inventor of the
+                                                                                  Year Award in 2001, at SCR, the SMIT Society Technology award in 2010
+                                                                                  for the introduction of Camera Augmented Mobile C-arm and Freehand
+                          Zhongliang Jiang (Member, IEEE) received the            SPECT technologies, and the “10 years lasting impact award” of IEEE
+                          M.Eng. degree in Mechanical Engineering from the        ISMAR in 2015. He is the author of hundreds of peer-reviewed scientific
+                          Harbin Institute of Technology, Shenzhen, China,        papers, with more than 54,400 citations and enjoy an h-index of 104 as
+                          in 2017, and Ph.D. degree in computer science           of August 11, 2022. He is the author of more than thirty awarded papers
+                          from the Technical University of Munich, Munich,        including 11 at MICCAI, 5 at IPCAI, and three at IEEE ISMAR. He is the
+                          Germany, in 2022. From January 2017 to July 2018,       inventor of 50 granted US patents and more than 50 International ones.
+                          he worked as a research assistant in the Shenzhen
+                          Institutes of Advanced Technology (SIAT) of the
+                          Chinese Academy of Science (CAS), Shenzhen,
+                          China. He is currently a senior research scientist at
+                          the Chair for Computer Aided Medical Procedures
+(CAMP) at the Technical University of Munich.
+  His research interests include medical robotics, robotic learning, human-
+robot interaction, and robotic ultrasound.
+
+
+
+                         Felix Duelmer received the B.Sc. degree in
+                         Mechanical Engineering in 2018, and M.Sc.
+                         degree in Mechatronics and Robotics in 2023,
+                         from the Technical University of Munich,
+                         Munich, Germany. He is currently working toward
+                         the Ph.D. degree in Computer Science with
+                         the Technical University of Munich, Munich,
+                         Germany.
+                            His research interests include robotic ultrasound,
+                         imaging process, robotic learning, and computer
+                         vision.
+

@@ -131,8 +131,14 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
     # A column that small advances the reference by well under a nanometre per
     # tick, so a row that cannot be verified is the zero path it already is.
     progress_row = np.linalg.pinv(basis)[2]
+    progress_value = abs(float(progress_row@offset))
+    # The bound is this value plus alpha. Float64 rounds that sum by several
+    # ULPs, so one ULP under the tolerance is not yet a verifiable row.
+    # 020 failed at 5.4e9. figure8/003 reached the endpoint with a 1.1e-12
+    # column, one ULP of 3.7e-9, and a residual of 1.5e-8, then hard-faulted
+    # instead of settling so the scan could lift.
     zero_path = bool(np.linalg.norm(basis[:, 2]) <= 1e-14
-                     or np.spacing(abs(float(progress_row@offset))) > cfg.feasibility_tolerance)
+                     or np.spacing(progress_value) > cfg.feasibility_tolerance/4.)
     ablation = str(getattr(cfg, 'ablation', 'full') or 'full')
     omega_m = 0. if ablation == 'no_moment' else float(data.mechanical_omega_rad_s)
     alpha_des = 1. if (data.alpha_preferred is None or ablation == 'fixed_alpha') else float(data.alpha_preferred)
@@ -204,7 +210,10 @@ def solve_weighted_outer(solver, data, *, deadline_s=None, online=False):
                          and data.visual_gamma > 0. and abs(request) > 0.
                          and ablation != 'no_us_orient')
     request_sign = float(np.sign(request)) if visual_active else 0.
-    requested = float(data.visual_gamma*abs(request)) if visual_active else 0.
+    # Paper constraint is s*ω + σ ≥ |ω_us|. The force gate only opens or
+    # closes this row. Multiplying the bound by γ made slack zero at the
+    # faded request, so an opposing moment stopped there.
+    requested = float(abs(request)) if visual_active else 0.
     if visual_active:
         # Dividing by omega_s leaves s*Omega/omega_s + sigma/omega_s >= q/omega_s.
         constraints = np.concatenate((constraints, [[0., request_sign, 0., 1.]]))

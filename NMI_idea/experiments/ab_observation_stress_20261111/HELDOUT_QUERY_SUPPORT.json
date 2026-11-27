@@ -1,0 +1,204 @@
+{
+  "original": {
+    "contexts": [
+      {
+        "context": "prior_only_layout",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 2,
+        "geometry_qualified_but_query_zero_objects": [
+          0,
+          10,
+          22,
+          27
+        ]
+      },
+      {
+        "context": "prior_only_layout_body_z_minus_0.08m",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 2,
+        "geometry_qualified_but_query_zero_objects": [
+          0,
+          10,
+          22,
+          27
+        ]
+      },
+      {
+        "context": "prior_only_layout_partial_endpoint_witnesses",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 2,
+        "geometry_qualified_but_query_zero_objects": [
+          0,
+          10,
+          22,
+          27
+        ]
+      }
+    ],
+    "supported_pose_count": 11,
+    "scope": "Necessary positive support of a correct-stop query in either mode. Threshold, current belief, true public return, timing and execution may further reduce completion.",
+    "fixed_history": {
+      "clean": {
+        "trials": 96,
+        "public_gates": 12,
+        "brier_public_gate": 0.5000002226488605,
+        "mean_public_observation_nll": 2.949617369440316,
+        "audit_correct_public_gates": 9,
+        "accepted_audit_correct_public_gates": 3,
+        "counterfactual_first_correct": 3,
+        "counterfactual_first_false": 0
+      },
+      "iid": {
+        "trials": 96,
+        "public_gates": 12,
+        "brier_public_gate": 0.6745818155428177,
+        "mean_public_observation_nll": 2.2155629483154957,
+        "audit_correct_public_gates": 5,
+        "accepted_audit_correct_public_gates": 1,
+        "counterfactual_first_correct": 1,
+        "counterfactual_first_false": 4
+      },
+      "bursty": {
+        "trials": 96,
+        "public_gates": 10,
+        "brier_public_gate": 0.20112418699206852,
+        "mean_public_observation_nll": 2.200045904500882,
+        "audit_correct_public_gates": 3,
+        "accepted_audit_correct_public_gates": 2,
+        "counterfactual_first_correct": 2,
+        "counterfactual_first_false": 1
+      }
+    }
+  },
+  "fixed_history_scope": "Post-run replay of public A_task histories already collected, with alternate public priors and unmodified likelihood/stop gate. Earliest stops are counterfactual on existing prefixes. Histories truncate at the original policy stop; this is not a new rollout.",
+  "denser_same_prior_384": {
+    "contexts": [
+      {
+        "context": "prior_only_layout",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 3,
+        "geometry_qualified_but_query_zero_objects": [
+          10,
+          22,
+          27
+        ]
+      },
+      {
+        "context": "prior_only_layout_body_z_minus_0.08m",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 3,
+        "geometry_qualified_but_query_zero_objects": [
+          10,
+          22,
+          27
+        ]
+      },
+      {
+        "context": "prior_only_layout_partial_endpoint_witnesses",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 3,
+        "geometry_qualified_but_query_zero_objects": [
+          10,
+          22,
+          27
+        ]
+      }
+    ],
+    "supported_pose_count": 21,
+    "scope": "Necessary positive support of a correct-stop query in either mode. Threshold, current belief, true public return, timing and execution may further reduce completion.",
+    "fixed_history": {
+      "clean": {
+        "trials": 96,
+        "public_gates": 12,
+        "brier_public_gate": 0.09002590261125044,
+        "mean_public_observation_nll": 2.275209312063387,
+        "audit_correct_public_gates": 9,
+        "accepted_audit_correct_public_gates": 8,
+        "counterfactual_first_correct": 6,
+        "counterfactual_first_false": 0
+      },
+      "iid": {
+        "trials": 96,
+        "public_gates": 12,
+        "brier_public_gate": 0.3711871750076521,
+        "mean_public_observation_nll": 1.9860114169147407,
+        "audit_correct_public_gates": 5,
+        "accepted_audit_correct_public_gates": 3,
+        "counterfactual_first_correct": 2,
+        "counterfactual_first_false": 3
+      },
+      "bursty": {
+        "trials": 96,
+        "public_gates": 10,
+        "brier_public_gate": 0.12061787264530863,
+        "mean_public_observation_nll": 2.008222219365687,
+        "audit_correct_public_gates": 3,
+        "accepted_audit_correct_public_gates": 3,
+        "counterfactual_first_correct": 3,
+        "counterfactual_first_false": 1
+      }
+    }
+  },
+  "wider_smooth_offsets_384": {
+    "contexts": [
+      {
+        "context": "prior_only_layout",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 5,
+        "geometry_qualified_but_query_zero_objects": [
+          6
+        ]
+      },
+      {
+        "context": "prior_only_layout_body_z_minus_0.08m",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 5,
+        "geometry_qualified_but_query_zero_objects": [
+          6
+        ]
+      },
+      {
+        "context": "prior_only_layout_partial_endpoint_witnesses",
+        "geometrically_qualified_objects": 6,
+        "qualified_objects_with_nonzero_public_correct_query": 5,
+        "geometry_qualified_but_query_zero_objects": [
+          6
+        ]
+      }
+    ],
+    "supported_pose_count": 23,
+    "scope": "Necessary positive support of a correct-stop query in either mode. Threshold, current belief, true public return, timing and execution may further reduce completion.",
+    "fixed_history": {
+      "clean": {
+        "trials": 96,
+        "public_gates": 12,
+        "brier_public_gate": 0.7513473406102605,
+        "mean_public_observation_nll": 2.1722693860657563,
+        "audit_correct_public_gates": 9,
+        "accepted_audit_correct_public_gates": 3,
+        "counterfactual_first_correct": 3,
+        "counterfactual_first_false": 3
+      },
+      "iid": {
+        "trials": 96,
+        "public_gates": 12,
+        "brier_public_gate": 0.396244342963798,
+        "mean_public_observation_nll": 1.9632867896705724,
+        "audit_correct_public_gates": 5,
+        "accepted_audit_correct_public_gates": 1,
+        "counterfactual_first_correct": 1,
+        "counterfactual_first_false": 0
+      },
+      "bursty": {
+        "trials": 96,
+        "public_gates": 10,
+        "brier_public_gate": 0.48482079452734705,
+        "mean_public_observation_nll": 1.8699792902903283,
+        "audit_correct_public_gates": 3,
+        "accepted_audit_correct_public_gates": 0,
+        "counterfactual_first_correct": 0,
+        "counterfactual_first_false": 2
+      }
+    }
+  }
+}

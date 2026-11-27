@@ -1,0 +1,26 @@
+{
+  "experiment": "leg_scan_public_evidence_20261124_v7",
+  "scope": "v6 reader_fresh whole-route after_probe held-out diagnostic",
+  "fit_excluded_v6": true,
+  "summary": {
+    "cases": 96,
+    "target_cases": 82,
+    "same_instance_seen": 76,
+    "base_connected": 9,
+    "bridge_connected": 9,
+    "newly_connected": 0,
+    "bridge_edges": 1,
+    "bridge_true_edges": 1,
+    "bridge_false_edges": 0
+  },
+  "calibration": {
+    "active": true,
+    "threshold": 0.9240098586632132,
+    "precision_target": 0.94,
+    "selected": 2,
+    "correct": 2,
+    "precision": 1.0,
+    "recall": 0.0013012361743656475,
+    "positives": 1537
+  }
+}

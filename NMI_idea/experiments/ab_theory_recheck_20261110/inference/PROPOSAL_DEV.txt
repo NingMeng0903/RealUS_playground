@@ -1,0 +1,87 @@
+Public-history informed proposal DEV record (corrected 28D)
+============================================================
+
+Scope and provenance
+--------------------
+This is a DEV-only retrospective comparison.  It used
+``sample_prior(720901, 128)`` and the first ``sample_worlds(720902, 1)``
+object, with the exact shared-history keys ``(0,'iid','dev')`` and
+``(0,'shifted','dev')``.  Prefixes 5 and 8 were evaluated.  No 720913 data
+were opened.  Predictive and terminal fields below are diagnostic forks and
+never enter q, the importance weights, or the MH target.
+
+The root task text originally called this vector 30D, but
+2+10+10+2+2+2=28.  The current implementation is therefore the physical 28D
+vector, with no auxiliary coordinates.  The pre-correction 30D implementation
+and its DEV record are preserved unchanged under
+``before_dimension_typo_fix/`` for audit transparency; they are not current
+results.
+
+Current informed proposal
+-------------------------
+epsilon=.1, 16 discrete modes, 8 public-only association patterns
+(seed 720907), N=128, full public-history likelihood, normalized 28D q, and
+one importance update per prefix.  The optional ``+MH8`` rows apply a
+standard beta=1 full-history resample--move: resample only when ordinary ESS
+is below .60N, then 8 symmetric blocked MH sweeps with scales
+``[1,.5,1.8]``.  The target is normalized prior plus complete public-history
+likelihood; q, old importance weights, GT, and task reward are not in the
+acceptance ratio.
+
+Every pre-MH informed run has raw ESS=1 and max weight=1.  This is genuine
+importance-weight degeneracy, not a success claim.  Because ESS=1, all four
+MH rows resampled; their post-MH ESS is 128 by construction.  The resulting
+unique-geometry counts show movement, but do not establish posterior
+coverage or independent samples.
+
+```
+condition prefix method          finite LL  finite logw  pre ESS  pre maxw  wall(s)  MH acc  unique after MH  predictive NLL  public terminal
+-----------------------------------------------------------------------------------------------------------------------------------------
+iid       5      informed28      1/128      1/128         1.00     1.000     0.9680   --      --               232.5467         false
+iid       5      informed28+MH8  1/128      1/128         1.00     1.000     1.4733   .5273   121              17.3392          false
+iid       8      informed28      1/128      1/128         1.00     1.000     1.6700   --      --               214.8288         false
+iid       8      informed28+MH8  1/128      1/128         1.00     1.000     2.3583   .5752   126              97.8535          false
+shifted   5      informed28      11/128     11/128        1.00     1.000     0.6121   --      --               299.1096         false
+shifted   5      informed28+MH8  11/128     11/128        1.00     1.000     1.1117   .5234   123              126.9569         false
+shifted   8      informed28      12/128     11/128        1.00     1.000     1.3768   --      --               388.8636         false
+shifted   8      informed28+MH8  12/128     11/128        1.00     1.000     2.0633   .4229   116              344.1350         false
+```
+
+The wall times are from one CPU rerun on the shared DEV environment and are
+not a performance claim; the ``+MH8`` value includes proposal construction,
+importance evaluation, and rejuvenation.  ``finite LL`` counts finite public
+likelihood evaluations, while ``finite logw`` additionally applies the
+normalized prior support (the shifted prefix-8 distinction is intentional).
+
+For context, the fixed128 baseline predictive NLLs on the same public
+histories were 69.3811, 84.5028, 337.2284, and 349.9118 for iid/5, iid/8,
+shifted/5, and shifted/8 respectively; all public terminal flags were false.
+The informed proposal plus MH improved the diagnostic predictive score in all
+four rows relative to the corresponding informed-only row, and also removed
+the zero-predictive-support diagnostic seen in shifted prefix 5 after MH.  It
+did not achieve a public terminal stop, and it is not a validated A/B task
+improvement.  In particular, the shifted rows remain far from a claim of
+reliable support recovery.
+
+Recorded contracts and limitations
+-----------------------------------
+The implementation records finite likelihood/log-weight counts, raw ESS,
+maximum weight, evidence estimate, component/pattern hashes, resampling,
+MH acceptance, post-MH finite-target count, and unique geometries.  A fully
+zero-likelihood update is returned as ``posterior_valid=false`` with explicit
+``zero_likelihood_support``; no likelihood floor, dropped block, old-weight
+multiplication, or fake posterior is created.  MH movement after a collapsed
+ESS=1 resample is diagnostic target-preserving rejuvenation, not evidence of
+coverage.  The separate frozen SMC engine and its beta=0 regression remain
+outside this proposal task.
+
+Reproduction artifact
+---------------------
+``run_proposal_dev.py`` is the source-pinned DEV driver.  It writes
+``proposal_dev_28d/RESULTS.json`` and ``proposal_dev_28d/RAW.npz`` with the
+public history, audit-only scoring forks, normalized log-p/log-q/log-LL
+arrays, weights, diagnostics, selected poses, seeds, command, and source
+hashes.  The predictive values and terminal flags are the reproducibility
+quantities; wall-clock values can vary between reruns and are not an
+acceptance metric.  The existing table above remains the recorded report and
+is not overwritten by the driver.

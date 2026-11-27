@@ -1,0 +1,33 @@
+{
+  "created_utc": "2026-11-10T17:05:30.129167+00:00",
+  "scope": "Ten native-cell derivative/metric checks plus frozen raw-summary/hash verification; production geometry mechanism only.",
+  "files": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/geometry_addendum.txt": "f7ce5546a7b37618b9bf1228722fd156f284a658ee9605c727a07fbabf2ea5f2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/geometry_addendum_check.py": "08d6260fc0aa1f0c69c758de7fa1af0b1c2c955312d872f2c281fb8493245d57",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/geometry_addendum_results.json": "6a2ee2aad0b4727a64e88f483603f4cd8df6c1cc2098c19a414b1ad276a8cbcc"
+  },
+  "read_only_inputs": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/harmonic_mechanism/PROTOCOL.txt": "f60ec5eebb00ecd5b7ae6bd8fad46c6f2a0879a56d3add174ab5f8021939755b",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/harmonic_mechanism/run_transport.py": "4589c20665f203d1ccb23e21c99df8763276670e42d9b71e2fb195efa2659eef",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/harmonic_mechanism/RESULTS.json": "76dedb63c6caeb45686a6f9a5569d9cf2a01985084a2c8eb06c788911f88ee82",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/harmonic_mechanism/RAW_RESULTS.npz": "6157aab042870eb00489e493e168a4d796b746c43de388905e38d7761974503c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_00.npz": "1575ef5701f90fb98046da774e17951da438507d94287da11e766969c87a9d30",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_15.npz": "093f6366306f5733a45331ff86f50677eeff431b7f8421070dc4421a8fc873fa",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_30.npz": "b90b2e3c8778e27828d31ed89732a89a2bd021e9807818f2b1accf9d5d90b9cc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_45.npz": "efd1a63d4912033fd14a4c8eb50d0e3f9bd45ae9497c75efa9ed6f74e0277723",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_60.npz": "ab5e8a6dd448beb065717c2de559a0cb0b4f96eaf199fbd65de53a9c1a8c4329",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_75.npz": "274d8783535177c962ff405aedf336a9f038da3015e55b0e03ca9b0e88a80916",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_90.npz": "f8c6a7b186d3ebc9f3d2ff6a275fee0f789845124106254ae1fad375cf416291",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_left.npz": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_00.npz": "f88ffbfbfea6954ebb8452e9cc8e2ecacdc1df8feed844d5d796ed1f37f02ca1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_15.npz": "4f2626c832a2e9314f4984f485cfa0537ed820a91b777c0c15e7221f77d53bed",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_30.npz": "2c296872615086ddfff7a75a2b43d1b8ac338701691c3fa90d8a99fcaf9488a2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_45.npz": "7def822991037df52d058346cc31b7e926c77e398ba8947700f627813cd43890",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_60.npz": "0ec623e57f8c7e7aaf7b5263750ecaa2e8ef2ad856570bc661d9d93e82d906dc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_75.npz": "fef3a19f3545d555305634ac9962943a7538255ea533d4120ac6a8c4d02fbdee",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_90.npz": "822f98a4b1c5bdad0b88be5fc61b7a306f92586292fd80dd7bf2614d3cac7d14",
+    "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py": "5d3dfe07d954249be06b181e93d8c0575da2adfc82ea376fb6c94964dec11a8e",
+    "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py": "3b0778ad6be73e70f539d3f68f0ee27d9e1192bbe9c503f5a14ff824e6512121"
+  }
+}

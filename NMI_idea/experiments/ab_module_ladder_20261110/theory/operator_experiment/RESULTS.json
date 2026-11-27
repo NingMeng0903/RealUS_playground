@@ -1,0 +1,249 @@
+{
+  "actions": {
+    "count": 15,
+    "definition": "body_x=0; y in [-.025,-.015,0,.015,.025]; yaw in [-.30,0,.30]",
+    "labels": [
+      {
+        "body_x": 0.0,
+        "body_y": -0.025,
+        "index": 0,
+        "yaw": -0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": -0.025,
+        "index": 1,
+        "yaw": 0.0
+      },
+      {
+        "body_x": 0.0,
+        "body_y": -0.025,
+        "index": 2,
+        "yaw": 0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": -0.015,
+        "index": 3,
+        "yaw": -0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": -0.015,
+        "index": 4,
+        "yaw": 0.0
+      },
+      {
+        "body_x": 0.0,
+        "body_y": -0.015,
+        "index": 5,
+        "yaw": 0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.0,
+        "index": 6,
+        "yaw": -0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.0,
+        "index": 7,
+        "yaw": 0.0
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.0,
+        "index": 8,
+        "yaw": 0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.015,
+        "index": 9,
+        "yaw": -0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.015,
+        "index": 10,
+        "yaw": 0.0
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.015,
+        "index": 11,
+        "yaw": 0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.025,
+        "index": 12,
+        "yaw": -0.3
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.025,
+        "index": 13,
+        "yaw": 0.0
+      },
+      {
+        "body_x": 0.0,
+        "body_y": 0.025,
+        "index": 14,
+        "yaw": 0.3
+      }
+    ],
+    "order": "nested y then yaw"
+  },
+  "aliases": {
+    "constraint_rank": 4,
+    "count": 32,
+    "current_risk_only_direct_value_max_residual": 5.684341886080802e-14,
+    "current_risk_vector_max_residual": 7.815970093361102e-14,
+    "direct_action_difference_count": 0,
+    "full_xi_backup_max_residual": 2.842170943040401e-14,
+    "interpretation": "Current terminal-risk vectors are identical by construction; any predictive operator/value/action difference is retained as the finite-observation alias diagnostic.",
+    "min_belief_entry": 0.008593749999999999,
+    "normalized_backup_max_residual": 4.263256414560601e-14,
+    "nullspace_dimension": 60,
+    "nullspace_max_residual": 2.0881213425028022e-13,
+    "observation_operator_tv_max": 0.0774738890996743,
+    "observation_operator_tv_mean": 0.0324280220875823,
+    "probe_action_difference_count": 28,
+    "probe_action_difference_fraction": 0.875,
+    "probe_value_delta_max": 0.14811512791003878,
+    "probe_value_delta_mean": 0.005386044534398607,
+    "seed": 720511,
+    "sum_to_one_max_residual": 1.1102230246251565e-16,
+    "svd_tolerance": 2.6400363417153203e-11
+  },
+  "catalogue": {
+    "api": "observation.environment.sample_prior",
+    "seed": 720510,
+    "size": 64
+  },
+  "claim_boundary": "mechanism/operator correctness in the declared geometric surrogate; not robot/task performance and not a production or hardware change",
+  "cost": {
+    "meaning": "mechanism isolation only; not a robot motion cost",
+    "probe_option_constant": 0.5
+  },
+  "hashes": {
+    "conditions": "d81f7fa650cbceb527d2e0c6e56bab35646ea843b0cd4d3eefe5bc4d6b553830",
+    "environment": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+    "operator_arrays": "69dee7a49016a0b66ff020a4bd6b0f858aecfe7c48ced65867102525661859d4",
+    "protocol": "f8d589ef9f6619223974b973c4fa0f52588b9b120069b4ebd4f1d5ebf2d42a09",
+    "runner": "23ef3b2c59f39254e6c626f936491cef9c2f3340c5dba45935b14a03add47477"
+  },
+  "interpreter": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+  "normalization_residuals": {
+    "identity_atom0": 0.0,
+    "identity_atom1": 0.0,
+    "identity_bins": 0.0,
+    "length_atom0": 0.0,
+    "length_bins": 0.0,
+    "missing_mass": 0.0,
+    "observation_rows": 2.220446049250313e-16,
+    "u_bins": 0.0,
+    "visible_source_mass": 2.220446049250313e-16
+  },
+  "observation": {
+    "count": 19,
+    "identity_edges": [
+      0.0,
+      0.75,
+      1.0
+    ],
+    "integration": "analytic independent Gaussian SDS masses with real clipping semantics",
+    "labels": [
+      "missing",
+      "u0_length0_identity0",
+      "u0_length0_identity1",
+      "u0_length1_identity0",
+      "u0_length1_identity1",
+      "u0_length2_identity0",
+      "u0_length2_identity1",
+      "u1_length0_identity0",
+      "u1_length0_identity1",
+      "u1_length1_identity0",
+      "u1_length1_identity1",
+      "u1_length2_identity0",
+      "u1_length2_identity1",
+      "u2_length0_identity0",
+      "u2_length0_identity1",
+      "u2_length1_identity0",
+      "u2_length1_identity1",
+      "u2_length2_identity0",
+      "u2_length2_identity1"
+    ],
+    "length_edges": [
+      0.0,
+      0.008,
+      0.015,
+      Infinity
+    ],
+    "source_events": "p_source source-mixture events; missing=1-sum(p_source)",
+    "u_edges": [
+      -Infinity,
+      -0.004,
+      0.004,
+      Infinity
+    ]
+  },
+  "scope": "offline finite-observation decision-operator module only",
+  "shapes": {
+    "constraint": [
+      16,
+      64
+    ],
+    "likelihood": [
+      64,
+      15,
+      19
+    ],
+    "nullspace": [
+      64,
+      60
+    ],
+    "risk": [
+      64,
+      15
+    ]
+  },
+  "status": "PASS",
+  "terminal_risk": {
+    "all_contacts_true": true,
+    "formula": "60*(1-I(legal)*q_target^5)",
+    "persistent_gate_power": 5,
+    "scale": 60.0,
+    "source_hypothesis": 0,
+    "target_abs_u_m": 0.002,
+    "target_angle_deg": 10.0,
+    "target_length_m": 0.015
+  },
+  "threads": {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1"
+  },
+  "uniform_backup": {
+    "best_probe_action": 10,
+    "best_probe_action_label": {
+      "body_x": 0.0,
+      "body_y": 0.015,
+      "index": 10,
+      "yaw": 0.0
+    },
+    "best_probe_value": 59.88660635326988,
+    "direct_terminal_action": 11,
+    "direct_terminal_action_label": {
+      "body_x": 0.0,
+      "body_y": 0.015,
+      "index": 11,
+      "yaw": 0.3
+    },
+    "direct_terminal_value": 59.637346999031394,
+    "normalized_vs_unnormalized_max_residual": 2.842170943040401e-14,
+    "overall_choice": "direct_terminal",
+    "overall_value": 59.637346999031394
+  }
+}

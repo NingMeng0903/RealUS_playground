@@ -1,0 +1,97 @@
+{
+  "source": "ird_playground/ird/torch_kinematics.py",
+  "source_sha256": "721fbc3016f7aec7c24357c0ecd3b1b09700756792e8116194bbc0c0967432d7",
+  "zero_rotation_derivative_matches_reference": true,
+  "finding": "Taylor Rodrigues coefficients preserve the identity derivative.",
+  "production_source_modified": true,
+  "records": [
+    {
+      "rotvec": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "production_ad": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "production_fd_h1e5": [
+        0.9999999999833332,
+        0.0,
+        0.0
+      ],
+      "independent_matrix_exp_ad": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "rotvec": [
+        1e-09,
+        0.0,
+        0.0
+      ],
+      "production_ad": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "production_fd_h1e5": [
+        0.9999999999833332,
+        0.0,
+        0.0
+      ],
+      "independent_matrix_exp_ad": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "rotvec": [
+        2e-08,
+        0.0,
+        0.0
+      ],
+      "production_ad": [
+        0.9999999999999997,
+        0.0,
+        0.0
+      ],
+      "production_fd_h1e5": [
+        0.9999999999833332,
+        0.0,
+        0.0
+      ],
+      "independent_matrix_exp_ad": [
+        0.9999999999999999,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "rotvec": [
+        1e-06,
+        0.0,
+        0.0
+      ],
+      "production_ad": [
+        0.9999999999995001,
+        0.0,
+        0.0
+      ],
+      "production_fd_h1e5": [
+        0.9999999999828334,
+        0.0,
+        0.0
+      ],
+      "independent_matrix_exp_ad": [
+        0.9999999999995,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

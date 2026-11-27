@@ -31,9 +31,27 @@ from peirastic.realman8dof.force.torque_tilt import (
     TorqueTilt,
     TorqueTiltConfig,
     apply_tilt_selection,
+    rotation_from_pose,
 )
+from scipy.spatial.transform import Rotation
 from peirastic.realman8dof.modes.contact_reference import ContactGatedReference
 from peirastic.realman8dof.modes.servo import ServoTwistOuter, slew_kwargs
+
+
+def pad_contact_tilt_rad(origin, pose, *, euler_order="xyz", contact=True):
+    """Tool-y angle since this contact began, measured from the pose.
+
+    The moment integrator winds to its 150° cap and then the QP treats that
+    cap as a hard rate limit. Image repair in the same direction is zeroed
+    while the probe itself has only tilted a few degrees.
+    """
+    if not contact:
+        return None, 0.0
+    rot = rotation_from_pose(np.asarray(pose, dtype=float), euler_order=euler_order)
+    if origin is None:
+        return rot, 0.0
+    theta = float(Rotation.from_matrix(np.asarray(origin, dtype=float).T @ rot).as_rotvec()[1])
+    return origin, theta
 
 
 def _pad_visual_gamma(guide, force_n, cfg):
@@ -97,6 +115,7 @@ class HybridTffOuter:
         self.last_facts = {}
         self._pad_scan_qp = None
         self._pad_previous_twist = np.zeros(6, dtype=float)
+        self._pad_angle_origin = None
         self.controller = getattr(force_law, "controller", None)
         cfg = getattr(self.position, "cfg", None)
         if cfg is not None and hasattr(cfg, "track_axes"):
@@ -115,6 +134,7 @@ class HybridTffOuter:
         self.position.set_origin(pose0, t_s=t_s)
         self.force_law.reset(pose=pose0, f_ext=np.zeros(6))
         self._pad_previous_twist = np.zeros(6, dtype=float)
+        self._pad_angle_origin = None
         self.last_facts = {}
         lifecycle = getattr(self, "command_lifecycle", None)
         if lifecycle is not None:
@@ -126,6 +146,7 @@ class HybridTffOuter:
             lifecycle.abort("episode_reset", definitely_not_sent=True, latch=False)
         self.force_law.reset(pose=current_pose, f_ext=np.zeros(6))
         self._pad_previous_twist = np.zeros(6, dtype=float)
+        self._pad_angle_origin = None
         self.last_facts = {}
         lifecycle = getattr(self, "command_lifecycle", None)
         if lifecycle is not None:
@@ -279,9 +300,8 @@ class HybridTffOuter:
                 path = path * alpha
             v_star = compose_tff(v_pos, fout.v_force, self.selection)
             self.last_facts = failed_facts
-        if guide is not None and lifecycle is None:
-            from peirastic.realman8dof.force.torque_tilt import rotation_from_pose
-            guide.commit(v_star, rotation_from_pose(current_pose, euler_order=self._euler_order()))
+            if guide is not None and lifecycle is None:
+                guide.commit(v_star, rotation_from_pose(current_pose, euler_order=self._euler_order()))
         telemetry = dict(getattr(fout, "telemetry", None) or {})
         self.last_tau_y = float(telemetry.get("tau_y", float("nan")))
         self.last_tau_error_y = float(telemetry.get("tau_error_y", float("nan")))
@@ -354,6 +374,11 @@ class HybridTffOuter:
         accel = np.asarray(self.controller.cfg.max_acceleration, dtype=float).copy()
         accel[4] = min(accel[4], tilt.a_max)
         pad = dict((guide.config or {}).get("pad") or {})
+        if pad.get("normal_max_m_s") is not None:
+            normal = float(pad["normal_max_m_s"])
+            vmax[2] = min(vmax[2], normal)
+            self.controller.cfg.max_vz_tool_m_s = min(
+                float(self.controller.cfg.max_vz_tool_m_s), normal)
         if pad.get("angular_max_rad_s") is not None:
             vmax[4] = min(vmax[4], float(pad["angular_max_rad_s"]))
         if pad.get("angular_acceleration_rad_s2") is not None:
@@ -401,8 +426,9 @@ class HybridTffOuter:
             alpha_des = float(np.clip(getattr(guide, "last_alpha", getattr(guide, "alpha_cmd", 1.)), 0., 1.))
             request = float(getattr(guide, "omega_target", 0.) or 0.)
             visual_valid = bool(contact) and bool(np.isfinite(request))
-            tilt = getattr(self.force_law, "tilt", None)
-            measured = float(getattr(tilt, "theta_tilt", 0.) or 0.)
+            self._pad_angle_origin, measured = pad_contact_tilt_rad(
+                self._pad_angle_origin, pose, euler_order=self._euler_order(),
+                contact=bool(contact))
             stick = feedback + alpha_des * moving
             previous = np.asarray(self._pad_previous_twist, dtype=float).reshape(6).copy()
             # Scan's 5 ms accel box would clip a 20 mm/s stick to a_max*dt.
@@ -673,6 +699,16 @@ def build_pad_hybrid_phase(
     phase.on_enter = lambda: SecondaryPolicy(preset="track").apply(ctx.inner)
     if pad_visual is not None:
         outer.pad_visual = pad_visual
+        pad_block = dict((pad_visual.config or {}).get("pad") or {})
+        normal_cap = pad_block.get("normal_max_m_s")
+        controller = getattr(force_law, "controller", None)
+        if normal_cap is not None and controller is not None and getattr(controller, "cfg", None) is not None:
+            # The force loop otherwise integrates up to max_vz_tool (80 mm/s)
+            # and slams back into contact. The pad limit is 15 mm/s.
+            normal_cap = float(normal_cap)
+            controller.cfg.max_vz_tool_m_s = min(float(controller.cfg.max_vz_tool_m_s), normal_cap)
+            controller.cfg.max_velocity = np.asarray(controller.cfg.max_velocity, dtype=float).copy()
+            controller.cfg.max_velocity[2] = min(float(controller.cfg.max_velocity[2]), normal_cap)
         previous_exit = phase.on_exit
 
         def _exit():

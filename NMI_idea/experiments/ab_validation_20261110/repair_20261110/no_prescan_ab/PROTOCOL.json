@@ -1,0 +1,214 @@
+{
+  "schema": "no_prescan_ab_synthetic_template_v1",
+  "date": "2026-11-10",
+  "scope": "Mechanism-only synthetic single-view image pilot, NOT V9.3 first LA acquisition (no continuous 15mm/.5s/5-new-frame test). No real B-mode/contact/QP.",
+  "source_permissions": {
+    "public": [
+      "generic synthetic SMPL-X-chart-like scan template",
+      "manual uniform mixture prior",
+      "probe pose/action family",
+      "visible noisy ultrasound features",
+      "current belief"
+    ],
+    "private_to_simulator": [
+      "held-out target lane and tangent mode",
+      "smooth patient curve deviations",
+      "actual vessel/decoy centerline",
+      "future image noise"
+    ],
+    "prohibited": [
+      "held-out patient prebake",
+      "patient-specific crop",
+      "hidden target truth in planner/commanded nominal velocity"
+    ]
+  },
+  "template": {
+    "s_start": 0.4,
+    "s_scale_m": 0.2,
+    "y_m": 0,
+    "yaw_rad": 0,
+    "body_status": "synthetic generic chart, not a patient scan"
+  },
+  "latent": {
+    "modes": {
+      "target_lane_m": [
+        -0.022,
+        0.022
+      ],
+      "tangent_rad": [
+        -0.17,
+        0.17
+      ],
+      "prior": "uniform product"
+    },
+    "patient_curve": "template + lane + 0.2*tan(tangent)*(s-0.5) + c0+c1*(s-0.5)+c2*sin(pi*(s-0.4)/0.4)",
+    "coefficients_sd_m": {
+      "c0": 0.003,
+      "c1": 0.006,
+      "c2": 0.002
+    },
+    "depth_m": {
+      "target_mean": 0.04,
+      "decoy_mean": 0.052,
+      "sd": 0.003
+    },
+    "decoy": "opposite lane, opposite nominal tangent, fixed within-world curve"
+  },
+  "actions": [
+    {
+      "id": "survey_mid",
+      "s": 0.5,
+      "y_m": 0,
+      "yaw_rad": 0
+    },
+    {
+      "id": "focus_left_down",
+      "s": 0.5,
+      "y_m": -0.022,
+      "yaw_rad": -0.17
+    },
+    {
+      "id": "focus_left_up",
+      "s": 0.5,
+      "y_m": -0.022,
+      "yaw_rad": 0.17
+    },
+    {
+      "id": "focus_right_down",
+      "s": 0.5,
+      "y_m": 0.022,
+      "yaw_rad": -0.17
+    },
+    {
+      "id": "focus_right_up",
+      "s": 0.5,
+      "y_m": 0.022,
+      "yaw_rad": 0.17
+    },
+    {
+      "id": "survey_forward_left",
+      "s": 0.65,
+      "y_m": -0.011,
+      "yaw_rad": 0
+    },
+    {
+      "id": "survey_forward_right",
+      "s": 0.65,
+      "y_m": 0.011,
+      "yaw_rad": 0
+    }
+  ],
+  "primitive": {
+    "source": "DMP_playground.dmp_honest.dmp.fit_discrete_dmp and DiscreteDMP.rollout",
+    "samples": 21,
+    "duration_s": 1,
+    "pose_dims": [
+      "longitudinal x",
+      "lateral y",
+      "yaw"
+    ],
+    "nominal_twist": "derivative of commanded DMP pose only",
+    "speed_contract": "DMP segment duration from peak sampled translational and angular step, guaranteeing <=0.02m/s and <=0.5rad/s nominal; no actual QP claim"
+  },
+  "sensor": {
+    "fov_half_width_m": 0.032,
+    "detect_given_vessel": 0.88,
+    "false_detection_without_vessel": 0.01,
+    "u_noise_sd_m": 0.0025,
+    "tangent_noise_sd_rad": 0.03,
+    "identity_score_true_beta": [
+      8,
+      2
+    ],
+    "identity_score_decoy_beta": [
+      2,
+      8
+    ],
+    "public_observation": [
+      "visible",
+      "image_u_m if visible",
+      "measured_tangent_rad if visible",
+      "target_identity_score if visible",
+      "depth_m if visible"
+    ],
+    "missing_values": "NaN for all numeric features",
+    "model_likelihood": "nominal four-mode Gaussian/Beta mixture; continuous public features, no discretization for posterior"
+  },
+  "quality": {
+    "public_stop": {
+      "visible": true,
+      "abs_u_max_m": 0.007,
+      "abs_angle_error_max_rad": 0.08,
+      "target_score_min": 0.8,
+      "depth_min_m": 0.02,
+      "depth_max_m": 0.07
+    },
+    "independent_truth": {
+      "target_identity": true,
+      "visible": true,
+      "abs_u_max_m": 0.006,
+      "abs_angle_error_max_rad": 0.07,
+      "depth_min_m": 0.02,
+      "depth_max_m": 0.07,
+      "contact": true
+    },
+    "contract": "single-frame pilot proxy only; V9.3 LA 15mm/2mm/10deg/.5s/5 new frames remains untested"
+  },
+  "planning": {
+    "actions_max": 2,
+    "observation_max": 2,
+    "deadline_s": 60.0,
+    "nominal_motion_speed_m_s": 0.02,
+    "observation_time_s": 0.4,
+    "false_accept_penalty_s": 60.0,
+    "timeout_penalty_s": 60.0,
+    "quadrature": "fixed public model samples: missing plus visible standardized u/tangent offsets (-1,0,+1) and beta quantiles (0.2,0.8), weighted by latent and probabilities; no result-adaptive samples",
+    "methods": [
+      "A_one_step_greedy",
+      "B_two_step_contingent",
+      "same_budget_fixed_sequence",
+      "entropy_greedy",
+      "B_no_branch",
+      "B_no_capability_proxy",
+      "two_step_belief_MPC_reference"
+    ],
+    "controller_compute_cost": "actual planner wall seconds charged to episode; identical max 2 action and 2 observation budget",
+    "capability_proxy": "shared speed/endpoint-box gate only; no actual QP claim, B_no_capability_proxy ablation may be null"
+  },
+  "evaluation": {
+    "test_seed": 20261110,
+    "n_test_worlds": 256,
+    "shift_seed": 20261111,
+    "n_shift_worlds": 128,
+    "noise_key": "world_id, step, action_id",
+    "paired_worlds": true,
+    "bootstrap_seed": 20261112,
+    "bootstrap_resamples": 2000,
+    "report": [
+      "first_qualified_image_rate",
+      "time_to_first_qualified_image_with_failure_deadline",
+      "false_accept_rate",
+      "no_find_rate",
+      "observations",
+      "motion_time",
+      "compute_time",
+      "public_stop_rate",
+      "paired_world_differences"
+    ],
+    "information_causality": "two hidden worlds with same public prior/observation prefix yield identical belief/action/internal state until observation differs",
+    "primary_metric": "pilot_single_frame_quality_rate; not first qualified LA rate",
+    "paired_prior_sensitivity": "same public observation prefix and robot state; compare altered legal prior mode weights, not hidden truth",
+    "time_basis": "V9.3-inspired 60s censored pilot time; does not imply LA contract"
+  },
+  "negative_controls": [
+    "uninformative sensor",
+    "already known target",
+    "high observation cost"
+  ],
+  "limitations": [
+    "no real B-mode",
+    "no real tissue/contact",
+    "no actual bottom QP in this isolated benchmark",
+    "no learned A response within this first mechanism unless added before results"
+  ]
+}

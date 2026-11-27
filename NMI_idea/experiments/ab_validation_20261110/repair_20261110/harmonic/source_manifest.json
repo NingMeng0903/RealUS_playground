@@ -1,0 +1,42 @@
+{
+  "source_files": [
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py",
+      "sha256": "33b128a7287c47ddf3280a715f80cd2213715b6867b558e2bbad81c0b6bbd93c"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py",
+      "sha256": "28b7a167e9e55bf5aaa9eb312cb1945726a5cc409e790ddb76a96d7f21f117e1"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py",
+      "sha256": "c9290f314069ea58e84c6b312c1d85676b1e63aa8055647e7742c73aa9d447b8"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/visualize.py",
+      "sha256": "733c89191f0bf6bd3f0ce0180dd4bbce0a99723b5d8539cbc2907c7084b64bda"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/tests/test_leg_volume_depth_contract.py",
+      "sha256": "92733672155804b427eceb6ac97677b6a1f04e6f7fda74a44b86583de3a01038"
+    }
+  ],
+  "assets": [
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_right.npz",
+      "sha256": "06ab1236b096ba0e97132dd9d7831583fa9adf3f98d410f9995c58b30ccc8f86"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_left.npz",
+      "sha256": "05a85088fdaa3d63d29789d77f8e95eae8358b33ddd24f04841fb108fa6ceb19"
+    }
+  ],
+  "tests": "19 passed, 1 optional canonical fixture skipped",
+  "production_depth_gate": "passed for actual skin/core distance ratio on both legs",
+  "baked_geometry_gate": "right sampled checks passed; left failed due independently verified overlapping tetrahedra",
+  "limitations": [
+    "Nodal samples are direct lookups and do not certify mesh injectivity.",
+    "Unsigned distance ratio is a separate field, not the baked graph Laplace solution.",
+    "Physical skin and baked outer shell are not equivalent."
+  ]
+}

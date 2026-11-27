@@ -1,0 +1,104 @@
+{
+  "verified_sources": 30,
+  "verified_unique_synthetic_layout_ids": 17024,
+  "unique_seed_values": 51072,
+  "committed_counts": {
+    "reader_fit": {
+      "cases": 12288,
+      "shards": 96,
+      "window_generated": 0,
+      "candidates": 6181845
+    },
+    "reader_calibration": {
+      "cases": 512,
+      "shards": 4,
+      "window_generated": 0,
+      "candidates": 243810
+    },
+    "reader_test": {
+      "cases": 1024,
+      "shards": 8,
+      "window_generated": 0,
+      "candidates": 507505
+    },
+    "teacher_fit": {
+      "cases": 2048,
+      "shards": 43,
+      "window_generated": 0,
+      "full_continuations": 28504
+    },
+    "teacher_calibration": {
+      "cases": 384,
+      "shards": 8,
+      "window_generated": 0,
+      "full_continuations": 2672
+    },
+    "teacher_test": {
+      "cases": 768,
+      "shards": 16,
+      "window_generated": 0,
+      "full_continuations": 26220
+    }
+  },
+  "choice_action_attribution": {
+    "femoral": {
+      "continue": {
+        "cases": 52,
+        "net_strict_vs_hold": 3,
+        "net_strict_vs_mpc": 0
+      },
+      "equal_time_hold": {
+        "cases": 327,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": -1
+      },
+      "revisit_right": {
+        "cases": 3,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": 0
+      },
+      "window_left": {
+        "cases": 1,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": 0
+      },
+      "window_right": {
+        "cases": 1,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": 0
+      }
+    },
+    "groin_to_distal_calf": {
+      "continue": {
+        "cases": 158,
+        "net_strict_vs_hold": 15,
+        "net_strict_vs_mpc": 0
+      },
+      "equal_time_hold": {
+        "cases": 216,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": 6
+      },
+      "revisit_left": {
+        "cases": 1,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": 1
+      },
+      "revisit_right": {
+        "cases": 3,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": 0
+      },
+      "window_right": {
+        "cases": 6,
+        "net_strict_vs_hold": 0,
+        "net_strict_vs_mpc": 0
+      }
+    }
+  },
+  "local_results_sha256": {
+    "reader_results.json": "421fc76a63b324bd8f8f320c6acae27c36f760018e4eaaaebaf073106d7b9f93",
+    "teacher_results.json": "f13892c09caceeb110335826f4a02bdfe64f20e0583f8dd2a5a6dceeaeab625e",
+    "next_experiment.json": "364611952dcbb0db8b12e84dbdc57216bf652bcc6cb2c1e71360f4ed853f8255"
+  }
+}

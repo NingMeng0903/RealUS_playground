@@ -1,0 +1,152 @@
+--- phase2_boundary_fix/before/qp_replay.py	2026-11-10 15:57:13.322125007 +0800
++++ qp_replay.py	2026-11-10 15:57:51.066776944 +0800
+@@ -31,6 +31,27 @@
+ CONFIG = SOURCE.parent / 'peirastic/configs/controller.yaml'
+ 
+ 
++def command_derivatives(velocities, dt_s, velocity_before=None, acceleration_before=None):
++    """Command acceleration/jerk with the actual preceding command history.
++
++    At a path/hold boundary the preceding velocity and acceleration are not
++    reset. Defaults describe only a stationary root. Rejected final proposals
++    remain visible in diagnostic maxima; they do not become exit history.
++    """
++    velocities = np.asarray(velocities, dtype=float)
++    if velocities.ndim != 2 or velocities.shape[1] != 8:
++        raise ValueError('command velocities must have shape (N,8)')
++    if not np.isfinite(dt_s) or dt_s <= 0:
++        raise ValueError('dt_s must be finite and positive')
++    v0 = np.zeros(8) if velocity_before is None else np.asarray(velocity_before, dtype=float)
++    a0 = np.zeros(8) if acceleration_before is None else np.asarray(acceleration_before, dtype=float)
++    if v0.shape != (8,) or a0.shape != (8,):
++        raise ValueError('preceding command velocity and acceleration must have shape (8,)')
++    acceleration = np.diff(np.vstack((v0, velocities)), axis=0) / dt_s
++    jerk = np.diff(np.vstack((a0, acceleration)), axis=0) / dt_s
++    return acceleration, jerk
++
++
+ class QPReplayBridge:
+     """Pose path → actual QP motion-only outcome/exit q in an ideal plant."""
+     def __init__(self, backend='python', tcp_mode='cached', native_clock='deterministic'):
+@@ -110,7 +131,8 @@
+ 
+     def _run_pose_path(self, T_tcp_railbase, q_seed, speed_m_s=.02, settle_s=2.,
+                         provenance='frozen caller pose path', return_trace=True,
+-                        _runtime=None, _qdot_seed=None, _hold_duration_s=None):
++                        _runtime=None, _qdot_seed=None, _acceleration_seed=None,
++                        _hold_duration_s=None):
+         started = time.perf_counter()
+         tcp = np.asarray(T_tcp_railbase, dtype=float)
+         q = np.asarray(q_seed, dtype=float).copy()
+@@ -131,7 +153,11 @@
+         duration = ref.duration_s() if _hold_duration_s is None else float(_hold_duration_s)
+         trace, statuses, failures = [], Counter(), []
+         qprev = q.copy()
+-        qdotprev = np.zeros(8) if _qdot_seed is None else np.asarray(_qdot_seed).copy()
++        velocity_before = np.zeros(8) if _qdot_seed is None else np.asarray(_qdot_seed).copy()
++        acceleration_before = (np.zeros(8) if _acceleration_seed is None
++                               else np.asarray(_acceleration_seed).copy())
++        qdotprev = velocity_before.copy()
++        acceleration_exit = acceleration_before.copy()
+         v_max, a_max = inner.limits.v_max.copy(), inner.limits.a_max.copy()
+         j_max = np.full(8, cfg.qp.j_max_arm_rad_s3)
+         j_max[0] = cfg.qp.j_max_rail_m_s3
+@@ -216,6 +242,7 @@
+                     'tick_compute_seconds': time.perf_counter() - tick})
+                 if violations:
+                     break
++                acceleration_exit = (qdot - qdotprev) / dt
+                 qprev, qdotprev, q = q.copy(), qdot.copy(), qnext.copy()
+                 if step.solver_fault_latched:
+                     failures.append({'tick': i, 'reason': step.fallback_reason})
+@@ -230,11 +257,14 @@
+         if not trace:
+             return {'schema': 'ultrapoc_motion_qp_path_v1', 'provenance': provenance,
+                 'failures': failures, 'motion_tracking_pass_2mm_2deg': False,
+-                'q_exit': q, 'wall_seconds': time.perf_counter() - started}
++                'q_exit': q, 'qdot_exit': qdotprev, 'acceleration_exit': acceleration_exit,
++                'wall_seconds': time.perf_counter() - started}
+         qq = np.asarray([r['q'] for r in trace])
+         vv = np.asarray([r['qdot'] for r in trace])
+-        aa = np.diff(np.vstack((np.zeros(8), vv)), axis=0) / dt
+-        jj = np.diff(np.vstack((np.zeros(8), aa)), axis=0) / dt
++        aa, jj = command_derivatives(vv, dt, velocity_before, acceleration_before)
++        for row, acceleration, jerk in zip(trace, aa, jj):
++            row['command_acceleration'] = acceleration
++            row['command_jerk'] = jerk
+         dq = np.diff(np.vstack((q_seed, qq)), axis=0)
+         position = np.asarray([r['position_error_m'] for r in trace])
+         rotation = np.asarray([r['rotation_error_rad'] for r in trace])
+@@ -254,6 +284,8 @@
+             'endpoint_position_error_m': endpoint_pos, 'endpoint_rotation_error_rad': endpoint_rot,
+             'max_arm_step_rad': np.abs(dq[:, 1:]).max(), 'max_rail_step_m': np.abs(dq[:, 0]).max(),
+             'velocity_max_abs_by_coordinate': np.abs(vv).max(axis=0),
++            'derivative_history_schema': 'continuous_command_fd_v2',
++            'qdot_entry': velocity_before, 'acceleration_entry': acceleration_before,
+             'acceleration_max_abs_by_coordinate': np.abs(aa).max(axis=0),
+             'jerk_max_abs_by_coordinate': np.abs(jj).max(axis=0),
+             'velocity_limit_by_coordinate': v_max, 'acceleration_limit_by_coordinate': a_max,
+@@ -267,7 +299,8 @@
+             'qp_hard_residual_max': max(r['qp_hard_residual_max'] for r in trace),
+             'task_paused_count': sum(r['task_paused'] for r in trace),
+             'task_progress_p05': np.percentile([r['task_progress'] for r in trace], 5),
+-            'q_exit': q, 'qdot_exit': qdotprev, 'pose_exit': pos_exit, 'wall_seconds': time.perf_counter() - started,
++            'q_exit': q, 'qdot_exit': qdotprev, 'acceleration_exit': acceleration_exit,
++            'pose_exit': pos_exit, 'wall_seconds': time.perf_counter() - started,
+             'tick_compute_p50_s': np.percentile([r['tick_compute_seconds'] for r in trace], 50),
+             'tick_compute_p95_s': np.percentile([r['tick_compute_seconds'] for r in trace], 95),
+             'scope': 'motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation'}
+@@ -320,13 +353,16 @@
+         self.events = []
+         self.valid = True
+         self.qdot = np.zeros(8)
++        self.acceleration = np.zeros(8)
+         self.restore_wall_seconds = 0.
+-        self.reconstruction_error = {'q': 0., 'qdot': 0.}
++        self.reconstruction_error = {'q': 0., 'qdot': 0., 'acceleration': 0.}
+         self.root_q = np.asarray(q_seed, dtype=float).copy() if initial_state is None else np.asarray(initial_state['root_q'], dtype=float)
+         self.q = self.root_q.copy()
+         self.runtime[1].reset(self.root_q)
+         if initial_state is not None:
+             try:
++                if initial_state.get('schema') != 'ultrapoc_qp_complete_history_v2':
++                    raise ValueError('state requires v2 command velocity/acceleration history')
+                 if initial_state['fingerprint'] != bridge._state_fingerprint():
+                     raise ValueError('state source/config/backend/TCP fingerprint mismatch')
+                 if not initial_state.get('valid', True):
+@@ -337,7 +373,8 @@
+                 self.restore_wall_seconds = time.perf_counter() - started
+                 self.reconstruction_error = {
+                     'q': float(np.max(np.abs(self.q - np.asarray(initial_state['q_exit'])))),
+-                    'qdot': float(np.max(np.abs(self.qdot - np.asarray(initial_state['qdot_exit']))))}
++                    'qdot': float(np.max(np.abs(self.qdot - np.asarray(initial_state['qdot_exit'])))),
++                    'acceleration': float(np.max(np.abs(self.acceleration - np.asarray(initial_state['acceleration_exit']))))}
+                 if max(self.reconstruction_error.values()) > 1e-7:
+                     raise ValueError(f'full controller-history reconstruction mismatch: {self.reconstruction_error}')
+                 if not np.allclose(q_seed, self.q, rtol=0, atol=1e-7):
+@@ -359,11 +396,12 @@
+ 
+     def snapshot(self):
+         from common import clean_json
+-        return clean_json({'schema': 'ultrapoc_qp_complete_history_v1',
++        return clean_json({'schema': 'ultrapoc_qp_complete_history_v2',
+             'restoration': 'replay all real controller updates from root, including all path/hold events; not a q-only reset or a partial private-state snapshot',
+             'root_q': self.root_q, 'events': self.events,
+             'valid': self.valid,
+             'q_exit': self.q, 'qdot_exit': self.qdot,
++            'acceleration_exit': self.acceleration,
+             'fingerprint': self.bridge._state_fingerprint()})
+ 
+     def fork(self):
+@@ -376,9 +414,11 @@
+             speed_m_s=event['speed_m_s'], settle_s=event['settle_s'],
+             provenance=event['provenance'], return_trace=return_trace,
+             _runtime=self.runtime, _qdot_seed=self.qdot,
++            _acceleration_seed=self.acceleration,
+             _hold_duration_s=event.get('hold_duration_s'))
+         self.q = np.asarray(out['q_exit']).copy()
+         self.qdot = np.asarray(out.get('qdot_exit', self.qdot)).copy()
++        self.acceleration = np.asarray(out.get('acceleration_exit', self.acceleration)).copy()
+         self.valid = bool(out.get('exit_state_valid', not out['failures']))
+         self.events.append(event)
+         return out

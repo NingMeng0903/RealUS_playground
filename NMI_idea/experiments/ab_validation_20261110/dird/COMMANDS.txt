@@ -1,0 +1,103 @@
+Working directory unless stated:
+/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird
+Python shorthand below is an EXACT absolute executable:
+PY=/media/camp/EXT_DRIVE/envs/genesis/bin/python
+IRD=/media/camp/EXT_DRIVE/RealUS_playground/ird_playground
+All work offline. No downloads, SDK commands, network robot calls or training.
+
+1. Read predeclared ../PLAN.txt; read actual README/configs/operator/tests.
+   git status --short and git rev-parse HEAD under IRD are inventory.json.
+   Source was dirty before work; only approved so3_exp file changed by us.
+
+2. Initial environment probe:
+   $PY -c 'import sys,numpy,torch; print(sys.version); print(numpy.__version__,torch.__version__); import pinocchio; print("pin",pinocchio.__version__); import hppfcl; print("hppfcl",hppfcl.__version__)'
+   EXIT 1: ModuleNotFoundError: No module named hppfcl.
+   This is a legacy Python name; actual Pinocchio/coal mesh distances work.
+   No dependency install was needed.
+
+3. Actual production tests before and after fix:
+   PYTHONPATH=$IRD:/media/camp/EXT_DRIVE/RealUS_playground/rm75_control $PY -m pytest \
+      $IRD/tests/test_robot_contract.py $IRD/tests/test_signed_operator.py \
+      $IRD/tests/test_differentiable_guidance.py $IRD/tests/test_srs_label.py \
+      $IRD/tests/test_srs_trajectory_dp.py $IRD/tests/test_ellipsoid_conditioning.py -q
+   Logs: logs/production_tests.txt, logs/production_tests_postfix.txt
+   Both EXIT0:44 passed. Source pyproject already disables unrelated Dash.
+
+4. Nominal context: q_optimized_8dof[0] read from
+   $IRD/data/reports/ellipse_vessel_ird_demo_projection/qpik_guidance.npz;
+   current physical FK recalculated through CapabilityBridge. Full arrays and
+   source description in nominal_context.json; source hash repro_manifest.json.
+   No scoring or B outcomes entered this context selection.
+
+5. $PY benchmark.py > logs/benchmark_run_01.txt 2>&1
+   EXIT1: own JSON serializer initially lacked torch.Tensor handling.
+   Fixed owned adapter.clean_json only; no production source changed.
+   $PY benchmark.py > logs/benchmark_run_02.txt 2>&1
+   EXIT0; default global ellipse fixed endpoint failed all18 exact lifts.
+   Full results retained default_ellipse_failed/. This is an actual negative
+   result, not deleted or relabeled.
+
+6. Publicly registered local DEVELOPMENT scene, reason recorded in REPORT:
+   $PY benchmark.py > logs/benchmark_run_03.txt 2>&1
+   EXIT0; discovered zero-rotation production derivative defect and retained
+   proxy-positive / exact-continuity-invalid optimization results.
+   Pre-fix full outputs and production source snapshot under pre_fix/.
+
+7. $PY gpu_and_zero_rotation_audit.py > logs/gpu_audit_run_01.txt 2>&1
+   EXIT0: actual GPU checkpoint queries, pose/path FD, CPU/GPU comparison;
+   independent matrix_exp reproduced identity derivative defect.
+   nvidia-smi reported RTX4080 Laptop12282MiB,1518MiB occupied,3% utilization.
+
+8. Parent explicitly approved narrow production so3_exp repair.
+   git diff -- ird_playground/ird/torch_kinematics.py was EMPTY before edit;
+   git status for that file EMPTY. Preserved snapshot before modification.
+   sha256sum pre_fix/torch_kinematics.py $IRD/ird_playground/ird/torch_kinematics.py
+   hashes: so3_exp_hashes.txt; exact diff:so3_exp_production_fix.patch.
+
+9. $PY -m pytest test_so3_exp_regression.py -q
+   EXIT1 before collecting tests: auto-loaded unrelated user Dash plugin
+   required unavailable importlib_metadata. Full traceback:
+   logs/so3_regression_attempt01_plugin_failure.txt.
+   $PY -m pytest test_so3_exp_regression.py -p no:dash -q
+   EXIT0:8 independent mathematical regression cases passed.
+   Log:logs/so3_regression_postfix.txt.
+
+10. $PY benchmark.py > logs/benchmark_run_04_postfix.txt 2>&1
+    EXIT0; same seed/proposals/scene/budget. DTE FD p95 relative error
+    .45443 before→1.56e−8 after, and all exact failures preserved.
+    $PY gpu_and_zero_rotation_audit.py > logs/gpu_audit_run_02_postfix.txt 2>&1
+    EXIT0; independent identity derivative now matches1 and GPU parity passes.
+    $PY pre_fix/reproduce_identity.py > logs/prefix_defect_reproduced.txt 2>&1
+    EXIT0; old preserved source still reproduces0 vs FD≈1, without changing
+    installed source.
+
+11. $PY frame_and_query_audit.py > logs/frame_query_audit.txt 2>&1
+    EXIT0; axis reference matches Pinocchio exactly at three rail coordinates,
+    all three public frame-audit placements pass sampled checks;20 warm timings.
+    $PY field_validation.py > logs/field_validation.txt 2>&1
+    EXIT0; fresh64 exact collision-valid FK positives (66 random draws),
+   64 far negatives; no score-based sample selection. One false negative kept.
+
+Reproducible complete current sequence: bash run.sh
+RUN_GPU=0 bash run.sh skips GPU only; does not modify production source.
+Historical before-fix data/negative results are immutable retained artifacts.
+Current scripts intentionally write their latest measurements to main JSONs;
+timestamped run logs preserve originally reported timing measurements.
+
+12. Independent Astra audit identified missing departure step gate in owned
+    wrapper (collision interpolation already included departure). Parent
+    authorized adapter-only fix, no production solver/bounds change.
+    Preserved adapter.py and hash, current output JSONs and original REPORT
+    under before_departure_fix/. Extracted three actual affected core queries
+    without selecting or changing their poses/q/proxy results.
+    $PY -m pytest -p no:dash test_departure_continuity.py -q
+    EXIT0:5 actual physical regressions passed; logs/departure_regression.txt.
+    Three former accepted12.549042° departures now reject, nominal passes,
+    actual .05m rail departure rejects. q_ref/proxy unchanged for three cases.
+    diff -u before_departure_fix/adapter.py adapter.py
+    Expected diff exit1; patch saved departure_continuity_fix.patch.
+    All structured comparisons/hashes saved departure_fix_results.json.
+    bash run.sh > logs/reproduction_after_departure_fix.txt 2>&1
+    Corrected complete reproducible sequence includes the new5 regressions.
+    Core agent notified to preserve cache and regenerate all192 real queries
+    and downstream main/extension evaluations. Core owns those outputs.

@@ -26,6 +26,7 @@ import site
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -143,15 +144,61 @@ def _placed_gt_sequence(seq: HumanMotionSequence, world_offset: np.ndarray) -> H
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--amass-npz", type=Path, required=True)
+    p.add_argument(
+        "--human-shape-npz", type=Path, default=None,
+        help="Avatar identity NPZ (betas/gender), used only for AMASS rendering; motion selection is unchanged.",
+    )
+    p.add_argument(
+        "--human-body-model", type=Path, default=None,
+        help="Explicit SMPL-X model NPZ paired with --human-shape-npz, e.g. BEDLAM2 neutral locked-head.",
+    )
     p.add_argument("--scene-spec", type=Path, default=Path("configs/scenes/amass_lie_sync_scene.yaml"))
     p.add_argument("--backend", type=str, default="cuda", choices=["cpu", "cuda"])
     p.add_argument("--show-viewer", action="store_true")
     p.add_argument("--robots", type=str, default="scene", help="scene | none | comma instance names")
     p.add_argument("--robot-model", type=str, default="", help="Override primary model_id (panda_urdf, rm75_6f, …).")
     p.add_argument("--robot-instances", type=str, default="")
+    p.add_argument(
+        "--robot-state-source",
+        type=str,
+        default="simulation",
+        choices=("simulation", "shm"),
+        help=(
+            "Primary robot state source: simulation holds the authored Genesis home pose; "
+            "shm reads read-only rm75_state feedback (rail_m + seven arm radians)."
+        ),
+    )
+    p.add_argument(
+        "--robot-state-shm",
+        type=str,
+        default="rm75_state",
+        help="Read-only SHM segment used with --robot-state-source shm.",
+    )
+    p.add_argument(
+        "--robot-state-timeout",
+        type=float,
+        default=1.0,
+        help="Seconds before an unchanged SHM frame is treated as stale (default 1.0).",
+    )
+    p.add_argument(
+        "--robot-state-wait",
+        type=float,
+        default=0.0,
+        help="Optional seconds to wait for the first SHM frame; 0 starts at the authored home pose.",
+    )
     p.add_argument("--teleop-robot", type=str, default="")
     p.add_argument("--no-robot", action="store_true", help="Alias for --robots none.")
     p.add_argument("--human-name", type=str, default="patient")
+    p.add_argument(
+        "--human-source",
+        type=str,
+        default="amass",
+        choices=("amass", "fitted", "none"),
+        help=(
+            "Canonical human source: amass playback, fitted SMPL-X from track 5598, "
+            "or none. The Genesis runtime remains the single 5599 publisher."
+        ),
+    )
     p.add_argument("--human-phc", action="store_true", help="Spawn PHC MJCF skeleton (kinematic GT follow).")
     p.add_argument("--phc-collision", action="store_true", help="Enable PHC rigid collision (default off).")
     p.add_argument("--no-human-capsule", action="store_true", help="No PHC entity (SMPL debug mesh only).")
@@ -226,10 +273,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--canonical-zmq-bind",
         type=str,
-        default="tcp://127.0.0.1:5599",
+        default=None,
         help=(
-            "ZMQ PUB for UE canonical bridge (terminal 6). Used when AMONGUS_GENESIS_CANONICAL_ZMQ_BIND "
-            "is unset. Pass empty string to skip unless env is set."
+            "ZMQ PUB for UE canonical bridge (terminal 6). Explicit values override "
+            "AMONGUS_GENESIS_CANONICAL_ZMQ_BIND; otherwise use env or tcp://127.0.0.1:5599. "
+            "Pass an empty string or 0 to disable ZMQ publication."
         ),
     )
     p.add_argument(
@@ -282,6 +330,7 @@ def _install_responsive_sigint() -> None:
 def main() -> None:
     _install_responsive_sigint()
     args = parse_args()
+    human_source = str(args.human_source).strip().lower()
     use_phc = bool(args.human_phc) and not bool(args.no_human_capsule)
     if args.xbox_teleop:
         if args.no_robot or str(args.robots).strip().lower() in {"none", "off", "human-only"}:
@@ -297,6 +346,34 @@ def main() -> None:
     npz_path = args.amass_npz if args.amass_npz.is_absolute() else repo / args.amass_npz
     scene_spec = load_sync_scene_spec(scene_path)
     seq = load_amass_sequence(npz_path)
+    if (args.human_shape_npz is None) != (args.human_body_model is None):
+        raise ValueError("--human-shape-npz and --human-body-model must be supplied together")
+    if args.human_shape_npz is not None:
+        if human_source != "amass" or use_phc:
+            raise ValueError("Avatar shape override is for AMASS mesh playback without the optional PHC skeleton")
+        from projects.genesis_ue_sync.sim_platform.datasets.body_identity import with_smplx_body_identity
+
+        seq = with_smplx_body_identity(
+            seq, identity_npz=args.human_shape_npz, body_model_npz=args.human_body_model,
+        )
+        # Placement caches must distinguish body identities even for the same
+        # AMASS motion. Preserve the original path inside sequence provenance.
+        identity_cache = repo / "outputs" / "body_identity_motion_cache"
+        identity_cache.mkdir(parents=True, exist_ok=True)
+        import hashlib
+
+        motion_stat = npz_path.stat()
+        motion_signature = hashlib.sha256(
+            f"{npz_path.resolve()}:{motion_stat.st_size}:{motion_stat.st_mtime_ns}".encode()
+        ).hexdigest()[:12]
+        identity_motion_path = identity_cache / (
+            f"{npz_path.stem}_{motion_signature}_{seq.metadata['avatar_identity_signature']}.npz"
+        )
+        if not identity_motion_path.is_file():
+            seq.save(identity_motion_path)
+        npz_path = identity_motion_path
+        logging.info("AMASS motion uses avatar %s, model=%s, gender=%s, beta_dim=%d",
+                     args.human_shape_npz, args.human_body_model, seq.gender, len(seq.betas))
 
     start = max(0, int(args.frame_start))
     step = max(1, int(args.frame_step))
@@ -307,34 +384,49 @@ def main() -> None:
         raise RuntimeError("No frames after frame-start/step/limit.")
     playback_fps = float(args.playback_fps) if args.playback_fps > 0 else max(float(seq.fps) / step, 1e-6)
 
-    capsule_asset = prepare_smpl_capsule_runtime_asset(
-        seq,
-        cache_dir=repo / "outputs" / "genesis_capsule_urdf_cache",
-        device="cpu",
-        visual_rgba=(
-            float(DEFAULT_SMPL_PROXY_VISUAL_RGBA[0]),
-            float(DEFAULT_SMPL_PROXY_VISUAL_RGBA[1]),
-            float(DEFAULT_SMPL_PROXY_VISUAL_RGBA[2]),
-            float(args.capsule_alpha),
-        ),
-        force_rewrite=bool(args.capsule_force_rewrite),
-        genesis_proxy="mjcf",
-    )
+    # The PHC bundled MJCF is only needed when the optional articulated human
+    # entity is requested.  GT mesh/placement playback can use the regular
+    # SMPL evaluator and must remain usable on a RealUS checkout without a
+    # cloned PHC tree.
+    capsule_asset = None
+    if use_phc:
+        capsule_asset = prepare_smpl_capsule_runtime_asset(
+            seq,
+            cache_dir=repo / "outputs" / "genesis_capsule_urdf_cache",
+            device="cpu",
+            visual_rgba=(
+                float(DEFAULT_SMPL_PROXY_VISUAL_RGBA[0]),
+                float(DEFAULT_SMPL_PROXY_VISUAL_RGBA[1]),
+                float(DEFAULT_SMPL_PROXY_VISUAL_RGBA[2]),
+                float(args.capsule_alpha),
+            ),
+            force_rewrite=bool(args.capsule_force_rewrite),
+            genesis_proxy="mjcf",
+        )
 
-    placement, placement_path = resolve_or_compute_placement_for_amass(
-        scene_spec,
-        seq,
-        amass_npz_path=npz_path,
-        repo_root=repo,
-        proxy_geometry=capsule_asset.proxy_geometry,
-        placement_sample_frames=int(args.fit_samples),
-        device="cpu",
-        force_recompute=bool(args.force_placement),
-        human_center_mode=str(args.human_center_mode),
-        root_projection_bed_center=bool(args.root_projection_bed_center),
-        fit_samples=int(args.fit_samples),
-    )
-    world_off = np.asarray(placement.world_offset_m, dtype=np.float32).reshape(3)
+    # A robot/scene-only smoke (``--human-source none``) should not require a
+    # local SMPL model just to advance one Genesis tick.  Any actual AMASS or
+    # PHC human path keeps the calibrated placement computation below.
+    placement = None
+    placement_path: Path | None = None
+    needs_gt_geometry = human_source == "amass" or use_phc
+    if needs_gt_geometry:
+        placement, placement_path = resolve_or_compute_placement_for_amass(
+            scene_spec,
+            seq,
+            amass_npz_path=npz_path,
+            repo_root=repo,
+            proxy_geometry=capsule_asset.proxy_geometry if capsule_asset is not None else None,
+            placement_sample_frames=int(args.fit_samples),
+            device="cpu",
+            force_recompute=bool(args.force_placement),
+            human_center_mode=str(args.human_center_mode),
+            root_projection_bed_center=bool(args.root_projection_bed_center),
+            fit_samples=int(args.fit_samples),
+        )
+        world_off = np.asarray(placement.world_offset_m, dtype=np.float32).reshape(3)
+    else:
+        world_off = np.zeros(3, dtype=np.float32)
 
     placed_gt = _placed_gt_sequence(seq, world_off)
     if args.output_placed_gt_npz:
@@ -342,18 +434,24 @@ def main() -> None:
         placed_gt.save(out_gt)
 
     smpl_joints_world: np.ndarray | None = None
-    try:
-        _, joints_all = evaluate_smpl_sequence(placed_gt, device="cpu", include_vertices=False, include_joints=True)
-        if joints_all is not None and joints_all.ndim == 3:
+    if human_source == "amass":
+        try:
+            _, joints_all = evaluate_smpl_sequence(placed_gt, device="cpu", include_vertices=False, include_joints=True)
+            if joints_all is None or joints_all.ndim != 3 or joints_all.shape[1] < 1:
+                raise RuntimeError("SMPL evaluation did not return a pelvis joint for AMASS canonical publishing")
             smpl_joints_world = np.asarray(joints_all[:, :, :3], dtype=np.float32)
-    except Exception:
-        pass
+        except Exception as exc:
+            raise RuntimeError(
+                "AMASS canonical publishing requires smpl_joints_world so the UE root uses the SMPL pelvis pivot"
+            ) from exc
 
     human_emb = None
     mjcf_layout: Path | None = None
     phc_q_all: np.ndarray | None = None
     q_lower, q_upper = None, None
     if use_phc:
+        if capsule_asset is None:
+            raise RuntimeError("PHC human was requested but its runtime asset was not prepared")
         phc_cfg = PhcSkeletonConfig(
             human_name=str(args.human_name),
             enable_collision=bool(args.phc_collision),
@@ -371,6 +469,19 @@ def main() -> None:
         robot_model=str(args.robot_model),
         robot_instances=str(args.robot_instances),
     )
+    # The RealUS RM75 generated slider URDF uses the lowercase ``tcp`` link.
+    # Its manifest carries that spelling under ``defaults.tcp_frame``; older
+    # scene merges leave capabilities empty and the registry fallback becomes
+    # ``TCP``.  Normalize this owned runtime entry before embodiment creation
+    # so canonical snapshots can query the actual URDF TCP link.
+    for robot_spec in robot_specs:
+        if str(getattr(robot_spec, "model_id", "")).strip().lower() != "rm75_6f_8dof":
+            continue
+        capabilities = dict(getattr(robot_spec, "capabilities", None) or {})
+        tcp_frame = str(capabilities.get("tcp_frame", "")).strip()
+        if not tcp_frame or tcp_frame.upper() == "TCP":
+            capabilities["tcp_frame"] = "tcp"
+        robot_spec.capabilities = capabilities
     robot_probe_collision = robot_probe_collision_enabled(robot_specs)
     enable_collision = bool(args.phc_collision and sim_phys) or robot_probe_collision
     runtime = GenesisPlatformRuntime(
@@ -443,8 +554,67 @@ def main() -> None:
     else:
         runtime.reset()
 
+    robot_state_adapter = None
+    if robot_name and robot_home_q is not None:
+        from perception.apps.genesis_runtime_state import make_robot_state_adapter
+
+        try:
+            robot_state_adapter = make_robot_state_adapter(
+                str(args.robot_state_source),
+                home_q=np.asarray(robot_home_q, dtype=np.float32).reshape(-1),
+                shm_name=str(args.robot_state_shm),
+                shm_timeout_s=float(args.robot_state_timeout),
+            )
+            if str(args.robot_state_source) == "shm" and float(args.robot_state_wait) > 0.0:
+                try:
+                    first_state = robot_state_adapter.wait_first(float(args.robot_state_wait))
+                    print(
+                        f"genesis runtime: SHM {args.robot_state_shm!r} seeded "
+                        f"seq={first_state.sequence} wall_time_ns={first_state.wall_time_ns}",
+                        flush=True,
+                    )
+                except TimeoutError as exc:
+                    logging.warning("%s; continuing from authored Genesis home pose", exc)
+        except Exception:
+            if robot_state_adapter is not None:
+                robot_state_adapter.close()
+            raise
+
     human_entity = str(args.human_name) if human_emb is not None else None
     i0 = indices[0]
+
+    def _robot_q_for_entity(q8dof: np.ndarray) -> np.ndarray:
+        """Map canonical 8-DOF state to the spawned entity's authored DOFs."""
+        q8 = np.asarray(q8dof, dtype=np.float32).reshape(-1)
+        if robot_home_q is None:
+            raise RuntimeError("robot state requested without a spawned robot home pose")
+        target_n = int(np.asarray(robot_home_q).reshape(-1).size)
+        if target_n == q8.size:
+            return q8.copy()
+        if target_n == q8.size - 1:
+            # A legacy 7-DOF rm75_6f scene has no rail joint.
+            return q8[1:].copy()
+        raise ValueError(
+            f"robot entity {robot_name!r} has {target_n} DOFs, but state source provides "
+            f"{q8.size} values in [rail_y, joint_1..joint_7] order"
+        )
+
+    def _drive_robot_state() -> None:
+        if robot_state_adapter is None or not robot_name:
+            return
+        sample = robot_state_adapter.read()
+        if sample is None:
+            return
+        q_entity = _robot_q_for_entity(sample.q8dof)
+        runtime.set_robot_joint_positions(robot_name, q_entity)
+        # ``init_robots_after_build`` leaves a Genesis position target at the
+        # authored home pose.  Keep that target aligned with the incoming
+        # state as well, otherwise the next physics tick pulls a SHM mirror
+        # away from the measured q before the canonical observer snapshots it.
+        try:
+            runtime.get_motion_interface(robot_name).control_joint_positions(q_entity)
+        except AttributeError:
+            pass
 
     def _human_q(fi: int) -> np.ndarray:
         if phc_q_all is not None:
@@ -459,19 +629,26 @@ def main() -> None:
 
     if human_entity is not None:
         runtime.set_robot_joint_positions(human_entity, _human_q(i0))
+    _drive_robot_state()
 
     mesh_alpha = int(np.clip(args.mesh_alpha, 0, 255))
     gt_color = (82, 155, 255, max(32, min(mesh_alpha, 132)))
     live_redraw = bool(args.debug_smpl_live_redraw) if args.debug_smpl_live_redraw is not None else bool(args.show_viewer)
     redraw_iv = max(1, int(args.debug_smpl_redraw_interval))
-    gt_meshes = [] if args.hide_human_mesh else build_trimesh_sequence(
-        placed_gt, world_offset=(0.0, 0.0, 0.0), align_floor=False, color=gt_color
+    gt_meshes = (
+        []
+        if args.hide_human_mesh or human_source != "amass"
+        else build_trimesh_sequence(placed_gt, world_offset=(0.0, 0.0, 0.0), align_floor=False, color=gt_color)
     )
-    gt_renderer = GtSmplFrameRenderer(placed_gt, color=gt_color, device="cpu") if live_redraw else None
+    gt_renderer = (
+        GtSmplFrameRenderer(placed_gt, color=gt_color, device="cpu")
+        if live_redraw and human_source == "amass"
+        else None
+    )
     if gt_renderer is not None:
         gt_renderer.prewarm_pose_frames(indices, placed_gt.poses)
 
-    from projects.genesis_ue_sync.sim_platform.sync.canonical_human_motion import amongus_human_payload_from_motion_frame
+    from projects.genesis_ue_sync.sim_platform.sync import canonical_human_motion
     from projects.genesis_ue_sync.sim_platform.sync.runtime_wire import (
         attach_optional_canonical_observers,
         resolve_canonical_state_jsonl_path,
@@ -479,10 +656,8 @@ def main() -> None:
 
     if args.no_canonical_publish:
         os.environ["AMONGUS_GENESIS_CANONICAL_ZMQ_BIND"] = "0"
-    elif not str(os.environ.get("AMONGUS_GENESIS_CANONICAL_ZMQ_BIND", "") or "").strip():
-        bind_cli = str(args.canonical_zmq_bind or "").strip()
-        if bind_cli:
-            os.environ["AMONGUS_GENESIS_CANONICAL_ZMQ_BIND"] = bind_cli
+    elif args.canonical_zmq_bind is not None:
+        os.environ["AMONGUS_GENESIS_CANONICAL_ZMQ_BIND"] = str(args.canonical_zmq_bind).strip() or "0"
     jsonl_path = resolve_canonical_state_jsonl_path()
     if jsonl_path and not str(os.environ.get("AMONGUS_GENESIS_CANONICAL_STATE_JSONL", "") or "").strip():
         os.environ["AMONGUS_GENESIS_CANONICAL_STATE_JSONL"] = jsonl_path
@@ -490,23 +665,156 @@ def main() -> None:
     canonical_default_bind = None if args.no_canonical_publish else "tcp://127.0.0.1:5599"
 
     canonical_fi = {"fi": int(i0)}
-    motion_fps_ue = float(scene_spec.motion.fps) if float(scene_spec.motion.fps) > 1e-6 else float(seq.fps)
+    # Keep the source AMASS clock separate from the scene/video playback clock.
+    # CMU-114 is 120 Hz while the calibrated RealUS scene is rendered at 30 Hz;
+    # ``frame_step`` samples source frames but must not rescale their timestamps.
+    motion_fps_amass = float(seq.fps) if float(seq.fps) > 1e-6 else 1.0
+    motion_fps_ue = float(scene_spec.motion.fps) if float(scene_spec.motion.fps) > 1e-6 else motion_fps_amass
     ue_root_off = getattr(scene_spec.human, "ue_root_offset_genesis_m", None)
+    fitted_drive: dict[str, Any] = {
+        "pose55": None,
+        "transl": None,
+        "pelvis_world_m": None,
+        "betas": None,
+        "gender": "neutral",
+        "expression": None,
+        "source_id": "fitted",
+        "frame_index": 0,
+        "timestamp_ns": 0,
+        "loop_index": 0,
+        "last_frame_index": None,
+    }
+    amass_loop = {"last_frame_index": None, "loop_index": 0}
+
+    def _fitted_human_payload(
+        *,
+        frame_index: int,
+        pose55: np.ndarray,
+        transl: np.ndarray,
+        betas: np.ndarray,
+        gender: str,
+        loop_index: int,
+        expression: np.ndarray,
+        source_id: str,
+        source_timestamp_ns: int,
+        pelvis_world_m: np.ndarray | None = None,
+    ) -> dict[str, Any]:
+        """Build the lossless fitted SMPL-X payload from the shared helper."""
+        pose = np.asarray(pose55, dtype=np.float32).reshape(-1)
+        if pose.size != 55 * 3:
+            raise ValueError(f"fitted SMPL-X pose must contain 165 values, got {pose.size}")
+        trans = np.asarray(transl, dtype=np.float32).reshape(3)
+        pelvis = None if pelvis_world_m is None else np.asarray(pelvis_world_m, dtype=np.float32).reshape(3)
+        root = trans if pelvis is None else pelvis
+        if ue_root_off is not None:
+            root = root + np.asarray(ue_root_off, dtype=np.float32).reshape(3)
+        payload = canonical_human_motion.amongus_human_payload_from_smplx_frame(
+            frame_index=int(frame_index),
+            motion_fps=float(motion_fps_ue),
+            root_translation_world_m=root,
+            smplx_pose55=pose,
+            betas=np.asarray(betas, dtype=np.float32).reshape(-1),
+            gender=str(gender or "neutral").lower(),
+            loop_index=int(loop_index),
+            expression=np.asarray(expression, dtype=np.float32).reshape(-1),
+            source_id=str(source_id or "fitted"),
+        )
+        payload.update(
+            {
+                "source_translation_m": trans.tolist(),
+                "source_pivot": "smpl_pelvis_world" if pelvis is not None else "source_translation",
+            }
+        )
+        if pelvis is not None:
+            payload["pelvis_world_m"] = pelvis.tolist()
+        if ue_root_off is not None:
+            payload["ue_root_offset_genesis_m"] = np.asarray(ue_root_off, dtype=np.float32).reshape(3).tolist()
+        if int(source_timestamp_ns) > 0:
+            payload["human_source_time_ns"] = int(source_timestamp_ns)
+        return payload
 
     def _canonical_human() -> dict[str, Any]:
+        if human_source == "none":
+            return {}
+        if human_source == "fitted":
+            pose55 = fitted_drive.get("pose55")
+            transl = fitted_drive.get("transl")
+            if pose55 is None or transl is None:
+                return {}
+            # Frame zero is a valid source frame.  Do not use truthiness here:
+            # the canonical sequence counter can already have advanced while
+            # the fitted stream is still publishing its first sample.
+            fitted_frame_index = fitted_drive.get("frame_index")
+            if fitted_frame_index is None:
+                fitted_frame_index = canonical_fi["fi"]
+            fitted_loop_index = fitted_drive.get("loop_index")
+            if fitted_loop_index is None:
+                fitted_loop_index = 0
+            fitted_source_time = fitted_drive.get("timestamp_ns")
+            if fitted_source_time is None:
+                fitted_source_time = 0
+            fitted_pelvis = fitted_drive.get("pelvis_world_m")
+            return _fitted_human_payload(
+                frame_index=int(fitted_frame_index),
+                pose55=pose55,
+                transl=transl,
+                betas=np.asarray(
+                    fitted_drive.get("betas") if fitted_drive.get("betas") is not None else [],
+                    dtype=np.float32,
+                ),
+                gender=str(fitted_drive.get("gender") or "neutral"),
+                loop_index=int(fitted_loop_index),
+                expression=np.asarray(
+                    fitted_drive.get("expression") if fitted_drive.get("expression") is not None else [],
+                    dtype=np.float32,
+                ),
+                source_id=str(fitted_drive.get("source_id") or "fitted"),
+                source_timestamp_ns=int(fitted_source_time),
+                pelvis_world_m=fitted_pelvis,
+            )
         fi = int(max(0, min(canonical_fi["fi"], placed_gt.frame_count - 1)))
-        prow = np.asarray(placed_gt.poses[fi], dtype=np.float32).reshape(-1)
-        pr = np.zeros(max(72, prow.size), dtype=np.float32)
-        pr[: prow.size] = prow
-        return amongus_human_payload_from_motion_frame(
+        previous_fi = amass_loop.get("last_frame_index")
+        if previous_fi is not None and fi < int(previous_fi):
+            amass_loop["loop_index"] = int(amass_loop["loop_index"]) + 1
+        amass_loop["last_frame_index"] = fi
+        from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import pose_to_smplx55_axis_angle
+
+        pose55 = pose_to_smplx55_axis_angle(np.asarray(placed_gt.poses[fi], dtype=np.float32)).reshape(-1)
+        if smpl_joints_world is None or smpl_joints_world.shape[0] <= fi or smpl_joints_world.shape[1] < 1:
+            raise RuntimeError("AMASS canonical publishing has no evaluated SMPL pelvis for the selected frame")
+        source_translation = np.asarray(placed_gt.trans[fi], dtype=np.float32).reshape(3)
+        pelvis_world = np.asarray(smpl_joints_world[fi, 0], dtype=np.float32).reshape(3)
+        root = pelvis_world.copy()
+        if ue_root_off is not None:
+            root = root + np.asarray(ue_root_off, dtype=np.float32).reshape(3)
+        payload = canonical_human_motion.amongus_human_payload_from_smplx_frame(
             frame_index=fi,
-            motion_fps=motion_fps_ue,
-            root_translation_world_m=np.asarray(placed_gt.trans[fi], dtype=np.float32).reshape(3),
-            smpl_pose_row=pr,
-            anim_sequence_ue_path="",
-            motion_fps_field=motion_fps_ue,
-            root_extra_offset_genesis_m=ue_root_off,
+            motion_fps=motion_fps_amass,
+            root_translation_world_m=root,
+            smplx_pose55=pose55,
+            betas=np.asarray(seq.betas, dtype=np.float32).reshape(-1),
+            gender=str(seq.gender or "neutral").lower(),
+            loop_index=int(amass_loop["loop_index"]),
+            source_id="amass",
         )
+        # This is source-motion time, distinct from the Genesis ``sim_time_ns``
+        # envelope supplied by ClockService.  Headless GT can advance quickly,
+        # while live playback follows ``playback_fps`` (30 Hz in the recorder).
+        payload.update(
+            {
+                "motion_time_ns": int(round(float(fi) / motion_fps_amass * 1.0e9)),
+                "playback_fps": float(playback_fps),
+                "source_frame_step": int(step),
+                "source_translation_m": source_translation.tolist(),
+                "pelvis_world_m": pelvis_world.tolist(),
+                "source_pivot": "smpl_pelvis_world",
+                "body_model_variant": seq.metadata.get("body_model_variant", seq.model_type),
+                "avatar_identity_npz": seq.metadata.get("avatar_identity_npz"),
+            }
+        )
+        if ue_root_off is not None:
+            payload["ue_root_offset_genesis_m"] = np.asarray(ue_root_off, dtype=np.float32).reshape(3).tolist()
+        return payload
 
     runtime.amongus_canonical_human = _canonical_human
     runtime._amongus_canonical_handles = attach_optional_canonical_observers(
@@ -515,7 +823,9 @@ def main() -> None:
     )
 
     track_subscriber = None
-    if not args.no_track_subscribe and args.show_viewer:
+    track_metadata_subscriber = None
+    track_needed_for_human = human_source == "fitted"
+    if not args.no_track_subscribe and (args.show_viewer or track_needed_for_human):
         from projects.genesis_ue_sync.multiview_realtime.ingress.track_pose_subscriber import TrackPoseSubscriber
         from projects.genesis_ue_sync.multiview_realtime.track_stream import resolve_track_subscribe_connect
 
@@ -528,6 +838,11 @@ def main() -> None:
                 default_betas=np.asarray(seq.betas, dtype=np.float32).reshape(-1)[:10],
             )
             track_subscriber.start()
+            if track_needed_for_human:
+                from perception.apps.genesis_runtime_state import FittedTrackMetadataSubscriber
+
+                track_metadata_subscriber = FittedTrackMetadataSubscriber(track_url)
+                track_metadata_subscriber.start()
 
     anatomy_registry = None
     anatomy_subscriber = None
@@ -553,9 +868,79 @@ def main() -> None:
                 anatomy_subscriber = AnatomyAssetSubscriber(anatomy_registry, connect=anatomy_url)
                 anatomy_subscriber.start()
 
+    def _close_track_subscriber() -> None:
+        """Stop the receiver before the shared subscriber closes its socket."""
+        if track_subscriber is None:
+            return
+        # TrackPoseSubscriber's historical close order closes libzmq while
+        # its timed receive thread is still inside recv_multipart().  Joining
+        # first avoids a signaler assertion during finite headless runs.
+        stop = getattr(track_subscriber, "_stop", None)
+        if stop is not None:
+            stop.set()
+        receiver = getattr(track_subscriber, "_thread", None)
+        if receiver is not None:
+            receiver.join(timeout=1.0)
+        track_subscriber.close()
+
     def _poll_live_track() -> None:
         if track_subscriber is not None:
-            track_subscriber.poll_draw()
+            if args.show_viewer:
+                track_subscriber.poll_draw()
+            if human_source == "fitted":
+                metadata = track_metadata_subscriber.latest() if track_metadata_subscriber is not None else None
+                if metadata is None:
+                    drive = track_subscriber.latest_anatomy_drive()
+                    if drive is not None:
+                        pose_live_raw = np.asarray(drive[0], dtype=np.float32).reshape(-1)
+                        try:
+                            from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import pose_to_smplx55_axis_angle
+
+                            pose_live = pose_to_smplx55_axis_angle(pose_live_raw).reshape(-1)
+                        except (TypeError, ValueError):
+                            pose_live = None
+                        if pose_live is not None and pose_live.size == 55 * 3:
+                            latest = getattr(track_subscriber, "_latest", None)
+                            latest_frame_index = getattr(latest, "frame_index", None)
+                            if latest_frame_index is None:
+                                latest_frame_index = canonical_fi["fi"]
+                            latest_timestamp_ns = getattr(latest, "timestamp_ns", None)
+                            if latest_timestamp_ns is None:
+                                latest_timestamp_ns = 0
+                            metadata = SimpleNamespace(
+                                pose55=pose_live,
+                                transl=np.asarray(drive[1], dtype=np.float32).reshape(3),
+                                betas=np.asarray(getattr(latest, "betas", ()), dtype=np.float32).reshape(-1)[:10],
+                                gender=str(getattr(latest, "gender", "") or "neutral"),
+                                expression=np.asarray(getattr(latest, "expression", ()), dtype=np.float32).reshape(-1),
+                                source_id=str(getattr(latest, "source_id", "") or "fitted_easymocap"),
+                                frame_index=int(latest_frame_index),
+                                timestamp_ns=int(latest_timestamp_ns),
+                                pelvis_world_m=getattr(latest, "pelvis_world_m", None),
+                            )
+                if metadata is not None:
+                    track_frame = int(metadata.frame_index)
+                    previous_frame = fitted_drive.get("last_frame_index")
+                    if previous_frame is not None and track_frame < int(previous_frame):
+                        fitted_loop_index = fitted_drive.get("loop_index")
+                        if fitted_loop_index is None:
+                            fitted_loop_index = 0
+                        fitted_drive["loop_index"] = int(fitted_loop_index) + 1
+                    fitted_drive["last_frame_index"] = track_frame
+                    fitted_drive["betas"] = np.asarray(metadata.betas, dtype=np.float32).reshape(-1)[:10].copy()
+                    fitted_drive["gender"] = str(metadata.gender or "neutral").lower()
+                    fitted_drive["expression"] = np.asarray(metadata.expression, dtype=np.float32).reshape(-1).copy()
+                    fitted_drive["source_id"] = str(metadata.source_id or "fitted_easymocap")
+                    fitted_drive["frame_index"] = track_frame
+                    fitted_drive["timestamp_ns"] = int(metadata.timestamp_ns)
+                    fitted_drive["pose55"] = np.asarray(metadata.pose55, dtype=np.float32).reshape(-1).copy()
+                    fitted_drive["transl"] = np.asarray(metadata.transl, dtype=np.float32).reshape(3).copy()
+                    fitted_pelvis = getattr(metadata, "pelvis_world_m", None)
+                    fitted_drive["pelvis_world_m"] = (
+                        None
+                        if fitted_pelvis is None
+                        else np.asarray(fitted_pelvis, dtype=np.float32).reshape(3).copy()
+                    )
 
     anatomy_smplx_pose: np.ndarray | None = None
     anatomy_smplx_trans: np.ndarray | None = None
@@ -668,6 +1053,7 @@ def main() -> None:
                 if now >= next_t:
                     ii = indices[frame_idx]
                     canonical_fi["fi"] = int(ii)
+                    _drive_robot_state()
                     _drive_human(ii)
                     if live_redraw and (redraw_iv <= 1 or ii % redraw_iv == 0):
                         mesh_node, joint_node = refresh_playback_debug_meshes(
@@ -713,8 +1099,9 @@ def main() -> None:
                 time.sleep(max(0.001, min(0.004, next_t - time.perf_counter())))
         finally:
             pad.close()
-            if track_subscriber is not None:
-                track_subscriber.close()
+            _close_track_subscriber()
+            if track_metadata_subscriber is not None:
+                track_metadata_subscriber.close()
             if anatomy_subscriber is not None:
                 anatomy_subscriber.close()
     elif args.show_viewer:
@@ -727,6 +1114,7 @@ def main() -> None:
                 continue
             ii = indices[frame_idx]
             canonical_fi["fi"] = int(ii)
+            _drive_robot_state()
             _drive_human(ii)
             if live_redraw and (redraw_iv <= 1 or ii % redraw_iv == 0):
                 mesh_node, joint_node = refresh_playback_debug_meshes(
@@ -753,27 +1141,49 @@ def main() -> None:
                     break
                 frame_idx = 0
             next_t += frame_interval
-        if track_subscriber is not None:
-            track_subscriber.close()
+        _close_track_subscriber()
+        if track_metadata_subscriber is not None:
+            track_metadata_subscriber.close()
         if anatomy_subscriber is not None:
             anatomy_subscriber.close()
     else:
         for ii in indices:
             canonical_fi["fi"] = int(ii)
+            _poll_live_track()
+            _drive_robot_state()
             _drive_human(ii)
             runtime.step()
             played += 1
+
+    _close_track_subscriber()
+    if track_metadata_subscriber is not None:
+        track_metadata_subscriber.close()
+    if anatomy_subscriber is not None:
+        anatomy_subscriber.close()
+    if robot_state_adapter is not None:
+        robot_state_adapter.close()
 
     selection_path = _write_ue_avatar_selection(repo=repo, scene_spec=scene_spec, scene_path=scene_path)
     summary = {
         "amass_npz": str(npz_path),
         "scene_spec": str(scene_path),
-        "human_scene_placement_json": str(placement_path),
-        "world_offset_m": list(placement.world_offset_m),
+        "human_scene_placement_json": str(placement_path) if placement_path is not None else "",
+        "world_offset_m": list(placement.world_offset_m) if placement is not None else [0.0, 0.0, 0.0],
         "human_phc": use_phc,
         "phc_collision": bool(args.phc_collision),
         "robot_names": robot_names,
         "primary_robot": robot_name,
+        "robot_state_source": str(args.robot_state_source),
+        "robot_state_shm": str(args.robot_state_shm) if str(args.robot_state_source) == "shm" else "",
+        "robot_state_joint_order": ["rail_y", "joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "joint_7"],
+        "robot_state_units": ["m", "rad", "rad", "rad", "rad", "rad", "rad", "rad"],
+        "robot_state_q_semantics": "raw_measured",
+        "robot_state_joint_zero_offsets": {
+            "applied_in_adapter": False,
+            "controller_fk_pose_only": True,
+            "source": "camera_calibration/calibration_results/robot_world.yaml",
+        },
+        "human_source": human_source,
         "frames_played": played,
         "ue_avatar_selection_json": str(selection_path),
     }

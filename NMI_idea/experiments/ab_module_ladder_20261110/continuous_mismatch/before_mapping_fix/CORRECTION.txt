@@ -1,0 +1,25 @@
+Pre-release method-mapping correction, 2026-11-10
+
+The initial unexecuted draft used an adapter mapping
+``B_two_step -> fixed_two``.  That was incorrect: ``fixed_two`` is the
+separate precommitted-second-action branch, while the requested
+``B_two_step`` is the planner's public-block sampled two-step full-belief
+branch.  No GT was opened and no strategy episode was executed from that
+draft.
+
+Archived files before correction:
+
+  PROTOCOL.txt
+    sha256 c427a5abe7ec77cf65b27ac60b1ced4001028b92954a13448cc6ee39e880b12c
+  run_continuous_mismatch.py
+    sha256 a33eef227cb68c0ba9ef8029515fe76a1ffe616615f4b9707d2d1a44b2e8ede4
+
+Correction applied in the parent directory:
+
+  - B_two_step is now passed to ``run_episode`` unchanged.
+  - A no-GT stub passthrough contract checks both method labels and
+    ``row['method']`` is asserted before audit metadata is added.
+  - The protocol explicitly distinguishes B_two_step from fixed_two.
+
+This archive is evidence of the pre-release correction only; it is not an
+executable formal result.

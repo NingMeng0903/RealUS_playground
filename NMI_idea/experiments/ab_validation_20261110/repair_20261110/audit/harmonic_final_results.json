@@ -1,0 +1,890 @@
+{
+  "tag": "final",
+  "seed": 594201,
+  "scope": "finite offline fixed-LBS geometry and public point API; not servo, contact, orientation or ultrasound",
+  "source_hashes": {
+    "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py": "5d3dfe07d954249be06b181e93d8c0575da2adfc82ea376fb6c94964dec11a8e",
+    "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py": "3b0778ad6be73e70f539d3f68f0ee27d9e1192bbe9c503f5a14ff824e6512121",
+    "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/shaft_rebuild.py": "fbc57a17827aba6b96fe2cc5ee85314facbee90127edecd0a8506d2406cab844",
+    "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py": "cedeb2bbd1999cea6c517e386eb096e28b2a4c2bdd17a7867143d428ae08108e",
+    "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/lbs_bridge.py": "f655bba64850ddcf9b718af01d56cc5926b3361ac589a9802c94c3d949a70645"
+  },
+  "kernel_sha256": "e292e1e1ad0730e19cc055140c07876019644439650e41f6a8657540a974cc7b",
+  "kernel_source_sha256": "b4c2653f0da4b8f6651ba79d06a386dae501153e124321eb5f1f8a9eb8f62cad",
+  "sides": {
+    "left": {
+      "asset_hashes": {
+        "atlas_left.npz": {
+          "actual": "bdd33e8d60519ca33e80fa49f651cd4b26809744805f12c00a724a129a3776b0",
+          "expected": "bdd33e8d60519ca33e80fa49f651cd4b26809744805f12c00a724a129a3776b0",
+          "match": true
+        },
+        "attachments_left.npz": {
+          "actual": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5",
+          "expected": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5",
+          "match": true
+        }
+      },
+      "metadata": {
+        "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+        "topology": "single_leg_cylindrical_chart_without_foot",
+        "proximal_station": 0.02,
+        "distal_station": 1.0,
+        "distal_boundary": "ankle_cut",
+        "foot_policy": "excluded_from_leg_chart",
+        "max_radius_m": 0.26,
+        "skin_vertex_count": 7776,
+        "skin_face_count": 15336,
+        "volume_sample_count": 62208,
+        "surface_solver": "cotan_laplace_beltrami_dirichlet",
+        "volume_solver": "tet_linear_fem_dirichlet_h_theta",
+        "volume_d_method": "normalized_skin_to_shrink_medial_distance",
+        "core_method": "cross_section_shrink_distance_transform",
+        "volume_vertex_count": 62208,
+        "volume_tet_count": 322056,
+        "proximal_anchor_count": 25,
+        "distal_anchor_count": 24,
+        "medial_curve_count": 48,
+        "medial_anchor_count": 24,
+        "source_base_atlas": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/leg_volume_coordinates/atlas_left.npz",
+        "source_layered_npz": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/ultimate_graph_refined/left_layered_laplace3d.npz",
+        "volume_point_count": 186624,
+        "native_layered_surface": true,
+        "surface_source": "finite_loop_smooth_shell",
+        "smooth_shell_level": 3,
+        "smooth_shell_vertex_count": 31480,
+        "smooth_shell_face_count": 62464,
+        "layered_metadata": {
+          "station_count": 72,
+          "theta_count": 108,
+          "radial_count": 24,
+          "inner_frac": 0.04,
+          "surface_source": "finite_loop_smooth_shell",
+          "smooth_shell_level": 3,
+          "smooth_shell_vertex_count": 31480,
+          "smooth_shell_face_count": 62464,
+          "smooth_shell_stencil_nnz": 304059,
+          "vertex_count": 186624,
+          "tet_count": 1058184,
+          "inner_fixed_count": 7776,
+          "skin_fixed_count": 7776,
+          "d_quantiles": {
+            "0.0": 0.0,
+            "0.05": 0.04730949178338051,
+            "0.25": 0.26996031403541565,
+            "0.5": 0.5459451675415039,
+            "0.75": 0.7914765477180481,
+            "0.95": 0.9663171172142029,
+            "1.0": 1.0
+          }
+        },
+        "side_face_ownership": {
+          "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+          "ipsilateral_joint_indices": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "contralateral_joint_indices": [
+            2,
+            5,
+            8,
+            11
+          ],
+          "joint_chain": [
+            "hip",
+            "knee",
+            "ankle",
+            "foot"
+          ],
+          "coordinates_modified": false,
+          "candidate_only": true,
+          "volume_arrays_are_old_and_invalid": true
+        },
+        "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+        "centerline_source": "recomputed_ipsilateral_canonical_base",
+        "mesh_type": "geometric_section_shaft_roi",
+        "coordinate_domain": "shaft_roi",
+        "default_depth_mode": "baked",
+        "domain_h_range": [
+          0.14,
+          0.94
+        ],
+        "station_count": 72,
+        "theta_count": 108,
+        "radial_count": 8,
+        "inner_fraction": 0.04,
+        "centerline_method": "cubic_smoothing_spline",
+        "frame_method": "parallel_transport",
+        "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+        "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+        "h_method": "transported_centerline_station",
+        "theta_method": "parallel_transport_periodic_angle",
+        "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+        "material_coordinate_orientation": -1,
+        "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+        "scope": "restricted_shaft_roi_not_whole_leg",
+        "asset_revision": "native_boundary_and_float64_queries",
+        "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets"
+      },
+      "raw": {
+        "tets": 322056,
+        "nonpositive": 0,
+        "det_min": 2.100210357865868e-09,
+        "overlap": {
+          "complete": true,
+          "tet_count": 322056,
+          "bvh_nodes": 131071,
+          "leaf_candidate_pairs": 54151252,
+          "strict_aabb_pairs": 21798927,
+          "positive_interior_overlap_pairs": 0,
+          "shared_vertex_overlap_pairs": 0,
+          "disjoint_vertex_overlap_pairs": 0,
+          "cross_station_bin_overlap_pairs": 0,
+          "distant_station_bin_overlap_pairs": 0,
+          "tolerance_m": 1e-10,
+          "seconds": 1.375478078,
+          "examples": [],
+          "binary_input_sha256": "e69793eb11b100cb6f7b1d3d377e3daef744179ecffdf1ed9cd4f60e3c17b5ec"
+        }
+      },
+      "material": {
+        "periodic_three_copy_overlap": {
+          "complete": true,
+          "tet_count": 966168,
+          "bvh_nodes": 262143,
+          "leaf_candidate_pairs": 282505543,
+          "strict_aabb_pairs": 5725464,
+          "positive_interior_overlap_pairs": 0,
+          "shared_vertex_overlap_pairs": 0,
+          "disjoint_vertex_overlap_pairs": 0,
+          "cross_station_bin_overlap_pairs": 0,
+          "distant_station_bin_overlap_pairs": 0,
+          "tolerance_m": 1e-10,
+          "seconds": 1.462419581,
+          "examples": [],
+          "binary_input_sha256": "7e55aef4355ef625a2c17cc61e819c60f2616a5980a7fda61988990177c8e06a"
+        },
+        "max_theta_span": 0.058177947998046875,
+        "exact_two_angular_values": true,
+        "determinant_min": -2.270846315105896e-05,
+        "determinant_max": -7.546869677101909e-06
+      },
+      "roundtrip": {
+        "samples": 1024,
+        "reference_supplied": false,
+        "max_error_m": 2.7890916759400508e-08,
+        "forward_wall_s": 0.2710443280011532,
+        "inverse_wall_s": 0.42458624199935,
+        "second_forward_coordinate_error": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "warm_public_scalar_query_ms": 1.1933505300112301,
+      "outside_inverse": [
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.13899999856948853, 0.5]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.9409999847412109, 0.5]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.5, -0.0010000000474974513]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.5, 1.0010000467300415]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Baked material coordinates must be finite"
+        }
+      ],
+      "outside_forward": [
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        }
+      ],
+      "periodic_seam_max_m": 1.1216303463586098e-08,
+      "boundary_nodes": {
+        "outer_max_abs_d": 0.0,
+        "inner_max_abs_d_minus1": 0.0,
+        "max_radial_depth_difference": -0.0723368301987648,
+        "min_h_station_difference": 0.011267602443695068
+      },
+      "pose": {
+        "0": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.9990603524720106,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 54162600,
+            "strict_aabb_pairs": 21798729,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.367938982,
+            "examples": [],
+            "binary_input_sha256": "094372be3a0ef90e3c11b79fe48a173deea8e871587871c86513d10192a554c9"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "15": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.8958552875771748,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 56668401,
+            "strict_aabb_pairs": 23446747,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.444865991,
+            "examples": [],
+            "binary_input_sha256": "45ed5a5b56ff0f4f70bf65c57c070b44c511906eaa2e429a1705318a5af8b576"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "30": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.7653435216857292,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 60679332,
+            "strict_aabb_pairs": 26051539,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.529585833,
+            "examples": [],
+            "binary_input_sha256": "2cf190dcc93e50f966d830f8505201ac0653768eac9a571f3e302801efb8c403"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "45": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.6173478160949644,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 63116587,
+            "strict_aabb_pairs": 27886407,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.64806463,
+            "examples": [],
+            "binary_input_sha256": "ceba4d620114a76283ceb6592c90cf06a8e8cfd7a5d383bd75904249def3864d"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "60": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.4619507898497964,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 60758431,
+            "strict_aabb_pairs": 25819498,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.538365814,
+            "examples": [],
+            "binary_input_sha256": "72faf347dd72addda6c92815fbcc658136c5c926dff813a589ecd18f3f7cfd10"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "75": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.3090500641722431,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 56536523,
+            "strict_aabb_pairs": 23354698,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.444780597,
+            "examples": [],
+            "binary_input_sha256": "aa975f8000aff46506a4148ca05832db8383f67b22a1ebf8be7c8cb8ab0958e2"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "90": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.16832990478929089,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 56526703,
+            "strict_aabb_pairs": 23199437,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.44873265,
+            "examples": [],
+            "binary_input_sha256": "75896cbecf8e9dfdad19fabee8389aa77767592e487fbad94db9858dc24fb2a3"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "common_SE3_material_error": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "wall_s": 16.527732807000575
+    },
+    "right": {
+      "asset_hashes": {
+        "atlas_right.npz": {
+          "actual": "067427d8c8a3575e7c022d9a9afb9c3579999769b9a92c8f46067abb48dcc781",
+          "expected": "067427d8c8a3575e7c022d9a9afb9c3579999769b9a92c8f46067abb48dcc781",
+          "match": true
+        },
+        "attachments_right.npz": {
+          "actual": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f",
+          "expected": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f",
+          "match": true
+        }
+      },
+      "metadata": {
+        "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+        "topology": "single_leg_cylindrical_chart_without_foot",
+        "proximal_station": 0.02,
+        "distal_station": 1.0,
+        "distal_boundary": "ankle_cut",
+        "foot_policy": "excluded_from_leg_chart",
+        "max_radius_m": 0.26,
+        "skin_vertex_count": 7776,
+        "skin_face_count": 15336,
+        "volume_sample_count": 62208,
+        "surface_solver": "cotan_laplace_beltrami_dirichlet",
+        "volume_solver": "tet_linear_fem_dirichlet_h_theta",
+        "volume_d_method": "normalized_skin_to_shrink_medial_distance",
+        "core_method": "cross_section_shrink_distance_transform",
+        "volume_vertex_count": 62208,
+        "volume_tet_count": 322056,
+        "proximal_anchor_count": 28,
+        "distal_anchor_count": 32,
+        "medial_curve_count": 48,
+        "medial_anchor_count": 24,
+        "source_base_atlas": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/leg_volume_coordinates/atlas_right.npz",
+        "source_layered_npz": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/ultimate_graph_refined/right_layered_laplace3d.npz",
+        "volume_point_count": 186624,
+        "native_layered_surface": true,
+        "surface_source": "finite_loop_smooth_shell",
+        "smooth_shell_level": 3,
+        "smooth_shell_vertex_count": 31785,
+        "smooth_shell_face_count": 63104,
+        "layered_metadata": {
+          "station_count": 72,
+          "theta_count": 108,
+          "radial_count": 24,
+          "inner_frac": 0.04,
+          "surface_source": "finite_loop_smooth_shell",
+          "smooth_shell_level": 3,
+          "smooth_shell_vertex_count": 31785,
+          "smooth_shell_face_count": 63104,
+          "smooth_shell_stencil_nnz": 307595,
+          "vertex_count": 186624,
+          "tet_count": 1058184,
+          "inner_fixed_count": 7776,
+          "skin_fixed_count": 7776,
+          "d_quantiles": {
+            "0.0": 0.0,
+            "0.05": 0.04849228262901306,
+            "0.25": 0.27062106132507324,
+            "0.5": 0.5468907356262207,
+            "0.75": 0.7933767437934875,
+            "0.95": 0.9657193422317505,
+            "1.0": 1.0
+          }
+        },
+        "side_face_ownership": {
+          "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+          "ipsilateral_joint_indices": [
+            2,
+            5,
+            8,
+            11
+          ],
+          "contralateral_joint_indices": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "joint_chain": [
+            "hip",
+            "knee",
+            "ankle",
+            "foot"
+          ],
+          "coordinates_modified": false,
+          "candidate_only": true,
+          "volume_arrays_are_old_and_invalid": true
+        },
+        "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+        "centerline_source": "recomputed_ipsilateral_canonical_base",
+        "mesh_type": "geometric_section_shaft_roi",
+        "coordinate_domain": "shaft_roi",
+        "default_depth_mode": "baked",
+        "domain_h_range": [
+          0.14,
+          0.94
+        ],
+        "station_count": 72,
+        "theta_count": 108,
+        "radial_count": 8,
+        "inner_fraction": 0.04,
+        "centerline_method": "cubic_smoothing_spline",
+        "frame_method": "parallel_transport",
+        "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+        "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+        "h_method": "transported_centerline_station",
+        "theta_method": "parallel_transport_periodic_angle",
+        "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+        "material_coordinate_orientation": -1,
+        "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+        "scope": "restricted_shaft_roi_not_whole_leg",
+        "asset_revision": "native_boundary_and_float64_queries",
+        "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets"
+      },
+      "raw": {
+        "tets": 322056,
+        "nonpositive": 0,
+        "det_min": 2.066916304781004e-09,
+        "overlap": {
+          "complete": true,
+          "tet_count": 322056,
+          "bvh_nodes": 131071,
+          "leaf_candidate_pairs": 54565141,
+          "strict_aabb_pairs": 21926817,
+          "positive_interior_overlap_pairs": 0,
+          "shared_vertex_overlap_pairs": 0,
+          "disjoint_vertex_overlap_pairs": 0,
+          "cross_station_bin_overlap_pairs": 0,
+          "distant_station_bin_overlap_pairs": 0,
+          "tolerance_m": 1e-10,
+          "seconds": 1.386322149,
+          "examples": [],
+          "binary_input_sha256": "289776cbb9684648b6495eba31c7e99521d93086d912e40e4c45c9eaf8398010"
+        }
+      },
+      "material": {
+        "periodic_three_copy_overlap": {
+          "complete": true,
+          "tet_count": 966168,
+          "bvh_nodes": 262143,
+          "leaf_candidate_pairs": 289778710,
+          "strict_aabb_pairs": 5640432,
+          "positive_interior_overlap_pairs": 0,
+          "shared_vertex_overlap_pairs": 0,
+          "disjoint_vertex_overlap_pairs": 0,
+          "cross_station_bin_overlap_pairs": 0,
+          "distant_station_bin_overlap_pairs": 0,
+          "tolerance_m": 1e-10,
+          "seconds": 1.477097108,
+          "examples": [],
+          "binary_input_sha256": "dec9de7f27bea987bc1896120b25f8d36e80f534501fc8c84029e3436accacc3"
+        },
+        "max_theta_span": 0.058177947998046875,
+        "exact_two_angular_values": true,
+        "determinant_min": -2.242285186807876e-05,
+        "determinant_max": -8.294706911859111e-06
+      },
+      "roundtrip": {
+        "samples": 1024,
+        "reference_supplied": false,
+        "max_error_m": 2.9665037961425524e-08,
+        "forward_wall_s": 0.26870101199892815,
+        "inverse_wall_s": 0.4209161800026777,
+        "second_forward_coordinate_error": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "warm_public_scalar_query_ms": 1.2189767900053994,
+      "outside_inverse": [
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.13899999856948853, 0.5]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.9409999847412109, 0.5]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.5, -0.0010000000474974513]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.5, 1.0010000467300415]"
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "Baked material coordinates must be finite"
+        }
+      ],
+      "outside_forward": [
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        },
+        {
+          "rejected": true,
+          "type": "ValueError",
+          "message": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+        }
+      ],
+      "periodic_seam_max_m": 1.0888726588938318e-08,
+      "boundary_nodes": {
+        "outer_max_abs_d": 0.0,
+        "inner_max_abs_d_minus1": 0.0,
+        "max_radial_depth_difference": -0.0795048177242279,
+        "min_h_station_difference": 0.011267602443695068
+      },
+      "pose": {
+        "0": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.9989154235346904,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 54567434,
+            "strict_aabb_pairs": 21927105,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.381194347,
+            "examples": [],
+            "binary_input_sha256": "d99414a8e5fb5796e627f630de9f33b57e1ab37997e4f6d5d36b8087ade547ef"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "15": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.901043871600883,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 56806942,
+            "strict_aabb_pairs": 23588540,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.456487648,
+            "examples": [],
+            "binary_input_sha256": "781b9f408c5fbf237eef76294f965439d4810a2d116651c59d1e6ac31c755908"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "30": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.7753506960286246,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 61041223,
+            "strict_aabb_pairs": 26295228,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.544769402,
+            "examples": [],
+            "binary_input_sha256": "ca04784e164892e199fac6534bef0c09beb016513f9e733dbd37ebe98b18c9c6"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "45": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.6314457719750922,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 63747415,
+            "strict_aabb_pairs": 28144390,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.61310249,
+            "examples": [],
+            "binary_input_sha256": "596403ab0b6f79ae445b94319a6ba03353c57cf1ed4415ee2a9b39a07a8122ec"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "60": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.47913878834051693,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 60985027,
+            "strict_aabb_pairs": 26052532,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.569446991,
+            "examples": [],
+            "binary_input_sha256": "654126bb02857bb506c07bd9995d1c29fa1c3d703daa81b95227ba05e91c88a8"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "75": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.3278900446474432,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 56783143,
+            "strict_aabb_pairs": 23438534,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.429352634,
+            "examples": [],
+            "binary_input_sha256": "5c9227171db00160e9ed0b9bd0c4b7def89b0664a5afcd83a958e5a37b38dfc7"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "90": {
+          "nonpositive": 0,
+          "min_det_ratio": 0.18716799638687534,
+          "overlap": {
+            "complete": true,
+            "tet_count": 322056,
+            "bvh_nodes": 131071,
+            "leaf_candidate_pairs": 56771158,
+            "strict_aabb_pairs": 23252890,
+            "positive_interior_overlap_pairs": 0,
+            "shared_vertex_overlap_pairs": 0,
+            "disjoint_vertex_overlap_pairs": 0,
+            "cross_station_bin_overlap_pairs": 0,
+            "distant_station_bin_overlap_pairs": 0,
+            "tolerance_m": 1e-10,
+            "seconds": 1.439170534,
+            "examples": [],
+            "binary_input_sha256": "7c86fd592c139e5073685a267af6c1ddc5781ab8c9d900a1f7a2fbe429f17b59"
+          },
+          "transport_error": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "common_SE3_material_error": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "wall_s": 16.52366549600265
+    }
+  },
+  "entrypoint": {
+    "scope": "shaft ROI point query and piecewise-linear tetra transport; no vessel or servo claim",
+    "atlas_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+    "attachments_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/attachments_right.npz",
+    "domain_h_range": [
+      0.14,
+      0.94
+    ],
+    "side": "right",
+    "knee_deg": 90.0,
+    "canonical_point_m": [
+      -0.1353488539217615,
+      -0.950845007677663,
+      -0.030024042290189748
+    ],
+    "material_xi": [
+      2.200000047683716,
+      0.6299999952316284,
+      0.3700000047683716
+    ],
+    "inverse_error_m": 0.0,
+    "native_tet_index": 197867,
+    "barycentric": [
+      0.09854208292978461,
+      0.18483730445780872,
+      0.3276654066229659,
+      0.3889552059894408
+    ],
+    "posed_point_m": [
+      -0.13534884812587727,
+      -0.8206308091117445,
+      -0.13682093793983444
+    ],
+    "posed_material_xi": [
+      2.200000047683716,
+      0.6299999952316284,
+      0.3700000047683716
+    ],
+    "material_transport_abs_error": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "entrypoint_outside": {
+    "rejected": true,
+    "type": "ValueError",
+    "message": "Material coordinate at input index 0 lies outside the baked coordinate domain: [1.0, 0.949999988079071, 0.5]"
+  },
+  "entrypoint_hash": "d778bbbcd4a7ad2181b596da019ad83988ac8f9ee82ddcb93795962c4ce1c7ff"
+}

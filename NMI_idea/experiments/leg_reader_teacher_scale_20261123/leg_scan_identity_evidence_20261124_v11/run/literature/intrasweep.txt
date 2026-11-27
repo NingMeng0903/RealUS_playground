@@ -1,0 +1,542 @@
+                                         Image Retrieval with Intra-Sweep Representation
+                                         Learning for Neck Ultrasound Scanning Guidance
+                                                 Wanwen Chen1*, Adam Schmidt1,2 , Eitan Prisman3 ,
+                                                            Septimiu E. Salcudean1,4
+                                         1* Department of Electrical and Computer Engineering, The University
+
+                                                       of British Columbia, Vancouver, BC, Canada.
+                                                      2 Intuitive Surgical Inc., Vancouver, BC, Canada.
+arXiv:2412.07741v1 [cs.CV] 10 Dec 2024
+
+
+
+
+                                         3 Division of Otolaryngology, Department of Surgery, The University of
+
+                                                         British Columbia, Vancouver, BC, Canada.
+                                         4 School of Biomedical Engineering, The University of British Columbia,
+
+                                                                    Vancouver, BC, Canada.
+
+
+                                                *Corresponding author(s). E-mail(s): wanwenc@ece.ubc.ca;
+
+
+                                                                              Abstract
+                                           Purpose: Intraoperative ultrasound (US) can enhance real-time visualization in
+                                           transoral robotic surgery. The surgeon creates a mental map with a pre-operative
+                                           scan. Then, a surgical assistant performs freehand US scanning during the surgery
+                                           while the surgeon operates at the remote surgical console. Communicating the
+                                           target scanning plane in the surgeon’s mental map is difficult. Automatic image
+                                           retrieval can help match intraoperative images to preoperative scans, guiding the
+                                           assistant to adjust the US probe toward the target plane.
+                                           Methods: We propose a self-supervised contrastive learning approach to match
+                                           intraoperative US views to a preoperative image database. We introduce a novel
+                                           contrastive learning strategy that leverages intra-sweep similarity and US probe
+                                           location to improve feature encoding. Additionally, our model incorporates a
+                                           flexible threshold to reject unsatisfactory matches.
+                                           Results: Our method achieves 92.30% retrieval accuracy on simulated data
+                                           and outperforms state-of-the-art temporal-based contrastive learning approaches.
+                                           Our ablation study demonstrates that using probe location in the optimization
+                                           goal improves image representation, suggesting that semantic information can
+                                           be extracted from probe location. We also present our approach on real patient
+                                           data to show the feasibility of the proposed US probe localization system despite
+                                           tissue deformation from tongue retraction.
+
+
+
+
+                                                                                  1
+     Conclusion: Our contrastive learning method, which utilizes intra-sweep sim-
+     ilarity and US probe location, enhances US image representation learning. We
+     also demonstrate the feasibility of using our image retrieval method to provide
+     neck US localization on real patient US after tongue retraction.
+
+     Keywords: Transoral robotic surgery, US Guidance, Image retrieval, Contrastive
+     learning
+
+
+
+
+1 Introduction
+With the advances in medical robot technology, trans-oral robotic surgery (TORS)
+using the da Vinci surgical robot has become a recommended treatment for early-stage
+oropharyngeal cancers under the National Comprehensive Cancer Network guide-
+lines [1]. TORS has resulted in similar oncological cure rates while providing improved
+functional outcomes compared to radiotherapy [2, 3]. During TORS, surgeons need to
+accurately remove the cancer. This requires balancing maintaining a negative margin
+while avoiding critical structures and preserving as much healthy tissue as possible.
+TORS is a challenging procedure because of the proximity of cancerous tumors to sen-
+sitive anatomy, including major vasculature. Surgeons can only refer to pre-operative
+MRI and/or CT, but pre-operative imaging can not show the tissue deformation
+caused by tongue retraction and surgery tools. Consequently, real-time image guid-
+ance is needed to display the patient’s internal anatomy to enhance the surgeon’s
+visualization of both the tumor margin and critical structures. This can help the sur-
+geon optimize the resection margin and reduce the risk of postoperative hemorrhage.
+Such image guidance has been proposed using X-ray C-arms and cone-beam CT [4, 5]
+or US [6]. Oropharyngeal ultrasound (US) [7, 8] is a new imaging technique recently
+introduced to guide TORS. Compared to CT, it has better portability, lower cost, and
+does not introduce harmful radiation.
+    The clinical workflow for US-guided TORS requires collaboration between the
+surgeon and a surgical assistant. After the anesthetization, the surgeon and the surgical
+assistant perform a thorough pre-operative US scan together to identify important
+views that visualize tumors and critical structures. During the surgery, the surgeon
+operates the surgical robot remotely and can only see the 2D US in the console.
+The surgical assistant sits by the patient to perform real-time freehand US scanning.
+Thus, the surgeon needs to communicate the target US plane verbally. Moore et al. [9]
+proposed using the robotic arm on the da Vinci to let the surgeon control the US
+probe directly. However, obtaining regulatory approval for such an off-label use of the
+da Vinci system could be difficult. Therefore, at this point, freehand scanning by a
+surgical assistant is still preferable for safety concerns. However, US has a limited field
+of view and US scanning has a steep learning curve. The surgical assistants are usually
+surgical residents or fellows instead of radiologists, thus a US scanning guidance system
+can further ease their mental load.
+    Previous work in US scanning guidance usually predicts the current US probe loca-
+tion or ideal US probe movement to a target plane. Grimwood et al. [10] provide US
+
+
+                                             2
+operator assistance in the form of motion directions instead of precise target probe
+movement. Droste et al. [11] developed a model to predict target rotation with US and
+inertial measurement unit (IMU) signals as extra inputs for obstetric scanning. Zhao
+et al. [12] used a keypoint detection and matching model to predict probe motion for
+fine adjustment in standard plane search. Most recently, Men et al. [13] developed a
+model that can predict pose and scanning guidance without external sensors. How-
+ever, previous work was mostly applied to echocardiography and fetal US, in which
+the standard planes are well defined. Head and neck US scans do not have a similar
+definition of the standard plane; the surgeons need to examine different views during
+the surgery for a more comprehensive understanding of the anatomy near the tumor.
+    In this paper, we propose using US image retrieval for US probe localization and
+guidance. Image retrieval is the task of finding the most similar image in an image
+database. In our work, the image database comprises the reference frames and their
+probe locations in the pre-operative scans. Compared with estimating and predicting
+probe location, image retrieval models have the potential to generalize across different
+patients since they use patient-specific reference images along with each patient’s
+database. However, image retrieval is not widely applied in US scanning guidance. In
+the limited prior work, Zhao et al. [14] have applied image (landmark) retrieval in
+fetal US scanning. However, their data were generated through simulation, without
+considering the information embedded in the actual US scan videos. Yeung et al. [15]
+resliced 3D US into 2D given a simulated probe location and trained the model to
+predict the probe location using supervised learning. However, the real 2D US and the
+resliced 2D US have different appearances, which can impact the model performance,
+so in their follow-up work [16], they fine-tuned the previous model on freehand 2D US
+using cycle consistency to reduce the domain gap.
+    Unlike in prior work, in this paper, we propose a method that does not require
+supervised learning and performs 2D-3D US matching by directly inferring the origi-
+nal freehand 2D US. This allows us to better handle the different image appearances
+between actual freehand 2D US and resliced 2D US from 3D images. We utilize a
+novel self-supervised contrastive learning to learn a generalizable image representa-
+tion for image retrieval in neck US. Our contributions include: (1) We present a novel
+contrastive learning approach that leverages intra-sweep similarity to enhance repre-
+sentation learning for improved image retrieval in ultrasound sweep videos. Specifically,
+our method utilizes the temporal sequence of ultrasound image frames and probe
+positions to allow the model to capture semantic similarities between frames without
+the need for manual labeling; (2) To the best of our knowledge, this is the first work
+demonstrating the feasibility of using image retrieval in neck US localization system
+on real patient data.
+
+2 Methods
+Image retrieval for US scanning guidance. The proposed workflow of using
+image retrieval for US scanning guidance is shown in Figure 1. Before the surgery,
+the surgeon and the surgical assistant perform pre-operative tracked US scanning to
+collect the image database. During the surgery, the surgeon can select the target view
+
+
+
+                                           3
+Fig. 1 The proposed workflow of using image retrieval in US scanning guidance. The surgeon can
+select the target view, and our method will match the current US image to the most similar view in
+the database to indicate the current probe location and the desired probe motion. This can provide
+the US scanning guidance to the surgical assistant, without using an external tracking system during
+the surgery.
+
+
+from the database, and our model will retrieve the closest frame of the current view
+from the database. The relative probe location between the retrieved frame and the
+target frame can be used to indicate the preferred probe motion. Our main goal is to
+indicate the large motion required by the operator.
+    Problem description. We denote the sweeps as S n = {I0n , I1n , ..., ITnn }, where Itn
+is the frame at time t in sequence S n , and Tn is the length of the nth video sweeps. The
+frame encoder, a deep learning model F , will project the frame Itn into a latent space
+znt = F (Itn ). Before the surgery, an image sequence S pre is collected on the patient.
+Given a new US image I intra , the feature encoder F should retrieve the most similar
+image I pre ∈ S pre based on the maximum similarity in the latent space in Eq. 1.
+
+                            I pre = arg max
+                                          pre
+                                              < F (I intra ), F (I) >                           (1)
+                                        I∈S
+
+
+Given unlabelled training data {S 1 , S 2 , ..., S N }, our method learns the model F needed
+to evaluate the similarity between the latent embeddings of frames I.
+    Contrastive learning. Contrastive learning is a data-efficient method to train a
+feature encoder. The high-level goal of contrastive learning is to maximize the sim-
+ilarity between the embeddings of positive (or similar) pairs while minimizing the
+similarity between the embeddings of negative (or dissimilar) pairs. Our frame-wise
+representation learning method is summarized in Figure 2. It is inspired by the gen-
+eral contrastive learning framework CLIP [17]. CLIP treats representation learning as
+a view retrieval problem by training the encoders to predict the correct pairings of a
+batch of training examples, and was originally applied in image-text alignment. For
+image-image alignment, we use the optimization goal in SimCLRv2 [18]. The feature
+
+
+
+
+                                                 4
+Fig. 2 Summary of our intra-sweep training strategy. The image pairs are sampled from one US
+sweep and augmented to different views, and the image encoder will predict the frame embedding.
+The dot product of the embedding is used to evaluate the embedding similarity. A dustbin threshold
+is concatenated to the dot similarity to generate the final score matrix.
+
+
+encoder needs to learn a consistent representation of the same image under transfor-
+mations; therefore, we use a combination of data augmentation on each example twice
+to create two sets of corresponding views, as illustrated in Fig. 2.
+    The main difference between our method and CLIP and SimCLR is that we con-
+sider the intra-sweep semantic similarity when we draw the samples from the training
+data. CLIP and SimCLR were proposed for large-scale RGB image datasets instead of
+videos. In their methods, different images are treated as negative pairs and the seman-
+tic similarity between images is not considered. However, this naive method is not
+optimal for US because US images can capture similar views. Another naive method
+is to treat the frames from the same video as positive pairs, and the frames from dif-
+ferent videos as negative pairs. However, operators can revisit the same anatomy in
+different scans or cover different anatomies in the same sweep. Thus this method fails
+to capture the semantic similarities and differences between scans.
+    We propose a new method to consider the semantic similarity within US sweeps to
+guide contrastive learning by utilizing the probe location during the scan. The probe
+location is only required in training and is not required during test time. In training,
+we have probe locations recorded by an external optical tracker. The hypothesis is that
+the semantic meaning of US images, i.e., the anatomy structures inside the images,
+can be embedded as a function of the US probe location. To simplify the problem,
+we did not consider the probe rotation in this study. In general, the surgeon and the
+assistant will keep the probe normal to the skin surface. Therefore we only consider the
+probe translation in this study and will add probe orientation in future work. Instead
+of sampling images from different sweeps in the training stage, we sample the images
+from the same sweep. The image pairs are positive if the probe location distance is
+smaller than a pre-defined threshold, otherwise, they will be negative. If there are
+multiple positive pairs, the image pair with the smallest distance is positive, and the
+rest will be negative. Another difference between our model and CLIP/SimCLR is
+that we add a mechanism to reject the retrieval when the model is not confident about
+the retrieved results, which is important in clinical applications. We add a learnable
+
+
+                                                5
+threshold to reject the retrieval if the embedding similarity is lower than the threshold.
+This is referred to as a dustbin.
+     To learn the intra-sweep frame representation, in each batch, we sample two dif-
+ferent batches of frames from the same sweep. This is to enable the training of the
+dustbin, so that the model learns a threshold value of the embedding similarity to
+reject uncertain retrieval. We first sample b samples Batch1 = {Itn1 , ..., Itnb } from sweep
+S n , and choose 75% of the samples in Batch1 for Batch2 . We then sample another
+25% batch size number of samples not in Batch1 to add them into Batch2 . We then
+apply random image augmentation on Batch1 and Batch2 . The feature encoder F
+                                                 1           2
+encodes the frames to generate embeddings zbatch       and zbatch  . We calculate the dot
+product between the feature embeddings to generate the matching score matrix. We
+choose not to normalize the embedding before calculating the similarity as suggested
+in SuperGlue [19], because the feature magnitude may encode the confidence of the
+features, and in our experiments, not normalizing the embedding leads to better con-
+vergence. We then concatenate the dustbin threshold to the score matrix to generate
+the final score matrix M . We use the symmetric cross-entropy loss in CLIP [17], as
+described in Eq. 2. CE is the abbreviation of cross-entropy loss. τ is a temperature
+parameter to soften the cross-entropy loss. The gt1to2 is the label of positive/nega-
+tive pairs from batch1 to batch2 , and the gt2to1 is the label of positive/negative pairs
+from batch2 to batch1 . We also add a triplet loss in Eq. 3 to further pull and push the
+representation based on the probe location distance d.
+
+
+            XB1                                    B2
+                                                   X
+    LSCE = [    CE(M (. . . , i) × eτ , gt1to2 ) +    CE(M (j, . . . ) × eτ , gt2to1 )]/2   (2)
+                i                                    j
+
+
+                                   B1 X
+                                   X  B2
+                      Ltriplet =           dij × Mij − (1 − dij ) × Mji                     (3)
+                                   i   j
+
+
+3 Experiments
+Dataset: We used a private dataset containing 2D US sweeps collected from 19
+patients who underwent TORS from January 2022 to October 2023 at the Vancouver
+General Hospital (Vancouver, BC, Canada). This study received ethics approval from
+the UBC Clinical Research Ethics Board (H19-04025). A BK3500 and a 14L3 linear
+2D transducer (BK Medical, Burlington, MA) were used in the operation room for US
+imaging and a Polaris Spectra (Northern Digital, ON, Canada) was used to track the
+US transducer. PLUS [20] was used to record the US videos. The image depth is 4 or
+5 cm at 9 MHz, with a frame rate of 5.76 ± 0.89 fps. For each patient, the US scan
+included the neck on the cancerous side, before and after the tongue retraction. The
+summary of data is shown in Table 1.
+    Implementation details: The feature encoder includes a CNN backbone and a
+MLP model. The CNN backbone is a ResNet18 without the last pooling and fully
+connected layers The MLP model includes 4 linear layers following ReLU activation
+
+
+                                               6
+         Table 1 Dataset summary.
+
+           Dataset     Number of Patients   Number of Videos   Number of Frames
+           Training            9                  42                 5353
+          Validation           4                  24                 2638
+           Testing             5                  27                 3475
+
+
+and 1DBatchNorm. The number of neurons at each layer is 512. The models were
+trained on a 16GB Nvidia Tesla V100 and implemented in Python 3.8, PyTorch-
+2.1.0, and CUDA-11.8. The weight of the encoder was initialized randomly. The Adam
+optimizer was used with a learning rate of 1e-3, and a StepLR scheduler was used
+with step size 100 and γ = 0.95. The maximum epoch is 300, and the models with the
+lowest loss on the validation set were selected. The sampling size for each batch is 30.
+The temperature parameter τ is set as 0.1. The distance threshold for a positive pair
+is 1cm, and the dustbin value was initialized as 0. The data augmentation includes
+random affine transformation, resize crop, and color jittering.
+
+4 Results and Discussion
+Simulation study. For each testing sweep, we randomly sampled 50 frames from
+the sweep and transformed them using data augmentation different from training for
+testing. To simulate the change of probe orientation, we concatenated the sampled
+frames with 30 frames temporally before and after it to form a “mini-volume” and
+performed 3D affine augmentation, instead of a pure 2D augmentation. The transform
+can introduce out-of-plane views. We compare our method with four baselines. The
+first is to retrieve the image with the highest normalized cross-correlation (NCC). The
+second is inter-sweep contrastive learning (inter-sweep CL) using symmetric cross-
+entropy loss. The training dataset consists of image frames obtained from the training
+US sweeps, and the batches are randomly sampled from this dataset. Augmented
+views create a positive pair when they originate from the same image. This is to com-
+pare our intra-sweep strategy with regular inter-sweep sampling. The third baseline
+is Intra-Video Positive Pairs (IVPP) [21], a state-of-the-art intra-video representa-
+tion learning method. IVPP adds the sample weight based on the temporal difference
+in the video to penalize mismatched positive pairs rather than negative pairs. The
+sampling weight is given by w = (δt − |t2 − t1 |)/(δt + 1), where δt is the maximum
+separation, in the number of frames, in a positive pair. We set δt = 8. The fourth
+baseline method is distance-IVPP, which is modified from IVPP to use the differ-
+ence between the probe locations of the two samples as the sample weight. We set
+the sampling weight as w = (δprobe − ||p2 − p1 ||2 )/(δprobe + 1), where p1 , p2 repre-
+sent the probe location at t1 and t2 . We set δprobe = 10mm. We didn’t compare our
+method with SimCLRv2 because its loss function can not be applied to the dustbin.
+We report the retrieval success rate. Image retrieval is successful if the probe location
+difference between the ground truth and the retrieved image is smaller than 15mm,
+as defined in [14]. We also report the average L2 distance of the probe location dif-
+ference for the retrieval attempts that are not rejected. The quantitative results are
+
+
+                                            7
+     Table 2 Quantitative results based on the simulation study for baseline comparisons.
+
+         Methods         Retrieval success rate    Probe distance (mm)       Rejected retrieval
+           NCC                  68.81%                   13.66 ± 17.85            0.00%
+      Inter-sweep CL            90.67%                    6.14 ± 15.24            0.00%
+         IVPP [21]              83.26%                    8.50 ± 17.11            3.19%
+      Distance-IVPP             83.66%                    8.19 ± 14.86            1.85%
+           Ours                 92.30%                   5.02 ± 10.89             0.00%
+
+
+    Table 3 Ablation study of the main components in our proposed loss. SCE: Symmetric
+    cross-entropy loss, P1: With probe location as positive/negative indicator, P2: triplet loss.
+
+                          Retrieval success rate       Probe distance (mm)   Rejected retrieval
+        SCE loss                 86.03%                   6.52 ± 10.54             5.11%
+          +P1                    89.26%                   5.77 ± 13.63             0.00%
+          +P2                    87.46%                   6.58 ± 13.70             2.52%
+      +P1+P2 (Ours)             92.30%                   5.02 ± 10.89              0.00%
+
+
+shown in Table 2. Our method outperforms the baseline methods, achieving the high-
+est success rate in image retrieval and the lowest probe localization error. Compared
+to inter-sweep CL, our approach effectively leverages the probe location’s weak sig-
+nals to enhance the learned feature encoder. Notably, the inter-sweep CL outperforms
+intra-sweep sample weighting methods IVPP and distance-IVPP using the intra-sweep
+sampling strategy. We hypothesize that the symmetric cross-entropy loss enforces one-
+to-one matches to recognize whether the transformed images originate from the same
+sample. Therefore, it penalizes the image pairs that actually appear similar but are
+negative matches. Though IVPP and distance-IVPP reduce the penalty on negative
+pairs, it may not be efficient enough, potentially leading the model to converge to a
+sub-optimal solution in our data. In contrast, the inter-sweep CL can draw samples
+from different sweeps, reducing the likelihood of encountering multiple similar samples
+within a batch. Thus, the one-to-one matching still enables the model to learn a well-
+representative embedding. The results highlight the critical role of the optimization
+goal in contrastive representation learning. We provide a visualization of the retrieval
+results of our method in Figure 3. We can see that the successfully retrieved images
+localize the correct anatomy. We also demonstrate inaccurate retrieval results, where
+the models are confused by similar structures in the image.
+    We conduct an ablation study on our proposed method to evaluate the necessity of
+each design stage. The results in Table 3 show that using the probe location to define
+positive/negative pairs improves the symmetric cross-entropy loss, meaning that the
+probe location difference can be a good indicator of frame-level similarity. The triplet
+loss improves the symmetric cross-entropy loss because it can pull the representation
+of positive pairs together and push the representation of negative pairs away.
+    Patient study. We provide a proof-of-concept demonstration of intra-operative
+US probe localization using image retrieval as shown in Figure 4. Tongue retraction is
+a procedure to pull out the patient’s tongue to enhance the exposure of the oropharynx
+but will cause large tissue deformation. The database is US sweep before the tongue
+
+
+                                                   8
+Fig. 3 Example of the retrieved frames using our proposed method. The first four columns show
+correct retrievals and the last three columns show inaccurate matches.
+
+
+
+
+Fig. 4 Queries are samples from the post-retraction US, and the database is the pre-retraction US.
+The blue trajectory is the scanning trajectory in the pre-retraction scan, and the red dot is the
+localized probe location based on the image retrieval.
+
+
+retraction, and the query images are from the US sweep collected after the tongue
+retraction. The results in Figure 4 show that the retrieved images contain similar
+anatomy, and we can use the retrieved images to roughly localize the query image.
+Figure 5 demonstrates our proposed US localization system.
+    Limitations and future work. While we investigated one dataset and one back-
+bone, the promising results demonstrated the feasibility of our method. In the future,
+we will work on exploring additional feature encoder architectures to enhance perfor-
+mance and generalizability. To improve model performance, we will explore adding
+3D information into the model, since 2D images do not contain information in the
+elevational direction. While we only report the quantitative results in a simulation
+study - consistent with prior research [14], the results inform us of the next steps
+towards clinical translation. In this study, we provide only qualitative results on the
+real-world patient study due to the challenges in directly comparing probe distance
+
+
+                                                9
+Fig. 5 Illustration of the TORS guidance application. The US image is after tongue retraction, and
+the 3D patient model is extracted from pre-operative CT and aligned with the pre-operative 3D US.
+The segmentation (yellow: larynx cartilage, green: carotid, red: jugular vein) is roughly aligned with
+the 2D US.
+
+
+before and after tongue retraction. However, this study serves as an important proof-
+of-concept, laying the groundwork for future clinical investigations and the refinement
+of our method under real-world conditions.
+
+5 Conclusion
+In this work, we explored the use of image retrieval to guide neck US scanning.
+We introduced a novel self-supervised contrastive learning strategy that utilizes
+intra-sweep similarity and probe location information. Our method enhances the per-
+formance of the feature encoder and outperforms the state-of-the-art intra-sweep
+similarity-based representation learning methods. Furthermore, we are the first work
+demonstrating the feasibility of localizing the US probe in neck US scans by image
+retrieval and referring to the 2D US only, highlighting the potential of our approach
+for practical clinical application.
+Acknowledgements. The work is supported by NSERC Discovery Grant and
+Charles Laszlo Chair in Biomedical Engineering held by Dr. Salcudean, and by VCHRI
+Innovation and Translational Research Awards and the University of British Columbia
+Department of Surgery Seed Grant held by Dr. Prisman.
+
+Declarations
+Competing interests: The authors have no conflicts of interest. Ethics: Institu-
+tional ethics approval (#H19-04025) was obtained for this study. Informed consent
+was obtained from all participants. The procedures used in this study adhere to the
+tenets of the Declaration of Helsinki.
+
+References
+ [1] Adelstein, D., Gillison, M.L., Pfister, D.G., Spencer, S., Adkins, D., Brizel,
+     D.M., Burtness, B., Busse, P.M., Caudell, J.J., Cmelak, A.J., et al.: Nccn guide-
+     lines insights: head and neck cancers, version 2.2017. Journal of the National
+     Comprehensive Cancer Network 15(6), 761–770 (2017)
+
+
+                                                 10
+ [2] Quan, D.L., Sukari, A., Nagasaka, M., Kim, H., Cramer, J.D.: Gastrostomy
+     tube dependence and patient-reported quality of life outcomes based on type of
+     treatment for human papillomavirus-associated oropharyngeal cancer: systematic
+     review and meta-analysis. Head & Neck 43(11), 3681–3696 (2021)
+
+ [3] Lechner, M., Liu, J., Masterson, L., Fenton, T.R.: Hpv-associated oropharyngeal
+     cancer: epidemiology, molecular biology and clinical management. Nature reviews
+     Clinical oncology 19(5), 306–327 (2022)
+
+ [4] Liu, W.P., Richmon, J.D., Sorger, J.M., Azizian, M., Taylor, R.H.: Augmented
+     reality and cone beam ct guidance for transoral robotic surgery. Journal of robotic
+     surgery 9, 223–233 (2015)
+
+ [5] Kahng, P.W., Wu, X., Ramesh, N.P., Pastel, D.A., Halter, R.J., Paydarfar, J.A.:
+     Improving target localization during trans-oral surgery with use of intraoperative
+     imaging. International Journal of Computer Assisted Radiology and Surgery 14,
+     885–893 (2019)
+
+ [6] Chen, W., Kalia, M., Zeng, Q., Pang, E.H., Bagherinasab, R., Milner, T.D., Sabiq,
+     F., Prisman, E., Salcudean, S.E.: Towards transcervical ultrasound image guid-
+     ance for transoral robotic surgery. International Journal of Computer Assisted
+     Radiology and Surgery 18(6), 1061–1068 (2023)
+
+ [7] Green, E.D., Paleri, V., Hardman, J.C., Kerawala, C., Riva, F.M., Jaly, A.A.,
+     Ap Dafydd, D.: Integrated surgery and radiology: trans-oral robotic surgery
+     guided by real-time radiologist-operated intraoral ultrasound. Oral and Maxillo-
+     facial Surgery 24, 477–483 (2020)
+
+ [8] Chang, C.-C., Wu, J.-L., Hsiao, J.-R., Lin, C.-Y.: Real-time, intraoperative,
+     ultrasound-assisted transoral robotic surgery for obstructive sleep apnea. The
+     Laryngoscope 131(4), 1383–1390 (2021)
+
+ [9] Moore, R., Yeung, R., Chen, W., Zeng, Q., Prisman, E., Salcudean, S.: Enabling
+     extracorporeal ultrasound imaging with the da vinci robot for transoral robotic
+     surgery: a feasibility study. International Journal of Computer Assisted Radiology
+     and Surgery, 1–8 (2024)
+
+[10] Grimwood, A., McNair, H., Hu, Y., Bonmati, E., Barratt, D., Harris, E.J.:
+     Assisted probe positioning for ultrasound guided radiotherapy using image
+     sequence classification. In: International Conference on Medical Image Computing
+     and Computer-Assisted Intervention, pp. 544–552 (2020). Springer
+
+[11] Droste, R., Drukker, L., Papageorghiou, A.T., Noble, J.A.: Automatic probe
+     movement guidance for freehand obstetric ultrasound. In: Medical Image Com-
+     puting and Computer Assisted Intervention–MICCAI 2020: 23rd International
+     Conference, Lima, Peru, October 4–8, 2020, Proceedings, Part III 23, pp. 583–592
+     (2020). Springer
+
+
+                                          11
+[12] Zhao, C., Droste, R., Drukker, L., Papageorghiou, A.T., Noble, J.A.: Uspoint:
+     Self-supervised interest point detection and description for ultrasound-probe
+     motion estimation during fine-adjustment standard fetal plane finding. In:
+     International Conference on Medical Image Computing and Computer-Assisted
+     Intervention, pp. 104–114 (2022). Springer
+
+[13] Men, Q., Guo, X., Papageorghiou, A.T., Noble, J.A.: Pose-guidenet: Automatic
+     scanning guidance for fetal head ultrasound from pose estimation. arXiv preprint
+     arXiv:2408.09931 (2024)
+
+[14] Zhao, C., Droste, R., Drukker, L., Papageorghiou, A.T., Noble, J.A.: Visual-
+     assisted probe movement guidance for obstetric ultrasound scanning using
+     landmark retrieval. In: Medical Image Computing and Computer Assisted
+     Intervention–MICCAI 2021: 24th International Conference, Strasbourg, France,
+     September 27–October 1, 2021, Proceedings, Part VIII 24, pp. 670–679 (2021).
+     Springer
+
+[15] Yeung, P.-H., Aliasi, M., Papageorghiou, A.T., Haak, M., Xie, W., Namburete,
+     A.I.: Learning to map 2d ultrasound images into 3d space with minimal human
+     annotation. Medical Image Analysis 70, 101998 (2021)
+
+[16] Yeung, P.-H., Aliasi, M., Haak, M., Consortium, I.-s., Xie, W., Namburete, A.I.:
+     Adaptive 3d localization of 2d freehand ultrasound brain images. In: International
+     Conference on Medical Image Computing and Computer-Assisted Intervention,
+     pp. 207–217 (2022). Springer
+
+[17] Radford, A., Kim, J.W., Hallacy, C., Ramesh, A., Goh, G., Agarwal, S., Sastry, G.,
+     Askell, A., Mishkin, P., Clark, J., et al.: Learning transferable visual models from
+     natural language supervision. In: International Conference on Machine Learning,
+     pp. 8748–8763 (2021). PMLR
+
+[18] Chen, T., Kornblith, S., Norouzi, M., Hinton, G.: A simple framework for
+     contrastive learning of visual representations. In: International Conference on
+     Machine Learning, pp. 1597–1607 (2020). PMLR
+
+[19] Sarlin, P.-E., DeTone, D., Malisiewicz, T., Rabinovich, A.: Superglue: Learning
+     feature matching with graph neural networks. In: Proceedings of the IEEE/CVF
+     Conference on Computer Vision and Pattern Recognition, pp. 4938–4947 (2020)
+
+[20] Lasso, A., Heffter, T., Rankin, A., Pinter, C., Ungi, T., Fichtinger, G.: PLUS:
+     Open-source toolkit for ultrasound-guided intervention systems. IEEE Transac-
+     tions on Biomedical Engineering 61, 2527–2537 (2014)
+
+[21] VanBerlo, B., Wong, A., Hoey, J., Arntfield, R.: Intra-video positive pairs in self-
+     supervised learning for ultrasound. Frontiers in Imaging 3 (2024) https://doi.org/
+     10.3389/fimag.2024.1416114
+
+
+
+                                           12
+

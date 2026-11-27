@@ -1,0 +1,110 @@
+V4 whole-route deterministic forensic replay
+============================================
+
+Source tape:
+  ../leg_scan_reader_feedback_20261123_v4/run/action_results.json
+Frozen reader:
+  ../leg_scan_reader_feedback_20261123_v4/run/reader_freeze.json
+Replay entrypoint:
+  ../../replay_v4.py
+
+Selection (from the full 256-case natural groin_to_distal_calf cohort):
+  oracle old-pool rescue versus equal-time hold: 22 cases
+  MPC strict success versus oracle strict loss: 25 cases
+  union: 45 cases; intersection: 2 cases
+  all 45 cases were replayed with the archived case seeds, actual/proof tapes,
+  recorded action names, frozen fixed_graph reader, and the v4 engine.
+
+Replay verification:
+  Every archived actual/proof score field and selected truth-role ID matched
+  deterministic replay (float32 tolerance 2e-5 relative/absolute). Public
+  candidate IDs are [frame_index, slot] and are stored separately; hidden truth
+  labels appear only in score-only fields and region diagnostics.
+
+Actual-tape strict comparison on this diagnostic union (not the full cohort):
+  oracle_review versus equal_time_hold: net +2, rescues 2, losses 0
+  oracle_review versus mpc: net -23, rescues 2, losses 25
+These are not replacements for the full-cohort v4 totals; they describe only
+the selected forensic union.
+
+Public old-pool decision transition before -> after review (actual tape):
+  mpc: same_id_no_change 45
+  equal_time_hold: same_id_probability_update 35, replacement_adopted 6,
+                   replacement_remains_abstention 3, adoption_same_id 1
+  oracle_review: replacement_adopted 23, same_id_probability_update 14,
+                 adoption_same_id 7, replacement_remains_abstention 1
+The per-case records also include after_review -> terminal transitions.
+
+Corrected joint diagnostic definition:
+  joint = (old candidate chosen from frames < prefix_frame_count is correct at
+  terminal) AND (every region with numeric index > prefix_region is correctly
+  delivered) AND (scan completes within the recorded time/distance budget).
+This is a diagnostic partition of the route, not a causal claim about timing or
+association. Actual/proof joint counts over the 45-case union are:
+  mpc:            21 / 8 / 9
+  equal_time_hold: 2 / 8 / 9
+  oracle_review:   4 / 10 / 13
+where the order is actual / proof_0 / proof_1. All 45 cases completed within
+the budget in each arm; rejoin pose, tick, elapsed time, terminal pose and
+distance are recorded separately per arm.
+
+Output index:
+  summary.json
+  case_v4_search_test_*.json (45 files listed in summary.json)
+
+Additional continuation and group audit:
+  "Terminal old-pool persistence" means at least one public pre-review
+  candidate [frame_index, slot] remains in the terminal old-pool candidate set;
+  it is not a truth-correctness claim.
+  Each case/arm/tape now stores the exact post-rejoin suffix sequence as
+  (station, sector, tick), its full pose+time SHA-256, and a pose-only SHA-256.
+  Exact pose+time and pose-only echoes are compared pairwise.  Hold and oracle
+  use identical suffix schedules in all selected cases; their physical pose
+  schedules therefore echo exactly.  Against MPC, actual pose-only schedules
+  echo in 20/22 rescue cases and 23/25 MPC-loss cases; full pose+time echoes
+  are zero because review/hold consume a different elapsed tick boundary.
+
+Separate 22-case old-review-rescue group (actual tape):
+  terminal old-pool persistence / final old section correct / suffix all correct
+  / strict / joint:
+    MPC             22 / 5 / 3 / 3 / 0
+    equal-time hold 22 / 5 / 3 / 1 / 1
+    oracle review   22 / 21 / 3 / 3 / 3
+  Oracle-vs-hold region audit: common failures 11 at-or-before-prefix and 29
+  after-prefix; newly lost in oracle 0 and 0; newly rescued in oracle 11 and 0.
+  After-review old winner vs hold: replacement oracle-accepted/hold-abstain 11,
+  same-ID oracle-accepted/hold-abstain 7, replacement both accepted 4.
+
+Separate 25-case MPC-success/oracle-loss group (actual tape):
+  terminal old-pool persistence / final old section correct / suffix all correct
+  / strict / joint:
+    MPC             25 / 21 / 25 / 25 / 21
+    equal-time hold 25 / 22 / 1  / 0  / 1
+    oracle review   25 / 24 / 1  / 0  / 1
+  Oracle-vs-MPC region audit: common failures 0 at-or-before-prefix and 0
+  after-prefix; newly lost in oracle 3 at-or-before-prefix (1 wrong, 2
+  abstain) and 28 after-prefix (4 wrong, 24 abstain).  Proof-tape breakdowns,
+  per-region counts and not-captured/abstain/wrong status pairs are in the
+  separate_group_reports field of summary.json.
+  After-review old winner vs hold: same-ID both accepted 17, same-ID oracle
+  accepted/hold abstained 1, replacement oracle accepted/hold abstained 2,
+  replacement both abstained 1, replacement both accepted 4.
+
+All 45 cases completed within the recorded budget in every arm/tape.  These
+counts separate pre-existing/common failures, public abstention, wrong delivery
+and acquisition schedule; they do not infer that a low joint count is caused by
+new downstream damage.  No additional smoke rows are included in this report.
+
+Prescribed-suffix acquisition timing diagnostic, actual tape
+
+The native equal-time hold and active review acquired identical raw centroid
+and quality sequences after rejoin in both selected groups. The controlled
+replay then used the exact original MPC pose sequence and only changed its
+absolute sampling time by the review duration. No extra image was given to
+the frozen reader on this delay-only arm. It reproduced all 28 post-prefix
+region losses on the same case and region IDs in the selected 25 cases.
+Adding the hold history or review history to the same delayed suffix added
+zero subsequent region losses or rescues. The selected 22 cases had eight
+suffix losses and eight rescues under delay alone relative to MPC, with no
+suffix changes from extra hold or review history at the delayed boundary.
+This counterfactual covers the archived actual tape on the selected layouts.

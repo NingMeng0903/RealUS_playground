@@ -338,7 +338,17 @@ def calibration_from_scene_camera(
     camera_from_world, world_from_camera = build_camera_from_scene_camera(camera)
     K = intrinsics
     if K is None:
-        K = build_intrinsics_from_fov(width=int(camera.res[0]), height=int(camera.res[1]), fov_deg=float(camera.fov))
+        camera_metadata = dict(camera.metadata)
+        authored_K = camera_metadata.get("intrinsics")
+        if authored_K is not None:
+            if isinstance(authored_K, dict):
+                authored_K = authored_K.get("K")
+            K = np.asarray(authored_K, dtype=np.float64).reshape(3, 3)
+        else:
+            fov_h = float(camera.fov)
+            if camera_metadata.get("fov_axis", "vertical") == "vertical":
+                fov_h = math.degrees(2 * math.atan(math.tan(math.radians(fov_h) / 2) * camera.res[0] / camera.res[1]))
+            K = build_intrinsics_from_fov(width=int(camera.res[0]), height=int(camera.res[1]), fov_deg=fov_h)
     return CameraCalibration(
         camera_id=camera.name,
         image_size=(int(camera.res[0]), int(camera.res[1])),

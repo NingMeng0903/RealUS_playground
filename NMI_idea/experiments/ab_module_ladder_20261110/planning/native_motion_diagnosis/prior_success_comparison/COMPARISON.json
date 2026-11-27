@@ -1,0 +1,1090 @@
+{
+  "scope": "Read-only comparison; no native replay or controller/source edits by this worker",
+  "input_hashes": {
+    "old_phase2_inputs": "7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8",
+    "baseline_v2_results": "97e747c150f533da92d37357bac441a523f3868cfe24154e3937144cb155aa3c",
+    "new_results": "102acc248945aeeca6c45cb8c21c62c007fef30e84902263374c4c3344493caf"
+  },
+  "source_hash_comparison": {
+    "prior_sealed_hashes": {
+      "native_binary": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+      "controller_yaml": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+      "loop": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+      "qp_builder": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+      "kinematics_urdf": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+      "collision_urdf": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+      "collision_pairs": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+      "qp_replay": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+      "scan_replay": "2ca8647ec664836f71072097d82d645e0c0a5f5e736e69537b50ecb9cc1c9461",
+      "scan_tracking_profile": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+      "scan_reference": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+    },
+    "current_on_disk_hashes": {
+      "native_binary": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+      "controller_yaml": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+      "loop": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+      "qp_builder": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+      "kinematics_urdf": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+      "collision_urdf": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+      "collision_pairs": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+      "qp_replay": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+      "scan_replay": "0db2bf096672c4d073aff3bff4c69749436dbc0bd4ae8fcced2e32a3d98d5e6a",
+      "scan_tracking_profile": "375d7a2f274f03202e86b9ee88265cafadb1c72426b1eb0225b2066e2c902abf",
+      "scan_reference": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+    },
+    "match": {
+      "native_binary": true,
+      "controller_yaml": true,
+      "loop": true,
+      "qp_builder": true,
+      "kinematics_urdf": true,
+      "collision_urdf": true,
+      "collision_pairs": true,
+      "qp_replay": true,
+      "scan_replay": false,
+      "scan_tracking_profile": false,
+      "scan_reference": true
+    },
+    "all_current_on_disk_hashes_match": false,
+    "lower_level_current_hashes_match": {
+      "native_binary": true,
+      "controller_yaml": true,
+      "loop": true,
+      "qp_builder": true,
+      "kinematics_urdf": true,
+      "collision_urdf": true,
+      "collision_pairs": true,
+      "qp_replay": true,
+      "scan_reference": true
+    },
+    "lower_level_current_hashes_all_match": true,
+    "sealed_baseline_metadata_matches_prior_hashes": true,
+    "recorded_baseline_profile_hash_match": {
+      "old_path0": {
+        "wrapper_sha256": true,
+        "native_binary_sha256": true,
+        "config_sha256": true,
+        "loop_sha256": true,
+        "qp_sha256": true,
+        "kinematics_urdf_sha256": true,
+        "scan_profile_sha256": true,
+        "scan_reference_sha256": true
+      },
+      "old_path1": {
+        "wrapper_sha256": true,
+        "native_binary_sha256": true,
+        "config_sha256": true,
+        "loop_sha256": true,
+        "qp_sha256": true,
+        "kinematics_urdf_sha256": true,
+        "scan_profile_sha256": true,
+        "scan_reference_sha256": true
+      },
+      "new_first_nominal": {
+        "wrapper_sha256": true,
+        "native_binary_sha256": true,
+        "config_sha256": true,
+        "loop_sha256": true,
+        "qp_sha256": true,
+        "kinematics_urdf_sha256": true,
+        "scan_profile_sha256": true,
+        "scan_reference_sha256": true
+      },
+      "hold_nominal_10s": {
+        "wrapper_sha256": true,
+        "native_binary_sha256": true,
+        "config_sha256": true,
+        "loop_sha256": true,
+        "qp_sha256": true,
+        "kinematics_urdf_sha256": true,
+        "scan_profile_sha256": true,
+        "scan_reference_sha256": true
+      },
+      "hold_stress_10s": {
+        "wrapper_sha256": true,
+        "native_binary_sha256": true,
+        "config_sha256": true,
+        "loop_sha256": true,
+        "qp_sha256": true,
+        "kinematics_urdf_sha256": true,
+        "scan_profile_sha256": true,
+        "scan_reference_sha256": true
+      }
+    },
+    "recorded_baseline_profiles_consistent": true,
+    "current_parent_j1_edit": {
+      "scan_replay_current_sha256": "0db2bf096672c4d073aff3bff4c69749436dbc0bd4ae8fcced2e32a3d98d5e6a",
+      "scan_profile_current_sha256": "375d7a2f274f03202e86b9ee88265cafadb1c72426b1eb0225b2066e2c902abf",
+      "scan_replay_sealed_sha256": "2ca8647ec664836f71072097d82d645e0c0a5f5e736e69537b50ecb9cc1c9461",
+      "scan_profile_sealed_sha256": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+      "scan_replay_changed_lines": [
+        "+        j1_policy=overrides.get('j1_overfold_limit','configured')",
+        "+        if j1_policy not in ('configured','urdf'):",
+        "+            raise ValueError('unsupported J1 overfold limit policy')",
+        "+        if j1_policy=='urdf':",
+        "+            # The generic posture preference used a140degree J1 wall even",
+        "+            # when a legal scan starts beyond it. Keep the model joint limits",
+        "+            # and their normal velocity damping, without that extra wall.",
+        "+            kin=self.assets.kin",
+        "+            limit=min(abs(float(kin.q_lower[1])),abs(float(kin.q_upper[1])))",
+        "+            if not np.isfinite(limit) or limit<=0.:",
+        "+                raise ValueError('J1 requires finite two-sided URDF limits')",
+        "+            self.raw['inner']['qp'].setdefault('branch_barrier',{})['j1_overfold_abs_rad']=limit",
+        "+        extra_limits=overrides.get('extra_posture_limits',True)",
+        "+        if not isinstance(extra_limits,bool):",
+        "+            raise ValueError('extra_posture_limits must be boolean')",
+        "+        if not extra_limits:",
+        "+            # Extra branch/sign/overfold policy is separate from real URDF,",
+        "+            # speed/acceleration/jerk and collision constraints. The scan actor",
+        "+            # requests only the latter plus normal secondary nullspace motion.",
+        "+            self.raw['inner']['qp'].setdefault('branch_barrier',{})['enabled']=False"
+      ],
+      "scan_profile_changed_lines": [
+        "+  extra_posture_limits: false"
+      ],
+      "contains_j1_overfold_policy_support": true,
+      "contains_final_minimal_profile_flag": true,
+      "contains_urdf_profile_policy": false,
+      "interpretation": "Current scan_replay contains the parent J1 guard-policy support and the current profile requests extra_posture_limits=false; baseline_v2 was sealed before these edits."
+    }
+  },
+  "controller_variant_comparison": {
+    "original_sealed_baseline": {
+      "branch_barrier_j1_overfold_abs_rad": 2.443460952792061,
+      "branch_barrier_j1_overfold_abs_deg": 140.0,
+      "initial_q1_rad": -2.6034718766354086,
+      "initial_q1_deg": -149.16795061221302,
+      "urdf_symmetric_abs_limit_rad": 3.106,
+      "status": "used by baseline_v2 and the failing new-first replay"
+    },
+    "single_j1_urdf_guard": {
+      "status": "sealed read-only causal contrast",
+      "changed_only": "branch_barrier.j1_overfold_abs_rad: 2.4434609527920612 -> 3.106",
+      "other_limits_and_settings": "retained according to the guard run scope",
+      "results": {
+        "motion": {
+          "j1_cap_rad": 3.106,
+          "position_error_max_mm": 0.10270832877860421,
+          "rotation_error_p95_deg": 0.07965977387362827,
+          "end_position_error_mm": 0.0009539421100585079,
+          "qp1_status_counts": {
+            "solved": 405
+          },
+          "motion_tracking_pass_2mm_2deg": true,
+          "task_progress_p05": 0.9999996111147285,
+          "native_config_sha256": "eba0ce159d7ae8c7abfaef2e56e79c40896ba96f9312219ceaae5b07cb268e9a"
+        },
+        "hold10s": {
+          "j1_cap_rad": 3.106,
+          "position_error_max_mm": 0.005105061867962398,
+          "rotation_error_p95_deg": 0.00023295165237019943,
+          "end_position_error_mm": 0.00015254978481521304,
+          "qp1_status_counts": {
+            "solved": 2101
+          },
+          "motion_tracking_pass_2mm_2deg": true,
+          "task_progress_p05": 0.9999967464925726,
+          "native_config_sha256": "eba0ce159d7ae8c7abfaef2e56e79c40896ba96f9312219ceaae5b07cb268e9a"
+        }
+      }
+    },
+    "final_minimal_user_requested": {
+      "status": "adapter/profile flag present; no corresponding final-minimal result file yet",
+      "intended_scope": "remove artificial branch-barrier/posture preference and retain physical q/v/a/jerk/collision constraints",
+      "metrics": null
+    }
+  },
+  "fresh_old_trace_comparison": {
+    "path0": {
+      "old_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/path0_smooth_baseline_trace.npz",
+      "fresh_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_regression_20261110/baseline_v2/old_path0_trace.npz",
+      "old_sha256": "be1204b1fd691e0971028bcbc6054be3b7f3e3011565f36b48b7606ae785bbfc",
+      "fresh_sha256": "39ee791c2062dd610735f9780f19610bc61cfac6dbb85dac883268116925ec64",
+      "keys_only_old": [
+        "vel_ff"
+      ],
+      "keys_only_fresh": [],
+      "length_old": 1301,
+      "length_fresh": 1301,
+      "max_abs_difference_by_common_numeric_key": {
+        "box_hi": 0.0,
+        "box_lo": 0.0,
+        "command_acceleration": 0.0,
+        "command_jerk": 0.0,
+        "min_self_distance_m": 0.0,
+        "native_model_t_mono": 0.0,
+        "pose_actual": 0.0,
+        "pose_desired": 0.0,
+        "position_error_m": 0.0,
+        "q": 0.0,
+        "q_cmd_before": 0.0,
+        "q_meas_before": 0.0,
+        "q_send_command": 0.0,
+        "qdot": 0.0,
+        "qdot_prev2_used": 0.0,
+        "qdot_prev_used": 0.0,
+        "qp_equality_residual_max": 0.0,
+        "qp_hard_residual_max": 0.0,
+        "rotation_error_rad": 0.0,
+        "t_s": 0.0,
+        "task_progress": 0.0,
+        "tick_compute_seconds": 0.006797089996098293,
+        "twist_requested": 0.0,
+        "v_cmd_feasible": 0.0,
+        "v_cmd_received": 0.0,
+        "v_tcp_estimated": 0.0
+      },
+      "exact_comparison_by_non_numeric_key": {
+        "fallback_reason": {
+          "equal": true
+        },
+        "joint_limited": {
+          "equal": true
+        },
+        "physical_saturated": {
+          "equal": true
+        },
+        "qp1_status": {
+          "equal": true
+        },
+        "rail_limited": {
+          "equal": true
+        },
+        "solver_fault_latched": {
+          "equal": true
+        },
+        "task_pause_reason": {
+          "equal": true
+        },
+        "task_paused": {
+          "equal": true
+        }
+      },
+      "controller_state_arrays_bitwise_equal_except_tick_compute_seconds": true,
+      "tick_compute_seconds_max_abs_difference": 0.006797089996098293
+    },
+    "path1": {
+      "old_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/path1_smooth_baseline_trace.npz",
+      "fresh_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_regression_20261110/baseline_v2/old_path1_trace.npz",
+      "old_sha256": "ca1432e2a6a4d0c1047908b0bb7daeabc9f6e55711ef51367c522d006881bc6b",
+      "fresh_sha256": "70778a3de01b786a7ece7c1c3acdec84201266f5c5e6fa0e094d54d034c27215",
+      "keys_only_old": [
+        "vel_ff"
+      ],
+      "keys_only_fresh": [],
+      "length_old": 1319,
+      "length_fresh": 1319,
+      "max_abs_difference_by_common_numeric_key": {
+        "box_hi": 0.0,
+        "box_lo": 0.0,
+        "command_acceleration": 0.0,
+        "command_jerk": 0.0,
+        "min_self_distance_m": 0.0,
+        "native_model_t_mono": 0.0,
+        "pose_actual": 0.0,
+        "pose_desired": 0.0,
+        "position_error_m": 0.0,
+        "q": 0.0,
+        "q_cmd_before": 0.0,
+        "q_meas_before": 0.0,
+        "q_send_command": 0.0,
+        "qdot": 0.0,
+        "qdot_prev2_used": 0.0,
+        "qdot_prev_used": 0.0,
+        "qp_equality_residual_max": 0.0,
+        "qp_hard_residual_max": 0.0,
+        "rotation_error_rad": 0.0,
+        "t_s": 0.0,
+        "task_progress": 0.0,
+        "tick_compute_seconds": 0.00517982099972869,
+        "twist_requested": 0.0,
+        "v_cmd_feasible": 0.0,
+        "v_cmd_received": 0.0,
+        "v_tcp_estimated": 0.0
+      },
+      "exact_comparison_by_non_numeric_key": {
+        "fallback_reason": {
+          "equal": true
+        },
+        "joint_limited": {
+          "equal": true
+        },
+        "physical_saturated": {
+          "equal": true
+        },
+        "qp1_status": {
+          "equal": true
+        },
+        "rail_limited": {
+          "equal": true
+        },
+        "solver_fault_latched": {
+          "equal": true
+        },
+        "task_pause_reason": {
+          "equal": true
+        },
+        "task_paused": {
+          "equal": true
+        }
+      },
+      "controller_state_arrays_bitwise_equal_except_tick_compute_seconds": true,
+      "tick_compute_seconds_max_abs_difference": 0.00517982099972869
+    }
+  },
+  "native_config_comparison": {
+    "path0_smooth_baseline_native_config.txt": {
+      "byte_equal": true,
+      "old_sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "fresh_sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3"
+    },
+    "path1_smooth_baseline_native_config.txt": {
+      "byte_equal": true,
+      "old_sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "fresh_sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3"
+    },
+    "fresh_new_first_vs_fresh_old": {
+      "byte_equal": true,
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3"
+    }
+  },
+  "initial_q": {
+    "old_branch4_path0_and_path1_q_seed": [
+      0.2843715250492096,
+      -2.6034718766354086,
+      -1.3143814709606498,
+      1.0762935214417435,
+      0.7828644793556767,
+      2.245067990678676,
+      1.292043174881955,
+      1.0878500000845903
+    ],
+    "new_a0_identity_q_seed": [
+      0.2843715250492096,
+      -2.603473221088791,
+      -1.3143821552104922,
+      1.076294734473196,
+      0.7828590436218632,
+      2.2450659889848645,
+      1.2920410457741236,
+      1.0878483935500634
+    ],
+    "new_a0_identity_vs_old": {
+      "max_abs_difference": 5.435733813508037e-06,
+      "difference": [
+        0.0,
+        -1.3444533824014115e-06,
+        -6.842498423420551e-07,
+        1.2130314523961516e-06,
+        -5.435733813508037e-06,
+        -2.001693811592986e-06,
+        -2.1291078313723233e-06,
+        -1.606534526965575e-06
+      ]
+    },
+    "new_a0_t2_minus08m_q_seed": [
+      0.2843715250492096,
+      -2.869356736525564,
+      -1.042853387362222,
+      1.0049440439732735,
+      0.17920421513243087,
+      2.256296002328166,
+      1.269715073316497,
+      1.4075478318864234
+    ],
+    "new_a0_t2_minus08m_vs_old": {
+      "max_abs_difference": 0.6036602642232458,
+      "difference": [
+        0.0,
+        -0.2658848598901553,
+        0.2715280835984277,
+        -0.07134947746846998,
+        -0.6036602642232458,
+        0.011228011649489833,
+        -0.022328101565457947,
+        0.3196978318018331
+      ]
+    }
+  },
+  "old_smooth_success": {
+    "path0": {
+      "full_position_max_mm": 1.0175138872680698,
+      "full_rotation_max_deg": 0.08909531872892656,
+      "middle_phase": {
+        "samples": 580,
+        "phase_min_s": 0.8,
+        "phase_max_s": 3.6950000000000003,
+        "arc_min_fraction": 0.10809403000803906,
+        "arc_max_fraction": 0.8906844223641965,
+        "position_p95_mm": 0.10135430745382003,
+        "position_max_mm": 0.1044904541702234,
+        "normal_p95_mm": 0.03166287329736445,
+        "normal_max_mm": 0.037079230420145826,
+        "along_abs_p95_mm": 0.10042611634406397,
+        "along_abs_max_mm": 0.1005198260992518,
+        "angle_p95_deg": 0.0825238704121835,
+        "angle_max_deg": 0.0848650375650837,
+        "pose_gate": true
+      },
+      "geometry": {
+        "sample_count": 4097,
+        "max_distance_to_input_chords_m": 0.00011576153511895175,
+        "peak_translation_m_s": 0.02,
+        "parameter_speed": 0.01996381762196062,
+        "maximum_position_derivative": 1.0018123977439854
+      },
+      "trace_metrics": {
+        "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/path0_smooth_baseline_trace.npz",
+        "sample_count": 1301,
+        "trace_end_s": 6.5,
+        "path_sample_count": 900,
+        "path_translation_chord_m": 0.07391802472503749,
+        "path_net_rotation_rad": 4.635143458423239e-08,
+        "path_peak_translation_rate_m_s": 0.019999987117939825,
+        "path_peak_angular_rate_rad_s": 0.37013790407319125,
+        "full_position_max_m": 0.0010175138872680698,
+        "full_rotation_max_deg": 0.08909531872892656,
+        "same_time_start_q": [
+          0.2843715250492096,
+          -2.6034718766354086,
+          -1.3143814709606498,
+          1.0762935214417435,
+          0.7828644793556767,
+          2.245067990678676,
+          1.292043174881955,
+          1.0878500000845903
+        ],
+        "qdot_entry": [
+          0.0002127654942611795,
+          0.0002617298293518394,
+          0.0005065392590833854,
+          0.0014051977248620115,
+          -3.022251171467363e-08,
+          -0.001321765979211611,
+          -0.0004902413006291895,
+          -0.0004189059897538751
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.26239571675826245,
+          1.7570233898459908,
+          1.6696104661829803,
+          2.999987497989762,
+          2.9999784557669718,
+          2.99999509696669,
+          1.693317011533324,
+          2.5772173832288443
+        ],
+        "qp_equality_residual_max": 0.015085960796211197,
+        "task_progress_p05": 0.0
+      }
+    },
+    "path1": {
+      "full_position_max_mm": 1.0033657404754723,
+      "full_rotation_max_deg": 0.0954841841994635,
+      "middle_phase": {
+        "samples": 598,
+        "phase_min_s": 0.8,
+        "phase_max_s": 3.785,
+        "arc_min_fraction": 0.10562687937192192,
+        "arc_max_fraction": 0.8940865777613772,
+        "position_p95_mm": 0.10133346177417589,
+        "position_max_mm": 0.10426336636166354,
+        "normal_p95_mm": 0.030789934316069207,
+        "normal_max_mm": 0.03570787846654394,
+        "along_abs_p95_mm": 0.10012641419356313,
+        "along_abs_max_mm": 0.1002351399794242,
+        "angle_p95_deg": 0.08260604888594032,
+        "angle_max_deg": 0.0917489253981318,
+        "pose_gate": true
+      },
+      "geometry": {
+        "sample_count": 4097,
+        "max_distance_to_input_chords_m": 0.00011813979431544155,
+        "peak_translation_m_s": 0.02,
+        "parameter_speed": 0.01995953677001001,
+        "maximum_position_derivative": 1.0020272629789078
+      },
+      "trace_metrics": {
+        "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/path1_smooth_baseline_trace.npz",
+        "sample_count": 1319,
+        "trace_end_s": 6.59,
+        "path_sample_count": 918,
+        "path_translation_chord_m": 0.07562913841009211,
+        "path_net_rotation_rad": 6.290374776341938e-10,
+        "path_peak_translation_rate_m_s": 0.019999970014617858,
+        "path_peak_angular_rate_rad_s": 0.39063274177179674,
+        "full_position_max_m": 0.0010033657404754724,
+        "full_rotation_max_deg": 0.0954841841994635,
+        "same_time_start_q": [
+          0.2843715250492096,
+          -2.6034718766354086,
+          -1.3143814709606498,
+          1.0762935214417435,
+          0.7828644793556767,
+          2.245067990678676,
+          1.292043174881955,
+          1.0878500000845903
+        ],
+        "qdot_entry": [
+          0.0002127654942611795,
+          0.0002617298293518394,
+          0.0005065392590833854,
+          0.0014051977248620115,
+          -3.022251171467363e-08,
+          -0.001321765979211611,
+          -0.0004902413006291895,
+          -0.0004189059897538751
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.264175812984576,
+          1.8082266883316378,
+          1.5292446368795565,
+          3.000000000001113,
+          2.9999767387207887,
+          2.999470424999773,
+          1.7109770810992964,
+          2.885325924174692
+        ],
+        "qp_equality_residual_max": 0.01422142160813668,
+        "task_progress_p05": 0.0345900474600426
+      }
+    }
+  },
+  "old_public_capability_success": [
+    {
+      "id": "a0_t0_+0.02m",
+      "position_max_mm": 0.10090839035530444,
+      "rotation_p95_deg": 0.0009508401920046996,
+      "speed_m_s": 0.02,
+      "settle_s": 0.5,
+      "path_duration_s": 1.8000000000010024,
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reference_kind": "WorldPoseSplineReference (stationary observations use a hold)"
+    },
+    {
+      "id": "a0_t1_+0.02m",
+      "position_max_mm": 0.09972334276172412,
+      "rotation_p95_deg": 0.0005126643041457761,
+      "speed_m_s": 0.02,
+      "settle_s": 0.5,
+      "path_duration_s": 1.8000000000010021,
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "reference_kind": "WorldPoseSplineReference (stationary observations use a hold)"
+    }
+  ],
+  "fresh_controlled_v2": {
+    "old_path0": {
+      "same_time_max_position_mm": 1.0348773909791973,
+      "same_time_max_rotation_deg": 0.07657178316559601,
+      "last_same_time_position_mm": 0.17447152789550008,
+      "n_steps": 1301,
+      "settle_s": 2.0,
+      "nominal_path_duration_s": 4.499520820135174,
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qp1_status_counts": {
+        "solved": 1301
+      },
+      "failures": [],
+      "motion_tracking_pass_2mm_2deg": true,
+      "profile": {
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "native_model_clock": "deterministic",
+        "wrapper_sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+        "native_binary_sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+        "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+        "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+        "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+        "tcp_cache_sha256": null,
+        "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+        "scan_profile_sha256": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+        "scan_reference_sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+      }
+    },
+    "old_path1": {
+      "same_time_max_position_mm": 1.0224443445031812,
+      "same_time_max_rotation_deg": 0.07214415179593432,
+      "last_same_time_position_mm": 0.001958480906633753,
+      "n_steps": 1319,
+      "settle_s": 2.0,
+      "nominal_path_duration_s": 4.58606367633104,
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qp1_status_counts": {
+        "solved": 1319
+      },
+      "failures": [],
+      "motion_tracking_pass_2mm_2deg": true,
+      "profile": {
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "native_model_clock": "deterministic",
+        "wrapper_sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+        "native_binary_sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+        "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+        "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+        "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+        "tcp_cache_sha256": null,
+        "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+        "scan_profile_sha256": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+        "scan_reference_sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+      }
+    },
+    "new_first_nominal": {
+      "same_time_max_position_mm": 17.058891636850397,
+      "same_time_max_rotation_deg": 2.2905736827218877,
+      "last_same_time_position_mm": 9.89348272515151,
+      "n_steps": 405,
+      "settle_s": 0.5,
+      "nominal_path_duration_s": 1.5159200000015212,
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qp1_status_counts": {
+        "solved": 405
+      },
+      "failures": [],
+      "motion_tracking_pass_2mm_2deg": false,
+      "profile": {
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "native_model_clock": "deterministic",
+        "wrapper_sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+        "native_binary_sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+        "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+        "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+        "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+        "tcp_cache_sha256": null,
+        "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+        "scan_profile_sha256": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+        "scan_reference_sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+      }
+    },
+    "hold_nominal_10s": {
+      "same_time_max_position_mm": 7.7027901785806865,
+      "same_time_max_rotation_deg": 1.2707134100604667,
+      "last_same_time_position_mm": 7.7027901785806865,
+      "n_steps": 2101,
+      "settle_s": 10.0,
+      "nominal_path_duration_s": 0.5,
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qp1_status_counts": {
+        "solved": 2101
+      },
+      "failures": [],
+      "motion_tracking_pass_2mm_2deg": false,
+      "profile": {
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "native_model_clock": "deterministic",
+        "wrapper_sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+        "native_binary_sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+        "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+        "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+        "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+        "tcp_cache_sha256": null,
+        "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+        "scan_profile_sha256": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+        "scan_reference_sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+      }
+    },
+    "hold_stress_10s": {
+      "same_time_max_position_mm": 2.4412553152699217,
+      "same_time_max_rotation_deg": 0.44531946371843667,
+      "last_same_time_position_mm": 1.685489716849279,
+      "n_steps": 2101,
+      "settle_s": 10.0,
+      "nominal_path_duration_s": 0.5,
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qp1_status_counts": {
+        "solved": 2101
+      },
+      "failures": [],
+      "motion_tracking_pass_2mm_2deg": false,
+      "profile": {
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "native_model_clock": "deterministic",
+        "wrapper_sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+        "native_binary_sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+        "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+        "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+        "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+        "tcp_cache_sha256": null,
+        "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+        "scan_profile_sha256": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+        "scan_reference_sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+      }
+    }
+  },
+  "current_B_saved_segments": {
+    "identity_first": {
+      "target": [
+        0.0,
+        0.0151592,
+        -0.2657995
+      ],
+      "q_actual_entry": [
+        0.2843715250492096,
+        -2.603473221088791,
+        -1.3143821552104922,
+        1.076294734473196,
+        0.7828590436218632,
+        2.2450659889848645,
+        1.2920410457741236,
+        1.0878483935500634
+      ],
+      "requested_speed_m_s": 0.02,
+      "L0_motion_estimate_s": 0.8106044465066089,
+      "reference_uses_measured_start": true,
+      "same_time": {
+        "sample_count": 405,
+        "max_position_m": 0.0170588916368504,
+        "p95_position_m": 0.016905812173648335,
+        "max_rotation_rad": 0.03997805252302889,
+        "p95_rotation_rad": 0.03983517099278658,
+        "pass_2mm_2deg": false,
+        "contract": "FK(q_meas_before[t]) versus pose_desired[t]"
+      },
+      "trace_metrics": {
+        "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_subset/h0_a0_identity_0_trace.npz",
+        "sample_count": 405,
+        "trace_end_s": 2.02,
+        "path_sample_count": 405,
+        "path_translation_chord_m": 0.01515920000000001,
+        "path_net_rotation_rad": 0.26579949999999963,
+        "path_peak_translation_rate_m_s": 0.01999980287375618,
+        "path_peak_angular_rate_rad_s": 0.35067401999718567,
+        "full_position_max_m": 0.01706710214799118,
+        "full_rotation_max_deg": 2.290573682721888,
+        "same_time_start_q": [
+          0.2843715250492096,
+          -2.603473221088791,
+          -1.3143821552104922,
+          1.076294734473196,
+          0.7828590436218632,
+          2.2450659889848645,
+          1.2920410457741236,
+          1.0878483935500634
+        ],
+        "qdot_entry": [
+          0.00021602482758108,
+          0.00026549800696240914,
+          0.0004762864417713752,
+          0.0014118023431293053,
+          2.7785659772381533e-08,
+          -0.0013123362805913565,
+          -0.0005152888344381962,
+          -0.00042838856729623547
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.12504920442246714,
+          0.24189749331315208,
+          2.772270861646109,
+          3.000000000005576,
+          2.9372188993185624,
+          2.9999824497932592,
+          2.6608507465732942,
+          2.9999814546138093
+        ],
+        "qp_equality_residual_max": 0.1855920494141419,
+        "task_progress_p05": 0.006535069924619549
+      }
+    },
+    "t2_first_move": {
+      "target": [
+        0.0,
+        0.0153172,
+        0.0
+      ],
+      "q_actual_entry": [
+        0.28418980128988247,
+        -2.8693567621590095,
+        -1.0438751082389242,
+        0.9924285817730536,
+        0.1796435988563102,
+        2.2684652057315304,
+        1.2706776069174497,
+        1.4085654195117148
+      ],
+      "requested_speed_m_s": 0.02,
+      "L0_motion_estimate_s": 0.819053144495159,
+      "reference_uses_measured_start": true,
+      "same_time": {
+        "sample_count": 408,
+        "max_position_m": 0.0003937276742210841,
+        "p95_position_m": 0.0003375581193976343,
+        "max_rotation_rad": 0.0006891235736191289,
+        "p95_rotation_rad": 0.0005443170186714133,
+        "pass_2mm_2deg": true,
+        "contract": "FK(q_meas_before[t]) versus pose_desired[t]"
+      },
+      "trace_metrics": {
+        "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_subset/h0_a0_t2_-0.08m_1_trace.npz",
+        "sample_count": 408,
+        "trace_end_s": 2.035,
+        "path_sample_count": 408,
+        "path_translation_chord_m": 0.015316853908874077,
+        "path_net_rotation_rad": 3.4336665560222127e-05,
+        "path_peak_translation_rate_m_s": 0.019980233659233744,
+        "path_peak_angular_rate_rad_s": 0.00031669234618323197,
+        "full_position_max_m": 0.0003964417026822433,
+        "full_rotation_max_deg": 0.03990079692320625,
+        "same_time_start_q": [
+          0.28418980128988247,
+          -2.8693567621590095,
+          -1.0438751082389242,
+          0.9924285817730536,
+          0.1796435988563102,
+          2.2684652057315304,
+          1.2706776069174497,
+          1.4085654195117148
+        ],
+        "qdot_entry": [
+          -0.0011655287956305722,
+          -3.97235119390034e-08,
+          -0.004048049781276219,
+          -0.05419799426324001,
+          2.5560993727795107e-06,
+          0.052152251572127904,
+          0.003359675480327419,
+          0.006040250219167538
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.03947343177173428,
+          0.286157131833119,
+          0.42211932084867954,
+          3.0000000000021507,
+          0.9350974180912504,
+          2.994596816439099,
+          0.5638002077734683,
+          0.22426442925754103
+        ],
+        "qp_equality_residual_max": 0.004318787476390207,
+        "task_progress_p05": 0.0
+      }
+    },
+    "t2_final_hold": {
+      "target": [
+        0.0,
+        0.0153172,
+        0.0
+      ],
+      "q_actual_entry": [
+        0.2688225618017507,
+        -2.8232762694182516,
+        -1.1175879470670245,
+        0.3503682581777066,
+        0.2695826543938825,
+        2.849569101749851,
+        1.3324490807243665,
+        1.5127445755177273
+      ],
+      "requested_speed_m_s": 0.02,
+      "L0_motion_estimate_s": 0.1,
+      "reference_uses_measured_start": false,
+      "same_time": {
+        "sample_count": 201,
+        "max_position_m": 0.00359621346483976,
+        "p95_position_m": 0.0035622881534318513,
+        "max_rotation_rad": 0.010510746953543648,
+        "p95_rotation_rad": 0.010388580227894682,
+        "pass_2mm_2deg": false,
+        "contract": "FK(q_meas_before[t]) versus pose_desired[t]"
+      },
+      "trace_metrics": {
+        "trace_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_subset/h0_a0_t2_-0.08m_5_trace.npz",
+        "sample_count": 201,
+        "trace_end_s": 1.0,
+        "path_sample_count": 201,
+        "path_translation_chord_m": 0.0,
+        "path_net_rotation_rad": 0.0,
+        "path_peak_translation_rate_m_s": 0.0,
+        "path_peak_angular_rate_rad_s": 0.0,
+        "full_position_max_m": 0.003599582196933675,
+        "full_rotation_max_deg": 0.602916189049508,
+        "same_time_start_q": [
+          0.2688225618017507,
+          -2.8232762694182516,
+          -1.1175879470670245,
+          0.3503682581777066,
+          0.2695826543938825,
+          2.849569101749851,
+          1.3324490807243665,
+          1.5127445755177273
+        ],
+        "qdot_entry": [
+          -0.005919232756116584,
+          0.01441634790139375,
+          -0.0019499205043245558,
+          0.005216845822809132,
+          1.7591891112622784e-09,
+          -0.016278926050424566,
+          -0.006011024041822421,
+          0.00971891726232025
+        ],
+        "acceleration_max_abs_by_coordinate": [
+          0.06467991476908647,
+          0.20482540671305435,
+          0.08163303748423079,
+          1.4891017852812662,
+          0.00026122663462436064,
+          1.5110744011864796,
+          0.07116281967372035,
+          0.3337209828786814
+        ],
+        "qp_equality_residual_max": 0.03553833571617691,
+        "task_progress_p05": 0.0
+      }
+    }
+  },
+  "controller_stack": {
+    "old_and_fresh_backend": "native",
+    "old_and_fresh_tcp_mode": "urdf",
+    "old_and_fresh_native_model_clock": "deterministic",
+    "offline_ideal_measured_q": true,
+    "realman_vendor_hardware_controller_instantiated": false,
+    "evidence": [
+      "QPReplayBridge creates JointIkController with backend=native and sends SHM requests to wbc_rt; no RealManBackend/session is constructed.",
+      "Saved scopes explicitly exclude physical hardware, image/contact/force outer loops, and device communication."
+    ]
+  },
+  "state_and_reference_contract": {
+    "old_smooth": {
+      "run_return_state_false": true,
+      "qdot_entry_zero": true,
+      "acceleration_entry_zero": true,
+      "settle_s": 2.0,
+      "reference": "17 waypoint WorldPoseSplineReference; symmetric .8s ramp; 2cm/s"
+    },
+    "old_public_capability": {
+      "independent_query_no_initial_state": true,
+      "reference": "relative_path(FK(q), FK(q) @ pure +/-2cm body translation); no target rotation"
+    },
+    "new_B": {
+      "runner_uses_initial_state": true,
+      "runner_saves_exit_state": true,
+      "reference": "41-sample DMP body primitive transformed by T_world_body; short segments; .5s settle"
+    }
+  },
+  "interpretation": [
+    "The old path0/path1 fresh controlled replay matches every saved controller-state array exactly except tick_compute_seconds (wall timing), and its native_config text is byte-identical. The old passing result is therefore reproducible; there is no evidence of a broad controller/binary/config regression.",
+    "The new identity first segment is also exactly reproducible from its saved trace, but it is a different command: about 15.159 mm translation with net 0.2657995 rad yaw, about 1.516 s path and .5 s settle. The old successful paths were 73.9/75.6 mm, had zero net rotation with intermediate orientation spans about .391/.429 rad, 4.50/4.586 s paths and 2 s settle. The old tests did not cover this short coupled yaw/translation B reference.",
+    "The new t2 first move is nearly pure translation and remains below 0.4 mm in the saved replay, while the identity coupled-rotation segment reaches 17.059 mm/2.291 deg. This within-run contrast points to reference/coverage, not an all-path native regression.",
+    "Long holds are a separate coverage gap: the fresh 10 s stationary hold drifts to 7.70 mm in the nominal posture and 2.44 mm in the stress posture, whereas the old smooth runs only had a 2 s settle and max errors about 1.02 mm. New B also carries complete exit state/history between segments; the old smooth paths were isolated zero-history starts.",
+    "A concrete additional constraint is present in the sealed baseline: branch_barrier.j1_overfold_abs_rad=2.44346 (140 deg), while the common initial q1 is -2.60347 rad (-149.164 deg) and the URDF permits about +/-3.106 rad. At that sign, the lower J1 velocity box is clamped at zero, so further negative J1 motion is disallowed and redundant joints can circle to satisfy the Cartesian request. This is a real hard-bound mechanism, not a claim based only on QP solved status.",
+    "The parent-sealed J1-URDF-only guard contrast changes only that artificial cap to 3.106 rad: the same identity motion reports 0.1027 mm maximum position error, 0.0796 deg rotation p95, solved all 405 ticks, and passes the 2 mm/2 deg gate; its 10 s hold reports 0.0051 mm and 0.00023 deg p95. This strongly supports the J1 wall as the dominant cause for this B motion/hold pair, while the final user-requested minimal variant (removing the artificial branch-barrier/posture preferences while retaining physical q/v/a/jerk/collision limits) still has no result in this directory.",
+    "The baseline-v2 run itself predates the concurrent adapter/profile edits: its recorded native binary, controller/config, loop, QP, URDF and scan/reference hashes match the sealed prior set. Current on-disk scan_replay now contains J1-policy support and the profile requests extra_posture_limits=false; those edits were not used by baseline-v2 and are not evidence of a broad source regression.",
+    "The RealMan machine being normal is not a contradictory result: these saved tests are an offline custom native wbc_rt QP with ideal measured-q feedback, not the vendor hardware communication/controller path. They diagnose this native replay/reference contract only."
+  ]
+}

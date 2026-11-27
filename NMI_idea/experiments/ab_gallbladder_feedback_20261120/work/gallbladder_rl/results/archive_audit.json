@@ -1,0 +1,582 @@
+{
+  "audit_type": "archived_outcomes_only",
+  "scope": "CSV/JSON parsing and deterministic recalculation only; no simulation, no training, no model imports.",
+  "datasets": {
+    "paired_primary.csv": {
+      "rows": 560,
+      "grid_assertions": {
+        "unique_seed_noise_policy": true,
+        "complete_same_seed_noise_grid_for_all_arms": true,
+        "arms": [
+          "hand_servo",
+          "joint",
+          "multimodal",
+          "psdp",
+          "reverse_only",
+          "stationary",
+          "student_feedback"
+        ],
+        "seed_noise_cells": 80,
+        "seed_clusters": 40
+      },
+      "arms": {
+        "hand_servo": {
+          "n": 80,
+          "correct": 54,
+          "wrong": 2,
+          "ever": 63,
+          "strict_at_cine": 58,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        },
+        "joint": {
+          "n": 80,
+          "correct": 34,
+          "wrong": 6,
+          "ever": 56,
+          "strict_at_cine": 35,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        },
+        "multimodal": {
+          "n": 80,
+          "correct": 19,
+          "wrong": 7,
+          "ever": 51,
+          "strict_at_cine": 21,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        },
+        "psdp": {
+          "n": 80,
+          "correct": 49,
+          "wrong": 8,
+          "ever": 62,
+          "strict_at_cine": 51,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        },
+        "reverse_only": {
+          "n": 80,
+          "correct": 45,
+          "wrong": 5,
+          "ever": 61,
+          "strict_at_cine": 47,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        },
+        "stationary": {
+          "n": 80,
+          "correct": 45,
+          "wrong": 5,
+          "ever": 60,
+          "strict_at_cine": 46,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        },
+        "student_feedback": {
+          "n": 80,
+          "correct": 48,
+          "wrong": 8,
+          "ever": 63,
+          "strict_at_cine": 50,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        },
+        "hand": {
+          "n": 80,
+          "correct": 54,
+          "wrong": 2,
+          "ever": 63,
+          "strict_at_cine": 58,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ],
+          "ever_strict_source": "heldout_summary.json (not present in CSV; not independently recomputed)"
+        }
+      }
+    },
+    "paired_replication.csv": {
+      "rows": 256,
+      "grid_assertions": {
+        "unique_seed_noise_policy": true,
+        "complete_same_seed_noise_grid_for_all_arms": true,
+        "arms": [
+          "hand",
+          "residual",
+          "stationary",
+          "zero_margin"
+        ],
+        "seed_noise_cells": 64,
+        "seed_clusters": 32
+      },
+      "arms": {
+        "hand": {
+          "n": 64,
+          "correct": 45,
+          "wrong": 6,
+          "ever": null,
+          "strict_at_cine": null,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ]
+        },
+        "residual": {
+          "n": 64,
+          "correct": 45,
+          "wrong": 6,
+          "ever": null,
+          "strict_at_cine": null,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ]
+        },
+        "stationary": {
+          "n": 64,
+          "correct": 42,
+          "wrong": 5,
+          "ever": null,
+          "strict_at_cine": null,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ]
+        },
+        "zero_margin": {
+          "n": 64,
+          "correct": 46,
+          "wrong": 4,
+          "ever": null,
+          "strict_at_cine": null,
+          "unavailable_csv_columns": [
+            "ever",
+            "strict_at_cine"
+          ]
+        }
+      }
+    }
+  },
+  "summary_count_consistency": [
+    {
+      "summary_file": "heldout_summary.json",
+      "checks": [
+        {
+          "csv_policy": "stationary",
+          "summary_arm": "stationary",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "multimodal",
+          "summary_arm": "multimodal",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "hand_servo",
+          "summary_arm": "hand_servo",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "reverse_only",
+          "summary_arm": "reverse_only",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "student_feedback",
+          "summary_arm": "student_feedback",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "joint",
+          "summary_arm": "joint",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "psdp",
+          "summary_arm": "psdp",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        }
+      ],
+      "all_passed": true
+    },
+    {
+      "summary_file": "residual_holdout_summary.json",
+      "checks": [
+        {
+          "csv_policy": "stationary",
+          "summary_arm": "stationary",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "hand",
+          "summary_arm": "hand",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "residual",
+          "summary_arm": "residual",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        },
+        {
+          "csv_policy": "zero_margin",
+          "summary_arm": "zero_margin",
+          "csv_n_equals_summary_n": true,
+          "csv_correct_equals_summary_correct": true,
+          "csv_wrong_equals_summary_wrong": true
+        }
+      ],
+      "all_passed": true
+    }
+  ],
+  "strict_failure_decomposition": {
+    "source": "archived heldout_summary.json E/S/D counts; CSV lacks ever and strict_at_cine columns",
+    "primary": {
+      "hand_servo": {
+        "never_strict": 17,
+        "strict_only_in_transit_or_prefix": 5,
+        "strict_at_cine_but_not_correctly_delivered": 4,
+        "correct_delivery": 54,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      },
+      "joint": {
+        "never_strict": 24,
+        "strict_only_in_transit_or_prefix": 21,
+        "strict_at_cine_but_not_correctly_delivered": 1,
+        "correct_delivery": 34,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      },
+      "multimodal": {
+        "never_strict": 29,
+        "strict_only_in_transit_or_prefix": 30,
+        "strict_at_cine_but_not_correctly_delivered": 2,
+        "correct_delivery": 19,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      },
+      "psdp": {
+        "never_strict": 18,
+        "strict_only_in_transit_or_prefix": 11,
+        "strict_at_cine_but_not_correctly_delivered": 2,
+        "correct_delivery": 49,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      },
+      "reverse_only": {
+        "never_strict": 19,
+        "strict_only_in_transit_or_prefix": 14,
+        "strict_at_cine_but_not_correctly_delivered": 2,
+        "correct_delivery": 45,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      },
+      "stationary": {
+        "never_strict": 20,
+        "strict_only_in_transit_or_prefix": 14,
+        "strict_at_cine_but_not_correctly_delivered": 1,
+        "correct_delivery": 45,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      },
+      "student_feedback": {
+        "never_strict": 17,
+        "strict_only_in_transit_or_prefix": 13,
+        "strict_at_cine_but_not_correctly_delivered": 2,
+        "correct_delivery": 48,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      },
+      "hand": {
+        "never_strict": 17,
+        "strict_only_in_transit_or_prefix": 5,
+        "strict_at_cine_but_not_correctly_delivered": 4,
+        "correct_delivery": 54,
+        "partition_total": 80,
+        "nested_event_note": "D ⊆ S ⊆ E; the categories are disjoint differences: ¬E, E\\S, S\\D, D."
+      }
+    }
+  },
+  "clustered_bootstrap_comparisons": [
+    {
+      "comparison": "hand_servo_minus_stationary",
+      "difference_pp": 11.25,
+      "clustered_bootstrap_95ci_pp": [
+        1.25,
+        22.5
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 14,
+      "losses": 5,
+      "ties": 61,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    {
+      "comparison": "student_feedback_minus_hand_servo",
+      "difference_pp": -7.5,
+      "clustered_bootstrap_95ci_pp": [
+        -20.0,
+        5.0
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 8,
+      "losses": 14,
+      "ties": 58,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    {
+      "comparison": "reverse_only_minus_hand_servo",
+      "difference_pp": -11.25,
+      "clustered_bootstrap_95ci_pp": [
+        -23.75,
+        0.0
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 5,
+      "losses": 14,
+      "ties": 61,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    {
+      "comparison": "joint_minus_hand_servo",
+      "difference_pp": -25.0,
+      "clustered_bootstrap_95ci_pp": [
+        -37.5,
+        -12.5
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 7,
+      "losses": 27,
+      "ties": 46,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    {
+      "comparison": "psdp_minus_hand_servo",
+      "difference_pp": -6.25,
+      "clustered_bootstrap_95ci_pp": [
+        -17.5,
+        5.0
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 8,
+      "losses": 13,
+      "ties": 59,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    {
+      "comparison": "hand_minus_stationary",
+      "difference_pp": 4.6875,
+      "clustered_bootstrap_95ci_pp": [
+        -4.6875,
+        15.625
+      ],
+      "seed_clusters": 32,
+      "paired_seed_noise_rows": 64,
+      "wins": 10,
+      "losses": 7,
+      "ties": 47,
+      "algorithm": "Paired mean correctness difference; resample 32 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    {
+      "comparison": "residual_minus_hand",
+      "difference_pp": 0.0,
+      "clustered_bootstrap_95ci_pp": [
+        0.0,
+        0.0
+      ],
+      "seed_clusters": 32,
+      "paired_seed_noise_rows": 64,
+      "wins": 0,
+      "losses": 0,
+      "ties": 64,
+      "algorithm": "Paired mean correctness difference; resample 32 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    }
+  ],
+  "learning_vs_handwritten_win_counts": {
+    "primary_student_feedback_vs_hand": {
+      "comparison": "student_feedback_minus_hand_servo",
+      "difference_pp": -7.5,
+      "clustered_bootstrap_95ci_pp": [
+        -20.0,
+        5.0
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 8,
+      "losses": 14,
+      "ties": 58,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    "primary_reverse_only_vs_hand": {
+      "comparison": "reverse_only_minus_hand_servo",
+      "difference_pp": -11.25,
+      "clustered_bootstrap_95ci_pp": [
+        -23.75,
+        0.0
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 5,
+      "losses": 14,
+      "ties": 61,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    "primary_joint_vs_hand": {
+      "comparison": "joint_minus_hand_servo",
+      "difference_pp": -25.0,
+      "clustered_bootstrap_95ci_pp": [
+        -37.5,
+        -12.5
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 7,
+      "losses": 27,
+      "ties": 46,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    "primary_psdp_vs_hand": {
+      "comparison": "psdp_minus_hand_servo",
+      "difference_pp": -6.25,
+      "clustered_bootstrap_95ci_pp": [
+        -17.5,
+        5.0
+      ],
+      "seed_clusters": 40,
+      "paired_seed_noise_rows": 80,
+      "wins": 8,
+      "losses": 13,
+      "ties": 59,
+      "algorithm": "Paired mean correctness difference; resample 40 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    "replication_residual_vs_hand": {
+      "comparison": "residual_minus_hand",
+      "difference_pp": 0.0,
+      "clustered_bootstrap_95ci_pp": [
+        0.0,
+        0.0
+      ],
+      "seed_clusters": 32,
+      "paired_seed_noise_rows": 64,
+      "wins": 0,
+      "losses": 0,
+      "ties": 64,
+      "algorithm": "Paired mean correctness difference; resample 32 unique seed clusters with replacement, retain all noise rows within each selected seed; 20000 replicates; NumPy PCG64 seed 20261120; percentile interval."
+    },
+    "pairwise_wins": {
+      "student_feedback": {
+        "learning_wins": 8,
+        "handwritten_wins": 14,
+        "ties": 58
+      },
+      "reverse_only": {
+        "learning_wins": 5,
+        "handwritten_wins": 14,
+        "ties": 61
+      },
+      "joint": {
+        "learning_wins": 7,
+        "handwritten_wins": 27,
+        "ties": 46
+      },
+      "psdp": {
+        "learning_wins": 8,
+        "handwritten_wins": 13,
+        "ties": 59
+      },
+      "replication_residual": {
+        "learning_wins": 0,
+        "handwritten_wins": 0,
+        "ties": 64
+      }
+    }
+  },
+  "source_audit": {
+    "engine.run_station_visible_gate": {
+      "file": "work/gallbladder_feedback/engine.py",
+      "record": "run_station() schedules feedback checks after QUERY_START at QUERY_EVERY intervals, with remaining-motion and deadline checks; it also requires a visible_frame in the recent history window before constructing intervention options."
+    },
+    "policy.KINDS": {
+      "file": "work/gallbladder_feedback/policy.py",
+      "record": "KINDS enumerates continue, keep_view, center, fan_left, fan_right, and recall."
+    },
+    "train.ExtraTrees": {
+      "file": "work/gallbladder_feedback/train.py",
+      "record": "Imports sklearn.ensemble.ExtraTreesRegressor and fits it during local policy training; archived audit does not import or train it."
+    },
+    "psdp_first_station_gate": {
+      "file": "work/gallbladder_feedback/evaluate.py",
+      "record": "evaluate.test defines the PSDP gate callable so index != 0 immediately returns True; the learned gate therefore only decides whether to enable feedback at the first proposed station. Later stations use feedback without a learned gate decision."
+    },
+    "asset_readiness": {
+      "runtime_source": "simulator/gallbladder_runtime.py",
+      "manifest": "reference_results/asset_inputs.json",
+      "assets": {
+        "REALUS_GB_ANATOMY": {
+          "path": "/workspace/scratch/f86d83a785dc/RealUS_playground/NMI_idea/experiments/ab_gallbladder_feedback_20261120/local_assets/registered_torso.npz",
+          "exists": false,
+          "sha256_manifest": "7987efe1bc8f57fc6aef35abf6132e254aaa003a990f3020e420918c86caeeac"
+        },
+        "REALUS_GB_SMPLX": {
+          "path": "/workspace/scratch/f86d83a785dc/RealUS_playground/NMI_idea/experiments/ab_gallbladder_feedback_20261120/local_assets/SMPLX_MALE.npz",
+          "exists": false,
+          "sha256_manifest": "3613a4c7733be35a9bebf6d72c75f3cd3d2252419782ab7cb32fd2c51a446e72"
+        },
+        "REALUS_GB_ATLAS": {
+          "path": "/workspace/scratch/f86d83a785dc/RealUS_playground/NMI_idea/experiments/ab_gallbladder_feedback_20261120/local_assets/thorax_atlas.npz",
+          "exists": false,
+          "sha256_manifest": "4f5a3828ff9bd073a5a6c43bd9a98bae5d9ba5d5006bdf972450cd8738202361"
+        }
+      },
+      "all_ready": false
+    }
+  }
+}

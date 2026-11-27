@@ -1,0 +1,32 @@
+{
+  "harness_sha256": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/field_validation.py": "56c43077bc784cfd175ccb247e716b9e65568826d60a776a42094d67c8a7af53",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/gpu_and_zero_rotation_audit.py": "23975f5af4afa53b287e0e34ca4e77fc9cd982d61672a22405dabc8628a37017",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/frame_and_query_audit.py": "df59fef2614179167b60ecfacc947668a73ed2b1d11a449aca057d505de23f3a",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/benchmark.py": "ed1334c75ca89815f9cb3154cf938a4e1181956e3f24ae445858ff4ed3aaa9dd",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/adapter.py": "2608a43e6f716835072a9dc7a074245858ae28cb29364776f212268cd6e9ecdd",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/test_so3_exp_regression.py": "64d5435a5b159f2869c16107ae52b2dc04e4a1960cad89cd9ba473bb1fe62bd2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/run.sh": "69320674f60e67728008459dd6764742e2b30ce3bf6386d8a535acab1382ae5e",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/API.txt": "f851ac783125be92368822e967fbc38e3b93b8e57be2924ccb9f4117690247a9",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/nominal_context.json": "194eaf43f710362db95f5a008ea569a4fab24c92383365effa45b9ceac1c0116",
+    "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/reports/ellipse_vessel_ird_demo_projection/qpik_guidance.npz": "c37e5e559a3caa5d2acf12178bbd7b90b9f9d147eac439c3d8ed07461263a36b",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/test_departure_continuity.py": "ecf7c2a39a5453baf9c765eb4f76b3228524339c76fde06b07dca59ef7b091cc"
+  },
+  "production_fix_before_sha256": "19c80906457ec4fbe9d28f383c93c456a63ccb27979fe9f991ef0415ab4f9f0a",
+  "production_fix_after_sha256": "721fbc3016f7aec7c24357c0ecd3b1b09700756792e8116194bbc0c0967432d7",
+  "source_patch": "so3_exp_production_fix.patch",
+  "canonical_dataset_sha256_matches_checkpoint": true,
+  "checkpoint_sha256": "08698c273bd1f0f4f2a86d956df95448ba502ee9d7fc17445f06258a13286e51",
+  "random_seeds": {
+    "gradient_trajectory": 20261110,
+    "fresh_fk_diagnostic": 20261111
+  },
+  "departure_gate_fix": {
+    "before_adapter_sha256": "80dc77c2bd988980a7ac2f49ae056f966a32ede32046cd6ee1f481cd67f0b222",
+    "after_adapter_sha256": "2608a43e6f716835072a9dc7a074245858ae28cb29364776f212268cd6e9ecdd",
+    "production_solver_modified": false,
+    "joint_bound_deg": 12.0,
+    "rail_bound_m": 0.04,
+    "regression_cases": 5
+  }
+}

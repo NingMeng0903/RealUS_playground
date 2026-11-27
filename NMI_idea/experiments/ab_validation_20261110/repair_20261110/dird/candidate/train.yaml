@@ -1,0 +1,53 @@
+build:
+  source_npz: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/current_robot_20261108/revalidated_stencils.npz
+  auxiliary_npz:
+  - /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/current_robot_20261108/revalidated_uniform.npz
+  - /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/current_robot_20261108/fresh_stencils_classification.npz
+  - /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/current_robot_20261108/fresh_uniform.npz
+  edt_npz: null
+  far_field_sdf_weight: 0.25
+  output_npz: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/current_robot_20261108/canonical.npz
+  quantile_lo: 0.005
+  quantile_hi: 0.995
+  min_pair_separation_normalized: 1.0e-05
+  robot_spec: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/configs/robot_probe45.yaml
+model:
+  width: 192
+  depth: 5
+  fourier_bands: 3
+  softplus_beta: 20.0
+training:
+  seed: 20261128
+  device: cuda
+  epochs: 90
+  batch_size: 4096
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  val_fraction: 0.15
+  early_stop_patience: 16
+  logit_scale: 1.0
+  normal_batch_max: 768
+  report_near_axis: true
+  near_axis_r_m: 0.05
+  boundary_sample_boost: 2.5
+  paired_boundary_groups: 256
+  zero_calibration_fraction: 0.05
+  safety_calibration_fraction: 0.05
+  test_fraction: 0.1
+  initialization_seed: 20261110
+loss:
+  classification: 1.0
+  signed_value: 6.0
+  normal_direction: 0.35
+  boundary_slope: 0.12
+  generic_eikonal: 0.0
+  straddle: 1.5
+  straddle_margin: 0.25
+  sdf_target_scale: 100.0
+  near_band_abs: 0.01
+  near_band_boost: 3.0
+io:
+  checkpoint: /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/selected.pt
+  report: /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/train_report.json
+  conformal: /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/conformal.json
+  eval_report: /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/eval_report.json

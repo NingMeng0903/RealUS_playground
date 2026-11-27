@@ -1,0 +1,46 @@
+{
+  "base_git": "4c3859b1024f2a9a890fb83f98df86c77c65314a",
+  "source_sha256": {
+    "run_v11.py": "af4b844be7e649be8b249d8748990fed61ac5387d10aa496994038af29f9c68e",
+    "evidence.py": "deeb5e4f5d4dd26043c4ef334ab34945897326e47e3512d147858b3ce23558e5",
+    "mixed_reader.py": "cc167421f21912ae30eaddd838f98a6a98968d49e1b81ca188778b6c3f6499c2",
+    "evidence_model.py": "0abf4793cb9b8589851f0726902e394905f1f8f07eeafc2f467b15bd53fd2741",
+    "pipeline.py": "181272389aeb309d9d17fe4677c4f423824ba8c8185593dc2db5376e0fc79552"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "frozen_v10_actor_sha256": "c75ec017f36a005e3f9db4bcfdba43f8c12f99dc4f7bbd6afd9546494656581c",
+  "frozen_v10_reader_sha256": "5bf341e5262e37194ced028d104fbe5b227f9acb01f954fc7bf0fb8c3441f609",
+  "cohorts": {
+    "mine": 144,
+    "cal": 48,
+    "dev": 48,
+    "teach": 288,
+    "select": 72,
+    "test": 120
+  },
+  "layout_seeds": {
+    "mine": 8158690000000000,
+    "cal": 8158691000000000,
+    "dev": 8158692000000000,
+    "teach": 8158693000000000,
+    "select": 8158694000000000,
+    "test": 8158695000000000
+  },
+  "teacher_selection_tapes": [
+    32000139,
+    42000193
+  ],
+  "teacher_proof_tape": 45000399,
+  "holdout_tapes": [
+    null,
+    104231865,
+    104251253
+  ],
+  "reader_replay_layouts_per_batch": [
+    8,
+    7,
+    5
+  ],
+  "femoral": "v10 frozen actor and readout; mixed readout remains an on-trajectory diagnostic",
+  "action": "same material station, alternate sectors, actual contact acquisition, equal elapsed time and same exit pose"
+}

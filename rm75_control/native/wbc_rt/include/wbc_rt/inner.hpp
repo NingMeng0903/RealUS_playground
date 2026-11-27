@@ -308,7 +308,9 @@ class Collision {
   pinocchio::GeometryData geom_data_;
   Config cfg_;
   std::vector<int> slots_;
+  Vec8 last_geometry_q_ = Vec8::Constant(std::numeric_limits<double>::quiet_NaN());
   std::vector<LocalSphere> local_spheres_;
+  std::vector<Eigen::Vector3d> world_centers_;
   std::vector<collision_broadphase::Aabb> local_aabbs_;
   std::vector<collision_broadphase::Obb> world_obbs_;
   std::vector<int> queried_;
@@ -370,7 +372,8 @@ class InnerLoop {
                           double dt, double h1, double h2, bool rail_locked,
                           double rail_pin, bool has_pin, bool lead_exempt,
                           Vec8* lo, Vec8* hi);
-  void tighten_branch(const Vec8& q, bool rail_open, Vec8* lo, Vec8* hi);
+  void tighten_arm_approach_bounds(const Vec8& q, const Vec8& q_cmd, double dt, double h,
+                                   double previous_h, bool rail_open, Vec8* lo, Vec8* hi);
   void clear_rail_box_tel();
   void note_rail_bind(double old_lo, double old_hi, const Vec8& lo, const Vec8& hi,
                       uint32_t stage);

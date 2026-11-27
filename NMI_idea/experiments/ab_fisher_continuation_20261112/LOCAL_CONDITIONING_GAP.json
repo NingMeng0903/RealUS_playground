@@ -1,0 +1,129 @@
+{
+  "scope": "Exact nominal-model completion with three acquisitions, same contacts and progress.",
+  "pairs": [
+    {
+      "sites": [
+        6,
+        7
+      ],
+      "full_quality_value": 0.409213545879225,
+      "progress_only_value": 0.40921354587922504,
+      "difference": -5.551115123125783e-17,
+      "eval_only_mode_known_value": 0.43228596149445603
+    },
+    {
+      "sites": [
+        7,
+        8
+      ],
+      "full_quality_value": 0.4105301878092057,
+      "progress_only_value": 0.41053018780920564,
+      "difference": 5.551115123125783e-17,
+      "eval_only_mode_known_value": 0.43193014110415107
+    },
+    {
+      "sites": [
+        9,
+        10
+      ],
+      "full_quality_value": 0.40296643828087375,
+      "progress_only_value": 0.4029664382808738,
+      "difference": -5.551115123125783e-17,
+      "eval_only_mode_known_value": 0.42197805303571156
+    },
+    {
+      "sites": [
+        10,
+        11
+      ],
+      "full_quality_value": 0.4073040956861484,
+      "progress_only_value": 0.40730409568614834,
+      "difference": 5.551115123125783e-17,
+      "eval_only_mode_known_value": 0.4281506645260319
+    },
+    {
+      "sites": [
+        12,
+        13
+      ],
+      "full_quality_value": 0.4286376805102191,
+      "progress_only_value": 0.4286376805102191,
+      "difference": 0.0,
+      "eval_only_mode_known_value": 0.45733883308116097
+    },
+    {
+      "sites": [
+        13,
+        14
+      ],
+      "full_quality_value": 0.45431678158670075,
+      "progress_only_value": 0.45431678158670075,
+      "difference": 0.0,
+      "eval_only_mode_known_value": 0.4896898866647498
+    },
+    {
+      "sites": [
+        15,
+        16
+      ],
+      "full_quality_value": 0.5133633183214362,
+      "progress_only_value": 0.5133633183214363,
+      "difference": -1.1102230246251565e-16,
+      "eval_only_mode_known_value": 0.5623105878951559
+    },
+    {
+      "sites": [
+        16,
+        17
+      ],
+      "full_quality_value": 0.5203374383628094,
+      "progress_only_value": 0.5199513919581407,
+      "difference": 0.0003860464046687717,
+      "eval_only_mode_known_value": 0.5804181443745299
+    },
+    {
+      "sites": [
+        18,
+        19
+      ],
+      "full_quality_value": 0.5289223828255827,
+      "progress_only_value": 0.524771343029411,
+      "difference": 0.004151039796171707,
+      "eval_only_mode_known_value": 0.5960159044285375
+    },
+    {
+      "sites": [
+        19,
+        20
+      ],
+      "full_quality_value": 0.5293960890530733,
+      "progress_only_value": 0.524553426463378,
+      "difference": 0.004842662589695346,
+      "eval_only_mode_known_value": 0.6006727459919876
+    },
+    {
+      "sites": [
+        21,
+        22
+      ],
+      "full_quality_value": 0.5228519544581716,
+      "progress_only_value": 0.5209619639437415,
+      "difference": 0.0018899905144300622,
+      "eval_only_mode_known_value": 0.6018006689571574
+    },
+    {
+      "sites": [
+        22,
+        23
+      ],
+      "full_quality_value": 0.48821290629169534,
+      "progress_only_value": 0.4861261000717916,
+      "difference": 0.0020868062199037585,
+      "eval_only_mode_known_value": 0.5635091938168928
+    }
+  ],
+  "mean_full": 0.4680044015887617,
+  "mean_progress_only": 0.466891356128356,
+  "mean_quality_gap": 0.0011130454604057944,
+  "eval_only_mean_mode_known": 0.5138417321142102
+}

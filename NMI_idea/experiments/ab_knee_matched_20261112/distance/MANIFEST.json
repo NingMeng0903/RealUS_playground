@@ -1,0 +1,193 @@
+{
+  "driver": "6b9ef5656d2762d6f70276df73fe60243994c0e7a3db3753a93dd160434e9b2e",
+  "frozen_root": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_knee_latent_rl_20261112",
+  "frozen_sources": {
+    "belief.py": "f7a8e36bdacea26be3cc2d47b1f0fd1f84351f36295618edd3ec04ddfb12fdc0",
+    "knee_world.py": "fcc615fc0bef50f206b51532f52e1832882de81e88cf0ebef20e719f1e396a58",
+    "policy.py": "2cc8a7d06696f76f3f939edc71b87e3446c74ed32c3058ce7da5a8be131ea89f",
+    "experiment.py": "c144fed1e4abf54c37d60a36600d7b0c5b46d531b8fc955274bc315464404ce0",
+    "learners.py": "71c36165c6aaf4b581e02e74bfc11cb4147cb1f4e4438f72e49db7d19144484d"
+  },
+  "geometry": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "model": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_knee_latent_rl_20261112/results/cql_512_7.pt",
+    "sha256": "2bea27aebaff543129589fb7a507335fa65fd249043ad5366fc95d8bc2b1c2e4"
+  },
+  "python": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+  "config": {
+    "cap_mm": 80.0,
+    "budget": 3,
+    "dev_start": 0,
+    "dev_count": 64,
+    "test_start": 256,
+    "test_count": 128,
+    "lambdas": [
+      0.0,
+      0.0005,
+      0.001,
+      0.002,
+      0.004,
+      0.008,
+      0.0085,
+      0.009,
+      0.0095,
+      0.01,
+      0.0105,
+      0.011,
+      0.0115,
+      0.012,
+      0.024,
+      0.048
+    ],
+    "bootstraps": 4000
+  },
+  "selection": {
+    "cap_mm": 80.0,
+    "target_rule_mean_travel_mm": 8.639449356191466,
+    "mode": "bracket_interpolation",
+    "lambda_low": 0.0085,
+    "lambda_high": 0.009,
+    "probability_choose_lambda_low": 0.004379286410100728,
+    "lambda_ladder": [
+      {
+        "lambda_distance": 0.0,
+        "n": 64,
+        "mean_travel_mm": 60.21062343292634,
+        "mean_elapsed_s": 1.2990069270325164,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.0005,
+        "n": 64,
+        "mean_travel_mm": 60.04656155939425,
+        "mean_elapsed_s": 1.2971840173266043,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.001,
+        "n": 64,
+        "mean_travel_mm": 60.19387217666814,
+        "mean_elapsed_s": 1.3053833019629808,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.002,
+        "n": 64,
+        "mean_travel_mm": 60.16907639347553,
+        "mean_elapsed_s": 1.3444827932608407,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.004,
+        "n": 64,
+        "mean_travel_mm": 60.839002256852126,
+        "mean_elapsed_s": 1.5356764139650252,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.008,
+        "n": 64,
+        "mean_travel_mm": 40.934853542642145,
+        "mean_elapsed_s": 1.439206706029359,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.0085,
+        "n": 64,
+        "mean_travel_mm": 23.76092982590523,
+        "mean_elapsed_s": 1.261510331398949,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.009,
+        "n": 64,
+        "mean_travel_mm": 8.572936784669277,
+        "mean_elapsed_s": 1.0927548531629943,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.0095,
+        "n": 64,
+        "mean_travel_mm": 2.856622368517397,
+        "mean_elapsed_s": 1.0358027485390846,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.01,
+        "n": 64,
+        "mean_travel_mm": 0.0,
+        "mean_elapsed_s": 1.0040625000000025,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.0105,
+        "n": 64,
+        "mean_travel_mm": 0.0,
+        "mean_elapsed_s": 1.0040625000000025,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.011,
+        "n": 64,
+        "mean_travel_mm": 0.0,
+        "mean_elapsed_s": 1.0040625000000025,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.0115,
+        "n": 64,
+        "mean_travel_mm": 0.0,
+        "mean_elapsed_s": 1.0040625000000025,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.012,
+        "n": 64,
+        "mean_travel_mm": 0.0,
+        "mean_elapsed_s": 1.0040625000000025,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.024,
+        "n": 64,
+        "mean_travel_mm": 0.0,
+        "mean_elapsed_s": 1.0040625000000025,
+        "cap_violations": 0
+      },
+      {
+        "lambda_distance": 0.048,
+        "n": 64,
+        "mean_travel_mm": 0.0,
+        "mean_elapsed_s": 1.0040625000000025,
+        "cap_violations": 0
+      }
+    ],
+    "selection_uses_outcomes": false,
+    "selection_basis": "dev actual cumulative supplementary travel only",
+    "dev_only_grid_refinement": {
+      "base_bracket": [
+        0.008,
+        0.012
+      ],
+      "prices_added": [
+        0.0085,
+        0.009,
+        0.0095,
+        0.01,
+        0.0105,
+        0.011,
+        0.0115
+      ],
+      "criterion": "additional cost resolution within the first bracket, using no outcomes"
+    }
+  },
+  "constraints": {
+    "first_sweep_shared": true,
+    "fisher_used": false,
+    "new_training": false,
+    "distance_cap_applied_to_rule_lookahead": true,
+    "distance_cap_applied_to_cql": true,
+    "selection_outcome_blind": true,
+    "3d_measured_traces_only": true
+  }
+}

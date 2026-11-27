@@ -1,0 +1,619 @@
+International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974
+https://doi.org/10.1007/s11548-024-03235-7
+
+    ORIGINAL ARTICLE
+
+
+
+Automatic robotic doppler sonography of leg arteries
+Jonas Osburg1          · Alexandra Scheibert2 · Marco Horn2 · Ravn Pater2 · Floris Ernst1
+
+Received: 10 January 2024 / Accepted: 4 July 2024 / Published online: 25 July 2024
+© The Author(s) 2024
+
+
+Abstract
+Purpose Robot-assisted systems offer an opportunity to support the diagnostic and therapeutic treatment of vascular diseases
+to reduce radiation exposure and support the limited medical staff in vascular medicine. In the diagnosis and follow-up care
+of vascular pathologies, Doppler ultrasound has become the preferred diagnostic tool. The study presents a robotic system
+for automatic Doppler ultrasound examinations of patients’ leg vessels.
+Methods The robotic system consists of a redundant 7 DoF serial manipulator, to which a 3D ultrasound probe is attached.
+A compliant control was employed, whereby the transducer was guided along the vessel with a defined contact force. Visual
+servoing was used to correct the position of the probe during the scan so that the vessel can always be properly visualized.
+To track the vessel’s position, methods based on template matching and Doppler sonography were used.
+Results Our system was able to successfully scan the femoral artery of seven volunteers automatically for a distance of
+20 cm. In particular, our approach using Doppler ultrasound data showed high robustness and an accuracy of 10.7 (±3.1) px
+in determining the vessel’s position and thus outperformed our template matching approach, whereby an accuracy of 13.9
+(±6.4) px was achieved.
+Conclusions The developed system enables automated robotic ultrasound examinations of vessels and thus represents an
+opportunity to reduce radiation exposure and staff workload. The integration of Doppler ultrasound improves the accuracy
+and robustness of vessel tracking, and could thus contribute to the realization of routine robotic vascular examinations and
+potential endovascular interventions.
+
+Keywords Robotic ultrasound · 3D ultrasound · Duplex sonography · Doppler sonography · Peripheral arterial disease ·
+Visual servoing
+
+
+                                                                              Introduction
+Jonas Osburg and Alexandra Scheibert have contributed equally to this
+work.                                                                         Ultrasound (US) imaging offers several advantages for diag-
+                                                                              nostic and interventional procedures. These include freedom
+B Jonas Osburg                                                                from ionizing radiation, good soft tissue contrast, high
+     j.osburg@uni-luebeck.de                                                  flexibility, and real-time image acquisition. Furthermore,
+     Alexandra Scheibert                                                      ultrasound can provide real-time volumetric image data (4D
+     Alexandra.Scheibert@uksh.de                                              US) [1] and has proven to be a valid imaging modality in the
+     Marco Horn                                                               field of interventional procedures [2]. Additionally, Doppler
+     Marco.Horn@uksh.de                                                       ultrasound, also referred to as duplex sonography, provides
+     Ravn Pater                                                               the examiner with additional information on the kinetics of
+     ravnleonardpater@gmail.com                                               blood flow, which is crucial, for example, in the assessment of
+     Floris Ernst                                                             hemodynamically relevant vascular stenosis. Duplex sonog-
+     floris.ernst@uni-luebeck.de                                              raphy has become the preferred diagnostic tool, especially in
+1    Institute for Robotics and Cognitive Systems, University of              the diagnosis and follow-up care of vascular pathologies [3].
+     Luebeck, Ratzeburger Allee 160, Luebeck 23562, Germany                   As the incidence of vascular diseases has steadily increased
+2    Clinic for Surgery, Division for Vascular and Endovascular               over the years [4], the number of patients requiring pre- and
+     Surgery, University Clinic Schleswig-Holstein Campus                     post-examination for peripheral arterial diseases continues to
+     Luebeck, Ratzeburger Allee 160, 23538 Luebeck, Germany
+
+
+                                                                                                                                  123
+1966                                                     International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974
+
+
+grow. Thus, there will be a significant increase in demand for           In this paper, we present another robotic system for auto-
+routine standardized duplex sonography of the leg vessels. A          matic scanning of the leg artery. We extend the state of the
+major challenge in obtaining high-quality US images is the            art by using a 3D ultrasound probe and Doppler US to track
+strong dependence on the clinician’s experience. This leads           the vessel’s position. We use the X-Plane mode to record the
+to a reduced ability to reproduce the recorded US images              Doppler data, as we achieve a reasonably acceptable record-
+consistently [5, 6]. Furthermore, there are ergonomic bur-            ing frequency of 10 Hz and the information content of the
+dens on the sonographer [7, 8] and a general shortage of              recorded data is considerably higher than in the pure 2D case
+staff in clinics. Automated systems for US scanning can be            due to the additional preservation of the longitudinal sec-
+an opportunity to reduce the problems mentioned above. By             tion of the vessel. An adapted impedance control is used to
+combining US imaging and a robotic system, precise and                ensure patient safety and proper contact with the US probe.
+repeatable images can be acquired in an automated manner              We validate our system by performing a study with seven
+[9], while ergonomically relieving sonographers and coun-             volunteers.
+teracting staff shortages. Thus, a robotic system to perform
+automatic ultrasound scans could provide reliable support in
+the care of patients with vascular diseases.                          Methods
+
+                                                                      The robotic system described in this paper aims to enable
+                                                                      automatic US scans of the femoral artery. The US probe must
+Related work                                                          be moved with a certain contact force while the position is
+                                                                      adjusted to keep the vessel fully visible. This requires system
+Various robotic US systems for automated scanning of vas-             calibration, the use of compliant robot control, and tracking
+cular structure are described in the literature [9–11]. In [12] a     of the artery position in the US images.
+robotic arm was used to scan the lower limb artery. The vessel
+lumen was segmented from the B-mode image using a fast-
+                                                                      System calibration
+marching method and the position of the probe was adjusted
+accordingly to keep the artery continuously in the center of
+                                                                      To control the position of the robot based on a US volume or
+the image. Haxthausen et al. also presented an approach in
+                                                                      a sectional plane of this volume, the transformation matrix
+which a robot successfully followed the peripheral artery of          bT
+                                                                         vol must be determined. This matrix transforms pixel posi-
+a phantom automatically. The vessel center was determined
+                                                                      tions from an US volume {vol}, into the base frame {b} of
+either using a neural network [13] or a template-matching
+                                                                      the robot. The frames involved in this process are shown in
+method [14]. Jiang et al. [15] developed a fully robotic sys-
+                                                                      Fig. 1.
+tem for detecting tubular structures based on a neural network
+                                                                         Consequently, the calculation of b Tvol can be performed
+for segmentation. In addition, the US probe was automati-
+                                                                      as follows:
+cally aligned with the normal direction of the target structure,
+while the vessel structure was held in the center of the US
+view. However, the robot systems described above were only
+                                                                      b
+                                                                          Tvol = b T f f T p p Tvol                                      (1)
+evaluated based on phantom experiments.
+   A volunteer study on the realization of automatic carotid          where j Ti ∈ R4×4 is the homogeneous transformation matrix
+scan procedures using imitation learning was presented in             to transfer the position from frame {i} to frame {j}. The
+[16]. In addition, a volunteer study was done in [17] to              probe tip’s frame is centered on the US probe and referred
+demonstrate an approach to improving the accuracy and                 to as {p}. The frame of the robot flange is denoted as {f}.
+robustness of vessel segmentation using Doppler US images.            Transformation b T f can be derived from the measured joint
+To the best of our knowledge, this is only one study in               angles and the forward kinematics of the robot. Transfor-
+the literature using Doppler ultrasound for robot-guided              mation f T p can be achieved from the CAD model of the
+examinations, although Doppler ultrasound has become the              probe holder and the probe attached to it. To determine the
+preferred diagnostic tool, especially in the diagnosis and            transformation p Tvol , a spatial calibration can be performed.
+follow-up care of vascular pathologies [3]. The most recent           This is done either by using customized phantoms [19–21]
+system for fully automated, robot-assisted 3D ultrasound              or by employing image-based methods [22]. The resulting
+image acquisition for arteries is presented in [18] and was           transformation p Tvol contains the homogeneous rigid trans-
+also validated by a volunteer study. A neural network with            formation p Tvol,grd from the probe tip’s frame to the image
+a u-net structure was used to determine the vessel center,            frame as well as the image spacing represented as affine trans-
+while the in-plane rotation of the probe was corrected by a           formation S ∈ R4×4 with spacing factors sx , s y and sz for
+US confidence map.                                                    the respective axes:
+
+
+123
+International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974                                                           1967
+
+
+
+
+Fig. 1 A Visualization of the base and flange frame of the robot as well as the transformation b T f . B Geometric representation of transformations
+f T and p T . C Experimental setup of the volunteer study
+   p       vol
+
+
+          ⎛        ⎞ ⎛          ⎞
+               ox      sx 0 0 0                                             from the US image. The probe is then moved transversely
+         ⎜ R o y ⎟ ⎜ 0 s y 0 0⎟                                             for a small distance in the positive p y-direction of the probe
+p
+  Tvol = ⎜
+         ⎝
+                   ⎟ ⎜          ⎟                                  (2)
+               o z ⎠ ⎝ 0 0 s z 0⎠                                           tip’s frame. The displacement of the vessel in the vol x y-plane
+           000 1       0 0 0 1                                              can either be recognized manually by the operator or can
+                    
+               pT                  S
+                                                                            be tracked by a template matching algorithm described in
+                 vol,grd
+                                                                            Section “Vessel template matching”. Finally, the difference
+The transformation p Tvol,grd consists of a rotation matrix R               between the vol x-values of the start and end position of the
+describing the geometric relationship between the orienta-                  vessel is calculated. If the difference is positive, the vol x-
+tion of the probe tip’s frame {p} and the orientation of the                axis and the p y-axis point in the opposite direction, resulting
+US volume frame {vol} as well as a translational offset o =                 in the rotation matrix R1 = (0, 0, −1; −1, 0, 0; 0, 1, 0)T .
+(ox , o y , oz )T between the origins of the frames (see Fig. 1B).          Correspondingly, if the difference is negative, the vol x-axis
+However, precise spatial calibration is an error-prone, time-               and the p y-axis point in the same direction, resulting in the
+consuming step. In addition, precise spatial calibration is                 rotation matrix R2 = (0, 0, 1; 1, 0, 0; 0, 1, 0)T . The offset
+not always required. For example, methods for 3D volume                     values (ox , o y , oz )T of the calibration matrix p Tvol,smp can
+reconstruction are also possible without perfect spatial cali-              be derived geometrically as the interface of the US station
+bration, either by directly merging 3D US volume data by                    provides us with the size of the US volume (length l, width
+volume-to-volume registration methods [23], or by using                     w, depth d, see Fig. 1B) in pixels as well as the correspond-
+inertial measurement units to track the probe’s orientation                 ing image spacing sx , s y and sz . This allows us to calculate
+[24]. Furthermore, diagnostic applications such as the one                  the offsets ox and o y between the probe and volume frames,
+shown in this study can be performed without precise spa-                   assuming that the volume is located in the center under the
+tial calibration. For this reason, we use a simplified option by            probe.
+determining an approximate transformation matrix p Tvol,smp ,
+                                                                                  l
+which considerably simplifies the workflow and improves                     ox =    sx                                                          (3)
+usability. The aim of robotic US scans based on visual ser-                      2
+                                                                                 w
+voing is to move the probe depending on the US volume                       oy =     sy                                                         (4)
+                                                                                  2
+or image. Instead of a movement to a specific position, it is               oz = 0                                                              (5)
+often sufficient to move the probe in a certain direction, e.g.
+in the direction of the vessel to be tracked. Thus, the essential           The offset oz is neglected since it is only a minimum dis-
+parameter is the rotation matrix R between the orientation of               tance in p z-direction between the origin of the probe frame
+the probe tip’s frame {p} and the US volume frame {vol}.                    and the US volume frame, as defined by the arrangement of
+This can be determined experimentally by positioning the                    the transducer elements in the probe. This results in the fol-
+probe attached to the robot flange in such a way that the cross-            lowing transformation matrix for the case R = R1 as shown
+section of the artery (or any other easy trackable structure) is            in Fig. 1B:
+visible in the vol x y-plane of the US volume. Its initial posi-
+tion is determined by manually selecting the cross-section
+
+
+                                                                                                                                        123
+1968                                                         International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974
+
+              ⎛                      ⎞                                    Vessel template matching
+                  0    0 −sz 2l sx
+               ⎜               w ⎟
+               ⎜−sx 0 0             ⎟
+                               2 sy ⎟
+p
+    Tvol,smp = ⎜
+               ⎜ 0 s 0                                            (6)     The procedure of our first approach, which uses a template
+               ⎝     y           0 ⎟
+                                   ⎠                                      matching algorithm to find the vessel’s position, is illustrated
+                 0 0 0           1                                        in Fig. 2.
+                                                                             This involves the physician or operator of the system
+The described approximate calibration method offers the                   selecting the cross-section of the artery at the start position
+advantage of requiring no additional time for spatial calibra-            of the scan. This selected image section represents the tem-
+tion with a phantom, as long as the probe remains attached to             plate that is subsequently matched in the US images captured
+the end effector in the same position. All necessary values for           during the scan. At each (x, y)-position of the image I the
+Eq. (6) are obtained from the ultrasound station’s interface,             similarity with the template T is determined by calculating
+allowing for complete automation of the process.                          the normalized correlation coefficient:
+
+                                                                                                                                      
+Robot control                                                                                     x  ,y  (T (x , y ) · I (x + x , y + y ))
+                                                                          Call (x, y) =                                                               (8)
+                                                                                                             2                               2
+                                                                                              x  ,y  T (x , y ) ·   x  ,y  I (x + x , y + y )
+To apply a certain contact force between the probe and the
+patient, a compliant control based on the internal joint torque           Thus, the resulting matrix Call (x, y) contains a similarity
+sensors of the robot was implemented. The controller aims                 value with the template for each (x, y) position in the source
+to apply a force f d in the direction of the probe’s z−axis               image. Possible vessel positions are represented by the best
+(1 DoF). At the same time, a translational movement in the                matches, which is why the values of Call (x, y) are sorted
+probe frame’s x− and y−axes as well as a rotational move-                 in decreasing order and then referred to as Cv . The sec-
+ment around the x−, y− and z−axes (5 DoF) can be enabled.                 ond step in Fig. 2 shows two of these matches as examples,
+The required joint velocities to enable this behaviour are cal-           where Cv,i represents the ith value of the sorted items. Thus,
+culated as                                                                Cv,1 is considered to be the best match. It is important to
+                                                                          prevent incorrect matches in other image regions, as other-
+q̇c = (J (q)T Fd − τext )D −1 + J † Vd                            (7)     wise the robot may be guided away from the target position.
+                                                                          Therefore, potential vessel positions are then checked for
+where J (q)T ∈ R7×6 is the transposed Jacobian matrix for
+                                                                          plausibility with regard to the position P t−1 from the pre-
+the measured joint positions q and τext represent the mea-
+                                                                          vious time step (third step in Fig. 2) using the tracking
+sured external joint torques. The desired wrench is defined
+                                                                          algorithm in Section “Vessel tracking”.
+as Fd = (0, 0, f d , 0, 0, 0)T , where f d is defined as the
+applied force. D ∈ R7×7 is a diagonal damping matrix, with
+                                                                          Vessel doppler signal
+damping factors di representing the diagonal entries. J † rep-
+resents the Moore-Penrose-Inverse of the Jacobian, denoted
+                                                                          The Doppler signal, which is used to visualize blood flow, is
+as J † = J T (J J T )−1 . The desired twist is defined as Vd =
+                                                                          of major importance in clinical practice for the diagnosis of
+(vd , wd )T = (ẋ, ẏ, 0, φ̇, θ̇ , ψ̇)T , where vd = (ẋ, ẏ, 0)T rep-
+                                                                          vascular diseases, including peripheral arterial disease. Nev-
+resents the translational motion and wd = (φ̇, θ̇ , ψ̇)T the
+                                                                          ertheless, it’s rarely found in robotic US interventions. Since
+rotational motion around the x−, y and z−axes. The joint
+                                                                          we are using a 3D probe, we can benefit from the X-Plane
+positions resulting from Eq. (7) are used in the target values
+                                                                          view of the ultrasound station, which enables the simultane-
+for the robot’s joint impedance controller to increase stability
+                                                                          ous visualization of the longitudinal and cross-section of the
+during contact with the environment.
+                                                                          vessel (see Fig. 3B).
+                                                                             The procedure to find potential artery positions based on
+Image analysis
+                                                                          the Doppler images is illustrated in Fig. 4.
+                                                                             The Doppler images showing the cross-section of the
+A two-step approach is used for artery tracking. In the first
+                                                                          artery are first converted into the HSV color space and
+step, possible vessel positions are determined using image
+                                                                          detected flow areas are determined by filtering all red-colored
+processing. This is done either by searching for the vessel
+                                                                          areas (first step in Fig. 4). The values of the corresponding
+position using template matching (see Section “Vessel tem-
+                                                                          HSV ranges are:
+plate matching”) or by extracting the red-colored blood flow
+in the US Doppler images (see Section “Vessel doppler sig-
+                                                                           Hred ∈ [0, 10] ∪ [170, 180]                                                (9)
+nal”). In the second step, the vessel positions identified are
+then checked for plausibility with the previous time step (see             Sred ∈ [50, 255]                                                          (10)
+Section “Vessel tracking”).                                               Vred ∈ [20, 255]                                                           (11)
+
+
+123
+International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974                                                            1969
+
+
+
+
+Fig. 2 Procedure of template matching vessel tracking. The vessel          red box indicates the potential position Cv,1 with the highest correla-
+template is selected at the scan’s start position. This template is then   tion coefficient. This position is then compared with the vessel’s position
+searched for in the new US images during the scan. The thicker dashed      P t−1 from the previous time step
+
+
+
+
+Fig. 3 A Vessel position determined by template matching. B Determination of the vessel position from the Doppler X-Plane US image
+
+
+
+
+Fig. 4 Procedure of doppler vessel tracking. Red regions are extracted     position Cv,1 . The vessel’s position is updated following a plausibility
+and merged into bigger clusters. The centroid of the merged cluster        check concerning the vessel’s position P t−1 of the previous time step
+is indicated by the thicker red cross representing the potential vessel
+
+
+
+The resulting red areas are sorted according to their size in              in our settings corresponds approximately to the radius of
+descending order and referred to as Call . In the next step,               the artery, they are combined, and the centroid is redeter-
+they are grouped into clusters if they are close to each other             mined (see Fig. 4, second step). This merging of red areas is
+(see Algorithm 2 in the Appendix A). For this purpose, the                 done because the increasing or decreasing blood flow caused
+Euclidean distances between the largest area’s center and                  by the heart contraction can result in many smaller, uncon-
+the centroids of the remaining areas are calculated. If the                nected colored areas in the Doppler US image (see Fig. 4).
+distances are smaller than a threshold Tcl = 50 px, which                  The resulting merged clusters represent potential vessel posi-
+
+
+                                                                                                                                         123
+1970                                                          International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974
+
+
+tions Cv . Here, Cv,1 represents the largest red cluster and is            Cam Link 4k) to receive the colored Doppler images from
+therefore regarded as the most likely match for the vessel’s               the screen of the US station. The recording frequency was
+position. Finally, Cv,1 is checked for plausibility in relation            10 Hz for the Doppler X-Plane images and 25 Hz for the
+to the vessel’s position P t−1 from the previous time step.                2D US data used with the template matching approach. The
+                                                                           image depth was set to 50 mm , the resulting image spacing
+Vessel tracking                                                            was 0.098 mm  px . During the study, a physician was present
+                                                                           constantly.
+The artery to be tracked can now be determined from the                       The procedure of our volunteer study was as follows:
+potential vessel positions Cv and is described in Algorithm                First, while the robot was in gravity compensation mode
+1, which is based on [17]. Due to the continuous nature of                 with the US probe attached to the end effector, the starting
+the tracked vessel, the corresponding vessel centers should                point of the scan was determined by the physician. This was
+be close to each other in successive images. Thus, the tracked             the division of the common femoral artery into the profunda
+vessel is updated based on the minimum Euclidian distance                  femoral artery and the superficial femoral artery. Then two
+between the potential vessel positions Cv in the current                   automatic US scans were performed, with each experiment
+image and the detected vessel center P t−1 in the last frame.              being repeated three times. The maximum scan length of
+In addition, a maximum distance value Td = 50 pixels is                    the superficial femoral artery was set at 20 cm. While scan-
+defined to avoid incorrect assignments of the vessel center.               ning, either template matching (see Section “Vessel template
+If the distances of the clustered areas are all above the limit            matching”) or Doppler signal tracking (see Section “Vessel
+value or no vessel candidate is detected at all, the vessel cen-           doppler signal”) was used to track the vessel’s center. To
+ter of the previous image is retained.                                     position the probe appropriately, the distance ec between the
+                                                                           center of the US image showing the cross-section plane and
+                                                                           the tracked vessel center was calculated (see Fig. 3). If this
+Algorithm 1 Vessel tracker
+                                                                           distance ec > 50 px, the probe was moved by the robot in
+1: Input: Previous tracked vessel position P t−1 , vessel candidates in
+    current image Cv
+                                                                           the direction of the vessel. Otherwise, the probe was moved
+2: Output: Current tracked vessel position P t                             forward along the vessel.
+3: P t ← P t−1 ;                                                              During the probe’s movement, a force of 5 N was applied
+4: dmin ← ∞                                                                in the direction of the probe’s z-axis to keep the probe
+5: i min ← −1
+6: for i = 1; i ≤ len(Cv ); i ← i + 1 do
+                                                                           in contact with the skin. The probe’s orientation was held
+7:     di ← CalcEuclDist(P t−1 , Cv (i));                                  constant. The control parameters were determined experi-
+8:     if di < dmin then                                                   mentally, with damping factors di representing the diagonal
+9:         dmin ← di ;                                                     entries of the damping matrix D in Eq. 7 set to 5 N ms.
+10:
+        i min ← i ;
+                                                                           Moreover, the robot’s joint impedance controller was param-
+11:     end if                                                             eterized with a stiffness of 500 Nradm and a damping ratio of
+12: end for                                                                0.9.
+13: if dmin ≤ Td then
+14:     P t ← Cv (i min );
+15: end if
+16: return P t                                                             Results and discussion
+
+                                                                           For evaluation purposes, the probe contact forces as well as
+Volunteer study                                                            the vessel tracking accuracy were investigated. The actual
+                                                                           vessel centers of the recorded US data were labeled by
+To validate our method, we performed a volunteer study with                another physician.
+seven male and healthy volunteers, in which the femoral
+artery was scanned by a robot. All volunteers signed informed              Vessel tracking accuracy
+consent, and the study was approved by the local Ethics Com-
+mittee of the University of Lübeck (ID2023-216_1). We used                 The total mean vessel tracking error of all scans performed
+a KUKA LBR iiwa 14 R820 redundant robot with seven DoF,                    is 13.9 (± 6.4) px or 1.36 (± 0.63) mm for the template
+a Philips Epiq 7 US station, and the XL14-3 probe. For US                  matching approach and 10.7 (± 3.1) px or 1.05 (± 0.3) mm
+data acquisition, the PLUS framework [25] was used in com-                 for the Doppler tracking approach. This results in a 23 %
+bination with a customized Dicom Network Library provided                  lower error when using Doppler tracking. The difference is
+by Philips, allowing real-time access to image and volume                  even more apparent when the tracking accuracy is evaluated
+data. As the US station does not have a direct interface to the            in relation to the distance to the start pose of the scan. Figure 5
+Doppler signal, we additionally used a frame grabber (Elgato               shows the error between the determined vessel center and the
+
+
+123
+International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974                                                 1971
+
+Fig. 5 Accuracy of vessel
+tracking over the distance to the
+start pose of all scans performed.
+The blue line represents the
+mean tracking error using the
+template matching approach, the
+orange line represents the mean
+error using the Doppler
+approach. The corresponding
+standard deviations are indicated
+by the colored areas
+
+
+
+
+labeled ground truth , depending on the distance to the scan’s             with severe peripheral arterial occlusive disease, the femoral
+start pose.                                                                arteries may no longer be sufficiently perfused, making it
+   The blue line represents the average error and the area                 difficult or even impossible to obtain a Doppler signal. The
+highlighted in light blue the standard deviation of the tem-               combination of template matching and Doppler signal could
+plate matching approach. The orange line represents the                    then help to follow the course of the vessel into the periph-
+respective results for the Doppler tracking approach. It can be            ery. To include the change in the vessel cross-section over
+seen that the tracking errors at the beginning of the scan are at          the scan, the template should be repeatedly updated.
+about the same level of approx. 10 px. After a scan length of                 Some related work described in the literature achieved
+approx. 100 mm, the error of the template matching approach                slightly higher vessel tracking accuracies of 0.89 mm in [13]
+increases, while the error of the Doppler tracking remains                 and 0.38 mm in [18]. However, their validation was done
+constant. The more distance covered, the less accurate the                 on phantoms, and the neural networks used for recognition
+template matching becomes, which can also be recognized                    were trained with data from the same phantom. In addition,
+by the very large standard deviation towards the end of the                the scan distance in our experiment is 20 cm instead of 14 cm
+scan. The reason for this is that the vessel geometry changes              in [13] and [18], and thus significantly larger. Especially in
+over the distance traveled. This makes the template matching,              the last part of the scans, the leg vessel is more difficult to
+which uses the vessel cross-section at the start of the scan as            see, which reduces the accuracy of vessel recognition in the
+a reference image, less reliable. Especially towards the end               realistic subject data.
+of the scan, it is difficult even for a physician to recognize the
+vessel cross-section. This is where analyzing the blood flow
+using the Doppler signal is a great advantage, as the vessel               Contact force accuracy
+can still be detected. It should therefore also be noted that due
+to the poorer visibility of the vessel towards the end of the              The forces acting on the end effector in the direction of the
+                                                                           p z-axis of the probe for all the scans performed are shown in
+scan, less accurate labeling could influence the results, espe-
+cially of the template matching approach. Another advantage                Fig. 6.
+of vascular tracking using Doppler signals is the ability to                  The forces were measured using the torque sensors in the
+differentiate between veins and arteries based on the visu-                robot’s joints and the force estimation model provided by the
+alized blood flow color. This means that false detection of                manufacturer. It can be seen that after the start of the scan,
+purely image-based methods (e.g. template matching , or                    the contact force increases until the desired value of 5 N is
+neural networks trained on US images) due to the similarity                reached. The average measured force then decreases slightly
+between artery and vein can be avoided. For future work,                   until it approx. reaches 4.4 (± 0.7) N at the end of the scan,
+a combination of both methods could be considered, which                   which is 0.6 N below the desired target value. The deviation
+combines the advantages. In some cases, no Doppler signal                  can be explained by inaccuracies in the robot model. Friction
+can be detected because the probe is not optimally aligned,                and hysteresis effects can lead to inaccuracies in the estima-
+even though the vessel is visible. Furthermore, in patients                tion of internal joint torques, particularly at slow speeds and
+                                                                           low external forces acting on the end effector. In addition,
+
+
+                                                                                                                               123
+1972                                                            International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974
+
+Fig. 6 Contact forces f z acting
+in the direction of the p z-axis of
+the probe over the distance to
+the start pose for all scans. The
+mean forces are shown as a
+black line, and the
+corresponding standard
+deviations are highlighted in
+light blue. The value of the
+desired contact force f d is
+shown as a red line
+
+
+
+
+Fig. 7 The diagram on the left shows the movement of the US probe            of the figure shows an example of an US image in which the centerline
+in the transversal direction to the vessel’s cross-section in black for an   (dot-dashed red line) to vessel (P t ) distance was higher than the defined
+experiment. The distance ec between the centerline of the US image and       threshold ethr = 50. This results in a corrective movement of the probe
+the detected vessel center is represented in red. Exceeding the thresh-      to keep the vessel centered
+old ethr = 50 px is indicated by the grey circles. The right-hand side
+
+
+the gravity due to the weight of the probe and the probe’s                   ethr = 50 px is exceeded nine times, which is shown by the
+cable was neglected. The inaccuracy of the estimation of the                 grey circles. Each time the threshold is reached, the probe
+internal torques then also leads to an inaccurate estimation of              is moved in the opposite direction, which is illustrated by
+the external torques τext , which are used for the robot’s force             the step-like black curve. This shows that the robot follows
+control (see Eq. 7). This could affect the controller shown                  the detected vessel cross-section. Therefore, the probe can be
+here, as no Cartesian force measurement is used as feed-                     guided along the vessel. However, it must be noted that there
+back, which might be further investigated in future work.                    are many corrective movements. This is because the compen-
+                                                                             sation movement stops as soon as it falls below the threshold
+                                                                             value. If the vascular curvature continues, another correc-
+Vessel centering
+                                                                             tion is required shortly afterwards, and so on. To reduce the
+                                                                             number of required corrective movements, a further thresh-
+To keep the vessel centered during movement, the position
+                                                                             old value ethr,ad < ethr can be introduced in future work. A
+of the probe must be adjusted. Figure 7 shows an example of
+                                                                             commanded compensation movement (triggered by exceed-
+the movement of the US probe in the transversal direction
+                                                                             ing ethr ) then continues until the distance between the image
+to the vessel’s cross-section in black. Moreover, the distance
+                                                                             center and the vessel falls below this threshold ethr,ad .
+ec between the center of the US image and the detected ves-
+sel center is shown in red. During this scan, the threshold
+
+
+123
+International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974                                                           1973
+
+
+Scanning and processing times                                              Appendix A: Doppler clustering pseudocode
+
+The mean total scan time was 44.7 s for the template match-                Algorithm 2 Clustering and merging red regions
+ing approach and 37.2 s for the Doppler tracking approach.                 1: Input: Sorted red areas Call
+The lower scanning times for the Doppler tracking approach                 2: Output: Clustered red areas Cv
+are due to more precise tracking, reducing false detections                3: Cv , used I nd ← {}, {}
+and unnecessary robot movements. The acquisition of stan-                  4: for i = 1; i < len(Call ); i ← i + 1 do
+                                                                           5:     if i ∈
+                                                                                       / used I nd then
+dard 2D US images took on average 40 ms (25 Hz), while the                 6:         curClust, r e f V alue ← {}, Ci
+acquisition of X-Plane Doppler data took 100 ms (10 Hz),                   7:         used I nd ← used I nd ∪ i
+due to technical specifications of the hardware used. The tem-             8:         for j = 1; j < len(Call ); j ← j + 1 do
+plate matching approach for vessel tracking required 12 ms                 9:            if j ∈
+                                                                                              / used I nd & CalcEuclDist(r e f V alue, Cj ) ≤ Tcl
+                                                                               then
+on average, while processing and tracking Doppler images                   10:               used I nd, curClust ← used I nd ∪ j, curClust ∪ Cj
+needed 10.5 ms.                                                            11:            end if
+   From a clinical perspective, there are no fixed guidelines              12:         end for
+regarding the duration of an ultrasound scan. Rather, the                  13:         Cv ← Cv ∪ curClust
+                                                                           14:     end if
+divergence between individual examiners is very strong and                 15: end for
+could be significantly reduced with the help of robotic ultra-             16: return Cv
+sound. An average sonographic examination of the arteries
+of both legs is stated in patient information forms to take
+around 30-60 min [26, 27]. Even though a direct compar-
+ison with our scan times is limited as patient preparation                 Funding Open Access funding enabled and organized by Projekt
+                                                                           DEAL. This study was funded by Deutsche Forschungsgemeinschaft
+(e.g., undressing, applying gel) was not included, the mea-                (ER 817/4-1 and KL 2457/2-1).
+sured robotic ultrasound times are well below current clinical
+routine, highlighting the system’s potential for increased effi-           Declarations
+ciency.
+
+                                                                           Conflict of interest Floris Ernst is the co-inventor of a patent that
+                                                                           is held by the University of Luebeck . The patent number is DE
+Conclusion                                                                 102020109593 B3 and it is titled ’Ultraschall-Erweiterte Realität-
+                                                                           Peripher Endovaskulär Intervention-Navigationsverfahren sowie zuge-
+In this work, we presented a robotic system for automatic                  hörige Ultraschall-Erweiterte Realität-Peripher Endovaskulär Invention-
+scanning of the leg artery (superficial femoral artery). We                Navigationsanordnung’. The other authors declare no Conflict of
+                                                                           interest.
+included Doppler Ultrasound to track the artery, which has
+proven to be an effective option. Compared to the existing                 Ethical approval The local Ethics Committee of the University of
+methods in the literature that use neural networks for ves-                Lübeck, Germany approved this study (ID2023-216_1) and all partici-
+sel detection (e.g. [17, 18]), the approach we have shown                  pants (volunteers) signed informed consent according to the guidelines
+has two major advantages: Firstly, no training data or label-              and regulations of the Declaration of Helsinki.
+ing is required. In particular, to cover different US device
+                                                                           Open Access This article is licensed under a Creative Commons
+settings and different patient-specific vessel morphologies,               Attribution 4.0 International License, which permits use, sharing, adap-
+an extremely large amount of training data would have to                   tation, distribution and reproduction in any medium or format, as
+be available to ensure robust vessel detection performance.                long as you give appropriate credit to the original author(s) and the
+                                                                           source, provide a link to the Creative Commons licence, and indi-
+Recording this data is difficult to achieve, especially if data
+                                                                           cate if changes were made. The images or other third party material
+from patients suffering from vascular diseases is required.                in this article are included in the article’s Creative Commons licence,
+Secondly, the outputs of our vascular tracking can be easily               unless indicated otherwise in a credit line to the material. If material
+understood as there is no black box behavior. This would                   is not included in the article’s Creative Commons licence and your
+                                                                           intended use is not permitted by statutory regulation or exceeds the
+be particularly useful for future fully automated robotic vas-
+                                                                           permitted use, you will need to obtain permission directly from the copy-
+cular screening applications, as patient safety must always                right holder. To view a copy of this licence, visit http://creativecomm
+be ensured. Looking to the future, it may be also possible                 ons.org/licenses/by/4.0/.
+to use robot-assisted ultrasound for safe and precise nav-
+igation during peripheral endovascular interventions, with
+reduced radiation exposure. Additionally, Doppler US can                   References
+provide real-time visualization of hemodynamic parameters,
+allowing for improved intra-interventional success monitor-                 1. Ipsen S, Wulff D, Kuhlemann I, Schweikard A, Ernst F (2021)
+ing compared to traditional angiography.                                       Towards automated ultrasound imaging – robotic image acquisition
+
+
+                                                                                                                                       123
+1974                                                          International Journal of Computer Assisted Radiology and Surgery (2024) 19:1965–1974
+
+
+    in liver and prostate for long-term motion monitoring. Phys Med        16. Huang Y, Xiao W, Wang C, Liu H, Huang R, Sun Z (2021)
+    Biol 66(9):094002. https://doi.org/10.1088/1361-6560/abf277                Towards fully autonomous ultrasound scanning robot with imita-
+ 2. del Cura JL, Zabala R, Corta I (2010) Ultrasound-guided inter-             tion learning based on clinical protocols. IEEE Robot Autom Lett
+    ventional procedures in the musculoskeletal system. Radiología             6(2):3671–3678. https://doi.org/10.1109/LRA.2021.3064283
+    (English Edition) 52(6):525–533. https://doi.org/10.1016/S2173-        17. Jiang Z, Duelmer F, Navab N (2023) Dopus-net: quality-aware
+    5107(10)70026-4                                                            robotic ultrasound imaging based on doppler signal. IEEE Trans
+ 3. Lawall HRG, Huppert G (2024) S3-Leitlinie zur diagnostik,                  Autom Sci Eng. https://doi.org/10.1109/TASE.2023.3277331
+    therapie und nachsorge der peripheren arteriellen ver-                 18. Chen M, Huang Y, Chen J, Zhou T, Chen J, Liu H (2023) Fully
+    schlusskrankheit (PAVK). Accessed April 21. https://register.              robotized 3d ultrasound image acquisition for artery. In: 2023 IEEE
+    awmf.org/assets/guidelines/065-003l_S3_PAVK_periphere_                     international conference on robotics and automation (ICRA), pp
+    arterielle_Verschlusskrankheit_2020-05.pdf                                 2690–2696. https://doi.org/10.1109/ICRA48891.2023.10161148
+ 4. Vos T, Allen C, Arora M (2016) Global, regional, and national inci-    19. Haxthausen F, Ipsen S, Schwegmann H, Bruder R, Ernst F, García-
+    dence, prevalence, and years lived with disability for 310 diseases        Vázquez V (2020) A 3d slicer module for calibration of spatially
+    and injuries, 1990–2015: a systematic analysis for the global bur-         tracked 3d ultrasound probes. International journal of computer
+    den of disease study 2015. Lancet 388(10053):1545–1602. https://           assisted radiology and surgery. In: Oral presentation at "34th
+    doi.org/10.1016/s0140-6736(16)31678-6                                      international congress and exhibition of computer assisted radi-
+ 5. Guo B, He Q, Li Q, Wu S, Fang Z, Zhang Y, Zhang Q, Liang Q                 ology and surgery", Munich (Germany); CARS 2020 — computer
+    (2019) The rate of missed diagnosis of lower limb DVT by three-            assisted radiology and surgery proceedings of the 34th international
+    dimensional ultrasound compared to conventional ultrasound: a              congress and exhibition; conference date: 23-06-2020 through
+    meta-analysis. Medicine 98(37):17103. https://doi.org/10.1097/             27-06-2020, 15, pp 14–16. https://doi.org/10.1007/s11548-020-
+    MD.0000000000017103                                                        02171-6
+ 6. Blehar DJ, Barton B, Gaspari RJ (2015) Learning curves in emer-        20. Wu C, Fu T, Chen X, Xiao J, Ai D, Fan J, Lin Y, Song H, Yang J
+    gency ultrasound education. Acad Emerg Med 22(5):574–582.                  (2022) Automatic spatial calibration of freehand ultrasound probe
+    https://doi.org/10.1111/acem.12653                                         with a multilayer n-wire phantom. Ultrasonics 128:106862. https://
+ 7. Seto E, Biclar L (2008) Ambidextrous sonographic scanning to               doi.org/10.1016/j.ultras.2022.106862
+    reduce sonographer repetitive strain injury. J Diagn Med Sonogr        21. Mathieu B, Claire C, Lorenzo L, Arturo V (2015) Temporal and
+    24:127–135. https://doi.org/10.1177/8756479308315230                       spatial calibration of a freehand 3d ultrasound reconstructions
+ 8. Harrison G, Harris A (2015) Work-related musculoskeletal disor-            system by using an n-wire phantom. In: 2015 12th international
+    ders in ultrasound: can you reduce risk? Ultrasound 23(4):224–230.         conference on electrical engineering, computing science and auto-
+    https://doi.org/10.1177/1742271X15593575                                   matic control (CCE), pp 1–7. https://doi.org/10.1109/ICEEE.2015.
+ 9. Haxthausen F, Böttger S, Wulff D, Hagenah J, García-Vázquez V,             7357966
+    Ipsen S (2021) Medical robotics for ultrasound imaging: current        22. Schlosser J, Kirmizibayrak C, Shamdasani V, Metz S, Hristov
+    systems and future trends. Curr Robot Rep 2:55–71. https://doi.            D (2013) Automatic 3d ultrasound calibration for image guided
+    org/10.1007/s43154-020-00037-y                                             therapy using intramodality image registration. Phys Med Biol
+10. Li K, Xu Y, Meng MQ-H (2021) An overview of systems and                    58:7481–7496. https://doi.org/10.1088/0031-9155/58/21/7481
+    techniques for autonomous robotic ultrasound acquisitions. IEEE        23. Jauer P, Kuhlemann I, Bruder R, Schweikard A, Ernst F (2019) Effi-
+    Trans Med Robot Bionics 3(2):510–524. https://doi.org/10.1109/             cient registration of high-resolution feature enhanced point clouds.
+    TMRB.2021.3072190                                                          IEEE Trans Pattern Anal Mach Intell 41(5):1102–1115. https://doi.
+11. Jiang Z, Salcudean SE, Navab N (2023) Robotic ultrasound imag-             org/10.1109/TPAMI.2018.2831670
+    ing: state-of-the-art and future perspectives. Med Image Anal          24. PIUR tUS Infinity (2024). Accessed Jan 08 . https://piurimaging.
+    89:102878. https://doi.org/10.1016/j.media.2023.102878                     com/piur-tus-infinity/
+12. Merouche S, Allard L, Montagnon E, Soulez G, Bigras P, Cloutier        25. Lasso A, Heffter T, Pinter C, Ungi T, Chen T, Boucharin A,
+    G (2015) A robotic ultrasound scanner for automatic vessel track-          Fichtinger G (2011) Plus: an open-source toolkit for developing
+    ing and three-dimensional reconstruction of b-mode images. IEEE            ultrasound-guided intervention systems. In: 4th NCIGT and nih
+    Trans Ultrason Ferroelectr Freq Control. https://doi.org/10.1109/          image guided therapy workshop, 4, pp 103
+    TUFFC.2015.2499084                                                     26. Doppler Ultrasound Patient Information (2022). Accessed June
+13. Haxthausen F, Hagenah J, Kaschwich M, Kleemann M, García-                  03 2024. https://www.jpaget.nhs.uk/media/116918/22-Doppler-
+    Vázquez V, Ernst F (2020) Robotized ultrasound imaging of the              Ultrasound.pdf
+    peripheral arteries - a phantom study. CoRR abs/2007.06278             27. Peripheral Artery Ultrasound (2024). Accessed Jun 03 2024.
+14. Haxthausen F, Aust T, Schwegmann H, Böttger S, Ernst F, García-            https://www.bonsecours.com/health-care-services/heart-care-
+    Vázquez V, Kleemann M, Kaschwich M (2020) Visual servoing for              cardiology/treatments/peripheral-artery-ultrasound
+    semi-automated 2d ultrasound scanning of peripheral arteries. In:
+    Proceedings Automed (2020). Infinite science publishing GmbH.
+    https://doi.org/10.18416/AUTOMED.2020
+                                                                           Publisher’s Note Springer Nature remains neutral with regard to juris-
+15. Jiang Z, Li Z, Grimm M, Zhou M, Esposito M, Wein W, Stechele
+                                                                           dictional claims in published maps and institutional affiliations.
+    W, Wendler T, Navab N (2022) Autonomous robotic screening
+    of tubular structures based only on real-time ultrasound imaging
+    feedback. IEEE Trans Ind Electron 69(7):7064–7075. https://doi.
+    org/10.1109/TIE.2021.3095787
+
+
+
+
+123
+

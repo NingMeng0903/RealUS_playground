@@ -1,0 +1,112 @@
+{
+  "nominal_baseline_matched_old_v13": 324,
+  "number_of_cases": 108,
+  "frozen_weights_and_checkpoints_match": true,
+  "r6_only_counterfactual_attribution": {
+    "actual": {
+      "r6_only_oracle_six_zone_upper": 95,
+      "baseline_r6_only_failures": 17,
+      "r6_only_errors_with_correct_proposal": 17,
+      "nominal_first_five_preserved": true,
+      "r6_changed_labels": [
+        [
+          -1,
+          0,
+          1
+        ],
+        [
+          -1,
+          1,
+          1
+        ]
+      ]
+    },
+    "proof_0": {
+      "r6_only_oracle_six_zone_upper": 77,
+      "baseline_r6_only_failures": 11,
+      "r6_only_errors_with_correct_proposal": 10,
+      "nominal_first_five_preserved": true,
+      "r6_changed_labels": [
+        [
+          0,
+          -2,
+          1
+        ],
+        [
+          1,
+          0,
+          1
+        ]
+      ]
+    },
+    "proof_1": {
+      "r6_only_oracle_six_zone_upper": 81,
+      "baseline_r6_only_failures": 11,
+      "r6_only_errors_with_correct_proposal": 10,
+      "nominal_first_five_preserved": true,
+      "r6_changed_labels": []
+    },
+    "translation": {
+      "r6_only_oracle_six_zone_upper": 91,
+      "baseline_r6_only_failures": 54,
+      "r6_only_errors_with_correct_proposal": 52,
+      "nominal_first_five_preserved": true,
+      "r6_changed_labels": [
+        [
+          -99,
+          0,
+          4
+        ],
+        [
+          -1,
+          0,
+          2
+        ],
+        [
+          -1,
+          1,
+          1
+        ],
+        [
+          5,
+          0,
+          1
+        ]
+      ]
+    },
+    "deformation": {
+      "r6_only_oracle_six_zone_upper": 80,
+      "baseline_r6_only_failures": 42,
+      "r6_only_errors_with_correct_proposal": 36,
+      "nominal_first_five_preserved": true,
+      "r6_changed_labels": [
+        [
+          -2,
+          0,
+          2
+        ],
+        [
+          -2,
+          1,
+          1
+        ],
+        [
+          -1,
+          1,
+          1
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          5,
+          0,
+          1
+        ]
+      ]
+    }
+  },
+  "arms_independently_recounted": true
+}

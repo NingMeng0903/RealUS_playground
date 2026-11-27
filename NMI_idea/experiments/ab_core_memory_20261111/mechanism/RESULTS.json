@@ -1,0 +1,944 @@
+{
+  "counterexamples": {
+    "known_geometry_sufficient": {
+      "best_terminal_success": 1.0,
+      "expected_elapsed": 3,
+      "probe_needed": false,
+      "public_geometry_reveals_S": true
+    },
+    "memory_epoch_reset_stale_R": {
+      "correct_current_R_plus_P_success": 0.9232,
+      "interpretation": "stale address cache destroys the S correlation",
+      "old_R_and_current_R_independent": true,
+      "stale_old_R_times_current_P_success": 0.5
+    },
+    "minimal_single_probe_negative_control": {
+      "A_and_B_upper_bound": 0.5,
+      "adaptive_exact_success": 0.5,
+      "adaptive_expected_elapsed": 2.0,
+      "budget": 3,
+      "fallback_enabled": false,
+      "fixed_one_probe_exact_success": 0.5,
+      "fixed_one_probe_expected_elapsed": 3.0,
+      "interpretation": "only L is executable; one probe cannot identify S",
+      "probe_cost": 1,
+      "terminal_actions": [
+        "terminal:-1"
+      ],
+      "terminal_cost": 2
+    },
+    "model_mismatch_actual_accuracy_0.55_assumed_0.96": {
+      "actual_exact_success": 0.505,
+      "actual_expected_elapsed": 5.0,
+      "fallback_if_model_were_correctly_known": 0.67,
+      "interpretation": "two probes are chosen under the wrong model, but .505 is below .67",
+      "planner_assumed_success": 0.9232,
+      "selected_root_action": "probe_R"
+    },
+    "no_information_accuracy_0.5": {
+      "adaptive_h3_exact_success": 0.67,
+      "expected_elapsed": 3.0,
+      "interpretation": "diagnostics carry no S information; fallback dominates",
+      "root_action": "terminal:fallback"
+    }
+  },
+  "fixed_prefix": {
+    "protocol": {
+      "budget_equal_to_deadline": 8,
+      "forced_prefix": [
+        {
+          "action": "probe_R",
+          "cost": 1,
+          "observable": "noisy R"
+        },
+        {
+          "action": "middle_1",
+          "cost": 1,
+          "observable": "independent uninformative"
+        },
+        {
+          "action": "middle_2",
+          "cost": 1,
+          "observable": "independent uninformative"
+        },
+        {
+          "action": "middle_3",
+          "cost": 1,
+          "observable": "independent uninformative"
+        }
+      ],
+      "full_history_replay_and_address_cache_same": true,
+      "no_old_patch_revisit": true,
+      "shared_public_exit_and_time": true,
+      "target_local_legal_probe": "probe_P only",
+      "target_local_terminal_cost": 3
+    },
+    "rows": [
+      {
+        "deadline": 8,
+        "drops_old_R": false,
+        "exact_enumerated_success": 0.9231999999999998,
+        "expected_elapsed": 8.0,
+        "image_id": "shared_symbolic_image_v1",
+        "memory_policy": "full_history",
+        "old_patch_revisit": "forbidden",
+        "prefix_cost": 4,
+        "public_robot_exit": "same_target_local_after_three_forced_steps",
+        "retained_after_target": "R,middle_1,middle_2,middle_3,P",
+        "target_action": "probe_P"
+      },
+      {
+        "deadline": 8,
+        "drops_old_R": true,
+        "exact_enumerated_success": 0.6700000000000002,
+        "expected_elapsed": 7.0,
+        "image_id": "shared_symbolic_image_v1",
+        "memory_policy": "window1",
+        "old_patch_revisit": "forbidden",
+        "prefix_cost": 4,
+        "public_robot_exit": "same_target_local_after_three_forced_steps",
+        "retained_after_target": "P",
+        "target_action": "terminal:fallback"
+      },
+      {
+        "deadline": 8,
+        "drops_old_R": true,
+        "exact_enumerated_success": 0.6700000000000002,
+        "expected_elapsed": 7.0,
+        "image_id": "shared_symbolic_image_v1",
+        "memory_policy": "window2",
+        "old_patch_revisit": "forbidden",
+        "prefix_cost": 4,
+        "public_robot_exit": "same_target_local_after_three_forced_steps",
+        "retained_after_target": "middle_3,P",
+        "target_action": "terminal:fallback"
+      },
+      {
+        "deadline": 8,
+        "drops_old_R": false,
+        "exact_enumerated_success": 0.9231999999999998,
+        "expected_elapsed": 8.0,
+        "image_id": "shared_symbolic_image_v1",
+        "memory_policy": "replay",
+        "old_patch_revisit": "forbidden",
+        "prefix_cost": 4,
+        "public_robot_exit": "same_target_local_after_three_forced_steps",
+        "retained_after_target": "R,middle_1,middle_2,middle_3,P",
+        "target_action": "probe_P"
+      },
+      {
+        "deadline": 8,
+        "drops_old_R": false,
+        "exact_enumerated_success": 0.9231999999999998,
+        "expected_elapsed": 8.0,
+        "image_id": "shared_symbolic_image_v1",
+        "memory_policy": "address_cache",
+        "old_patch_revisit": "forbidden",
+        "prefix_cost": 4,
+        "public_robot_exit": "same_target_local_after_three_forced_steps",
+        "retained_after_target": "R,middle_1,middle_2,middle_3,P",
+        "target_action": "probe_P"
+      },
+      {
+        "deadline": 8,
+        "drops_old_R": true,
+        "exact_enumerated_success": 0.6700000000000002,
+        "expected_elapsed": 7.0,
+        "image_id": "shared_symbolic_image_v1",
+        "memory_policy": "ignore_diagnostic",
+        "old_patch_revisit": "forbidden",
+        "prefix_cost": 4,
+        "public_robot_exit": "same_target_local_after_three_forced_steps",
+        "retained_after_target": "middle_1,middle_2,middle_3,P (diagnostics ignored)",
+        "target_action": "terminal:fallback"
+      },
+      {
+        "deadline": 8,
+        "drops_old_R": true,
+        "exact_enumerated_success": 0.6700000000000002,
+        "expected_elapsed": 7.0,
+        "image_id": "shared_symbolic_image_v1",
+        "memory_policy": "pure_geometry_A",
+        "old_patch_revisit": "forbidden",
+        "prefix_cost": 4,
+        "public_robot_exit": "same_target_local_after_three_forced_steps",
+        "retained_after_target": "middle_1,middle_2,middle_3,P (diagnostics ignored)",
+        "target_action": "terminal:fallback"
+      }
+    ],
+    "separation": {
+      "full_history_minus_window1": 0.25319999999999965,
+      "full_history_minus_window2": 0.25319999999999965,
+      "information_sufficient_only_when_R_and_P_coexist": true
+    }
+  },
+  "fixed_windows": [
+    {
+      "full_bayes": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "ignore_diagnostic": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "n_probes": 0
+    },
+    {
+      "full_bayes": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 4.0,
+        "max_elapsed": 4,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "terminal",
+              "expected_time": 3.0,
+              "terminal_choice": "fallback",
+              "value": 0.67
+            },
+            "1": {
+              "action": "terminal",
+              "expected_time": 3.0,
+              "terminal_choice": "fallback",
+              "value": 0.67
+            }
+          },
+          "expected_time": 4.0,
+          "value": 0.67
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 2
+      },
+      "ignore_diagnostic": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 4.0,
+        "max_elapsed": 4,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "terminal",
+              "expected_time": 3.0,
+              "terminal_choice": "fallback",
+              "value": 0.67
+            },
+            "1": {
+              "action": "terminal",
+              "expected_time": 3.0,
+              "terminal_choice": "fallback",
+              "value": 0.67
+            }
+          },
+          "expected_time": 4.0,
+          "value": 0.67
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 2
+      },
+      "n_probes": 1
+    },
+    {
+      "full_bayes": {
+        "exact_enumerated_value": 0.9232,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.9232,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            },
+            "1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            }
+          },
+          "expected_time": 5.0,
+          "value": 0.9232
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 4
+      },
+      "ignore_diagnostic": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "fallback",
+                  "value": 0.67
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "fallback",
+                  "value": 0.67
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.67
+            },
+            "1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "fallback",
+                  "value": 0.67
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "fallback",
+                  "value": 0.67
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.67
+            }
+          },
+          "expected_time": 5.0,
+          "value": 0.67
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 4
+      },
+      "n_probes": 2
+    }
+  ],
+  "formula_checks": {
+    "fallback_gap_at_a_0.96": 0.2532,
+    "one_probe_P_independent_of_S": true,
+    "two_probe_beats_fallback_if_accuracy_gt": 0.791547594742265,
+    "two_probe_success": 0.9232,
+    "two_probe_success_formula": "a^2 + (1-a)^2"
+  },
+  "generated_by": "mechanism/run_exact.py",
+  "horizon_rows": [
+    {
+      "adaptive_full_bayes": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "adaptive_ignore_diagnostic": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "fixed_open_loop_candidates": [
+        {
+          "exact_enumerated_value": 0.67,
+          "expected_time": 3.0,
+          "max_elapsed": 3,
+          "n_probes": 0,
+          "planner_value": 0.67,
+          "root_action": "terminal:fallback"
+        }
+      ],
+      "fixed_open_loop_selected": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "n_probes": 0,
+        "planner_value": 0.67,
+        "root_action": "terminal:fallback"
+      },
+      "h": 1
+    },
+    {
+      "adaptive_full_bayes": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "adaptive_ignore_diagnostic": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "fixed_open_loop_candidates": [
+        {
+          "exact_enumerated_value": 0.67,
+          "expected_time": 3.0,
+          "max_elapsed": 3,
+          "n_probes": 0,
+          "planner_value": 0.67,
+          "root_action": "terminal:fallback"
+        },
+        {
+          "exact_enumerated_value": 0.67,
+          "expected_time": 4.0,
+          "max_elapsed": 4,
+          "n_probes": 1,
+          "planner_value": 0.67,
+          "root_action": "probe_R"
+        }
+      ],
+      "fixed_open_loop_selected": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "n_probes": 0,
+        "planner_value": 0.67,
+        "root_action": "terminal:fallback"
+      },
+      "h": 2
+    },
+    {
+      "adaptive_full_bayes": {
+        "exact_enumerated_value": 0.9232,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.9232,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            },
+            "1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            }
+          },
+          "expected_time": 5.0,
+          "value": 0.9232
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 4
+      },
+      "adaptive_ignore_diagnostic": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "fixed_open_loop_candidates": [
+        {
+          "exact_enumerated_value": 0.67,
+          "expected_time": 3.0,
+          "max_elapsed": 3,
+          "n_probes": 0,
+          "planner_value": 0.67,
+          "root_action": "terminal:fallback"
+        },
+        {
+          "exact_enumerated_value": 0.67,
+          "expected_time": 4.0,
+          "max_elapsed": 4,
+          "n_probes": 1,
+          "planner_value": 0.67,
+          "root_action": "probe_R"
+        },
+        {
+          "exact_enumerated_value": 0.9232,
+          "expected_time": 5.0,
+          "max_elapsed": 5,
+          "n_probes": 2,
+          "planner_value": 0.9232,
+          "root_action": "probe_R"
+        }
+      ],
+      "fixed_open_loop_selected": {
+        "exact_enumerated_value": 0.9232,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "n_probes": 2,
+        "planner_value": 0.9232,
+        "root_action": "probe_R"
+      },
+      "h": 3
+    },
+    {
+      "adaptive_full_bayes": {
+        "exact_enumerated_value": 0.9232,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.9232,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            },
+            "1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            }
+          },
+          "expected_time": 5.0,
+          "value": 0.9232
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 4
+      },
+      "adaptive_ignore_diagnostic": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "fixed_open_loop_candidates": [
+        {
+          "exact_enumerated_value": 0.67,
+          "expected_time": 3.0,
+          "max_elapsed": 3,
+          "n_probes": 0,
+          "planner_value": 0.67,
+          "root_action": "terminal:fallback"
+        },
+        {
+          "exact_enumerated_value": 0.67,
+          "expected_time": 4.0,
+          "max_elapsed": 4,
+          "n_probes": 1,
+          "planner_value": 0.67,
+          "root_action": "probe_R"
+        },
+        {
+          "exact_enumerated_value": 0.9232,
+          "expected_time": 5.0,
+          "max_elapsed": 5,
+          "n_probes": 2,
+          "planner_value": 0.9232,
+          "root_action": "probe_R"
+        }
+      ],
+      "fixed_open_loop_selected": {
+        "exact_enumerated_value": 0.9232,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "n_probes": 2,
+        "planner_value": 0.9232,
+        "root_action": "probe_R"
+      },
+      "h": 4
+    }
+  ],
+  "independent_checks": [
+    {
+      "adaptive_dp_vs_enumeration_abs_error": 0.0,
+      "h": 1,
+      "ignore_dp_vs_enumeration_abs_error": 0.0
+    },
+    {
+      "adaptive_dp_vs_enumeration_abs_error": 0.0,
+      "h": 2,
+      "ignore_dp_vs_enumeration_abs_error": 0.0
+    },
+    {
+      "adaptive_dp_vs_enumeration_abs_error": 0.0,
+      "h": 3,
+      "ignore_dp_vs_enumeration_abs_error": 0.0
+    },
+    {
+      "adaptive_dp_vs_enumeration_abs_error": 0.0,
+      "h": 4,
+      "ignore_dp_vs_enumeration_abs_error": 0.0
+    }
+  ],
+  "method_classification": {
+    "B_adaptive_full_bayes": {
+      "diagnostic_channel": "full_bayes",
+      "fairness_note": "identical public action contract; only replanning/memory policy differs",
+      "policy": {
+        "exact_enumerated_value": 0.9232,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.9232,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            },
+            "1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            }
+          },
+          "expected_time": 5.0,
+          "value": 0.9232
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 4
+      },
+      "reads": [
+        "same_geometry_summary",
+        "all_persistent_probe_history"
+      ]
+    },
+    "pure_geometry_A": {
+      "diagnostic_channel": "ignored",
+      "policy": {
+        "exact_enumerated_value": 0.67,
+        "expected_time": 3.0,
+        "max_elapsed": 3,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.67,
+        "policy_tree": {
+          "action": "terminal",
+          "expected_time": 3.0,
+          "terminal_choice": "fallback",
+          "value": 0.67
+        },
+        "root_action": "terminal:fallback",
+        "terminal_nodes": 1
+      },
+      "reads": [
+        "geometry_equivalent_public_summary"
+      ]
+    },
+    "strong_A_full_history_planning": {
+      "diagnostic_channel": "full_bayes",
+      "fairness_note": "same model, legal actions, image, time, and deadline as B",
+      "policy": {
+        "exact_enumerated_value": 0.9232,
+        "expected_time": 5.0,
+        "max_elapsed": 5,
+        "max_terminals_on_any_path": 1,
+        "planner_value": 0.9232,
+        "policy_tree": {
+          "action": "probe_R",
+          "children": {
+            "-1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            },
+            "1": {
+              "action": "probe_P",
+              "children": {
+                "-1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:-1",
+                  "value": 0.9232
+                },
+                "1": {
+                  "action": "terminal",
+                  "expected_time": 3.0,
+                  "terminal_choice": "terminal:1",
+                  "value": 0.9232
+                }
+              },
+              "expected_time": 4.0,
+              "value": 0.9232
+            }
+          },
+          "expected_time": 5.0,
+          "value": 0.9232
+        },
+        "root_action": "probe_R",
+        "terminal_nodes": 4
+      },
+      "reads": [
+        "same_geometry_summary",
+        "all_persistent_probe_history"
+      ]
+    }
+  },
+  "model": {
+    "budget": 5,
+    "exact_expectation": "enumerate all four hidden states and every binary probe branch",
+    "fallback_success": 0.67,
+    "geometry_summary": "left_right_equivalent_public_summary",
+    "h_definition": "macro decision depth; costs enforce the common physical deadline",
+    "hidden_state": "S,R independent uniform signs in {-1,+1}",
+    "image_id_shared_by_all_methods": "shared_symbolic_image_v1",
+    "max_terminal_actions": 1,
+    "probe_P_signal": "S*R",
+    "probe_R_signal": "R",
+    "probe_accuracy": 0.96,
+    "probe_cost": 1,
+    "terminal_cost": 3,
+    "terminal_sides": [
+      -1,
+      1
+    ]
+  },
+  "schema": "ab_core_memory_exact_v1",
+  "scope": "symbolic exact finite-state mechanism only; no real acoustic fixture",
+  "shared_action_catalog": {
+    "fallback": {
+      "cost": 3,
+      "image_id": "shared_symbolic_image_v1",
+      "independent_success": 0.67,
+      "legal": true,
+      "max_terminal_actions": 1
+    },
+    "probe_P": {
+      "cost": 1,
+      "direct_reward": 0.0,
+      "image_id": "shared_symbolic_image_v1",
+      "legal": true,
+      "observable": "noisy S*R"
+    },
+    "probe_R": {
+      "cost": 1,
+      "direct_reward": 0.0,
+      "image_id": "shared_symbolic_image_v1",
+      "legal": true,
+      "observable": "noisy R"
+    },
+    "terminal:-1": {
+      "cost": 3,
+      "image_id": "shared_symbolic_image_v1",
+      "legal": true,
+      "max_terminal_actions": 1,
+      "success_condition": "S=-1"
+    },
+    "terminal:1": {
+      "cost": 3,
+      "image_id": "shared_symbolic_image_v1",
+      "legal": true,
+      "max_terminal_actions": 1,
+      "success_condition": "S=+1"
+    }
+  },
+  "verification": {
+    "all_policies_max_one_terminal": true,
+    "all_policy_branches_within_budget": true,
+    "exact_two_probe_value": 0.9232
+  }
+}

@@ -1,0 +1,125 @@
+原生 QP 探查停留与续扫反例
+================================
+
+记录于 2026-11-12。
+配对条件为 fixture_00_constrained 中已存档的一个困难前缀。
+
+在同一个完整原生控制器根状态
+`b851e6874ff8b54c2c8cbfb6fd491c587d0f018568db17c795e2b87f9280625a` 上，
+右侧探查后再接同一个左侧 0.60 s 动作时，0.15 s/0.30 s 的续行动作可通过，
+0.60 s 的两个候选续行均超出原 2 mm 跟踪门。目标已知时直接接左侧也通过。
+发生拒绝时，实际状态仍停在右侧探查出口。
+
+1. 固定条件与证据边界
+----------------------
+
+* 起点来自
+  `../ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/2a921a2997242aaf7a1d55ea.json`；
+  四个 dwell_sensitivity/RESULT.json 的 `root` 相同。
+* 所有 `dwell_sensitivity/*/ADAPTER.json` 使用同一 `fixture_00_constrained`、
+  native deterministic controller 和同一 adapter 指纹（sha256
+  `ab6ce9c2cc638e8ef750e085dbbd92cfa65a517ba57b5c27064f876b341ffc55`）；
+  native binary 指纹为 `a212b43c4df2cbbbbcb5671d1973484e5fd587f18984ad9c1ead8668f5171e04`。
+  使用既有 ProDMP/接触标架/路线库，跟踪门为位置 2 mm、姿态 2°。
+* 本记录是离线 native-QP 回放。它只检查有限的已有候选路线；没有把未枚举路线
+  或声学/图像证据推断为通过。
+
+2. 配对回放：精确增量动作、路线与门结果
+------------------------------------------
+
+以下“动作顺序”是从同一 root 增量加入的动作；`route` 是 native 选中的完整路线，
+前缀中的右侧动作进入同一控制器历史。
+
+| 情形 | 增量动作顺序 | native 结果/路线 | 位置峰值 | 整条用时 |
+|---|---|---|---:|---:|
+| direct | `side_left__single_dwell_0.6` | passed；`...right__0.6`×3 → `left__0.6` → `retreat_fork` | 1.484885 mm（报告四舍五入 1.485） | 4.150 s |
+| `.15` | `side_right__single_dwell_0.15` → `side_left__single_dwell_0.6` | 两段均 passed；右 `.15` 用 `direct`，左用 `retreat_fork` | 1.899906817 mm（1.900） | 4.975 s |
+| `.30` | `side_right__single_dwell_0.3` → `side_left__single_dwell_0.6` | 两段均 passed；右 `.30` 用 `direct`，左用 `retreat_fork` | 1.556755665 mm（1.557） | 5.125 s |
+| `.60` | `side_right__single_dwell_0.6` → `side_left__single_dwell_0.6` | 右段 passed；左段 `no_checked_route`，无 selected route | 最佳 `retreat_fork` 2.210761620 mm（2.211，失败） | 无通过序列 |
+
+原始数值与状态指纹见下列文件。
+`dwell_sensitivity/direct/RESULT.json`、`dwell_sensitivity/.15/RESULT.json`、
+`dwell_sensitivity/.30/RESULT.json`、`dwell_sensitivity/.60/RESULT.json`。
+`.60` 的 `round_tip` 也未通过（审计值 3.993223939 mm）；因此“best failed”指
+在已检查候选中峰值最小的 `retreat_fork` 仍超过 2 mm，而不是没有尝试任何候选。
+
+3. 旧 A_task 的实际选择/恢复（public events）
+----------------------------------------------
+
+原始记录
+
+`../ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_task/case_0001/RESULT_CONTINUED.json`。
+该文件的 `events` 记录了真实动作顺序，`public_accepted` 仍是协议级结果，不能用
+私有质量通过替代它。
+
+* 起始四次选择为 `side_right__single_dwell_0.6` ×4：public visit_0 为
+  `detected=false`；随后 quality 分别为 0.431329559、0.412428770、
+  0.442447003（均未 `public_accepted`）。这对应报告所说的“失检、质量 0.431、
+  质量 0.412”的前三包。
+* 然后 A 实际按顺序尝试 `side_left__single_dwell_0.6`、
+  `side_left__single_dwell_0.3`、`side_left__single_dwell_0.15`；三项事件状态均为
+  `native_no_witness`。这些是 native 检查拒绝，没有推进到物理执行。
+* `common_A_task_recovery` 随后保留当前完整状态，再选
+  `side_right__single_dwell_0.6` 一次（public quality 0.448029125）；随后接上
+  `side_left__single_dwell_0.6` 的原左侧路线（首段 `retreat_fork` 通过 native
+  检查）。这就是“再做一次右侧采集后，才接上原左侧动作”的实际恢复。
+* 继续运行到 guard-16 仍为 `watchdog_probe_guard`、`correct_complete=false`、
+  `reacquired=true`，所以该 A 轨迹不是最终任务成功；这里只记录它的选择/恢复行为，
+  不把恢复中的左侧帧当作 B 胜。
+
+4. 完整状态与近同 TCP 的反事实见证
+-----------------------------------
+
+`late_native_witness/after_4/RESULT.json` 与 `after_5/RESULT.json` 从两个完整存档
+出口分别独立重跑同一个 `side_left__single_dwell_0.6`。两者使用同一 adapter/controller，
+但入口完整状态指纹不同：
+
+* after_4：`035a79e25f571f07da8437174e8d8e3d14490716a8c7a22280fe75d610cf8a71`；
+  `round_tip` 3.993223939 mm、`retreat_fork` 2.210761620 mm，均 invalid，
+  `status=no_checked_route`。
+* after_5：`caab7ff6a411d721f71dd35835134ac6c55f2415e52712a262100b4a536628d6`；
+  `round_tip` 4.054151049 mm invalid，但 `retreat_fork` 1.935658824 mm valid，
+  `status=executed`。
+
+这两个完整状态的 TCP 差异只有 0.000012369110384 mm，姿态差
+0.000000234128565°；滑轨差 0.177777964 mm，臂关节最大差 0.054369393°。
+因此同一 TCP 近邻不能当作“只有位姿”的对照，必须保留 q/qdot/加速度/控制器历史。
+`REPORT.txt` 对另一组 `.30/.60` 出口的概括值为 TCP 差 0.0000194 mm；前者对应同一起点不同停留，后者对应已有第四次和第五次探查的存档出口。
+
+5. 解释、比较范围与限制
+------------------------
+
+* `no_checked_route`/`native_no_witness` 表示当前完整状态下，已检查候选路线未过
+  2 mm/2° 门；被拒绝的是选定计划，未发生“执行后撞限位/实机失控”。
+* 这是预先挑出的困难前缀上的机制复现，不能外推为 B 的病例级胜率或无偏优势。
+  `.15/.30/.60` 只改变回放中的 dwell/动作时序；本轮未测试短停留是否取得足够的
+  超声成像证据，也未计算 B 的最终图像成功率。
+* 结论限于现有路线库、现有 controller 与本次根状态；round_tip 在两种 late 状态
+  都失败，不能因为另一条路线在 after_5 通过就声称所有路线都可行。
+
+6. 与本案分开的真实体模/硬件注记
+---------------------------------
+
+`PHANTOM_HANDOFF_RECHECK.txt` 记录四项离线回归 PASS，并明确“Same-source
+experiment binary pinned for offline verification. No hardware was called.”
+`REPORT.txt` 另记：旧体模 standoff 构型到达 TCP 后超出运行时关节裕度、HOLD 被拒；
+纠正后的 SRS 构型在相同 TCP 的离线 native 复核通过。该事件不属于本 dwell 反例，
+旧非法姿态不能计作 B 胜，也不能替代真实硬件对照。
+
+7. 可复现命令（不包含本记录写入）
+--------------------------------
+
+```sh
+EXP=/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_native_exit_effect_20261111
+PY=/media/camp/EXT_DRIVE/envs/genesis/bin/python
+cd "$EXP"
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 "$PY" dwell_sensitivity.py direct
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 "$PY" dwell_sensitivity.py .15
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 "$PY" dwell_sensitivity.py .30
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 "$PY" dwell_sensitivity.py .60
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 "$PY" late_native_witness.py 4
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 "$PY" late_native_witness.py 5
+```
+
+主要引用：`REPORT.txt`、`ASTRA_WITNESS_AUDIT.json`、上述六个 `RESULT.json`、
+以及 A_task 的 `RESULT_CONTINUED.json` 和 `PHANTOM_HANDOFF_RECHECK.txt`。

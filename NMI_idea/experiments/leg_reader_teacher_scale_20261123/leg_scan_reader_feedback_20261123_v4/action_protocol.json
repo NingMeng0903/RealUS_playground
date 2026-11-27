@@ -1,0 +1,48 @@
+{
+  "experiment": "leg_scan_reader_feedback_20261123_v4",
+  "reader_freeze_sha256": "42830aedfb1f1fc27ee3902fd17c6c0877e3c33ed9bedbdc92e6805737bee149",
+  "action_menu": [
+    "continue",
+    "equal_time_hold",
+    "window_left",
+    "window_right",
+    "revisit_left",
+    "revisit_center",
+    "revisit_right"
+  ],
+  "counts": {
+    "search_dev": 320,
+    "search_test": 512,
+    "feedback_test": 192
+  },
+  "dev_tapes": [
+    "search_0",
+    "search_1",
+    "proof_0",
+    "proof_1"
+  ],
+  "test_tapes": [
+    "actual",
+    "search_0",
+    "search_1",
+    "proof_0",
+    "proof_1"
+  ],
+  "test_sampling": "predefined natural atlas layout distribution with no recoverability filter",
+  "dird": false,
+  "map": "planned and executed in the material chart",
+  "source_sha256": {
+    "action_eval.py": "921751315db1c71d82c23f674a791730610f32047ee0f881b01fc93480627928",
+    "active_trial.py": "39c99142ffc0bf3e033d2b1ed2e0439ec70d5379b722cb4ef115991c9007b393",
+    "check_contracts.py": "1fe686eed9a77489a0544e482736e046803c1c7d4f859a64edc24ceea810eaea",
+    "collect_reader.py": "4d4bfe8d8017eb2ae940376467e87a6bad22833d8eda9c0c95cb6caf6d5ffcfc",
+    "dual_value.py": "026e66fc6a189fdf4eb8adf07e6dd834e56e1c667e58db178793d202c7925d44",
+    "fit_public.py": "3a8a53f3da34bedfef1962dfac0aa867d72411c94b617bf40680cf32a13a9800",
+    "public_features.py": "d2ad13860dfcb56a9adc811adbf87cae7a185146225ebaf7233edce941d0a679",
+    "public_graph.py": "a14cebd84dd23432af1f4dc3c533be31f6ae8ed8570a52b15abdeb15c3e45418",
+    "reader_eval.py": "9099bb6a532e640ea8fedca873e2b5d0dd6a5923ea3c2a67b10eba50802f5817",
+    "readout_state.py": "dba45504ff4874375d8cc0b14b7bd6bbca6d38d81012b378624ecae1a1d953c6",
+    "run_study.py": "55fe8ab7dd3b1d71de629f9710dd0fa11bcf07d9eb7c0cb967ce9cc45447384c",
+    "study_worlds.py": "31d925fac8696db5443ae9a7c523d1b22e62e357f930c6491fbdb8ab5e43caf6"
+  }
+}

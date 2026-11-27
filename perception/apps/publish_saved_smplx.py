@@ -16,6 +16,9 @@ Examples::
 
   # Timed hold:
   $PY perception/apps/publish_saved_smplx.py --run 20260713_213712 --duration-s 120
+
+  # Replay a fitted continuous sequence with source frame/timestamp preserved:
+  $PY perception/apps/publish_saved_smplx.py --sequence outputs/offline_compare/<run> --loop
 """
 
 from __future__ import annotations
@@ -34,6 +37,7 @@ def main() -> int:
 
     from projects.genesis_ue_sync.multiview_realtime.publish.static_smplx_track import (
         publish_static_smplx_track,
+        publish_smplx_sequence,
         resolve_moment_dir,
         smplx_output_root,
     )
@@ -43,6 +47,7 @@ def main() -> int:
     src.add_argument("--run", type=str, help="Capture run dir name or path under smplx_outputs/")
     src.add_argument("--moment-dir", type=Path, help="Explicit moment_0000 directory")
     src.add_argument("--npz", type=Path, help="Direct path to smplx_result.npz")
+    src.add_argument("--sequence", type=Path, help="Sequence directory containing index.json and moment_*/")
     ap.add_argument("--output-root", type=Path, default=smplx_output_root(repo))
     ap.add_argument("--publish-bind", type=str, default="tcp://127.0.0.1:5598")
     ap.add_argument(
@@ -70,9 +75,30 @@ def main() -> int:
         action="store_true",
         help="Repeat until Ctrl+C (default when neither --once nor --duration-s).",
     )
+    ap.add_argument("--time-scale", type=float, default=1.0, help="Sequence replay speed (1 = source timing).")
+    ap.add_argument("--max-cycles", type=int, default=None, help="Optional sequence loop count for scripted replay.")
     args = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    if args.sequence is not None:
+        result = publish_smplx_sequence(
+            args.sequence,
+            bind=str(args.publish_bind),
+            publish_kind=str(args.publish_kind),
+            gender=str(args.gender),
+            loop=bool(args.loop),
+            time_scale=float(args.time_scale),
+            rate_hz=float(args.rate_hz),
+            max_cycles=args.max_cycles,
+        )
+        logging.info(
+            "sequence publish stopped sent=%s cycles=%s bind=%s",
+            result.get("sent"),
+            result.get("cycles"),
+            result.get("bind"),
+        )
+        return 0
 
     moment = resolve_moment_dir(
         run=args.run,

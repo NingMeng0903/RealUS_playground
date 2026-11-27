@@ -1,0 +1,514 @@
+                                                            IntervenGen: Interventional Data Generation for
+                                                           Robust and Data-Efficient Robot Imitation Learning
+                                                          Ryan Hoque1,2 , Ajay Mandlekar∗2 , Caelan Garrett∗2 , Ken Goldberg1 , Dieter Fox2
+
+
+                                           Abstract— Imitation learning is a promising paradigm for
+                                        training robot control policies, but these policies can suffer
+                                        from distribution shift, where the conditions at evaluation time
+                                        differ from those in the training data. A popular approach for
+                                        increasing policy robustness to distribution shift is interactive
+arXiv:2405.01472v1 [cs.RO] 2 May 2024
+
+
+
+
+                                        imitation learning (i.e., DAgger and variants), where a human
+                                        operator provides corrective interventions during policy rollouts.
+                                        However, collecting a sufficient amount of interventions to cover                            IntervenGen
+                                        the distribution of policy mistakes can be burdensome for
+                                        human operators. We propose IntervenGen (I-Gen), a novel data
+                                        generation system that can autonomously produce a large set
+                                        of corrective interventions with rich coverage of the state space     Human Intervention                           Synthetic Interventions
+                                        from a small number of human interventions. We apply I-Gen
+                                        to 4 simulated environments and 1 physical environment with          Fig. 1: Overview. IntervenGen automatically generates corrective interven-
+                                        object pose estimation error and show that it can increase policy    tional data from a small number of human interventions, with coverage
+                                        robustness by up to 39× with only 10 human interventions.            across both diverse scene configurations and policy mistake distributions.
+                                        Videos and more results are available at https://sites.              Here, the robot mistakenly believes the peg is at the position highlighted in
+                                        google.com/view/intervengen2024.                                     red and requires demonstration of recovery behavior toward the true peg
+                                                                                                             position.
+                                                              I. INTRODUCTION
+                                           Imitation Learning (IL) from human demonstrations is a            Subsequent training on these corrections can increase policy
+                                        promising paradigm for training robot policies. One approach         robustness and performance both theoretically and in practice
+                                        is to collect a set of offline task demonstrations via human         [9]. However, interactive IL imposes even more burden on
+                                        teleoperation [1,2] and employ behavior cloning (BC) [3] to          the human supervisors than behavior cloning, as the human
+                                        train robot policies via supervised learning, where the labels       must continuously monitor robot task execution and intervene
+                                        are robot actions. There have been recent efforts to scale this      when they see fit, typically over multiple rounds of interleaved
+                                        approach by collecting thousands of demonstrations using             data collection and policy training. Moreover, a significant
+                                        hundreds of human operator hours and training high-capacity          amount of recovery data may be required to adequately cover
+                                        neural networks on the large-scale data [4–8].                       the distribution of mistakes the policy may make.
+                                           However, IL policies can suffer from distribution shift,             We raise the following question: do we actually need to
+                                        where the conditions at evaluation time differ from those            have a human operator collect corrections every single time a
+                                        in the training data [9]. As an example, consider a policy           policy makes a mistake? MimicGen [13], a recently proposed
+                                        that makes decisions based on object pose observations. A            data generation system, raises an intriguing possibility: a large
+                                        common source of distribution shift in the real world is object      dataset of synthetically generated demonstrations derived
+                                        pose estimation error, which can occur due to a wide range           from a small set of human demonstrations (typically 100×
+                                        of factors such as sensor noise, occlusion, network delay,           smaller or more) can produce performant robot policies. The
+                                        and model misspecification. This can cause inaccuracy in             system’s key insight is that similar object-centric manipulation
+                                        the robot’s belief of where critical objects are located in          behaviors can be applied in new contexts by appropriately
+                                        the environment, leading the robot to visit states outside the       transforming demonstrated behavior to the new object frame.
+                                        training distribution that result in poor policy performance.        Inspired by this insight, we propose a data generation system
+                                           One approach to addressing distribution shift is to collect       for interventional data (see Fig. 1). With a small set of
+                                        a large set of demonstrations under diverse conditions and           corrective interventions from a human operator, we can
+                                        hope that agents trained on this data can generalize. However,       autonomously generate data with significantly higher coverage
+                                        human teleoperation data is notoriously difficult to collect due     of the distribution of potential policy mistakes. Our system
+                                        to the human time, effort, and financial cost required [4–8].        can be applied to a broad range of applications such as
+                                           An alternative approach is interactive IL (i.e., DAgger [9]       improving policy success rates on a task of interest, making
+                                        and variants [10–12]), where humans can intervene during             policies robust to errors in perception, and more broadly,
+                                        robot execution and demonstrate recovery behaviors to help           acting as a domain randomization [14] procedure to aid in
+                                        the robot return to the support of the training distribution.        sim-to-real transfer of IL policies without requiring additional
+                                                                                                             data collection from a human supervisor. In this work, we
+                                          1 UC Berkeley, 2 NVIDIA, *Equal contribution.                      focus on improving policy robustness to errors in perception.
+  We make the following contributions:                              policy and decides when to provide interventions, or robot-
+ 1) IntervenGen (I-Gen), a system for automatically gen-            gated [12,27,28], where the robot decides when the human
+    erating interventional data across diverse scene config-        should provide interventions. However, these approaches
+    urations and broad mistake distributions from a small           require collecting a sufficient number of human interventions
+    number of human interventions.                                  for the robot to learn robust recovery. In this work, we develop
+ 2) An application of I-Gen to improve policy robustness            a novel data generation mechanism based on replay-based
+    against 2 sources of object pose estimation error (sensor       imitation [13,29,30] in order to alleviate this burden.
+    noise and geometry error) in 5 high-precision 6-DOF                Policy Adaptation under Domain Shift. There are
+    manipulation tasks. I-Gen increases policy robustness           other approaches besides interactive IL for increasing policy
+    by up to 39× with only 10 human interventions.                  robustness. These include injecting noise during demonstra-
+ 3) Experiments demonstrating the utility of I-Gen over             tion collection [31], having human operators intentionally
+    alternate uses of a human data budget of equivalent or          introduce mistakes and corrections during data collection [32],
+    even greater size. A policy trained on synthetic I-Gen          and enabling policies to deal with partial observability [33,34].
+    data from 10 source human interventions can outperform          Other approaches include employing a planner to return
+    one trained on even 100 human interventions by 24%,             to states that the agent has seen before [35,36], using
+    with 12% of the data collection time and effort.                Reinforcement Learning (RL) with learned rewards to help an
+ 4) An experiment that shows that policies trained in simula-       agent adapt to new object distributions [37], and using coun-
+    tion with I-Gen are amenable to real-world deployment           terfactual data augmentation to identify irrelevant concepts
+    and retain robustness to erroneous state estimation.            and ensure agent behavior will not be affected by them [38].
+                                                                    There are also approaches to make policies trained with RL
+                   I I . R E L AT E D W O R K                       more robust, such as domain randomization [14,39], using
+   Data Collection Approaches for Robot Learning. Many              adversarial perturbations [40], and training agents to recover
+prior works address the need for large-scale data in robotics.      from unsafe situations [41].
+Some use self-supervised data collection [15,16], but the              MimicGen. MimicGen [13] is a recently proposed system
+data can have low signal-to-noise ratio due to the trial-           for automatically generating task demonstrations via trajectory
+and-error process. Other works collect large datasets using         adaptation via leveraing known object poses. I-Gen employs a
+experts that operate on privileged information available in         similar mechanism for synthesizing trajectories but has several
+simulation [17–19]. Still, designing such experts can require       key differences. Unlike MimicGen, I-Gen (1) generates
+significant engineering. One popular approach is to collect         interventional data rather than full demonstrations, (2) relaxes
+demonstrations by having human operators teleoperate robot          the assumption of precise object pose knowledge, which is
+arms [1,2,4,5]; however, this can require hundreds of hours of      critical to MimicGen’s success, (3) integrates closed-loop
+human operator time. Some systems also allow for collecting         policy execution that allows the robot to visit novel states
+interventions to help correct policy mistakes [11,20,21]. In this   during the data generation process, and (4) allows variation
+work, we make effective use of a handful of interventional cor-     in not just object poses but also robot belief states about
+rections provided by a single human operator to autonomously        these object poses.
+generate large-scale interventional data, substantially reducing
+the operator burden.                                                                   III. PRELIMINARIES
+   Imitation Learning from Human Demonstrations. Be-                   Problem Statement. We model the task environment as
+havioral Cloning (BC) [3] on demonstrations collected using         a Partially Observable Markov Decision Process (POMDP)
+robot teleoperation with human operators has shown remark-          with state space S, observation space O, and action space A.
+able performance in solving real-world robot manipulation           The robot does not have access to the transition dynamics or
+tasks [4,5,7,22–24]. However, scaling this paradigm can be          reward function but has a dataset of samples D = {(o, a)}Ni=1
+costly due to the need for large amounts of data, requiring         from an expert human policy πH : O → A. We assume that
+many hours of human operator time [4,5,8]. Furthermore,             while the human observes observation o, the robot’s observa-
+policies trained via IL are often brittle and can fail when         tion is corrupted by some function z, yielding z(o) = o′ ∈ O
+deployment conditions change from the training data [9].            (e.g., due to sensor noise or network delay). In this work we
+   Interactive Imitation Learning. Interactive IL allows            train policies on demonstration datasets D using supervised
+demonstrators to provide corrective supervision in situations       learning with the objective arg minθ E(o,a)∼D [− log πθ (a|o)].
+where policies require assistance. Some approaches require             Assumptions. I-Gen has assumptions similar to Mimic-
+an expert to relabel states encountered by the agent with           Gen [13]. (Assumption 1) the action space consists of delta-
+actions that the expert would have taken [9,25], but it             pose commands in Cartesian end effector space; (Assumption
+can be difficult for human supervisors to relabel robot             2) the task is a known sequence of object-centric subtasks;
+actions in hindsight [26]. An alternative is to cede control        (Assumption 3) object poses can be observed at the beginning
+of the system to a human supervisor for short corrective            of each subtask during data collection (but not deployment).
+trajectories (termed interventions) in states where the robot       (Assumption 4) We also assume that demonstrated recovery
+policy needs assistance. Interventional data collection can         behavior can be explained by some component of the robot’s
+either be human-gated [10,20], where the human monitors the         observations {o′1 , o′2 , . . . } during a human intervention despite
+            Sample New             Mistake Generation:                 Mistake                   Transform            Recovery Generation:
+           Task and Error           Policy Execution                  Detection                  Trajectory            Trajectory Replay
+
+
+
+
+                  Sample Source
+                   Intervention
+
+
+
+
+Fig. 2: I-Gen Data Generation Example. We provide an example of how I-Gen generates a new intervention. First, a new task instance is sampled with a
+new configuration (square peg location) and observation corruption (incorrect peg location highlighted in red). We execute the robot policy to generate
+mistake behavior for the new task instance. When a mistake is detected, we sample a human intervention segment from the source dataset and transform it
+to adapt to the current scene. Finally, we executed the transformed recovery segment in the environment.
+
+corruption by z. Without this assumption, it would not be                    k, m, n. On each of one or more iterations, the system: (1)
+possible for the robot to learn a policy that maps o′ to πH (o).             trains a policy πθ on the current dataset; (2) rolls out πθ
+This information can be provided, for instance, in additional                for interventional data collection with human teleoperation
+observation modalities such as force-torque sensing or tactile               (Sec. IV-A); (3) synthesizes new interventions with closed-
+sensing that provide a coarse signal about an object’s pose.                 loop policy execution and open-loop trajectory replay (Sec. IV-
+Some settings may not require any additional information:                    B and Sec. IV-C); (4) returns the new synthetic dataset.
+for example, a fully closed gripper can inform the robot it
+must recover from a missed grasp.                                            A. Interventional Data Collection
+   MimicGen Data Generation System. MimicGen [13]                               We consider human-gated interventions [10], in which the
+takes a small set of source human demonstrations Dsrc and                    human monitors the robot policy execution and intermittently
+uses it to automatically generate a large dataset D in a target              takes control to correct policy mistakes. As in DAgger [9],
+environment. It first divides each source trajectory τ ∈ Dsrc                this enables the human to demonstrate corrective recovery be-
+into object-centric manipulation segments {τi }M  i=1 , each of
+                                                                             havior from mistakes made by the robot policy that otherwise
+which corresponds to an object-centric subtask (Assumption                   would not be visited in full human task demonstrations (due to
+2 above). Each segment is a sequence of end effector poses.                  distribution shift). The base robot policy πθ executed during
+Then, to generate a demonstration in a new scene, it uses the                interventional data collection can come from anywhere, but is
+pose of the object corresponding to the current subtask, and                 typically initialized from behavior cloning on an initial set of
+transforms the poses in a source human segment τi (with an                   offline task demonstrations D [9,11,12]. Each collected trajec-
+SE(3) transform) such that the relative poses between the end                tory can be coarsely divided into robot-generated “mistake”
+effector and the object frame are preserved between the source               segments and human-generated “recovery” segments.
+demonstration and the new scene. It also adds an interpolation
+                                                                             B. Mistake Generation: Closed-Loop Policy Execution
+segment between the robot’s current configuration and the
+start of the transformed segment. Then, the sequence of                         We aim to use the collected human interventions to automat-
+poses in the interpolation segment and transformed segment                   ically synthesize interventions for new scene configurations.
+are executed by the robot end effector controller open-loop                  Recall that, in prior work, MimicGen generates data by
+until the current subtask is complete, at which point the                    executing a sequence of object-centric trajectories in an
+process repeats for the next subtask. We use a data generation               open-loop manner. In contrast, an appealing property of our
+mechanism similar to MimicGen to generate intervention                       interventional IL setting is access to the robot policy πθ that
+trajectory segments in Section IV-C.                                         is executed during interventional data collection with the
+                                                                             human operator.
+                      I V. I N T E R V E N G E N                                We use this robot policy during the data generation process
+   Algorithm 1 displays the full pseudocode for IntervenGen.                 to broaden the distribution of visited mistake states. Unlike
+It takes as input the initial state distribution p0 , a base                 MimicGen, we can execute the policy in the new scene
+dataset of demonstrations D, and three hyperparameters                       configuration. This has two benefits: (1) rather than assuming
+the policy will fail in the same manner as the source trajectory,   Algorithm 1 IntervenGen
+the generated mistake will reflect the genuine behavior of the      Declare: Initial state distribution p0 , base dataset D
+policy in the new configuration, and (2) it becomes possible to     Declare: Number of iterations k, human intervention episodes m,
+generate new mistake trajectories for new corruptions of the            and synthesized trajectories n
+                                                                     1: procedure I - G E N (p0 , D; k, m, n)
+observed object poses. For example, if sensor noise corrupts         2:    for i ∈ [1, ..., k] do                    ▷ One or more iterations
+the object pose during interventional data collection, a new         3:        πθ ← T R A I N - P O L I C Y (D)
+noise corruption can be applied during the data generation           4:        D = 0/
+process. This allows data diversity in both object poses and         5:        for j ∈ [1, ..., m] do                      ▷ Data Collection
+the robot’s erroneous beliefs about where the objects are (see       6:            s0 ∼ p0                              ▷ Sample initial state
+                                                                     7:            τ ← E X E C U T E - P O L I C Y (s0 , πθ )
+Fig. 2). The use of policy execution during data generation          8:            I N T E R V E N E (τ)                ▷ Human intervention
+requires that we know when to terminate the policy execution.        9:            D ← D ∪τ
+In our experiments, we use contact detection to determine           10:        for j ∈ [1, ..., n] do                     ▷ Data Generation
+whether or not the policy made a mistake. A more flexible           11:            s0 ∼ p0
+option could be to use a learned classifier or robot-gated          12:            ξ ← E X E C U T E - P O L I C Y (s0 , πθ )
+                                                                    13:            t ← T E R M I N AT E - P O L I C Y (ξ )
+intervention criteria such as ThriftyDAgger [12].                   14:            τ ∼D                      ▷ Sample source demonstration
+                                                                    15:            τ ← τ[human]                           ▷ Filter intervention
+                                                                    16:            τ ′ ← A D A P T (ξ , τ)             ▷ Transform trajectory
+C. Recovery Generation: Open-Loop Trajectory Replay
+                                                                    17:            ξ ← ξ ⊕ R E P L AY (τ ′ )
+   In each episode of synthetic data generation, once we have       18:            if S AT I S F I E S - G O A L (ξ [−1]) then
+                                                                    19:                 D ← D ∪ ξ [t :]                   ▷ Filter intervention
+completed policy execution and entered a new mistake state,
+                                                                    20:    return D
+we generate a recovery trajectory. We select a random source
+trajectory, segment out the human recovery portion of the
+trajectory, and adapt the trajectory to the current environment
+state. This adaptation consists of (1) transforming the source                         V. E X P E R I M E N T S E T U P
+trajectory to the current object pose, (2) linearly interpolating      We consider 4 tasks in the MuJoCo [42] robosuite simu-
+in end-effector space to the beginning of the transformed           lation environment [43] (Fig. 3) and 1 physical experiment.
+trajectory, and (3) executing the transformed trajectory open-      Each task involves contact-rich manipulation via continuous
+loop (see Fig. 2). Note that each object-centric subtask in a       control. The tasks vary in object geometry, object pose,
+single task instance can have zero, one, or multiple instances      observation error, and number of manipulation stages.
+of alternating between mistake and recovery.                           Nut Insertion: The robot must place a square nut (held
+                                                                    in-hand) onto a square peg. The peg position is sampled in a
+                                                                    10 cm x 10 cm region at the start of each episode.
+D. Output Filtering and Dataset Aggregation
+                                                                       2-Piece Assembly: The robot must place an object into
+    It is possible that the executed trajectory may not complete    a square receptacle with a narrow affordance region. The
+the task successfully. For instance, the recovery trajectory        receptacle position is sampled in a 10 cm x 10 cm region at
+may be unable to recover from the new mistake state reached         the start of each episode.
+by the robot. Consequently, we only keep the generated                 Coffee: The robot must place and release a coffee pod
+demonstration if it successfully completes the task. We also        into a coffee machine pod holder with a narrow affordance
+filter out the segment of the synthetic demonstration that          region. The coffee machine position is sampled in a 10 cm x
+corresponds to the human recovery segment; such filtering           10 cm region at the start of each episode.
+is used by common algorithms such as DAgger [9] and HG-                Nut-and-Peg Assembly [24,43]: A multi-stage task con-
+DAgger [10] and can prevent the imitation of mistakes. Each         sisting of (1) grasping a nut with a varying initial position
+filtered episode of synthetic data is aggregated into the base      and orientation and (2) placing it on a peg in a fixed target
+dataset D (used to train the base policy πθ ), and the policy is    location. The nut is placed in a 0.5 cm x 11.5 cm region with
+retrained on the new dataset after data generation. If desired,     a random top-down rotation at the start of each episode.
+the entire process of data collection, data generation, and            Physical Block Grasp: A Franka robot arm must reach a
+policy training can be iterated.                                    block and grasp it. The initial block position is sampled in a
+                                                                    20 cm x 30 cm region at the start of each episode.
+E. Inter-Subtask Recovery and Offline Mode
+                                                                    Sources of Observation Error. In most environments, the
+   The I-Gen framework accommodates additional modules              source of observation error is sensor noise: at test time,
+not considered in the main set of experiments that greatly in-      uniform random noise is applied to the observed position of
+creases its range of applications, including (1) policy recovery    the peg (±4 cm in each dimension, with at least 2 cm in one
+from more severe failure modes that revert to earlier subtasks      dimension), receptacle (±4 cm in each dimension, with at
+and (2) “offline” I-Gen, which allows humans to demonstrate         least 1 cm in one dimension), coffee machine (radial noise
+mistakes intentionally [32]. We include experiments for these       between 2 cm and 4 cm), and block (±1 cm in x and ±7 cm
+modules on the supplemental website.                                in y, with at least 2.5 cm in y) respectively. In the Nut-and-
+                          Nut Insertion                  Two Piece Assembly                        Coffee                   Nut-and-Peg Assembly
+
+
+
+  Normal Task
+   Execution
+
+
+
+
+   Mistake and
+    Recovery
+
+
+
+
+Fig. 3: Tasks. We evaluate I-Gen in several contact-rich, high-precision tasks. The top row shows normal task execution while the bottom row shows typical
+mistakes encountered by the agent when using inaccurate object poses (or object geometry for Nut-and-Peg Assembly) and associated recovery behaviors.
+
+Peg Assembly environment, the source of observation error                      Assembly, we do not add additional information, as a closed
+is object geometry: for an identical observed nut pose, the                    gripper state is sufficient for the policy to map a missed grasp
+nut handle may exist on either of two sides of the nut. This                   to learned recovery.
+setting corresponds to object model misspecification during                       Physical Experiment Setup. We wish to evaluate whether
+pose registration.                                                             or not policies trained on simulation data from I-Gen can
+                                                                               retain their robustness to erroneous state estimation when
+A. Experimental Setup                                                          they are deployed directly in the real world. To do this, we
+   Data Collection. For interventional data collection, we use                 train a policy for the Block Grasp task in simulation and
+the remote teleoperation system proposed by Mandlekar et                       deploy it zero-shot on a physical robot. We use a Franka
+al. [11]. The observation space consists of robot propriocep-                  Research 3 robot arm and gripper and a red cube with a side
+tion (6DOF end effector pose and gripper finger width) and                     length of 5 cm. We use an Intel RealSense D415 depth camera
+object poses, while the action space consists of 6DOF pose                     and Iterative Closest Point (ICP) for cube pose estimation.
+deltas and a binary gripper open/close command (except for                     The deployed policies output continuous control delta-pose
+Block Grasp, which uses 3DOF position control with fixed                       actions at 20 Hz and do not require any real-world data or
+rotation). For the base policy πθ used in each task, we (1)                    fine-tuning. See Figure 4 for images of the transfer process.
+collect 10 full human task demonstrations in each environment
+                                                                               B. Baselines
+without observation corruption (i.e., ground truth poses),
+(2) synthesize 1000 demonstrations with MimicGen [13],                          We implement and evaluate the following baselines. Each
+and (3) train an off-the-shelf BC-RNN policy with default                     baseline corresponds to a different dataset used to train the
+hyperparameters using the robomimic framework [24], with                      agent (all agents are trained with BC-RNN [24]):
+the exception of an increased learning rate of 0.001 [13].                      Base: Deploy the base policy in the test environment
+   Data Generation. We then deploy πθ in the test environ-                    without any additional data or fine-tuning.
+ment with observation corruption (i.e., object pose error) and                  Source Interventions (Source Int): Deploy the base policy
+collect 10 human-gated interventions. These interventions                     πθ , collect 10 human interventions when the policy makes
+are expanded to 1000 synthetic interventions with I-Gen                       mistakes, and add them to the base dataset.
+and aggregated with the 1000 demonstrations used to train                       Weighted Source Interventions (Weighted Src Int) [11]:
+the base policy. Finally, we train a new BC-RNN policy                        Same as Source Interventions, but weight the intervention
+on the aggregated dataset. We report policy performance as                    data higher so that it is sampled as frequently as the base
+the success rate over 50 trials for the highest performing                    data despite its smaller quantity.
+checkpoint during training (where training takes 2000 epochs                    Source Demonstrations (Source Demo): Collect 10 full
+with evaluation every 50 epochs), as in [13,24].                              human task demonstrations in the test environment.
+   Observability. In order for demonstrated recovery behavior                   MimicGen Demonstrations (MG Demo) [13]: Same
+to be learnable (Section III), I-Gen and all baselines can                    as Source Demonstrations, but use (regular) MimicGen to
+access additional observation information in Nut Insertion,                   generate 1000 synthetic demonstrations from the initial 10.
+Two-Piece Assembly, Coffee, and Block Grasp upon contact                        Policy Execution Ablation (I-Gen - Policy): Augment the
+between (1) the nut and peg, (2) object and receptacle, (3) pod               10 source interventions to 1000 I-Gen interventions, but do
+and pod holder, and (4) gripper and cube, respectively. We                    not use policy execution to generate new mistake states.
+study both the idealized case of full observability (i.e., ground
+truth pose) upon contact in Section VI and partially improved                                         VI. EXPERIMENTS
+observability (e.g., position of contact) in Section VI-A. These                  In this section, we summarize the key takeaways from the
+are intended to be surrogates for sensor modalities such as                    comparisons presented in Tables I and II.
+force-torque sensing that can help inform the robot about                         I-Gen vastly improves policy robustness under pose
+the object pose when its belief is wrong. For Nut-and-Peg                      estimation error. In Table I, we observe that I-Gen improves
+                     Simulation                         Physical                  Assembly, and 38%-78% in Coffee.
+                                                                                     I-Gen is useful across different sources of observation
+  Normal
+   Task
+                                                                                  error. Results for the Nut-and-Peg Assembly task with object
+ Execution                                                                        geometry error are in Table II. We evaluate each policy with
+                                                                                  50 evaluations of each of the two possible geometries. Base
+                                                                                  and Source Int attain perfect performance on the original
+  Mistake                                                                         geometry but struggle with the alternate geometry (0%-
+   and                                                                            6% performance). MG Demo has the opposite issue: since
+ Recovery
+                                                                                  it consists of test-time demonstrations with the alternate
+                                                                                  geometry, it can attain perfect performance on the alternate
+                                                                                  but 0% on the original. A mixture of full demonstrations on
+Fig. 4: Sim-to-Real. We evaluate sim-to-real transfer for a block grasping
+task with a Franka Panda robot. Similar to Figure 3 we show normal task           both geometries (Base + MG Demo) attains an even 60%
+execution, typical mistakes due to inaccurate object poses, and associated        and 64%; since it does not observe recovery behavior it must
+recovery for the simulation and real world environments. The results show         guess between the two object geometries and has difficulty
+that I-Gen can facilitate sim-to-real transfer of learned control policies, and
+that these policies retain robustness to erroneous perception.                    performing much higher than the 50% expected value of
+                                                                                  random chance. Finally, I-Gen maintains 92% performance on
+                                                                                  the original geometry but also learns to recover when missing
+policy performance by 3.5×, 10.7×, and 39× over the                               its grasp due to the alternate geometry (88%), leading to a
+base policy in Nut Insertion, 2-Piece Assembly, and Coffee                        28%-40% improvement in the average case over baselines.
+respectively, despite only collecting 10 human interventions.                     See the website for videos.
+   I-Gen significantly improves upon naı̈ve uses of an                               I-Gen facilitates sim-to-real transfer of learned con-
+equivalent amount of full human demonstration data. I-                            trol policies, and these policies retain robustness to
+Gen consistently outperforms human demonstrations collected                       erroneous state estimation. In Table IV we observe that
+at test time (Source Demo, Table I) by 56%-68%. Even if                           state-based policies for the Block Grasp task deployed zero-
+these demonstrations are expanded by 100× with MimicGen                           shot on the physical system perform similarly to simulation.
+(MG Demo), I-Gen still outperforms by 34%-62%. Since the                          By improving robustness to incorrect pose estimation, I-
+human’s observability does not match the robot’s, the human                       Gen facilitates sim-to-real transfer for state-based policies,
+can teleoperate toward the true object poses. Thus, the robot                     which are easier to transfer across visual domain gaps than
+does not observe any recovery behavior in the offline data.                       image-based policies but rely on accurate perception. I-
+   I-Gen significantly improves upon naı̈ve uses of an                            Gen outperforms baselines by 14%-94% in simulation and
+equivalent amount of interventional human data. Source                            30%-90% in real world trials, suggesting learned recovery
+Int in Table I underperforms I-Gen by 58%-70%. While                              behaviors can transfer to real. The policy is also robust to
+helpful, with only 10 human interventions, the data is                            physical perturbations, dynamic object pose changes, and
+insufficient to learn robust recovery under pose error. This                      visual distractors; see the website for videos.
+remains the case even if the intervention data is weighted
+higher, in which case the agent overfits to the 10 interventions                  A. Analysis
+and underperforms I-Gen by 48%-74%. With the same budget                             In this section, we present further analysis on various
+of interventional human data, I-Gen can generate much richer                      aspects of I-Gen.
+coverage of the distribution of mistakes under the base policy.                      How is agent performance affected as observability
+   I-Gen significantly improves upon naı̈ve uses of Mim-                          decreases? For Nut Insertion, we replace true pose infor-
+icGen. We observe a significant 34%-62% improvement                               mation upon contact with the mean position of the first
+over MimicGen on full task demonstrations (MG Demo,                               contact between the nut and peg; for 2-Piece Assembly, we
+Table I). We also observe that the policy execution component                     provide the unit vector in the direction of the true pose
+(Section IV-B) boosts performance by 12%-38% respectively                         at the first point of contact. Table III in comparison with
+over the ablation, indicating that expanding the mistake                          Table I shows that, as expected, a degradation in observability
+distribution is valuable. While the ablation dataset covers                       results in a degradation in agent performance. However, I-
+variation in the object pose, it does not cover variation in                      Gen performance falls by only 4%-8%, indicating partial
+the error; only the 10 mistake segments in the source dataset                     observability can be sufficient to ground recovery behavior.
+are available. This shows that the novel components we                            An important direction for future work is investigating raw
+introduced in I-Gen are crucial for high performance.                             real-world perception signals such as force-torque sensing.
+   I-Gen is useful across different environments. While 2-                           How does performance vary across training seeds? I-
+Piece Assembly and Coffee have narrower tolerance regions                         Gen in the (full observability) Nut Assembly task attains
+than Nut Insertion that lower success rates across the board                      98%, 100%, and 98% for 3 training seeds, indicating stability
+(16%-20% for the base policy, 30%-48% for other baselines,                        across runs (more evidence on supplemental website).
+and 18%-28% for I-Gen), the relative performance of I-Gen                            How does synthetic IntervenGen data compare to
+remains consistent across environments: I-Gen outperforms                         an equal amount of human data? In 2-Piece Assembly,
+all baselines by 12%-76% in Nut Insertion, 18%-64% in 2-Pc                        100 I-Gen interventions (from 10 human interventions)
+  Dataset                     Nut Insertion       2-Pc Assembly       Coffee
+  Base                                 22%                  6%           2%         limitations. Specifically, we consider only quasi-static tasks
+  Source Int                           40%                  6%         10%          with rigid body objects, and we assume valid interventions
+  Weighted Src Int [11]                50%                 16%           6%         can be synthesized by transforming source trajectory data.
+  Source Demo                          42%                 12%         12%
+  MG Demo [13]                         64%                 16%         18%             Future work involves applying I-Gen in settings with
+  I-Gen - Policy (Ours)                86%                 52%         42%          force-torque sensing to improve behavioral adaptation for
+  I-Gen (Ours)                        98%                  70%         80%          contact-rich and high-precision tasks. I-Gen can also be used
+TABLE I: Results in three simulation domains with noisy pose estimation             to rapidly adapt policy behavior toward individual human
+and full observability upon contact. I-Gen outperforms baselines across             preferences over how a manipulation task should be carried
+environments.
+                                                                                    out without extensive data collection. Finally, I-Gen can also
+      Dataset                 Geometry 1        Geometry 2       Mixture            be applied to facilitating sim-to-real transfer of IL policies by
+      Base                        100%                 0%           50%             acting as a domain randomization [14] procedure. Namely,
+      Source Int                  100%                 6%           53%
+      MG Demo [13]                   0%             100%            50%             while RL algorithms can autonomously learn adaptations
+      Base + MG Demo                64%               60%           62%             to dynamical domain randomization, IL typically requires
+      I-Gen                         92%               88%           90%             generating new human behavior for these variations. I-Gen
+TABLE II: Results in the Nut-and-Peg Assembly experiment. While baselines           may dramatically reduce the data requirements and enable
+typically overfit to one geometry or struggle with disambiguating the two,          policies to deal with such variations with only a handful of
+I-Gen attains high performance on the mixture of geometries.
+                                                                                    corrective behaviors.
+           Dataset              Nut Insertion       2-Pc Assembly
+           Base                          26%                  6%
+           Source Int                    40%                  6%                                         AC K N OW L E D G E M E N T S
+           MG Demo [13]                  46%                 22%
+           I-Gen - Policy                68%                 42%                      This work was made possible with the support of the
+           I-Gen                        90%                  66%                    NVIDIA Seattle Robotics Lab. We especially thank Ankur
+TABLE III: Additional evaluation in two domains with partially improved             Handa for valuable discussions, Ravinder Singh for IT help,
+(rather than full) observability upon contact.                                      and Sandeep Desai for robot hardware support.
+                   Dataset              Simulation      Real
+                   Base                        6%        0%                                                     REFERENCES
+                   Source Int                 26%       10%
+                   MG Demo [13]               42%       50%                          [1] A. Mandlekar, Y. Zhu, A. Garg, J. Booher, M. Spero, A. Tung,
+                   I-Gen - Policy             86%       60%                              J. Gao, J. Emmons, A. Gupta, E. Orbay, S. Savarese, and L. Fei-
+                   I-Gen                    100%        90%                              Fei, “RoboTurk: A Crowdsourcing Platform for Robotic Skill Learning
+TABLE IV: Sim-to-real results for the block grasping task in simulation (50              through Imitation,” in Conference on Robot Learning, 2018.
+trials) and zero-shot evaluation of these policies in the real world (10 trials).    [2] A. Mandlekar, J. Booher, M. Spero, A. Tung, A. Gupta, Y. Zhu, A. Garg,
+                                                                                         S. Savarese, and L. Fei-Fei, “Scaling robot supervision to hundreds
+                                                                                         of hours with roboturk: Robotic manipulation dataset through human
+attain 24% while 100 human interventions attain 46%. Both                                reasoning and dexterity,” arXiv preprint arXiv:1911.04052, 2019.
+                                                                                     [3] D. A. Pomerleau, “Alvinn: An autonomous land vehicle in a neu-
+improve upon 10 human interventions, which only attains 6%                               ral network,” in Neural Information Processing Systems (NeurIPS),
+(Table I). However, 1000 I-Gen interventions from 10 human                               D. Touretzky, Ed., vol. 1. Morgan-Kaufmann, 1988.
+interventions (70%) can outperform 100 human interventions,                          [4] E. Jang, A. Irpan, M. Khansari, D. Kappler, F. Ebert, C. Lynch,
+and 100 human interventions take significantly more human                                S. Levine, and C. Finn, “Bc-z: Zero-shot task generalization with
+                                                                                         robotic imitation learning,” in Conference on Robot Learning, 2021.
+time and effort to collect than 10 human interventions (29.9                         [5] A. Brohan, N. Brown, J. Carbajal, Y. Chebotar, J. Dabis, C. Finn,
+minutes instead of 3.6 minutes).                                                         K. Gopalakrishnan, K. Hausman, A. Herzog, J. Hsu, J. Ibarz, B. Ichter,
+   How does performance scale with the amount of                                         et al., “Rt-1: Robotics transformer for real-world control at scale,” in
+                                                                                         Robotics: Science and Systems (RSS), 2023.
+synthetically generated interventions? With the same 10                              [6] F. Ebert, Y. Yang, K. Schmeckpeper, B. Bucher, G. Georgakis,
+human source interventions in 2-Piece Assembly, an agent                                 K. Daniilidis, C. Finn, and S. Levine, “Bridge data: Boosting
+trained on 200 synthetic I-Gen interventions attains 34%, 1000                           generalization of robotic skills with cross-domain datasets,” arXiv
+                                                                                         preprint arXiv:2109.13396, 2021.
+interventions attains 70% (Table I), and 5000 interventions                          [7] M. Ahn, A. Brohan, N. Brown, Y. Chebotar, O. Cortes, B. David,
+attains 88%. This suggests performance scales with dataset                               C. Finn, K. Gopalakrishnan, K. Hausman, A. Herzog, et al., “Do as i
+size, at the cost of additional data generation time.                                    can, not as i say: Grounding language in robotic affordances,” arXiv
+                                                                                         preprint arXiv:2204.01691, 2022.
+                                                                                     [8] C. Lynch, A. Wahid, J. Tompson, T. Ding, J. Betker, R. K. Baruch,
+                         VII. CONCLUSION                                                 T. Armstrong, and P. R. Florence, “Interactive language: Talking to
+                                                                                         robots in real time,” ArXiv, vol. abs/2210.06407, 2022.
+   We present IntervenGen (I-Gen), a data generation system
+                                                                                     [9] S. Ross, G. Gordon, and D. Bagnell, “A reduction of imitation learning
+for corrective interventions that cover a large distribution                             and structured prediction to no-regret online learning,” in International
+of policy mistakes given a small number of source human                                  Conference on Artificial Intelligence and Statistics (AISTATS), 2011,
+interventions. We show that training on synthetic data                                   pp. 627–635.
+                                                                                    [10] M. Kelly, C. Sidrane, K. Driggs-Campbell, and M. J. Kochenderfer,
+generated by I-Gen compares favorably to collecting more                                 “Hg-dagger: Interactive imitation learning with human experts,” 2019
+human demonstrations and interventions in terms of both                                  International Conference on Robotics and Automation (ICRA), pp.
+policy performance and human effort.                                                     8077–8083, 2018.
+                                                                                    [11] A. Mandlekar, D. Xu, R. Martin-Martin, Y. Zhu, L. Fei-Fei, and
+   Although I-Gen improves on MimicGen and reduces its                                   S. Savarese, “Human-in-the-loop imitation learning using remote
+reliance on accurate pose estimation, I-Gen shares some of its                           teleoperation,” ArXiv, vol. abs/2012.06733, 2020.
+[12] R. Hoque, A. Balakrishna, E. Novoseller, A. Wilcox, D. S. Brown, and       [32] D. Brandfonbrener, S. Tu, A. Singh, S. Welker, C. Boodoo, N. Matni,
+     K. Goldberg, “ThriftyDAgger: Budget-aware novelty and risk gating               and J. Varley, “Visual backtracking teleoperation: A data collection
+     for interactive imitation learning,” in Conference on Robot Learning            protocol for offline image-based reinforcement learning,” in 2023 IEEE
+     (CoRL), 2021.                                                                   International Conference on Robotics and Automation (ICRA). IEEE,
+[13] A. Mandlekar, S. Nasiriany, B. Wen, I. Akinola, Y. Narang, L. Fan,              2023, pp. 11 336–11 342.
+     Y. Zhu, and D. Fox, “Mimicgen: A data generation system for scalable       [33] H. Nguyen, A. Baisero, D. Wang, C. Amato, and R. Platt, “Leveraging
+     robot learning using human demonstrations,” in Conference on Robot              fully observable policies for learning under partial observability,” arXiv
+     Learning (CoRL), 2023.                                                          preprint arXiv:2211.01991, 2022.
+[14] J. Tobin, R. Fong, A. Ray, J. Schneider, W. Zaremba, and P. Abbeel,        [34] S. Choudhury, A. Kapoor, G. Ranade, and D. Dey, “Learning to gather
+     “Domain randomization for transferring deep neural networks from                information via imitation,” in 2017 IEEE International Conference on
+     simulation to the real world,” in 2017 IEEE/RSJ international con-              Robotics and Automation (ICRA). IEEE, 2017, pp. 908–915.
+     ference on intelligent robots and systems (IROS). IEEE, 2017, pp.          [35] J. Wong, A. Tung, A. Kurenkov, A. Mandlekar, L. Fei-Fei, S. Savarese,
+     23–30.                                                                          and R. Martı́n-Martı́n, “Error-aware imitation learning from teleopera-
+[15] D. Kalashnikov, J. Varley, Y. Chebotar, B. Swanson, R. Jon-                     tion data for mobile manipulation,” in Conference on Robot Learning.
+     schkowski, C. Finn, S. Levine, and K. Hausman, “Mt-opt: Continuous              PMLR, 2022, pp. 1367–1378.
+     multi-task robotic reinforcement learning at scale,” arXiv preprint        [36] G. Cideron, B. Tabanpour, S. Curi, S. Girgin, L. Hussenot, G. Dulac-
+     arXiv:2104.08212, 2021.                                                         Arnold, M. Geist, O. Pietquin, and R. Dadashi, “Get back here:
+[16] S. Dasari, F. Ebert, S. Tian, S. Nair, B. Bucher, K. Schmeckpeper,              Robust imitation by return-to-distribution planning,” arXiv preprint
+     S. Singh, S. Levine, and C. Finn, “Robonet: Large-scale multi-robot             arXiv:2305.01400, 2023.
+     learning,” arXiv preprint arXiv:1910.11215, 2019.                          [37] S. Haldar, J. Pari, A. Rai, and L. Pinto, “Teach a robot to fish:
+                                                                                     Versatile imitation from one minute of demonstrations,” arXiv preprint
+[17] Y. Jiang, A. Gupta, Z. Zhang, G. Wang, Y. Dou, Y. Chen, L. Fei-
+                                                                                     arXiv:2303.01497, 2023.
+     Fei, A. Anandkumar, Y. Zhu, and L. Fan, “VIMA: General robot
+                                                                                [38] A. Peng, A. Netanyahu, M. K. Ho, T. Shu, A. Bobu, J. Shah, and
+     manipulation with multimodal prompts,” in NeurIPS 2022 Foundation
+                                                                                     P. Agrawal, “Diagnosis, feedback, adaptation: A human-in-the-loop
+     Models for Decision Making Workshop, 2022.
+                                                                                     framework for test-time policy adaptation,” 2023.
+[18] M. Dalal, A. Mandlekar, C. Garrett, A. Handa, R. Salakhutdinov,            [39] X. B. Peng, M. Andrychowicz, W. Zaremba, and P. Abbeel, “Sim-to-
+     and D. Fox, “Imitating task and motion planning with visuomotor                 real transfer of robotic control with dynamics randomization,” in 2018
+     transformers,” arXiv preprint arXiv:2305.16309, 2023.                           IEEE international conference on robotics and automation (ICRA).
+[19] M. J. McDonald and D. Hadfield-Menell, “Guided imitation of task                IEEE, 2018, pp. 3803–3810.
+     and motion planning,” in Conference on Robot Learning. PMLR,               [40] A. Mandlekar, Y. Zhu, A. Garg, L. Fei-Fei, and S. Savarese, “Ad-
+     2022, pp. 630–640.                                                              versarially robust policy learning: Active construction of physically-
+[20] J. Luo, O. Sushkov, R. Pevceviciute, W. Lian, C. Su, M. Vecerik, N. Ye,         plausible perturbations,” in 2017 IEEE/RSJ International Conference on
+     S. Schaal, and J. Scholz, “Robust multi-modal policies for industrial           Intelligent Robots and Systems (IROS). IEEE, 2017, pp. 3932–3939.
+     assembly via reinforcement learning and demonstrations: A large-scale      [41] B. Thananjeyan, A. Balakrishna, S. Nair, M. Luo, K. Srinivasan,
+     study,” arXiv preprint arXiv:2103.11512, 2021.                                  M. Hwang, J. E. Gonzalez, J. Ibarz, C. Finn, and K. Goldberg,
+[21] H. Liu, S. Nasiriany, L. Zhang, Z. Bao, and Y. Zhu, “Robot learning on          “Recovery rl: Safe reinforcement learning with learned recovery zones,”
+     the job: Human-in-the-loop autonomy and learning during deployment,”            IEEE Robotics and Automation Letters, vol. 6, no. 3, pp. 4915–4922,
+     arXiv, vol. abs/2211.08416, 2022.                                               2021.
+[22] T. Zhang, Z. McCarthy, O. Jow, D. Lee, K. Goldberg, and P. Abbeel,         [42] E. Todorov, T. Erez, and Y. Tassa, “MuJoCo: A physics engine
+     “Deep imitation learning for complex manipulation tasks from virtual            for model-based control,” in IEEE/RSJ International Conference on
+     reality teleoperation,” arXiv preprint arXiv:1710.04615, 2017.                  Intelligent Robots and Systems (IROS), 10 2012, pp. 5026–5033.
+[23] A. Mandlekar, D. Xu, R. Martı́n-Martı́n, S. Savarese, and L. Fei-          [43] Y. Zhu, J. Wong, A. Mandlekar, R. Martı́n-Martı́n, A. Joshi, S. Nasiri-
+     Fei, “Learning to generalize across long-horizon tasks from human               any, and Y. Zhu, “robosuite: A modular simulation framework and
+     demonstrations,” arXiv preprint arXiv:2003.06085, 2020.                         benchmark for robot learning,” in arXiv preprint arXiv:2009.12293,
+[24] A. Mandlekar, D. Xu, J. Wong, S. Nasiriany, C. Wang, R. Kulkarni,               2020.
+     L. Fei-Fei, S. Savarese, Y. Zhu, and R. Martin-Martin, “What matters
+     in learning from offline human demonstrations for robot manipulation,”
+     in Conference on Robot Learning (CoRL), 2021.
+[25] S. Chernova and M. Veloso, “Interactive policy learning through
+     confidence-based autonomy,” Journal of Artificial Intelligence Research,
+     vol. 34, pp. 1–25, 2009.
+[26] M. Laskey, C. Chuck, J. Lee, J. Mahler, S. Krishnan, K. Jamieson,
+     A. Dragan, and K. Goldberg, “Comparing human-centric and robot-
+     centric sampling for robot deep learning from demonstrations,” in
+     International Conference on Robotics and Automation (ICRA), 2017,
+     pp. 358–365.
+[27] R. Hoque, A. Balakrishna, C. Putterman, M. Luo, D. S. Brown, D. Seita,
+     B. Thananjeyan, E. Novoseller, and K. Goldberg, “LazyDAgger:
+     Reducing context switching in interactive imitation learning,” in IEEE
+     Conference on Automation Science and Engineering (CASE), 2021, pp.
+     502–509.
+[28] R. Hoque, L. Y. Chen, S. Sharma, K. Dharmarajan, B. Thananjeyan,
+     P. Abbeel, and K. Goldberg, “Fleet-dagger: Interactive robot fleet
+     learning with scalable human supervision,” in Conference on Robot
+     Learning (CoRL), 2022.
+[29] B. Wen, W. Lian, K. E. Bekris, and S. Schaal, “You only demonstrate
+     once: Category-level manipulation from single visual demonstration,”
+     in Robotics: Science and Systems (RSS), 2022.
+[30] E. Johns, “Coarse-to-fine imitation learning: Robot manipulation from
+     a single demonstration,” 2021 IEEE International Conference on
+     Robotics and Automation (ICRA), pp. 4613–4619, 2021. [Online].
+     Available: https://api.semanticscholar.org/CorpusID:234482766
+[31] M. Laskey, J. Lee, R. Fox, A. Dragan, and K. Goldberg, “Dart: Noise in-
+     jection for robust imitation learning,” arXiv preprint arXiv:1703.09327,
+     2017.
+

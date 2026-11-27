@@ -1,0 +1,10 @@
+{
+  "prediction_hash_matches": true,
+  "predictions_precede_all_chain_json": true,
+  "same_historical_payload_hash_across_arms": true,
+  "all_fresh_captures_after_new_request": true,
+  "independent_configurations": 2,
+  "full_chain_runs": 12,
+  "policy_library": "two fixed history trees; not optimal value over all legal controllers",
+  "v2_model_q_state_conditioning": false
+}

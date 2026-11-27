@@ -1,0 +1,148 @@
+{
+  "binary_Y_1_if_X_gt_0": {
+    "P": {
+      "square_scale": 1,
+      "E_X": 0,
+      "E_X_squared": "1",
+      "Gamma_for_r_X_B_minus_1": [
+        [
+          "1",
+          "0"
+        ],
+        [
+          "0",
+          "1"
+        ]
+      ],
+      "prior_min_MSE": "1",
+      "expected_posterior_min_MSE": "0",
+      "observation_cost": "4/5",
+      "observe_total_risk": "4/5",
+      "optimal_choice": "observe",
+      "branches": [
+        {
+          "outcome": 0,
+          "probability": "1/2",
+          "mean_coefficient": "-1",
+          "conditional_variance": "0"
+        },
+        {
+          "outcome": 1,
+          "probability": "1/2",
+          "mean_coefficient": "1",
+          "conditional_variance": "0"
+        }
+      ]
+    },
+    "Q": {
+      "square_scale": 3,
+      "E_X": 0,
+      "E_X_squared": "1",
+      "Gamma_for_r_X_B_minus_1": [
+        [
+          "1",
+          "0"
+        ],
+        [
+          "0",
+          "1"
+        ]
+      ],
+      "prior_min_MSE": "1",
+      "expected_posterior_min_MSE": "2/5",
+      "observation_cost": "4/5",
+      "observe_total_risk": "6/5",
+      "optimal_choice": "skip",
+      "branches": [
+        {
+          "outcome": 0,
+          "probability": "5/6",
+          "mean_coefficient": "-1/5",
+          "conditional_variance": "12/25"
+        },
+        {
+          "outcome": 1,
+          "probability": "1/6",
+          "mean_coefficient": "1",
+          "conditional_variance": "0"
+        }
+      ]
+    }
+  },
+  "ternary_sign_countercheck": {
+    "P": {
+      "square_scale": 1,
+      "E_X": 0,
+      "E_X_squared": "1",
+      "Gamma_for_r_X_B_minus_1": [
+        [
+          "1",
+          "0"
+        ],
+        [
+          "0",
+          "1"
+        ]
+      ],
+      "prior_min_MSE": "1",
+      "expected_posterior_min_MSE": "0",
+      "observation_cost": "4/5",
+      "observe_total_risk": "4/5",
+      "optimal_choice": "observe",
+      "branches": [
+        {
+          "outcome": -1,
+          "probability": "1/2",
+          "mean_coefficient": "-1",
+          "conditional_variance": "0"
+        },
+        {
+          "outcome": 1,
+          "probability": "1/2",
+          "mean_coefficient": "1",
+          "conditional_variance": "0"
+        }
+      ]
+    },
+    "Q": {
+      "square_scale": 3,
+      "E_X": 0,
+      "E_X_squared": "1",
+      "Gamma_for_r_X_B_minus_1": [
+        [
+          "1",
+          "0"
+        ],
+        [
+          "0",
+          "1"
+        ]
+      ],
+      "prior_min_MSE": "1",
+      "expected_posterior_min_MSE": "0",
+      "observation_cost": "4/5",
+      "observe_total_risk": "4/5",
+      "optimal_choice": "observe",
+      "branches": [
+        {
+          "outcome": -1,
+          "probability": "1/6",
+          "mean_coefficient": "-1",
+          "conditional_variance": "0"
+        },
+        {
+          "outcome": 0,
+          "probability": "2/3",
+          "mean_coefficient": "0",
+          "conditional_variance": "0"
+        },
+        {
+          "outcome": 1,
+          "probability": "1/6",
+          "mean_coefficient": "1",
+          "conditional_variance": "0"
+        }
+      ]
+    }
+  }
+}

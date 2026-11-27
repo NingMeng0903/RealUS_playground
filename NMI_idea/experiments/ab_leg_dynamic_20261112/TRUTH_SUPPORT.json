@@ -1,0 +1,109 @@
+{
+  "row_count": 124,
+  "min_safe_offsets_mm": [
+    -50.0,
+    5.734356284626848
+  ],
+  "max_safe_offsets_mm": [
+    -36.20744169843568,
+    50.0
+  ],
+  "seeds": [
+    {
+      "seed": 3589976929,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 4.170827772880882
+    },
+    {
+      "seed": 3437368210,
+      "unbounded_pose_nodes_outside": 11,
+      "rejects": 1,
+      "accepted_moving_clearance_mm": 3.217924678693466
+    },
+    {
+      "seed": 3096409773,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 7.93660329043168
+    },
+    {
+      "seed": 3147252249,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 0.46074013979306727
+    },
+    {
+      "seed": 1826013943,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 6.08699152762868
+    },
+    {
+      "seed": 3535732034,
+      "unbounded_pose_nodes_outside": 14,
+      "rejects": 1,
+      "accepted_moving_clearance_mm": 10.564691132716984
+    },
+    {
+      "seed": 810944085,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 5.664132048490835
+    },
+    {
+      "seed": 3955619718,
+      "unbounded_pose_nodes_outside": 1,
+      "rejects": 2,
+      "accepted_moving_clearance_mm": 2.3650252838414074
+    },
+    {
+      "seed": 1438800503,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 12.454584585191203
+    },
+    {
+      "seed": 3277913423,
+      "unbounded_pose_nodes_outside": 5,
+      "rejects": 1,
+      "accepted_moving_clearance_mm": 12.945614386659045
+    },
+    {
+      "seed": 3920898298,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 2.314288494566198
+    },
+    {
+      "seed": 4237908293,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 1.4229743621408728
+    },
+    {
+      "seed": 2789222391,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 2.5681759772745227
+    },
+    {
+      "seed": 2967500583,
+      "unbounded_pose_nodes_outside": 8,
+      "rejects": 1,
+      "accepted_moving_clearance_mm": 2.5284610924891853
+    },
+    {
+      "seed": 2335843915,
+      "unbounded_pose_nodes_outside": 0,
+      "rejects": 0,
+      "accepted_moving_clearance_mm": 0.026045728846055383
+    },
+    {
+      "seed": 2758213992,
+      "unbounded_pose_nodes_outside": 1,
+      "rejects": 1,
+      "accepted_moving_clearance_mm": 1.5402649800340136
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "right": {
+    "vertices": 27648,
+    "tets": 142128,
+    "det_min": 4.7094677043550674e-09,
+    "det_max": 1.7910985869307533e-06,
+    "material_J_min": -40577.24962605973,
+    "material_J_max": -71.93304890753213,
+    "nonpositive_tets": 0,
+    "material_fold_tets": 0,
+    "max_curvature_times_radius": 0.27446673177144004,
+    "ray_hit_count_min": 1,
+    "ray_hit_count_max": 1,
+    "harmonic_relative_residual": 1.5332760039041885e-06,
+    "surface_rebinding_distance_m": {
+      "mean": 0.0012254072113783091,
+      "p95": 0.0026417448212739305,
+      "max": 0.007618637036341008
+    },
+    "after_save_load_det_min": 4.7094677043550674e-09,
+    "wall_s": 1.855822420999175
+  },
+  "left": {
+    "vertices": 27648,
+    "tets": 142128,
+    "det_min": 4.692433037114481e-09,
+    "det_max": 1.9702026106169552e-06,
+    "material_J_min": -38318.043417473644,
+    "material_J_max": -62.15210452210361,
+    "nonpositive_tets": 0,
+    "material_fold_tets": 0,
+    "max_curvature_times_radius": 0.41420187518867874,
+    "ray_hit_count_min": 1,
+    "ray_hit_count_max": 1,
+    "harmonic_relative_residual": 1.504244073640426e-06,
+    "surface_rebinding_distance_m": {
+      "mean": 0.0012275542322942935,
+      "p95": 0.002633769316235271,
+      "max": 0.008312177670387277
+    },
+    "after_save_load_det_min": 4.692433037114481e-09,
+    "wall_s": 1.8139122430002317
+  }
+}

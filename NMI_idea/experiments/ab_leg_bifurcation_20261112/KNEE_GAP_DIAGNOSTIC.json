@@ -1,0 +1,970 @@
+{
+  "asset_paths": {
+    "full_contact_surface": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+      "sha256": "1f98c55cd623adc6e060680f5aec60b9f11366e9b6b03cd770726c8e8b532da8"
+    },
+    "long_leg_assets": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/LONG_LEG_ASSETS.npz",
+      "sha256": "bc257945ad87e0343526b16eb27df3a8abdb1be9ef73630b32c51f12b5fdbb63"
+    },
+    "repaired_atlas": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+      "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+    }
+  },
+  "atlas_domain": {
+    "d": [
+      0.0,
+      1.0
+    ],
+    "h": [
+      0.14000000059604645,
+      0.9399999976158142
+    ],
+    "harmonic_tet_count": 322056,
+    "harmonic_vertex_count": 62208,
+    "theta_periodic": true
+  },
+  "boundary_topology": {
+    "boundary_edge_count": 50544,
+    "boundary_edges_max_incidence": 2,
+    "boundary_edges_min_incidence": 2,
+    "boundary_edges_not_twice": 0,
+    "boundary_face_count": 33696,
+    "tetra_count": 322056,
+    "unique_face_count": 660960
+  },
+  "focus_rows": [
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107
+  ],
+  "interpretation": {
+    "exact_tetra_inverse": "all tets are tested; containing_tet_count=0 is an actual outside query, not a nearest-cache miss",
+    "no_dynamics": true,
+    "rebind": "nearest point on closed repaired tetra boundary only; original vessel_m is never replaced",
+    "surface_vs_volume": "old_full_surface_skin_m is full d=0 contact geometry; repaired volume boundary is the strict new atlas geometry"
+  },
+  "records": [
+    {
+      "asset_internal_valid": true,
+      "asset_internal_xi": [
+        0.6203803866682802,
+        0.43874936623590544,
+        0.9276488803730889
+      ],
+      "asset_legacy_xi_skin": [
+        6.070568561553955,
+        0.43810105323791504,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 985,
+        "coordinate_uv_m": [
+          -0.0008033284148543168,
+          -0.0004929760433734486
+        ],
+        "decoded_point_m": [
+          -0.0469520949075459,
+          -0.8155116997640406,
+          0.009267790091612096
+        ],
+        "projection_distance_m": 0.04800751966918596,
+        "projection_distance_mm": 48.00751966918596,
+        "source_face_id": 9227
+      },
+      "label": "R_SUPFEMV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.005533695702450825,
+        "index": 23445,
+        "point_m": [
+          -0.08350063860416412,
+          -0.8076174855232239,
+          -0.014433161355555058
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.04801135397986416,
+        "index": 2922,
+        "point_m": [
+          -0.04660377278923988,
+          -0.8152007460594177,
+          0.008879560977220535
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.47763082428043196,
+          0.03715300748479604,
+          0.48521616823477204
+        ],
+        "boundary_face_index": 12776,
+        "boundary_vertex_indices": [
+          23343,
+          23344,
+          22479
+        ],
+        "delta_m": [
+          -0.0028770234778274922,
+          0.0007145015919245434,
+          -0.0025852127996897276
+        ],
+        "distance_m": 0.003933332154358808,
+        "distance_mm": 3.933332154358808,
+        "point_m": [
+          -0.08888002153185505,
+          -0.8021090419566594,
+          -0.018192301603934723
+        ],
+        "rebind_xi": [
+          0.874826105078018,
+          0.4387581181986968,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.033639073317305083,
+        -0.8096246131921614,
+        -0.011896961587913112
+      ],
+      "old_skin_to_vessel_depth_mm": 52.9339230181487,
+      "original_vessel_m": [
+        -0.08600299805402756,
+        -0.802823543548584,
+        -0.015607088804244995
+      ],
+      "row_id": 100,
+      "source_global_point_index": 513,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          0.1417405635497101,
+          0.3364464516481004,
+          0.007805889954608941,
+          0.5140070948475806
+        ],
+        "best_min_barycentric": 0.007805889954608941,
+        "best_tet_index": 117996,
+        "best_xi_if_extrapolated": [
+          0.6203803866682802,
+          0.43874936623590544,
+          0.9276488803730889
+        ],
+        "containing_tet_count": 1,
+        "containing_tet_indices": [
+          117996
+        ],
+        "containing_xi": [
+          [
+            0.6203803866682802,
+            0.43874936623590544,
+            0.9276488803730889
+          ]
+        ]
+      }
+    },
+    {
+      "asset_internal_valid": true,
+      "asset_internal_xi": [
+        0.41692420478414116,
+        0.44284132381111224,
+        0.9275492220726232
+      ],
+      "asset_legacy_xi_skin": [
+        5.970628261566162,
+        0.442432165145874,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 13171,
+        "coordinate_uv_m": [
+          0.0006491739166502758,
+          -0.0015858548340341937
+        ],
+        "decoded_point_m": [
+          -0.046835714376997364,
+          -0.8180297117770767,
+          0.007827021309473117
+        ],
+        "projection_distance_m": 0.04775900691410755,
+        "projection_distance_mm": 47.75900691410755,
+        "source_face_id": 9274
+      },
+      "label": "R_SUPFEMV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.0037192966232839964,
+        "index": 23443,
+        "point_m": [
+          -0.08287510275840759,
+          -0.8075171113014221,
+          -0.015375003218650818
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.047873448881765465,
+        "index": 2922,
+        "point_m": [
+          -0.04660377278923988,
+          -0.8152007460594177,
+          0.008879560977220535
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.8776401456170733,
+          0.12235985438292671,
+          0.0
+        ],
+        "boundary_face_index": 12765,
+        "boundary_vertex_indices": [
+          23339,
+          22475,
+          22474
+        ],
+        "delta_m": [
+          -0.0032227663557431313,
+          0.0006451228879628124,
+          -0.0019599798123673996
+        ],
+        "distance_m": 0.003826738479328198,
+        "distance_mm": 3.8267384793281978,
+        "point_m": [
+          -0.08881676478790256,
+          -0.8051838656641307,
+          -0.019229980463846167
+        ],
+        "rebind_xi": [
+          0.6399540305137634,
+          0.44284663888736403,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.03187816601871644,
+        -0.8130587339144627,
+        -0.018990432874679573
+      ],
+      "old_skin_to_vessel_depth_mm": 54.22748156523976,
+      "original_vessel_m": [
+        -0.08559399843215942,
+        -0.8058289885520935,
+        -0.017270000651478767
+      ],
+      "row_id": 101,
+      "source_global_point_index": 514,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          0.3527289960719078,
+          0.12283156753382518,
+          0.3580402337930203,
+          0.16639920260124674
+        ],
+        "best_min_barycentric": 0.12283156753382518,
+        "best_tet_index": 117981,
+        "best_xi_if_extrapolated": [
+          0.41692420478414116,
+          0.44284132381111224,
+          0.9275492220726232
+        ],
+        "containing_tet_count": 1,
+        "containing_tet_indices": [
+          117981
+        ],
+        "containing_xi": [
+          [
+            0.41692420478414116,
+            0.44284132381111224,
+            0.9275492220726232
+          ]
+        ]
+      }
+    },
+    {
+      "asset_internal_valid": true,
+      "asset_internal_xi": [
+        0.41692420478414116,
+        0.44284132381111224,
+        0.9275492220726232
+      ],
+      "asset_legacy_xi_skin": [
+        5.970628261566162,
+        0.442432165145874,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 13171,
+        "coordinate_uv_m": [
+          0.0006491739166502758,
+          -0.0015858548340341937
+        ],
+        "decoded_point_m": [
+          -0.046835714376997364,
+          -0.8180297117770767,
+          0.007827021309473117
+        ],
+        "projection_distance_m": 0.04775900691410755,
+        "projection_distance_mm": 47.75900691410755,
+        "source_face_id": 9274
+      },
+      "label": "R_POPV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.0037192966232839964,
+        "index": 23443,
+        "point_m": [
+          -0.08287510275840759,
+          -0.8075171113014221,
+          -0.015375003218650818
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.047873448881765465,
+        "index": 2922,
+        "point_m": [
+          -0.04660377278923988,
+          -0.8152007460594177,
+          0.008879560977220535
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.8776401456170733,
+          0.12235985438292671,
+          0.0
+        ],
+        "boundary_face_index": 12765,
+        "boundary_vertex_indices": [
+          23339,
+          22475,
+          22474
+        ],
+        "delta_m": [
+          -0.0032227663557431313,
+          0.0006451228879628124,
+          -0.0019599798123673996
+        ],
+        "distance_m": 0.003826738479328198,
+        "distance_mm": 3.8267384793281978,
+        "point_m": [
+          -0.08881676478790256,
+          -0.8051838656641307,
+          -0.019229980463846167
+        ],
+        "rebind_xi": [
+          0.6399540305137634,
+          0.44284663888736403,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.03187816601871644,
+        -0.8130587339144627,
+        -0.018990432874679573
+      ],
+      "old_skin_to_vessel_depth_mm": 54.22748156523976,
+      "original_vessel_m": [
+        -0.08559399843215942,
+        -0.8058289885520935,
+        -0.017270000651478767
+      ],
+      "row_id": 102,
+      "source_global_point_index": 579,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          0.3527289960719078,
+          0.12283156753382518,
+          0.3580402337930203,
+          0.16639920260124674
+        ],
+        "best_min_barycentric": 0.12283156753382518,
+        "best_tet_index": 117981,
+        "best_xi_if_extrapolated": [
+          0.41692420478414116,
+          0.44284132381111224,
+          0.9275492220726232
+        ],
+        "containing_tet_count": 1,
+        "containing_tet_indices": [
+          117981
+        ],
+        "containing_xi": [
+          [
+            0.41692420478414116,
+            0.44284132381111224,
+            0.9275492220726232
+          ]
+        ]
+      }
+    },
+    {
+      "asset_internal_valid": true,
+      "asset_internal_xi": [
+        0.3215725306530481,
+        0.4462669549853398,
+        0.9643320249988983
+      ],
+      "asset_legacy_xi_skin": [
+        5.840896129608154,
+        0.4442300498485565,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 23047,
+        "coordinate_uv_m": [
+          -0.002063062725482705,
+          0.0003886484373590223
+        ],
+        "decoded_point_m": [
+          -0.046978788652649754,
+          -0.8206082679480002,
+          0.006801170284078554
+        ],
+        "projection_distance_m": 0.04951812476442492,
+        "projection_distance_mm": 49.518124764424925,
+        "source_face_id": 9272
+      },
+      "label": "R_POPV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.002446085617672232,
+        "index": 23334,
+        "point_m": [
+          -0.0885603204369545,
+          -0.8061794638633728,
+          -0.019955065101385117
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.04968354471520622,
+        "index": 3030,
+        "point_m": [
+          -0.04817213863134384,
+          -0.8244176506996155,
+          0.006819023285061121
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.18112945758566323,
+          0.7884925871230046,
+          0.03037795529133213
+        ],
+        "boundary_face_index": 13187,
+        "boundary_vertex_indices": [
+          24198,
+          23334,
+          23333
+        ],
+        "delta_m": [
+          -0.0015397706189289734,
+          0.00034036481578869626,
+          -0.0009891022064817713
+        ],
+        "distance_m": 0.0018614684906306889,
+        "distance_mm": 1.8614684906306889,
+        "point_m": [
+          -0.08872364844466597,
+          -0.8077328578213878,
+          -0.02023535259748824
+        ],
+        "rebind_xi": [
+          0.34729852309973686,
+          0.44626623580053665,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.030457403862109825,
+        -0.8143321864385592,
+        -0.02863019537870695
+      ],
+      "old_skin_to_vessel_depth_mm": 57.837063374148585,
+      "original_vessel_m": [
+        -0.087183877825737,
+        -0.8080732226371765,
+        -0.01924625039100647
+      ],
+      "row_id": 103,
+      "source_global_point_index": 580,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          0.27279566038252034,
+          0.47257535646397375,
+          0.0734356978984921,
+          0.1811932852550138
+        ],
+        "best_min_barycentric": 0.0734356978984921,
+        "best_tet_index": 122502,
+        "best_xi_if_extrapolated": [
+          0.3215725306530481,
+          0.4462669549853398,
+          0.9643320249988983
+        ],
+        "containing_tet_count": 1,
+        "containing_tet_indices": [
+          122502
+        ],
+        "containing_xi": [
+          [
+            0.3215725306530481,
+            0.4462669549853398,
+            0.9643320249988983
+          ]
+        ]
+      }
+    },
+    {
+      "asset_internal_valid": false,
+      "asset_internal_xi": [
+        NaN,
+        NaN,
+        NaN
+      ],
+      "asset_legacy_xi_skin": [
+        5.707154273986816,
+        0.447424054145813,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 23050,
+        "coordinate_uv_m": [
+          -0.0017371130392851712,
+          -0.0006372300316831652
+        ],
+        "decoded_point_m": [
+          -0.04722145955396514,
+          -0.8231575086630638,
+          0.005965369625387725
+        ],
+        "projection_distance_m": 0.05126190846786665,
+        "projection_distance_mm": 51.26190846786665,
+        "source_face_id": 9277
+      },
+      "label": "R_POPV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.0043043868980418,
+        "index": 23329,
+        "point_m": [
+          -0.08822300285100937,
+          -0.8061206340789795,
+          -0.020490337163209915
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.05129159033662819,
+        "index": 3030,
+        "point_m": [
+          -0.04817213863134384,
+          -0.8244176506996155,
+          0.006819023285061121
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.1832839830412012,
+          0.30802623679298097,
+          0.5086897801658179
+        ],
+        "boundary_face_index": 13180,
+        "boundary_vertex_indices": [
+          24193,
+          24194,
+          23329
+        ],
+        "delta_m": [
+          4.817903621184838e-05,
+          -9.931941264751387e-06,
+          2.723441916845093e-05
+        ],
+        "distance_m": 5.622789854717991e-05,
+        "distance_mm": 0.05622789854717991,
+        "point_m": [
+          -0.08868984519855988,
+          -0.8103394884064137,
+          -0.02120301617783167
+        ],
+        "rebind_xi": [
+          0.07609788281647209,
+          0.4497612293152353,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.03141511456103436,
+        -0.8163719769149835,
+        -0.03878823629578782
+      ],
+      "old_skin_to_vessel_depth_mm": 60.25537055030752,
+      "original_vessel_m": [
+        -0.08873802423477173,
+        -0.8103295564651489,
+        -0.021230250597000122
+      ],
+      "row_id": 104,
+      "source_global_point_index": 581,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          0.24798364035698073,
+          0.5086575468851641,
+          0.2510054011318121,
+          -0.007646588373956771
+        ],
+        "best_min_barycentric": -0.007646588373956771,
+        "best_tet_index": 122482,
+        "best_xi_if_extrapolated": [
+          0.07233568453799295,
+          0.44976159250702713,
+          1.001084363608418
+        ],
+        "containing_tet_count": 0,
+        "containing_tet_indices": [],
+        "containing_xi": []
+      }
+    },
+    {
+      "asset_internal_valid": false,
+      "asset_internal_xi": [
+        NaN,
+        NaN,
+        NaN
+      ],
+      "asset_legacy_xi_skin": [
+        5.56643533706665,
+        0.45065033435821533,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 13242,
+        "coordinate_uv_m": [
+          0.0003817129382908894,
+          0.001175810405903762
+        ],
+        "decoded_point_m": [
+          -0.047410066788256634,
+          -0.8257370127233271,
+          0.005044404812829147
+        ],
+        "projection_distance_m": 0.05293422125523004,
+        "projection_distance_mm": 52.93422125523004,
+        "source_face_id": 9278
+      },
+      "label": "R_POPV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.00202380457644294,
+        "index": 24278,
+        "point_m": [
+          -0.0900072306394577,
+          -0.8141409754753113,
+          -0.024559220299124718
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.05297269736212288,
+        "index": 3029,
+        "point_m": [
+          -0.04642130061984062,
+          -0.8241493701934814,
+          0.004285019356757402
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.6583309174435226,
+          0.1476743664209686,
+          0.1939947161355089
+        ],
+        "boundary_face_index": 13350,
+        "boundary_vertex_indices": [
+          24278,
+          24279,
+          23414
+        ],
+        "delta_m": [
+          0.00038013169130349245,
+          0.00013538684886871266,
+          -0.0010339028876055478
+        ],
+        "distance_m": 0.0011098580461387589,
+        "distance_mm": 1.1098580461387588,
+        "point_m": [
+          -0.0898107110563848,
+          -0.8124851337428671,
+          -0.024270138491295695
+        ],
+        "rebind_xi": [
+          5.011868622981989,
+          0.453307088187722,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.03524253271323224,
+        -0.8180518744065987,
+        -0.048875029490803676
+      ],
+      "old_skin_to_vessel_depth_mm": 60.87827306922249,
+      "original_vessel_m": [
+        -0.0901908427476883,
+        -0.8126205205917358,
+        -0.023236235603690147
+      ],
+      "row_id": 105,
+      "source_global_point_index": 582,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          -0.059092753071534165,
+          1.1951500485169322,
+          -0.04641809380050076,
+          -0.08963920164489736
+        ],
+        "best_min_barycentric": -0.08963920164489736,
+        "best_tet_index": 127551,
+        "best_xi_if_extrapolated": [
+          5.230772638457158,
+          0.453294064545833,
+          1.0212364049361407
+        ],
+        "containing_tet_count": 0,
+        "containing_tet_indices": [],
+        "containing_xi": []
+      }
+    },
+    {
+      "asset_internal_valid": true,
+      "asset_internal_xi": [
+        4.376739371976625,
+        0.4569156277624795,
+        0.995709370704139
+      ],
+      "asset_legacy_xi_skin": [
+        5.431338310241699,
+        0.4545307457447052,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 20324,
+        "coordinate_uv_m": [
+          0.0005686592604099944,
+          -0.0016084885321280642
+        ],
+        "decoded_point_m": [
+          -0.0755805956629778,
+          -0.8137111690016305,
+          -0.07431452840303739
+        ],
+        "projection_distance_m": 0.051560673538258196,
+        "projection_distance_mm": 51.56067353825819,
+        "source_face_id": 10358
+      },
+      "label": "R_POPV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.0011202551314237824,
+        "index": 24267,
+        "point_m": [
+          -0.09137137979269028,
+          -0.8139370679855347,
+          -0.024859502911567688
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.05158831530802975,
+        "index": 3214,
+        "point_m": [
+          -0.07506132870912552,
+          -0.815312922000885,
+          -0.07418743520975113
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.12603430113349368,
+          0.0132196937241712,
+          0.8607460051423351
+        ],
+        "boundary_face_index": 13759,
+        "boundary_vertex_indices": [
+          25132,
+          24268,
+          24267
+        ],
+        "delta_m": [
+          -7.0983460952467325e-06,
+          -4.011193455077944e-05,
+          0.00022290126999167242
+        ],
+        "distance_m": 0.00022659287273564974,
+        "distance_mm": 0.22659287273564974,
+        "point_m": [
+          -0.09147596898589627,
+          -0.8150113205069385,
+          -0.025056149422924244
+        ],
+        "rebind_xi": [
+          4.3714246569397925,
+          0.4569130516808704,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.041366823843482815,
+        -0.8199955826394145,
+        -0.057358982642529366
+      ],
+      "old_skin_to_vessel_depth_mm": 59.70411595390808,
+      "original_vessel_m": [
+        -0.09146887063980103,
+        -0.8149712085723877,
+        -0.025279050692915916
+      ],
+      "row_id": 106,
+      "source_global_point_index": 583,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          0.09622215370897691,
+          0.769392515023542,
+          0.10434455714013592,
+          0.030040774127345158
+        ],
+        "best_min_barycentric": 0.030040774127345158,
+        "best_tet_index": 127463,
+        "best_xi_if_extrapolated": [
+          4.376739371976625,
+          0.4569156277624795,
+          0.995709370704139
+        ],
+        "containing_tet_count": 1,
+        "containing_tet_indices": [
+          127463
+        ],
+        "containing_xi": [
+          [
+            4.376739371976625,
+            0.4569156277624795,
+            0.995709370704139
+          ]
+        ]
+      }
+    },
+    {
+      "asset_internal_valid": true,
+      "asset_internal_xi": [
+        4.202611944380869,
+        0.46063827443078703,
+        0.9643138218721123
+      ],
+      "asset_legacy_xi_skin": [
+        5.313634872436523,
+        0.458034873008728,
+        0.0
+      ],
+      "full_contact_surface_query": {
+        "chart_id": 8028,
+        "coordinate_uv_m": [
+          -0.0012148729801759505,
+          -2.6298002303527413e-05
+        ],
+        "decoded_point_m": [
+          -0.07621171397167176,
+          -0.8158097739079415,
+          -0.07459606384754387
+        ],
+        "projection_distance_m": 0.05000898647532135,
+        "projection_distance_mm": 50.00898647532135,
+        "source_face_id": 10356
+      },
+      "label": "R_POPV",
+      "nearest_repaired_harmonic_vertex": {
+        "distance_m": 0.004392459491299073,
+        "index": 24264,
+        "point_m": [
+          -0.09175866842269897,
+          -0.8139047026634216,
+          -0.024804288521409035
+        ]
+      },
+      "nearest_repaired_skin_vertex": {
+        "distance_m": 0.050031736692214356,
+        "index": 3214,
+        "point_m": [
+          -0.07506132870912552,
+          -0.815312922000885,
+          -0.07418743520975113
+        ]
+      },
+      "nearest_repaired_volume_boundary": {
+        "barycentric": [
+          0.2733418776606942,
+          0.1813088270227532,
+          0.5453492953165526
+        ],
+        "boundary_face_index": 13754,
+        "boundary_vertex_indices": [
+          25128,
+          25129,
+          24264
+        ],
+        "delta_m": [
+          0.00036707501634421213,
+          -0.00037902728868943747,
+          0.0018353731111164784
+        ],
+        "distance_m": 0.0019097120752104885,
+        "distance_mm": 1.9097120752104886,
+        "point_m": [
+          -0.09217516351715264,
+          -0.8177726878340386,
+          -0.025519776277196815
+        ],
+        "rebind_xi": [
+          4.199338410405428,
+          0.4606157804660801,
+          1.0
+        ]
+      },
+      "old_full_surface_skin_m": [
+        -0.048917810810918845,
+        -0.8209661254363049,
+        -0.06347440845218352
+      ],
+      "old_skin_to_vessel_depth_mm": 56.749044704228425,
+      "original_vessel_m": [
+        -0.09254223853349686,
+        -0.8173936605453491,
+        -0.027355149388313293
+      ],
+      "row_id": 107,
+      "source_global_point_index": 584,
+      "strict_all_tetra_inverse": {
+        "best_barycentric": [
+          0.012500972764910134,
+          0.5433529606638279,
+          0.20656917030935107,
+          0.23757689626191097
+        ],
+        "best_min_barycentric": 0.012500972764910134,
+        "best_tet_index": 127443,
+        "best_xi_if_extrapolated": [
+          4.202611944380869,
+          0.46063827443078703,
+          0.9643138218721123
+        ],
+        "containing_tet_count": 1,
+        "containing_tet_indices": [
+          127443
+        ],
+        "containing_xi": [
+          [
+            4.202611944380869,
+            0.46063827443078703,
+            0.9643138218721123
+          ]
+        ]
+      }
+    }
+  ],
+  "schema": "knee_gap_diagnostic_v1",
+  "status": "read_only_exact_local_geometry_audit"
+}

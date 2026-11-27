@@ -1,0 +1,23 @@
+{
+  "layout_count": 24,
+  "flat": {
+    "steps": {
+      "median": 84.5,
+      "maximum": 208
+    },
+    "terminal_clock": {
+      "median": 4179.0,
+      "maximum": 8191
+    }
+  },
+  "grouped": {
+    "steps": {
+      "median": 4.0,
+      "maximum": 24
+    },
+    "terminal_clock": {
+      "median": 380.0,
+      "maximum": 1872
+    }
+  }
+}

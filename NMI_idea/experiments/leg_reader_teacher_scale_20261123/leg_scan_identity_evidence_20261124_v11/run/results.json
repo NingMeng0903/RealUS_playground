@@ -1,0 +1,3026 @@
+{
+  "scores": {
+    "femoral": {
+      "layouts": 40,
+      "triggered": {},
+      "arms": {
+        "base": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "prior_readout": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "repeat": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "geometry": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "information": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "task": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "task_old_image": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "v10": {
+          "strict": 35,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 3,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            38,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            35,
+            38,
+            35
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "mixed_readout": {
+          "strict": 34,
+          "wrong_branch": 0,
+          "named_wrong_regions": 0,
+          "artifact": 4,
+          "mixed": 2,
+          "reject": 0,
+          "correct_by_region": [
+            40,
+            40,
+            37,
+            40,
+            40,
+            37
+          ],
+          "visible_by_region": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "strict_per_tape": [
+            34,
+            37,
+            36
+          ],
+          "mean_s": 12.3475,
+          "mean_mm": 342.5920554999214,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.125,
+                  0.05
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.125,
+                  0.05
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.125,
+                  0.05
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.125,
+                  0.05
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.125,
+                  0.05
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "layouts": 80,
+      "triggered": {
+        "repeat": 69,
+        "geometry": 69,
+        "information": 69,
+        "task": 69,
+        "target_region_6": 47,
+        "different_information_and_geometry": 53,
+        "task_revisited_other_window": 46,
+        "old_image_promoted": 0,
+        "target_region_5": 18,
+        "target_region_4": 4
+      },
+      "arms": {
+        "base": {
+          "strict": 41,
+          "wrong_branch": 22,
+          "named_wrong_regions": 22,
+          "artifact": 11,
+          "mixed": 9,
+          "reject": 13,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            71,
+            54,
+            64
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            41,
+            41,
+            50
+          ],
+          "mean_s": 39.955,
+          "mean_mm": 1095.7832982841423,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.0875,
+                  0.0375
+                ],
+                "rescued": 2,
+                "lost": 4,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0375,
+                  -0.025,
+                  0.1
+                ],
+                "rescued": 5,
+                "lost": 2,
+                "independent": [
+                  -0.0125,
+                  -0.0625,
+                  0.0375
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.1,
+                  -0.175,
+                  -0.0375
+                ],
+                "rescued": 0,
+                "lost": 8,
+                "independent": [
+                  -0.0625,
+                  -0.1,
+                  -0.025
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.025,
+                  -0.025,
+                  0.075
+                ],
+                "rescued": 3,
+                "lost": 1,
+                "independent": [
+                  0.0125,
+                  -0.0375,
+                  0.05625
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.15,
+                  -0.2375,
+                  -0.075
+                ],
+                "rescued": 0,
+                "lost": 12,
+                "independent": [
+                  -0.05625,
+                  -0.1,
+                  -0.0125
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0375,
+                  -0.0125,
+                  0.1
+                ],
+                "rescued": 4,
+                "lost": 1,
+                "independent": [
+                  0.01875,
+                  -0.03453124999999999,
+                  0.06875
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  -0.0625,
+                  -0.125,
+                  0.0
+                ],
+                "rescued": 1,
+                "lost": 6,
+                "independent": [
+                  -0.0375,
+                  -0.075,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0125,
+                  -0.025,
+                  0.05
+                ],
+                "rescued": 2,
+                "lost": 1,
+                "independent": [
+                  0.01875,
+                  -0.03125,
+                  0.0625
+                ]
+              }
+            }
+          }
+        },
+        "prior_readout": {
+          "strict": 41,
+          "wrong_branch": 22,
+          "named_wrong_regions": 22,
+          "artifact": 11,
+          "mixed": 9,
+          "reject": 12,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            72,
+            54,
+            64
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            41,
+            41,
+            50
+          ],
+          "mean_s": 39.955,
+          "mean_mm": 1095.7832982841423,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.0875,
+                  0.0375
+                ],
+                "rescued": 2,
+                "lost": 4,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0375,
+                  -0.025,
+                  0.1
+                ],
+                "rescued": 5,
+                "lost": 2,
+                "independent": [
+                  -0.0125,
+                  -0.0625,
+                  0.0375
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.1,
+                  -0.175,
+                  -0.0375
+                ],
+                "rescued": 0,
+                "lost": 8,
+                "independent": [
+                  -0.0625,
+                  -0.1,
+                  -0.025
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.025,
+                  -0.025,
+                  0.075
+                ],
+                "rescued": 3,
+                "lost": 1,
+                "independent": [
+                  0.0125,
+                  -0.0375,
+                  0.05625
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.15,
+                  -0.2375,
+                  -0.075
+                ],
+                "rescued": 0,
+                "lost": 12,
+                "independent": [
+                  -0.05625,
+                  -0.1,
+                  -0.0125
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0375,
+                  -0.0125,
+                  0.1
+                ],
+                "rescued": 4,
+                "lost": 1,
+                "independent": [
+                  0.01875,
+                  -0.03453124999999999,
+                  0.06875
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  -0.0625,
+                  -0.125,
+                  0.0
+                ],
+                "rescued": 1,
+                "lost": 6,
+                "independent": [
+                  -0.0375,
+                  -0.075,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0125,
+                  -0.025,
+                  0.05
+                ],
+                "rescued": 2,
+                "lost": 1,
+                "independent": [
+                  0.01875,
+                  -0.03125,
+                  0.0625
+                ]
+              }
+            }
+          }
+        },
+        "repeat": {
+          "strict": 49,
+          "wrong_branch": 20,
+          "named_wrong_regions": 21,
+          "artifact": 8,
+          "mixed": 5,
+          "reject": 6,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            74,
+            59,
+            71
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            49,
+            47,
+            54
+          ],
+          "mean_s": 49.88,
+          "mean_mm": 1315.187395723687,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.075,
+                  0.0,
+                  0.15
+                ],
+                "rescued": 8,
+                "lost": 2,
+                "independent": [
+                  0.0625,
+                  -0.00625,
+                  0.13125
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0125,
+                  -0.0625,
+                  0.0875
+                ],
+                "rescued": 5,
+                "lost": 4,
+                "independent": [
+                  -0.025,
+                  -0.0875,
+                  0.04375
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.1,
+                  0.0375,
+                  0.175
+                ],
+                "rescued": 8,
+                "lost": 0,
+                "independent": [
+                  0.0625,
+                  0.025,
+                  0.1
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.025,
+                  -0.075,
+                  0.025
+                ],
+                "rescued": 1,
+                "lost": 3,
+                "independent": [
+                  -0.0125,
+                  -0.05625,
+                  0.0375
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.05,
+                  -0.1,
+                  -0.0125
+                ],
+                "rescued": 0,
+                "lost": 4,
+                "independent": [
+                  0.00625,
+                  -0.03125,
+                  0.04375
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ],
+                "rescued": 1,
+                "lost": 0,
+                "independent": [
+                  0.00625,
+                  -0.025,
+                  0.04375
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0375,
+                  0.0,
+                  0.0875
+                ],
+                "rescued": 3,
+                "lost": 0,
+                "independent": [
+                  0.025,
+                  -0.025,
+                  0.075
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0125,
+                  -0.0375,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 1,
+                "independent": [
+                  0.00625,
+                  -0.03125,
+                  0.05
+                ]
+              }
+            }
+          }
+        },
+        "geometry": {
+          "strict": 53,
+          "wrong_branch": 19,
+          "named_wrong_regions": 20,
+          "artifact": 6,
+          "mixed": 4,
+          "reject": 4,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            74,
+            63,
+            73
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            53,
+            47,
+            53
+          ],
+          "mean_s": 49.88,
+          "mean_mm": 1318.0725775153269,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.125,
+                  0.05,
+                  0.2125
+                ],
+                "rescued": 11,
+                "lost": 1,
+                "independent": [
+                  0.05625,
+                  0.0,
+                  0.11875
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  -0.075,
+                  0.075
+                ],
+                "rescued": 5,
+                "lost": 5,
+                "independent": [
+                  -0.03125,
+                  -0.1,
+                  0.03125
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.15,
+                  0.075,
+                  0.2375
+                ],
+                "rescued": 12,
+                "lost": 0,
+                "independent": [
+                  0.05625,
+                  0.0125,
+                  0.1
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0375,
+                  -0.1,
+                  0.0125
+                ],
+                "rescued": 1,
+                "lost": 4,
+                "independent": [
+                  -0.01875,
+                  -0.06875,
+                  0.03453125000000057
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  0.05,
+                  0.0125,
+                  0.1
+                ],
+                "rescued": 4,
+                "lost": 0,
+                "independent": [
+                  -0.00625,
+                  -0.04375,
+                  0.03125
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0125,
+                  -0.0375,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 1,
+                "independent": [
+                  -0.00625,
+                  -0.04375,
+                  0.025
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0875,
+                  0.0375,
+                  0.15
+                ],
+                "rescued": 7,
+                "lost": 0,
+                "independent": [
+                  0.01875,
+                  -0.01875,
+                  0.0625
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.025,
+                  -0.0625,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.0375,
+                  0.0375
+                ]
+              }
+            }
+          }
+        },
+        "information": {
+          "strict": 46,
+          "wrong_branch": 19,
+          "named_wrong_regions": 19,
+          "artifact": 9,
+          "mixed": 7,
+          "reject": 5,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            74,
+            59,
+            71
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            46,
+            45,
+            53
+          ],
+          "mean_s": 49.88,
+          "mean_mm": 1345.7221909963955,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0375,
+                  -0.05,
+                  0.1375
+                ],
+                "rescued": 9,
+                "lost": 6,
+                "independent": [
+                  0.04375,
+                  -0.0125,
+                  0.1
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  -0.075,
+                  0.075
+                ],
+                "rescued": 5,
+                "lost": 5,
+                "independent": [
+                  -0.025,
+                  -0.0875,
+                  0.0375
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0625,
+                  -0.0125,
+                  0.15
+                ],
+                "rescued": 8,
+                "lost": 3,
+                "independent": [
+                  0.04375,
+                  -0.00625,
+                  0.0875
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0375,
+                  -0.0875,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 3,
+                "independent": [
+                  -0.0125,
+                  -0.0625,
+                  0.0375
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.0375,
+                  -0.1,
+                  0.025
+                ],
+                "rescued": 2,
+                "lost": 5,
+                "independent": [
+                  -0.01875,
+                  -0.06875,
+                  0.03125
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0125,
+                  -0.0625,
+                  0.025
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.04375,
+                  0.04078125000000057
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.0875,
+                  -0.15,
+                  -0.0375
+                ],
+                "rescued": 0,
+                "lost": 7,
+                "independent": [
+                  -0.0125,
+                  -0.05,
+                  0.025
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  -0.0375,
+                  0.0375
+                ],
+                "rescued": 1,
+                "lost": 1,
+                "independent": [
+                  0.00625,
+                  -0.025,
+                  0.0375
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  -0.0625,
+                  0.0625
+                ],
+                "rescued": 3,
+                "lost": 3,
+                "independent": [
+                  0.00625,
+                  -0.025,
+                  0.04078125000000057
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.025,
+                  -0.0625,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 2,
+                "independent": [
+                  0.00625,
+                  -0.025,
+                  0.0375
+                ]
+              }
+            }
+          }
+        },
+        "task": {
+          "strict": 46,
+          "wrong_branch": 21,
+          "named_wrong_regions": 21,
+          "artifact": 8,
+          "mixed": 7,
+          "reject": 5,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            73,
+            58,
+            72
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            46,
+            43,
+            54
+          ],
+          "mean_s": 49.88,
+          "mean_mm": 1342.5995627159452,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0375,
+                  -0.0375,
+                  0.11906250000000114
+                ],
+                "rescued": 7,
+                "lost": 4,
+                "independent": [
+                  0.0375,
+                  -0.0125,
+                  0.0875
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.025,
+                  -0.05,
+                  0.1
+                ],
+                "rescued": 6,
+                "lost": 4,
+                "independent": [
+                  -0.03125,
+                  -0.0875,
+                  0.03125
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0625,
+                  0.0,
+                  0.125
+                ],
+                "rescued": 6,
+                "lost": 1,
+                "independent": [
+                  0.0375,
+                  0.0,
+                  0.075
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0125,
+                  -0.05,
+                  0.025
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  -0.01875,
+                  -0.0625,
+                  0.03125
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.0375,
+                  -0.0875,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 3,
+                "independent": [
+                  -0.025,
+                  -0.075,
+                  0.025
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ],
+                "rescued": 1,
+                "lost": 0,
+                "independent": [
+                  -0.00625,
+                  -0.05,
+                  0.03125
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.0875,
+                  -0.15,
+                  -0.0375
+                ],
+                "rescued": 0,
+                "lost": 7,
+                "independent": [
+                  -0.01875,
+                  -0.0625,
+                  0.01875
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.025,
+                  0.0,
+                  0.0625
+                ],
+                "rescued": 2,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  -0.0375,
+                  0.0375
+                ]
+              }
+            }
+          }
+        },
+        "task_old_image": {
+          "strict": 46,
+          "wrong_branch": 21,
+          "named_wrong_regions": 21,
+          "artifact": 8,
+          "mixed": 7,
+          "reject": 5,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            73,
+            58,
+            72
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            46,
+            43,
+            54
+          ],
+          "mean_s": 49.88,
+          "mean_mm": 1342.5995627159452,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  0.0375,
+                  -0.0375,
+                  0.11906250000000114
+                ],
+                "rescued": 7,
+                "lost": 4,
+                "independent": [
+                  0.0375,
+                  -0.0125,
+                  0.0875
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.025,
+                  -0.05,
+                  0.1
+                ],
+                "rescued": 6,
+                "lost": 4,
+                "independent": [
+                  -0.03125,
+                  -0.0875,
+                  0.03125
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0625,
+                  0.0,
+                  0.125
+                ],
+                "rescued": 6,
+                "lost": 1,
+                "independent": [
+                  0.0375,
+                  0.0,
+                  0.075
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0125,
+                  -0.05,
+                  0.025
+                ],
+                "rescued": 1,
+                "lost": 2,
+                "independent": [
+                  -0.01875,
+                  -0.0625,
+                  0.03125
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.0375,
+                  -0.0875,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 3,
+                "independent": [
+                  -0.025,
+                  -0.075,
+                  0.025
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0125,
+                  0.0,
+                  0.0375
+                ],
+                "rescued": 1,
+                "lost": 0,
+                "independent": [
+                  -0.00625,
+                  -0.05,
+                  0.03125
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.0875,
+                  -0.15,
+                  -0.0375
+                ],
+                "rescued": 0,
+                "lost": 7,
+                "independent": [
+                  -0.01875,
+                  -0.0625,
+                  0.01875
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.025,
+                  0.0,
+                  0.0625
+                ],
+                "rescued": 2,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  -0.0375,
+                  0.0375
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          }
+        },
+        "v10": {
+          "strict": 43,
+          "wrong_branch": 19,
+          "named_wrong_regions": 19,
+          "artifact": 15,
+          "mixed": 11,
+          "reject": 1,
+          "correct_by_region": [
+            79,
+            78,
+            78,
+            74,
+            58,
+            67
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            43,
+            40,
+            51
+          ],
+          "mean_s": 39.955,
+          "mean_mm": 1095.7832982841423,
+          "paired": {
+            "base": {
+              "strict": {
+                "actual": [
+                  0.025,
+                  -0.0375,
+                  0.0875
+                ],
+                "rescued": 4,
+                "lost": 2,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0375,
+                  -0.1,
+                  0.025
+                ],
+                "rescued": 2,
+                "lost": 5,
+                "independent": [
+                  0.0125,
+                  -0.0375,
+                  0.0625
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.075,
+                  -0.15,
+                  0.0
+                ],
+                "rescued": 2,
+                "lost": 8,
+                "independent": [
+                  -0.0625,
+                  -0.13125,
+                  0.00625
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.0125,
+                  -0.0875,
+                  0.0625
+                ],
+                "rescued": 4,
+                "lost": 5,
+                "independent": [
+                  0.025,
+                  -0.04375,
+                  0.0875
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.125,
+                  -0.2125,
+                  -0.05
+                ],
+                "rescued": 1,
+                "lost": 11,
+                "independent": [
+                  -0.05625,
+                  -0.11875,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  -0.075,
+                  0.075
+                ],
+                "rescued": 5,
+                "lost": 5,
+                "independent": [
+                  0.03125,
+                  -0.03125,
+                  0.1
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  -0.0375,
+                  -0.11906249999999999,
+                  0.0375
+                ],
+                "rescued": 4,
+                "lost": 7,
+                "independent": [
+                  -0.0375,
+                  -0.0875,
+                  0.0125
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  -0.025,
+                  -0.1,
+                  0.05
+                ],
+                "rescued": 4,
+                "lost": 6,
+                "independent": [
+                  0.03125,
+                  -0.03125,
+                  0.0875
+                ]
+              }
+            }
+          }
+        },
+        "mixed_readout": {
+          "strict": 41,
+          "wrong_branch": 22,
+          "named_wrong_regions": 22,
+          "artifact": 11,
+          "mixed": 9,
+          "reject": 13,
+          "correct_by_region": [
+            79,
+            78,
+            79,
+            71,
+            54,
+            64
+          ],
+          "visible_by_region": [
+            80,
+            80,
+            80,
+            80,
+            80,
+            80
+          ],
+          "strict_per_tape": [
+            41,
+            41,
+            50
+          ],
+          "mean_s": 39.955,
+          "mean_mm": 1095.7832982841423,
+          "paired": {
+            "v10": {
+              "strict": {
+                "actual": [
+                  -0.025,
+                  -0.0875,
+                  0.0375
+                ],
+                "rescued": 2,
+                "lost": 4,
+                "independent": [
+                  0.0,
+                  -0.05,
+                  0.05
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0375,
+                  -0.025,
+                  0.1
+                ],
+                "rescued": 5,
+                "lost": 2,
+                "independent": [
+                  -0.0125,
+                  -0.0625,
+                  0.0375
+                ]
+              }
+            },
+            "base": {
+              "strict": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "rescued": 0,
+                "lost": 0,
+                "independent": [
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            "repeat": {
+              "strict": {
+                "actual": [
+                  -0.1,
+                  -0.175,
+                  -0.0375
+                ],
+                "rescued": 0,
+                "lost": 8,
+                "independent": [
+                  -0.0625,
+                  -0.1,
+                  -0.025
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.025,
+                  -0.025,
+                  0.075
+                ],
+                "rescued": 3,
+                "lost": 1,
+                "independent": [
+                  0.0125,
+                  -0.0375,
+                  0.05625
+                ]
+              }
+            },
+            "geometry": {
+              "strict": {
+                "actual": [
+                  -0.15,
+                  -0.2375,
+                  -0.075
+                ],
+                "rescued": 0,
+                "lost": 12,
+                "independent": [
+                  -0.05625,
+                  -0.1,
+                  -0.0125
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0375,
+                  -0.0125,
+                  0.1
+                ],
+                "rescued": 4,
+                "lost": 1,
+                "independent": [
+                  0.01875,
+                  -0.03453124999999999,
+                  0.06875
+                ]
+              }
+            },
+            "task": {
+              "strict": {
+                "actual": [
+                  -0.0625,
+                  -0.125,
+                  0.0
+                ],
+                "rescued": 1,
+                "lost": 6,
+                "independent": [
+                  -0.0375,
+                  -0.075,
+                  0.0
+                ]
+              },
+              "wrong_branch": {
+                "actual": [
+                  0.0125,
+                  -0.025,
+                  0.05
+                ],
+                "rescued": 2,
+                "lost": 1,
+                "independent": [
+                  0.01875,
+                  -0.03125,
+                  0.0625
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "layout_cohorts_disjoint": 720,
+  "layouts": 120,
+  "freeze_sha256": "85f64e2ca05e642dc9f7769c81ea4e9172b40d9d648bcbdf7832d53cbe6b262d",
+  "protocol_sha256": "2aca57ea50a0aa8313120f996ddca99a4bbd25c51183bc315701105861e44a62",
+  "paired_sha256": "cae2ca4320f4ed7ec5dc419e005961a80e25e19426c68a570b8f28fbe92ce1dd"
+}

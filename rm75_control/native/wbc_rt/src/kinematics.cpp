@@ -37,16 +37,14 @@ Kinematics::Kinematics(const std::string& urdf_path, const Eigen::Matrix3d* tcp_
 }
 
 void Kinematics::update(const Vec8& q) {
-  pinocchio::forwardKinematics(model_, data_, q);
-  pinocchio::updateFramePlacements(model_, data_);
   pinocchio::computeJointJacobians(model_, data_, q);
-  pinocchio::Data::Matrix6x J6(6, model_.nv);
-  pinocchio::getFrameJacobian(model_, data_, tcp_id_, pinocchio::LOCAL_WORLD_ALIGNED, J6);
-  J_ = J6;
-  Eigen::JacobiSVD<Mat6x8> svd(J_, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  pinocchio::updateFramePlacements(model_, data_);
+  J_.setZero();
+  pinocchio::getFrameJacobian(model_, data_, tcp_id_, pinocchio::LOCAL_WORLD_ALIGNED, J_);
+  Eigen::JacobiSVD<Mat6x8> svd(J_);
   sigma_ = svd.singularValues();
   Eigen::JacobiSVD<Eigen::Matrix<double, 6, 7>> svd_a(
-      J_.rightCols<7>(), Eigen::ComputeThinU | Eigen::ComputeThinV);
+      J_.rightCols<7>());
   sigma_arm_ = svd_a.singularValues().minCoeff();
   pinocchio::crba(model_, data_, q);
   data_.M.triangularView<Eigen::StrictlyLower>() =
@@ -56,8 +54,25 @@ void Kinematics::update(const Vec8& q) {
   tcp_R_ = data_.oMf[tcp_id_].rotation();
 }
 
+double Kinematics::sigma_arm_at(const Vec8& q) {
+  // Perturbations only need the TCP Jacobian. Keep the measured-state data
+  // (including frame placements and inertia) available for the rest of the tick.
+  pinocchio::computeJointJacobians(model_, psi_data_, q);
+  Mat6x8 J = Mat6x8::Zero();
+  pinocchio::getFrameJacobian(model_, psi_data_, tcp_id_, pinocchio::LOCAL_WORLD_ALIGNED, J);
+  return Eigen::JacobiSVD<Eigen::Matrix<double, 6, 7>>(J.rightCols<7>()).singularValues().minCoeff();
+}
+
+Vec6 Kinematics::fk_pose_at(const Vec8& q) {
+  return fk_pose_at(q, psi_data_);
+}
+
 Vec6 Kinematics::fk_pose_at(const Vec8& q) const {
   pinocchio::Data data(model_);
+  return fk_pose_at(q, data);
+}
+
+Vec6 Kinematics::fk_pose_at(const Vec8& q, pinocchio::Data& data) const {
   pinocchio::forwardKinematics(model_, data, q);
   pinocchio::updateFramePlacement(model_, data, tcp_id_);
   Vec6 pose = srs::rpy_xyz_from_R(data.oMf[tcp_id_].rotation());

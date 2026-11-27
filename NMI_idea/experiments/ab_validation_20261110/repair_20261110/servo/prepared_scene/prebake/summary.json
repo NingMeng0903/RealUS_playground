@@ -1,0 +1,193 @@
+{
+  "patch": {
+    "method": "harmonic_dirichlet_tet_fem",
+    "topology": "single_leg_cylindrical_chart_without_foot",
+    "proximal_station": 0.02,
+    "distal_station": 1.0,
+    "distal_boundary": "ankle_cut",
+    "foot_policy": "excluded_from_leg_chart",
+    "max_radius_m": 0.26,
+    "skin_vertex_count": 523,
+    "skin_face_count": 986,
+    "volume_sample_count": 3356,
+    "surface_solver": "cotan_laplace_beltrami_dirichlet",
+    "volume_solver": "tet_linear_fem_dirichlet_h_theta",
+    "volume_d_method": "normalized_skin_to_shrink_medial_distance",
+    "core_method": "cross_section_shrink_distance_transform",
+    "volume_vertex_count": 4003,
+    "volume_tet_count": 25483,
+    "proximal_anchor_count": 28,
+    "distal_anchor_count": 32,
+    "medial_curve_count": 48,
+    "medial_anchor_count": 24,
+    "patch_crop_method": "camera_square_footprint_xyz",
+    "scan_footprint": {
+      "x_min": -0.1361910593509674,
+      "x_max": -0.010469480901956558,
+      "y_min": -1.2661492824554443,
+      "y_max": -0.46623316407203674,
+      "z_min": -0.1113088545203209,
+      "z_max": 0.11887896060943604
+    },
+    "patch_vertex_count": 1245,
+    "patch_face_count": 2300,
+    "source": "base_smpl_butterfly_patch_projected_to_production_refined_surface",
+    "leg_side": "right",
+    "projection_atlas_path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_right.npz",
+    "surface_source": "base_smpl_topology_projected_to_production_refined",
+    "atlas_path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_right.npz",
+    "chart_atlas_path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_right.npz",
+    "topology_atlas_path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/base_atlas/atlas_right.npz",
+    "display_base_atlas": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/base_atlas/atlas_right.npz",
+    "base_crop_vertex_count": 335,
+    "base_crop_face_count": 575,
+    "refined_projection_stats": {
+      "method": "nearest_vertex_to_production_refined_surface",
+      "mean_m": 0.0013534939237472652,
+      "max_m": 0.006016587587801852
+    },
+    "scan_footprint_mode": "vessel_centered",
+    "centerline_obj": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/vessel_centerlines_rest.obj",
+    "scan_mode": "chain:R_COM_FEM_V>R_SUPFEMV>R_POPV>R_POST_TIB_V",
+    "butterfly_level": 1,
+    "canonical_dir": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108",
+    "vertex_id_audit": {
+      "original_vertices_fixed": true,
+      "max_original_drift_m": 0.0,
+      "cropped_vertex_count": 335,
+      "butterfly_vertex_count": 1245,
+      "new_butterfly_vertices": 910,
+      "unique_full_smpl_ids": 335,
+      "stencil_nnz": 6409,
+      "note": "Original cropped atlas vertices stay fixed; new points are butterfly edge inserts with stencil inheritance."
+    },
+    "lbs_weights_source": "canonical_smpl_x55_via_butterfly_stencil",
+    "vessel_continuity": {
+      "per_label": {
+        "R_COM_FEM_V": {
+          "points": 21,
+          "median_step_m": 0.001562667777761817,
+          "max_step_m": 0.0015627361135557294,
+          "large_jump_count": 0
+        },
+        "R_SUPFEMV": {
+          "points": 92,
+          "median_step_m": 0.00394804822281003,
+          "max_step_m": 0.0039483774453401566,
+          "large_jump_count": 0
+        },
+        "R_POPV": {
+          "points": 22,
+          "median_step_m": 0.004977794364094734,
+          "max_step_m": 0.0049812705256044865,
+          "large_jump_count": 0
+        },
+        "R_POST_TIB_V": {
+          "points": 123,
+          "median_step_m": 0.003265144769102335,
+          "max_step_m": 0.003265304723754525,
+          "large_jump_count": 0
+        }
+      },
+      "junctions": [
+        {
+          "from": "R_COM_FEM_V",
+          "to": "R_SUPFEMV",
+          "gap_m": 0.0
+        },
+        {
+          "from": "R_SUPFEMV",
+          "to": "R_POPV",
+          "gap_m": 0.0
+        },
+        {
+          "from": "R_POPV",
+          "to": "R_POST_TIB_V",
+          "gap_m": 0.0
+        }
+      ]
+    }
+  },
+  "scan_mode": "chain:R_COM_FEM_V>R_SUPFEMV>R_POPV>R_POST_TIB_V",
+  "projection": "project_vessel_centerlines_to_skin",
+  "vessels": [
+    {
+      "label": "R_COM_FEM_V",
+      "points": 21,
+      "length_m": 0.031198495998978615
+    },
+    {
+      "label": "R_SUPFEMV",
+      "points": 92,
+      "length_m": 0.35906434059143066
+    },
+    {
+      "label": "R_POPV",
+      "points": 22,
+      "length_m": 0.10358349978923798
+    },
+    {
+      "label": "R_POST_TIB_V",
+      "points": 123,
+      "length_m": 0.39680400490760803
+    }
+  ],
+  "selected_trunk": "LEG_VESSEL_CHAIN",
+  "trunk_points": 255,
+  "vertex_id_audit": {
+    "original_vertices_fixed": true,
+    "max_original_drift_m": 0.0,
+    "cropped_vertex_count": 335,
+    "butterfly_vertex_count": 1245,
+    "new_butterfly_vertices": 910,
+    "unique_full_smpl_ids": 335,
+    "stencil_nnz": 6409,
+    "note": "Original cropped atlas vertices stay fixed; new points are butterfly edge inserts with stencil inheritance."
+  },
+  "lbs_weights_source": "canonical_smpl_x55_via_butterfly_stencil",
+  "vessel_continuity": {
+    "per_label": {
+      "R_COM_FEM_V": {
+        "points": 21,
+        "median_step_m": 0.001562667777761817,
+        "max_step_m": 0.0015627361135557294,
+        "large_jump_count": 0
+      },
+      "R_SUPFEMV": {
+        "points": 92,
+        "median_step_m": 0.00394804822281003,
+        "max_step_m": 0.0039483774453401566,
+        "large_jump_count": 0
+      },
+      "R_POPV": {
+        "points": 22,
+        "median_step_m": 0.004977794364094734,
+        "max_step_m": 0.0049812705256044865,
+        "large_jump_count": 0
+      },
+      "R_POST_TIB_V": {
+        "points": 123,
+        "median_step_m": 0.003265144769102335,
+        "max_step_m": 0.003265304723754525,
+        "large_jump_count": 0
+      }
+    },
+    "junctions": [
+      {
+        "from": "R_COM_FEM_V",
+        "to": "R_SUPFEMV",
+        "gap_m": 0.0
+      },
+      {
+        "from": "R_SUPFEMV",
+        "to": "R_POPV",
+        "gap_m": 0.0
+      },
+      {
+        "from": "R_POPV",
+        "to": "R_POST_TIB_V",
+        "gap_m": 0.0
+      }
+    ]
+  }
+}

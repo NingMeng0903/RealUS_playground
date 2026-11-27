@@ -123,7 +123,11 @@ def _camera_report(scene_spec, calibration_bundle) -> tuple[dict[str, Any], list
         lookat_err = float(np.linalg.norm(np.asarray(camera.lookat, dtype=np.float64) - _scene_lookat_from_wfc(cal)))
         up_err = float(np.linalg.norm(np.asarray(camera.up, dtype=np.float64) - _scene_up_from_wfc(cal)))
         fov_scene = float(camera.fov)
-        fov_cal = _horizontal_fov_deg(fx=float(cal.intrinsics[0, 0]), width=int(cal.width))
+        fov_axis = str(camera.metadata.get("fov_axis", "vertical"))
+        fov_cal = _horizontal_fov_deg(
+            fx=float(cal.intrinsics[1, 1] if fov_axis == "vertical" else cal.intrinsics[0, 0]),
+            width=int(cal.height if fov_axis == "vertical" else cal.width),
+        )
         projection_delta = _projection_delta(scene_cal, cal, probe_points_world)
         entry = {
             "scene_spec": {
@@ -131,6 +135,7 @@ def _camera_report(scene_spec, calibration_bundle) -> tuple[dict[str, Any], list
                 "lookat_m": [float(v) for v in camera.lookat],
                 "up": [float(v) for v in camera.up],
                 "fov_deg": fov_scene,
+                "fov_axis": fov_axis,
                 "res": [int(v) for v in camera.res],
             },
             "calibration": {

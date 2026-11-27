@@ -1,0 +1,30 @@
+{
+  "right": {
+    "vertices": 190710,
+    "tets": 946560,
+    "positive": 874792,
+    "negative": 71768,
+    "degenerate": 0,
+    "det_min": -3.991536323840141e-07,
+    "det_max": 9.959068414816814e-07,
+    "material_J_min": -30146527.693667926,
+    "material_J_max": 23481394.17919985,
+    "material_J_positive": 3751,
+    "material_J_negative": 942809,
+    "material_J_degenerate": 0
+  },
+  "left": {
+    "vertices": 188880,
+    "tets": 936960,
+    "positive": 869748,
+    "negative": 67212,
+    "degenerate": 0,
+    "det_min": -3.9285023590245493e-07,
+    "det_max": 8.678928712776846e-07,
+    "material_J_min": -13359200.033571348,
+    "material_J_max": 142454688.37064418,
+    "material_J_positive": 3764,
+    "material_J_negative": 933196,
+    "material_J_degenerate": 0
+  }
+}

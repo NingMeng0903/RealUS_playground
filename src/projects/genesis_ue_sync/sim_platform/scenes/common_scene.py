@@ -129,6 +129,9 @@ class SceneHumanSpec:
 class SceneEnvironmentSpec:
     ground_plane_color: tuple[float, float, float, float] = (0.92, 0.92, 0.92, 1.0)
     ground_plane_z_m: float = 0.0
+    # UE presentation only; "inherit" keeps the environment authored in ue_map.
+    ue_environment_preset: str = "soft_studio"
+    ue_ground_plane_color: tuple[float, float, float, float] = (0.055, 0.060, 0.070, 1.0)
 
 
 @dataclass
@@ -329,6 +332,12 @@ def _parse_genesis_link_visual_urdf_rgba(raw: Any) -> dict[str, tuple[float, flo
 def _load_camera_specs(payload: list[dict[str, Any]]) -> list[SceneCameraSpec]:
     cameras: list[SceneCameraSpec] = []
     for item in payload:
+        metadata = dict(item.get("metadata", {}))
+        for key in ("fov_axis", "intrinsics", "distortion", "world_from_camera", "image_geometry"):
+            if key in item:
+                metadata[key] = item[key]
+        if str(metadata.get("fov_axis", "vertical")) not in {"horizontal", "vertical"}:
+            raise ValueError(f"Invalid FOV axis for camera {item['name']}")
         cameras.append(
             SceneCameraSpec(
                 name=str(item["name"]),
@@ -345,7 +354,7 @@ def _load_camera_specs(payload: list[dict[str, Any]]) -> list[SceneCameraSpec]:
                 pose_rel=item.get("pose_rel"),
                 follow_entity=bool(item.get("follow_entity", False)),
                 roll_deg=float(item.get("roll_deg", 0.0)),
-                metadata=dict(item.get("metadata", {})),
+                metadata=metadata,
             )
         )
     return cameras
@@ -484,7 +493,13 @@ def load_sync_scene_spec(path: Path) -> SyncSceneSpec:
     environment = SceneEnvironmentSpec(
         ground_plane_color=_as_tuple(environment_payload.get("ground_plane_color", (0.92, 0.92, 0.92, 1.0)), length=4),
         ground_plane_z_m=float(environment_payload.get("ground_plane_z_m", 0.0)),
+        ue_environment_preset=str(environment_payload.get("ue_environment_preset", "soft_studio")),
+        ue_ground_plane_color=_as_tuple(
+            environment_payload.get("ue_ground_plane_color", (0.055, 0.060, 0.070, 1.0)), length=4,
+        ),
     )
+    if environment.ue_environment_preset not in {"soft_studio", "inherit"}:
+        raise ValueError(f"Unsupported UE environment preset: {environment.ue_environment_preset!r}")
     support_surface_payload = payload.get("support_surface")
     bed_payload = payload.get("bed")
     if "robots" in payload:

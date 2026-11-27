@@ -1,0 +1,405 @@
+{
+  "geometry": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_dynamic_20261112/DYNAMIC_GEOMETRY_FROZEN.npz",
+  "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "angles_deg": [
+    0.0,
+    11.0,
+    15.0,
+    19.0
+  ],
+  "span_mm": 392.67237873636196,
+  "targets": [
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      3,
+      0
+    ],
+    [
+      4,
+      0
+    ],
+    [
+      5,
+      0
+    ],
+    [
+      6,
+      0
+    ],
+    [
+      7,
+      0
+    ],
+    [
+      8,
+      0
+    ],
+    [
+      9,
+      0
+    ],
+    [
+      10,
+      0
+    ],
+    [
+      11,
+      0
+    ],
+    [
+      12,
+      0
+    ],
+    [
+      13,
+      0
+    ],
+    [
+      14,
+      0
+    ],
+    [
+      15,
+      0
+    ],
+    [
+      16,
+      0
+    ],
+    [
+      17,
+      0
+    ],
+    [
+      18,
+      0
+    ],
+    [
+      19,
+      0
+    ],
+    [
+      20,
+      0
+    ],
+    [
+      21,
+      0
+    ],
+    [
+      22,
+      0
+    ],
+    [
+      23,
+      0
+    ],
+    [
+      24,
+      0
+    ],
+    [
+      25,
+      0
+    ],
+    [
+      26,
+      0
+    ],
+    [
+      27,
+      0
+    ],
+    [
+      2,
+      1
+    ],
+    [
+      3,
+      1
+    ],
+    [
+      4,
+      1
+    ]
+  ],
+  "groups": {
+    "moving14_stress/A": {
+      "episodes": 2,
+      "complete": 0,
+      "full_correct_coverage": 2,
+      "correct_coverage": 1.0,
+      "wrong_associations": 0,
+      "capture_prequential_rmse_mm": [
+        2.7162839508621452,
+        2.7585295347114753,
+        2.5799782004166114,
+        2.615629595095575
+      ],
+      "mean_steps": 44.5,
+      "mean_outward": 0.0,
+      "mean_path_mm": 1106.373316466002,
+      "mean_rmse_mm": 0.8253658166843685,
+      "mean_band_mm": 5.517778928247287,
+      "mean_map_across_poses_rmse_mm": [
+        0.8254174168072197,
+        0.9310774882880936
+      ],
+      "planned_programs": 0,
+      "plans_with_positive_gap": 0,
+      "mean_same_first_gap": null
+    },
+    "moving14_stress/fixed": {
+      "episodes": 2,
+      "complete": 0,
+      "full_correct_coverage": 2,
+      "correct_coverage": 1.0,
+      "wrong_associations": 0,
+      "capture_prequential_rmse_mm": [
+        2.6672115072806726,
+        2.6886239615489615,
+        2.526068488065869,
+        2.553976220218399
+      ],
+      "mean_steps": 48.5,
+      "mean_outward": 0.0,
+      "mean_path_mm": 1184.3119825637245,
+      "mean_rmse_mm": 1.0389915515599402,
+      "mean_band_mm": 5.83572375539031,
+      "mean_map_across_poses_rmse_mm": [
+        1.0384762578822326,
+        1.0826000552254351
+      ],
+      "planned_programs": 61,
+      "plans_with_positive_gap": 29,
+      "mean_same_first_gap": 0.008848700832763857
+    },
+    "moving14_stress/B": {
+      "episodes": 2,
+      "complete": 0,
+      "full_correct_coverage": 2,
+      "correct_coverage": 1.0,
+      "wrong_associations": 0,
+      "capture_prequential_rmse_mm": [
+        2.661935574389691,
+        2.68364159047807,
+        2.5235084972181543,
+        2.5516108858430826
+      ],
+      "mean_steps": 48.5,
+      "mean_outward": 0.0,
+      "mean_path_mm": 1193.8939536027642,
+      "mean_rmse_mm": 1.0382490806321651,
+      "mean_band_mm": 5.813168916180853,
+      "mean_map_across_poses_rmse_mm": [
+        1.0373117175173079,
+        1.0818709974013017
+      ],
+      "planned_programs": 61,
+      "plans_with_positive_gap": 29,
+      "mean_same_first_gap": 0.009282543232275033
+    },
+    "moving50_stress/A": {
+      "episodes": 2,
+      "complete": 0,
+      "full_correct_coverage": 2,
+      "correct_coverage": 1.0,
+      "wrong_associations": 0,
+      "capture_prequential_rmse_mm": [
+        2.772675753686143,
+        2.8176297480572625,
+        2.626055535256293,
+        2.6633151446654426
+      ],
+      "mean_steps": 37.0,
+      "mean_outward": 0.0,
+      "mean_path_mm": 981.3665429915441,
+      "mean_rmse_mm": 0.8937134793572957,
+      "mean_band_mm": 5.454726278376498,
+      "mean_map_across_poses_rmse_mm": [
+        0.8919312153683763,
+        0.9551385751232893
+      ],
+      "planned_programs": 0,
+      "plans_with_positive_gap": 0,
+      "mean_same_first_gap": null
+    },
+    "moving50_stress/fixed": {
+      "episodes": 2,
+      "complete": 0,
+      "full_correct_coverage": 2,
+      "correct_coverage": 1.0,
+      "wrong_associations": 0,
+      "capture_prequential_rmse_mm": [
+        2.772789753043878,
+        2.817738377259415,
+        2.6260966877600116,
+        2.66336025207436
+      ],
+      "mean_steps": 37.0,
+      "mean_outward": 0.0,
+      "mean_path_mm": 977.4116759801489,
+      "mean_rmse_mm": 0.8937810257304406,
+      "mean_band_mm": 5.454726412921291,
+      "mean_map_across_poses_rmse_mm": [
+        0.8920003066722925,
+        0.9552038995393626
+      ],
+      "planned_programs": 54,
+      "plans_with_positive_gap": 2,
+      "mean_same_first_gap": 3.14412897464268e-05
+    },
+    "moving50_stress/B": {
+      "episodes": 2,
+      "complete": 0,
+      "full_correct_coverage": 2,
+      "correct_coverage": 1.0,
+      "wrong_associations": 0,
+      "capture_prequential_rmse_mm": [
+        2.772789753043878,
+        2.817738377259415,
+        2.6260966877600116,
+        2.66336025207436
+      ],
+      "mean_steps": 37.0,
+      "mean_outward": 0.0,
+      "mean_path_mm": 977.4116759801489,
+      "mean_rmse_mm": 0.8937810257304406,
+      "mean_band_mm": 5.454726412921291,
+      "mean_map_across_poses_rmse_mm": [
+        0.8920003066722925,
+        0.9552038995393626
+      ],
+      "planned_programs": 54,
+      "plans_with_positive_gap": 2,
+      "mean_same_first_gap": 3.14412897464268e-05
+    }
+  },
+  "eligible_counts_per_pose": [
+    191,
+    191,
+    191,
+    191
+  ],
+  "site_counts_per_pose": [
+    28,
+    28,
+    28,
+    28
+  ],
+  "pose_cycle_deg": [
+    11.0,
+    15.0,
+    19.0,
+    15.0
+  ],
+  "scenario_definition": [
+    {
+      "name": "straight14",
+      "width_mm": 14.0,
+      "pose_kind": "straight",
+      "slip_sd_mm": 0.0,
+      "dropout": false,
+      "jump_rate": 0.0,
+      "clutter_rate": 0.0
+    },
+    {
+      "name": "straight50",
+      "width_mm": 50.0,
+      "pose_kind": "straight",
+      "slip_sd_mm": 0.0,
+      "dropout": false,
+      "jump_rate": 0.0,
+      "clutter_rate": 0.0
+    },
+    {
+      "name": "bent50",
+      "width_mm": 50.0,
+      "pose_kind": "bent",
+      "slip_sd_mm": 0.0,
+      "dropout": false,
+      "jump_rate": 0.0,
+      "clutter_rate": 0.0
+    },
+    {
+      "name": "moving14",
+      "width_mm": 14.0,
+      "pose_kind": "moving",
+      "slip_sd_mm": 1.8,
+      "dropout": false,
+      "jump_rate": 0.0,
+      "clutter_rate": 0.0
+    },
+    {
+      "name": "moving50",
+      "width_mm": 50.0,
+      "pose_kind": "moving",
+      "slip_sd_mm": 1.8,
+      "dropout": false,
+      "jump_rate": 0.0,
+      "clutter_rate": 0.0
+    },
+    {
+      "name": "moving50_dropout",
+      "width_mm": 50.0,
+      "pose_kind": "moving",
+      "slip_sd_mm": 1.8,
+      "dropout": true,
+      "jump_rate": 0.0,
+      "clutter_rate": 0.0
+    },
+    {
+      "name": "moving14_stress",
+      "width_mm": 14.0,
+      "pose_kind": "moving",
+      "slip_sd_mm": 1.8,
+      "dropout": true,
+      "jump_rate": 0.1,
+      "clutter_rate": 0.06
+    },
+    {
+      "name": "moving50_stress",
+      "width_mm": 50.0,
+      "pose_kind": "moving",
+      "slip_sd_mm": 1.8,
+      "dropout": true,
+      "jump_rate": 0.1,
+      "clutter_rate": 0.06
+    }
+  ],
+  "truth_support": {
+    "tested_nodes_per_case": 124,
+    "rejections_per_case": [
+      [
+        3589976929,
+        0
+      ],
+      [
+        3437368210,
+        1
+      ]
+    ],
+    "geometry_only_support_gate": true
+  },
+  "source_sha256": {
+    "dynamic_scan.py": "f0df480a6cb72669093d3fb88302e989f6212b06f21b790b61b0f9659fb86d07",
+    "decision_core.py": "eefa99f1f7d1bdb7e13c95d37a715932bde1377f9373fc3a39e6a2e61bf1e85f",
+    "stress_observation.py": "5588e1670b724032265719c7767d579f385bcade6afd6fc744c39e12e241fa61",
+    "truth_support.py": "2a715569d1d494783bf779e80bdbaa954c7d74b05cb63b0b5c77c088845bf4cc"
+  }
+}

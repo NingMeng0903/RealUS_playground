@@ -1,0 +1,18 @@
+{
+  "n_attempted": 32,
+  "n_completed": 26,
+  "n_kinematic_rejected": 6,
+  "n_entry_collision_rejected": 0,
+  "n_dynamic_stops": 0,
+  "duration_s_min": 11.089999999999808,
+  "duration_s_max": 15.17999999999972,
+  "duration_s_mean": 12.924615384615153,
+  "entry_transition_s_mean": 2.5438461538461374,
+  "nominal_scan_only_s_mean": 5.1216537364115675,
+  "simulated_duration_over_nominal_mean": 2.5251880511049,
+  "case_coverage": 8,
+  "hardware": false,
+  "contact": false,
+  "image_quality": false,
+  "tests_passed": 10
+}

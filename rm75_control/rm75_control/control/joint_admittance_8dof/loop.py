@@ -6330,14 +6330,18 @@ def path_reference_should_freeze(step: JointIkStep) -> bool:
     return str(getattr(step, "fallback_reason", "")) == "native_timeout_coast"
 
 
-def pad_inner_should_hold_without_send(step: JointIkStep) -> bool:
-    """Hold the last sent pad command when this inner solve cannot publish.
+def _hard_qpik_rejection(step: JointIkStep) -> str:
+    if qp_status_name(getattr(step, "qp1_status", "")) == "p0_conflict":
+        return "qpik_fault:uncertified_qp1:p0_conflict"
+    if getattr(step, "task_pause_reason", "") == "qsend_position":
+        return "qpik_fault:stop:qsend_position"
+    return ""
 
-    A failed QP1 zeros qdot. The 5 ms jerk box cannot certify that stop, so
-    native reports ``publication_infeasible``. That is a skipped tick, not
-    an ESTOP; the next 200 Hz sample retries.
-    """
-    return str(getattr(step, "fallback_reason", "") or "") == "publication_infeasible"
+
+def pad_inner_should_hold_without_send(step: JointIkStep) -> bool:
+    """Retry a transient publication miss only if the native hard guards allow it."""
+    return (getattr(step, "fallback_reason", "") == "publication_infeasible"
+            and not _hard_qpik_rejection(step))
 
 
 def _save_stopped_qpik_fault(inner, step, q_meas, phase, reason) -> None:
@@ -6387,6 +6391,9 @@ def _guard_qpik_step_before_send(step: JointIkStep, fault_stop, *, fault_record=
                     pass
         return False, reason
 
+    hard_rejection = _hard_qpik_rejection(step)
+    if hard_rejection:
+        return reject(hard_rejection)
     if str(getattr(step, "controller_mode", "")) == "direct_joint_ptp":
         if bool(step.solver_fault_latched) and str(step.fallback_reason) == "native_timeout":
             reason = f"qpik_fault:{step.fallback_level}:{step.fallback_reason}"
@@ -6397,7 +6404,7 @@ def _guard_qpik_step_before_send(step: JointIkStep, fault_stop, *, fault_record=
         return reject(reason)
     qp1 = qp_status_name(getattr(step, "qp1_status", ""))
     if qp1 in ("failed", "primal_infeasible", "dual_infeasible",
-               "closest_primal", "p0_conflict", "timeout"):
+               "closest_primal", "timeout"):
         reason = f"qpik_fault:uncertified_qp1:{qp1}"
         return reject(reason)
     if bool(getattr(step, "task_paused", False)) and str(
@@ -7277,8 +7284,7 @@ def run_joint_admittance_phases(
                             command_transaction is not None
                             and pad_inner_should_hold_without_send(step)
                         ):
-                            # Must run before the QPIK guard: publication_infeasible
-                            # is fallback_level=stop and would otherwise ESTOP.
+                            # A transient miss leaves both outputs uncommitted.
                             command_transaction.abort(
                                 str(step.fallback_reason),
                                 definitely_not_sent=True,

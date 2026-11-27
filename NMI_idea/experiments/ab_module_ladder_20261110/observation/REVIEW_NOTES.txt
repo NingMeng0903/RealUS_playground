@@ -1,0 +1,41 @@
+Observation contract review (development seed 720281)
+========================================================
+
+Verification
+------------
+
+``python -m unittest -v observation.test_contract`` passes all nine checks:
+
+* exact width/depth/slab clipping and longest connected component selection;
+* miss records contain ``None`` for every target-derived public field;
+* scalar ``render_model``/batch shape and noisy public renderer schema;
+* exact finite-catalogue Bayes weights with unique-frame duplicate rejection;
+* candidate actions are deterministic from public history/particles and include
+  continuous measured-u centering;
+* particle out-of-plane helper returns only legal hypothesis geometry in radians;
+* precomputed ``predict_batch`` likelihoods exactly match direct recomputation;
+* all-zero-source angle posteriors stay finite at probability zero, while
+  incompatible evidence leaves ``Belief`` state unchanged;
+* five-frame public gating rejects duplicate frame IDs and bad timestamps while
+  accepting a correctly spaced block at a nonzero start time.
+
+The tests use only ``sample_worlds(720281, 8)`` and ``sample_prior(720282, 32)``.
+No locked test cohort or episode was instantiated.
+
+Resolved interface checks
+-------------------------
+
+The all-zero association case now uses finite-safe normalization and returns
+zero source mass.  ``Belief.update`` validates support before adding a frame to
+``history``/``seen``; an incompatible update raises and leaves the prior state
+unchanged.  Both behaviors are regression-tested above.
+
+One remaining interface note:
+
+* ``render_model`` is the scalar-pose convenience view (``means`` shape
+   ``[source, feature]``); ``predict_batch`` is ``[particle, action, source,
+   feature]``.  Root planners should not assume both APIs have the same rank.
+
+These are explicit diagnostics rather than hidden fallback behavior.  The
+tests intentionally do not patch production code outside this observation
+directory.

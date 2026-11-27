@@ -1,0 +1,43 @@
+{
+  "replication_counts_this_audit": {
+    "branch0_no_dird_path0": 1,
+    "branch4_no_dird_path0": 1,
+    "branch4_no_dird_path1": 1
+  },
+  "run_order": [
+    "branch0_no_dird_path0",
+    "branch4_no_dird_path0",
+    "branch4_no_dird_path1"
+  ],
+  "same_frozen_geometric_inputs": true,
+  "source_qp_fingerprint": {
+    "backend": "native",
+    "tcp_mode": "urdf",
+    "native_model_clock": "deterministic",
+    "wrapper_sha256": "0ed30e40c55ea57f72a2858c4de022b75db26ddf5d90281079bb797b84365fda",
+    "native_binary_sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07",
+    "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+    "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+    "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+    "tcp_cache_sha256": null,
+    "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0"
+  },
+  "full_first_invalid_tick_native_input_output_saved": true,
+  "all_prior_native_tick_IO_saved": false,
+  "prior_tick_scope": "This audit retained the full first-invalid-tick SHM input/output and per-path summaries, not every prior SHM tick. Frozen full pose inputs and initial states are saved exactly; no same-run trace is fabricated.",
+  "hashes": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/check_dird_phase2.py": "6db7fbd36eb3bfd395ed05f3575d87825ea2b346c98f33cf37c6cc7388f06570",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/dird_phase2_checks.json": "8b3089c9f52e9125bc42d2d297f9fad280dfb1d98cc6adaa21d3b1e4872f9996",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/dird_phase2_checks.log": "89d57099c36bf10bd2b65905d323322bd257e0b4e59bc137c3d9d89de89279e5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/phase2_native_subset_inputs.npz": "7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/phase2_native_first_invalid_tick.json": "c0ed0e64b33aeb7f0d8c62d2d93523e3125e719cad8dc59cda8757bf06713abc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/dird_54_regressions.log": "7c7cf61a71e6c5f48574caf429c111701f20bbafb57a64700eb0fb960799ced7",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/continuation_derivatives_native.json": "11a2412b74bafe68908dacbdf5871506f16f5f1c1e2baabbc95ee013bb2f8db2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/continuation_derivatives_python.json": "805110f0d6c8d48eef1994c6161a41cc10d6b7781aae66434237b2f7c977b6e5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/trajectory_paths.npz": "1315195823a2c7c89e67e618aae3bf7a00d88f8c6f66ce1ac861232adf063105",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/nominal_context.json": "194eaf43f710362db95f5a008ea569a4fab24c92383365effa45b9ceac1c0116",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/initialization_sensitivity_seed.json": "d1a2a131252618371c8eef35fa52d5ad534f41a17058bafc37cefa90f0b7bb02",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/SEALED_MANIFEST.json": "14c6212120c1c9e15b540156d94aeede28c97a198cdbe9b440825b6c9b14151c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py": "0ed30e40c55ea57f72a2858c4de022b75db26ddf5d90281079bb797b84365fda"
+  }
+}

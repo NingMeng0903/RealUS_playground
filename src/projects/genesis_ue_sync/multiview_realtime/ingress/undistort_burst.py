@@ -47,17 +47,20 @@ def _mark_undistorted(meta: dict[str, Any], k: np.ndarray) -> dict[str, Any]:
 def ensure_undistorted_burst(
     frames: list[SyncedMultiviewFrame],
     camera_ids: list[str],
+    *,
+    map_cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] | None = None,
 ) -> list[SyncedMultiviewFrame]:
     """Return burst frames that satisfy undistorted/zero-distortion DLT contract.
 
-    Live Cam can publish raw JPEG. This remaps only the 8–12 synced groups.
+    Live Cam can publish raw JPEG. Callers may pass a short burst or one live
+    frame; ``map_cache`` avoids rebuilding maps for fixed physical cameras.
     Already-undistorted frames are left as-is.
     """
     if not frames:
         return frames
     import cv2
 
-    maps: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+    maps = map_cache if map_cache is not None else {}
     did_remap = False
     out: list[SyncedMultiviewFrame] = []
     for frame in frames:
@@ -79,6 +82,8 @@ def ensure_undistorted_burst(
             dist = _as_dist(meta)
             h, w = np.asarray(rgb).shape[:2]
             cached = maps.get(cid)
+            if cached is not None and cached[0].shape[:2] != (int(h), int(w)):
+                cached = None
             if cached is None:
                 map_x, map_y = cv2.initUndistortRectifyMap(k, dist, None, k, (int(w), int(h)), cv2.CV_32FC1)
                 maps[cid] = (map_x, map_y, k)

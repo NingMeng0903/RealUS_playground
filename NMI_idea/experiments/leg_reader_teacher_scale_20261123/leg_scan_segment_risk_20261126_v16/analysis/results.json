@@ -1,0 +1,4608 @@
+{
+  "blind": {
+    "records": 216,
+    "unexecuted": {},
+    "verification": {
+      "layouts": 108,
+      "paired_records": 216,
+      "checks_passed": true,
+      "executed_unique_actions": 448,
+      "unshared_menus": 0,
+      "axial_max_error_mm": 0.0,
+      "shared_actual_contact_and_acoustic_clock": true
+    },
+    "arms": {
+      "masked_mean": {
+        "joint": 43,
+        "pass": 176,
+        "seen_and_geometry": 161,
+        "target_seen": 201,
+        "target_delivered": 52,
+        "wrong_branch": 59,
+        "certified": 94,
+        "rejected_echo": 4,
+        "artifact": 101,
+        "certified_incorrect_geometry": 24,
+        "certified_joint": 19,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 200,
+        "true_peak_median": 0.7699084972097013,
+        "mean_program_ticks_without_sync": 27.166666666666668
+      },
+      "masked_full": {
+        "joint": 39,
+        "pass": 174,
+        "seen_and_geometry": 150,
+        "target_seen": 192,
+        "target_delivered": 54,
+        "wrong_branch": 60,
+        "certified": 90,
+        "rejected_echo": 8,
+        "artifact": 94,
+        "certified_incorrect_geometry": 24,
+        "certified_joint": 17,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 200,
+        "true_peak_median": 0.7949714650245021,
+        "mean_program_ticks_without_sync": 27.76851851851852
+      },
+      "read_mean": {
+        "joint": 39,
+        "pass": 172,
+        "seen_and_geometry": 160,
+        "target_seen": 201,
+        "target_delivered": 52,
+        "wrong_branch": 59,
+        "certified": 102,
+        "rejected_echo": 5,
+        "artifact": 100,
+        "certified_incorrect_geometry": 25,
+        "certified_joint": 25,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 200,
+        "true_peak_median": 0.7771689944475475,
+        "mean_program_ticks_without_sync": 26.703703703703702
+      },
+      "read_full": {
+        "joint": 30,
+        "pass": 168,
+        "seen_and_geometry": 145,
+        "target_seen": 190,
+        "target_delivered": 48,
+        "wrong_branch": 65,
+        "certified": 101,
+        "rejected_echo": 7,
+        "artifact": 96,
+        "certified_incorrect_geometry": 25,
+        "certified_joint": 19,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 200,
+        "true_peak_median": 0.8183317259157175,
+        "mean_program_ticks_without_sync": 27.125
+      }
+    },
+    "evidence": {
+      "records": 216,
+      "executed": 216,
+      "probe_pulses": 8364,
+      "probe_echo_candidates": 20414,
+      "belief_tv_ge_0p02": 162,
+      "belief_tv_median": 0.062943165688921,
+      "A_B_argmax_changed": 7,
+      "exclusive_real_branch_records": 88,
+      "target_mass_mean_delta": 0.018909418107925135,
+      "target_mass_increased_ge_0p02": 36,
+      "target_mass_decreased_ge_0p02": 20,
+      "full_selected_action_newly_certified": 15,
+      "full_newly_certified_selected_joint": 2,
+      "full_newly_certified_selected_joint_rescue": 0
+    },
+    "pooled_pairs": {
+      "read_mean_vs_masked_mean": {
+        "joint": {
+          "gained": 4,
+          "lost": 8,
+          "net": -4
+        },
+        "pass": {
+          "gained": 3,
+          "lost": 7,
+          "net": -4
+        },
+        "seen_and_geometry": {
+          "gained": 5,
+          "lost": 6,
+          "net": -1
+        },
+        "target_seen": {
+          "gained": 2,
+          "lost": 2,
+          "net": 0
+        },
+        "target_delivered": {
+          "gained": 6,
+          "lost": 6,
+          "net": 0
+        },
+        "wrong_branch": {
+          "gained": 8,
+          "lost": 8,
+          "net": 0
+        },
+        "certified": {
+          "gained": 27,
+          "lost": 19,
+          "net": 8
+        },
+        "decisions": {
+          "raw_changes": 108,
+          "sector_changes": 59,
+          "orientation_changes_ge_1_degree": 69,
+          "physical_changes": 69
+        }
+      },
+      "read_full_vs_masked_full": {
+        "joint": {
+          "gained": 2,
+          "lost": 11,
+          "net": -9
+        },
+        "pass": {
+          "gained": 1,
+          "lost": 7,
+          "net": -6
+        },
+        "seen_and_geometry": {
+          "gained": 4,
+          "lost": 9,
+          "net": -5
+        },
+        "target_seen": {
+          "gained": 3,
+          "lost": 5,
+          "net": -2
+        },
+        "target_delivered": {
+          "gained": 3,
+          "lost": 9,
+          "net": -6
+        },
+        "wrong_branch": {
+          "gained": 12,
+          "lost": 7,
+          "net": 5
+        },
+        "certified": {
+          "gained": 27,
+          "lost": 16,
+          "net": 11
+        },
+        "decisions": {
+          "raw_changes": 107,
+          "sector_changes": 68,
+          "orientation_changes_ge_1_degree": 81,
+          "physical_changes": 81
+        }
+      },
+      "masked_full_vs_masked_mean": {
+        "joint": {
+          "gained": 5,
+          "lost": 9,
+          "net": -4
+        },
+        "pass": {
+          "gained": 4,
+          "lost": 6,
+          "net": -2
+        },
+        "seen_and_geometry": {
+          "gained": 4,
+          "lost": 15,
+          "net": -11
+        },
+        "target_seen": {
+          "gained": 0,
+          "lost": 9,
+          "net": -9
+        },
+        "target_delivered": {
+          "gained": 10,
+          "lost": 8,
+          "net": 2
+        },
+        "wrong_branch": {
+          "gained": 12,
+          "lost": 11,
+          "net": 1
+        },
+        "certified": {
+          "gained": 0,
+          "lost": 4,
+          "net": -4
+        },
+        "decisions": {
+          "raw_changes": 84,
+          "sector_changes": 72,
+          "orientation_changes_ge_1_degree": 76,
+          "physical_changes": 76
+        }
+      },
+      "read_full_vs_read_mean": {
+        "joint": {
+          "gained": 5,
+          "lost": 14,
+          "net": -9
+        },
+        "pass": {
+          "gained": 4,
+          "lost": 8,
+          "net": -4
+        },
+        "seen_and_geometry": {
+          "gained": 4,
+          "lost": 19,
+          "net": -15
+        },
+        "target_seen": {
+          "gained": 2,
+          "lost": 13,
+          "net": -11
+        },
+        "target_delivered": {
+          "gained": 10,
+          "lost": 14,
+          "net": -4
+        },
+        "wrong_branch": {
+          "gained": 19,
+          "lost": 13,
+          "net": 6
+        },
+        "certified": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "decisions": {
+          "raw_changes": 93,
+          "sector_changes": 81,
+          "orientation_changes_ge_1_degree": 89,
+          "physical_changes": 89
+        }
+      }
+    },
+    "clustered_intervals": {
+      "read_mean_vs_masked_mean": {
+        "joint": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -5.092592592592593,
+            1.3888888888888888
+          ]
+        },
+        "pass": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -5.092592592592593,
+            1.3888888888888888
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -0.46296296296296297,
+          "ci95_pp": [
+            -3.7037037037037037,
+            3.240740740740741
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -1.8518518518518519,
+            2.314814814814815
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -3.240740740740741,
+            3.240740740740741
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -3.7037037037037037,
+            3.7037037037037037
+          ]
+        },
+        "certified": {
+          "mean_pp": 3.7037037037037037,
+          "ci95_pp": [
+            -4.166666666666667,
+            12.037037037037036
+          ]
+        }
+      },
+      "read_full_vs_masked_full": {
+        "joint": {
+          "mean_pp": -4.166666666666667,
+          "ci95_pp": [
+            -7.87037037037037,
+            -0.9259259259259259
+          ]
+        },
+        "pass": {
+          "mean_pp": -2.7777777777777777,
+          "ci95_pp": [
+            -6.018518518518518,
+            0.0
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -2.314814814814815,
+          "ci95_pp": [
+            -5.555555555555555,
+            0.9259259259259259
+          ]
+        },
+        "target_seen": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -3.7037037037037037,
+            1.3888888888888888
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": -2.7777777777777777,
+          "ci95_pp": [
+            -6.481481481481482,
+            0.46296296296296297
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 2.314814814814815,
+          "ci95_pp": [
+            -1.3888888888888888,
+            6.481481481481482
+          ]
+        },
+        "certified": {
+          "mean_pp": 5.092592592592593,
+          "ci95_pp": [
+            -2.7777777777777777,
+            12.962962962962964
+          ]
+        }
+      },
+      "masked_full_vs_masked_mean": {
+        "joint": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -5.092592592592593,
+            1.3888888888888888
+          ]
+        },
+        "pass": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -4.62962962962963,
+            2.7777777777777777
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -5.092592592592593,
+          "ci95_pp": [
+            -10.185185185185185,
+            -0.46296296296296297
+          ]
+        },
+        "target_seen": {
+          "mean_pp": -4.166666666666667,
+          "ci95_pp": [
+            -7.407407407407407,
+            -1.3888888888888888
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -2.314814814814815,
+            4.62962962962963
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 0.46296296296296297,
+          "ci95_pp": [
+            -4.166666666666667,
+            4.62962962962963
+          ]
+        },
+        "certified": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -4.62962962962963,
+            0.0
+          ]
+        }
+      },
+      "read_full_vs_read_mean": {
+        "joint": {
+          "mean_pp": -4.166666666666667,
+          "ci95_pp": [
+            -7.87037037037037,
+            -0.46296296296296297
+          ]
+        },
+        "pass": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -5.555555555555555,
+            1.3888888888888888
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -6.944444444444445,
+          "ci95_pp": [
+            -11.574074074074074,
+            -2.7777777777777777
+          ]
+        },
+        "target_seen": {
+          "mean_pp": -5.092592592592593,
+          "ci95_pp": [
+            -8.333333333333334,
+            -1.8518518518518519
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -6.018518518518518,
+            2.314814814814815
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 2.7777777777777777,
+          "ci95_pp": [
+            -2.314814814814815,
+            7.87037037037037
+          ]
+        },
+        "certified": {
+          "mean_pp": -0.46296296296296297,
+          "ci95_pp": [
+            -1.3888888888888888,
+            0.0
+          ]
+        }
+      },
+      "information_by_full_posterior_interaction": {
+        "joint": {
+          "mean_pp": -2.314814814814815,
+          "ci95_pp": [
+            -5.555555555555555,
+            0.9259259259259259
+          ]
+        },
+        "pass": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -4.166666666666667,
+            2.314814814814815
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -6.018518518518518,
+            1.8518518518518519
+          ]
+        },
+        "target_seen": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -3.7037037037037037,
+            1.8518518518518519
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": -2.7777777777777777,
+          "ci95_pp": [
+            -6.481481481481482,
+            0.9259259259259259
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 2.314814814814815,
+          "ci95_pp": [
+            -2.7777777777777777,
+            7.407407407407407
+          ]
+        },
+        "certified": {
+          "mean_pp": 1.3888888888888888,
+          "ci95_pp": [
+            -0.9259259259259259,
+            4.62962962962963
+          ]
+        }
+      }
+    },
+    "band": {
+      "0": {
+        "records": 108,
+        "arms": {
+          "masked_mean": {
+            "joint": 28,
+            "pass": 88,
+            "seen_and_geometry": 79,
+            "target_seen": 99,
+            "target_delivered": 33,
+            "wrong_branch": 30,
+            "certified": 47,
+            "rejected_echo": 2,
+            "artifact": 43,
+            "certified_incorrect_geometry": 12,
+            "certified_joint": 11,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.7699084972097013,
+            "mean_program_ticks_without_sync": 27.166666666666668
+          },
+          "masked_full": {
+            "joint": 25,
+            "pass": 87,
+            "seen_and_geometry": 72,
+            "target_seen": 93,
+            "target_delivered": 32,
+            "wrong_branch": 34,
+            "certified": 45,
+            "rejected_echo": 5,
+            "artifact": 37,
+            "certified_incorrect_geometry": 12,
+            "certified_joint": 11,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.7949714650245021,
+            "mean_program_ticks_without_sync": 27.76851851851852
+          },
+          "read_mean": {
+            "joint": 26,
+            "pass": 85,
+            "seen_and_geometry": 78,
+            "target_seen": 99,
+            "target_delivered": 34,
+            "wrong_branch": 29,
+            "certified": 49,
+            "rejected_echo": 3,
+            "artifact": 42,
+            "certified_incorrect_geometry": 12,
+            "certified_joint": 14,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.7831597658518668,
+            "mean_program_ticks_without_sync": 26.98148148148148
+          },
+          "read_full": {
+            "joint": 21,
+            "pass": 84,
+            "seen_and_geometry": 72,
+            "target_seen": 95,
+            "target_delivered": 31,
+            "wrong_branch": 32,
+            "certified": 49,
+            "rejected_echo": 5,
+            "artifact": 40,
+            "certified_incorrect_geometry": 13,
+            "certified_joint": 12,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.8198402620740087,
+            "mean_program_ticks_without_sync": 26.63888888888889
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 4,
+              "net": -2
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 4,
+              "lost": 3,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 6,
+              "net": -1
+            },
+            "certified": {
+              "gained": 14,
+              "lost": 12,
+              "net": 2
+            },
+            "decisions": {
+              "raw_changes": 58,
+              "sector_changes": 31,
+              "orientation_changes_ge_1_degree": 37,
+              "physical_changes": 37
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 2,
+              "lost": 6,
+              "net": -4
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "seen_and_geometry": {
+              "gained": 4,
+              "lost": 4,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 6,
+              "net": -2
+            },
+            "certified": {
+              "gained": 14,
+              "lost": 10,
+              "net": 4
+            },
+            "decisions": {
+              "raw_changes": 55,
+              "sector_changes": 33,
+              "orientation_changes_ge_1_degree": 41,
+              "physical_changes": 41
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 9,
+              "net": -7
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 6,
+              "net": -6
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 7,
+              "lost": 3,
+              "net": 4
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "decisions": {
+              "raw_changes": 42,
+              "sector_changes": 36,
+              "orientation_changes_ge_1_degree": 38,
+              "physical_changes": 38
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 7,
+              "net": -5
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 8,
+              "net": -6
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 5,
+              "net": -4
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 8,
+              "net": -3
+            },
+            "wrong_branch": {
+              "gained": 10,
+              "lost": 7,
+              "net": 3
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 48,
+              "sector_changes": 40,
+              "orientation_changes_ge_1_degree": 45,
+              "physical_changes": 45
+            }
+          }
+        }
+      },
+      "1": {
+        "records": 108,
+        "arms": {
+          "masked_mean": {
+            "joint": 15,
+            "pass": 88,
+            "seen_and_geometry": 82,
+            "target_seen": 102,
+            "target_delivered": 19,
+            "wrong_branch": 29,
+            "certified": 47,
+            "rejected_echo": 2,
+            "artifact": 58,
+            "certified_incorrect_geometry": 12,
+            "certified_joint": 8,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.7699084972097013,
+            "mean_program_ticks_without_sync": 27.166666666666668
+          },
+          "masked_full": {
+            "joint": 14,
+            "pass": 87,
+            "seen_and_geometry": 78,
+            "target_seen": 99,
+            "target_delivered": 22,
+            "wrong_branch": 26,
+            "certified": 45,
+            "rejected_echo": 3,
+            "artifact": 57,
+            "certified_incorrect_geometry": 12,
+            "certified_joint": 6,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.7949714650245021,
+            "mean_program_ticks_without_sync": 27.76851851851852
+          },
+          "read_mean": {
+            "joint": 13,
+            "pass": 87,
+            "seen_and_geometry": 82,
+            "target_seen": 102,
+            "target_delivered": 18,
+            "wrong_branch": 30,
+            "certified": 53,
+            "rejected_echo": 2,
+            "artifact": 58,
+            "certified_incorrect_geometry": 13,
+            "certified_joint": 11,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.7660184922067774,
+            "mean_program_ticks_without_sync": 26.425925925925927
+          },
+          "read_full": {
+            "joint": 9,
+            "pass": 84,
+            "seen_and_geometry": 73,
+            "target_seen": 95,
+            "target_delivered": 17,
+            "wrong_branch": 33,
+            "certified": 52,
+            "rejected_echo": 2,
+            "artifact": 56,
+            "certified_incorrect_geometry": 12,
+            "certified_joint": 7,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 100,
+            "true_peak_median": 0.8120335462009506,
+            "mean_program_ticks_without_sync": 27.61111111111111
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 4,
+              "net": -2
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 3,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 2,
+              "net": 1
+            },
+            "certified": {
+              "gained": 13,
+              "lost": 7,
+              "net": 6
+            },
+            "decisions": {
+              "raw_changes": 50,
+              "sector_changes": 28,
+              "orientation_changes_ge_1_degree": 32,
+              "physical_changes": 32
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 5,
+              "net": -5
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 5,
+              "net": -5
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 4,
+              "net": -4
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 5,
+              "net": -5
+            },
+            "wrong_branch": {
+              "gained": 8,
+              "lost": 1,
+              "net": 7
+            },
+            "certified": {
+              "gained": 13,
+              "lost": 6,
+              "net": 7
+            },
+            "decisions": {
+              "raw_changes": 52,
+              "sector_changes": 35,
+              "orientation_changes_ge_1_degree": 40,
+              "physical_changes": 40
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 4,
+              "lost": 5,
+              "net": -1
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 6,
+              "net": -4
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "target_delivered": {
+              "gained": 7,
+              "lost": 4,
+              "net": 3
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 8,
+              "net": -3
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "decisions": {
+              "raw_changes": 42,
+              "sector_changes": 36,
+              "orientation_changes_ge_1_degree": 38,
+              "physical_changes": 38
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 3,
+              "lost": 7,
+              "net": -4
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 5,
+              "net": -3
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 11,
+              "net": -9
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 8,
+              "net": -7
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 6,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 9,
+              "lost": 6,
+              "net": 3
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 45,
+              "sector_changes": 41,
+              "orientation_changes_ge_1_degree": 44,
+              "physical_changes": 44
+            }
+          }
+        }
+      }
+    },
+    "region": {
+      "4": {
+        "records": 72,
+        "arms": {
+          "masked_mean": {
+            "joint": 12,
+            "pass": 40,
+            "seen_and_geometry": 35,
+            "target_seen": 67,
+            "target_delivered": 21,
+            "wrong_branch": 22,
+            "certified": 34,
+            "rejected_echo": 4,
+            "artifact": 25,
+            "certified_incorrect_geometry": 20,
+            "certified_joint": 6,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 58,
+            "true_peak_median": 0.9601455867792792,
+            "mean_program_ticks_without_sync": 38.94444444444444
+          },
+          "masked_full": {
+            "joint": 10,
+            "pass": 36,
+            "seen_and_geometry": 30,
+            "target_seen": 66,
+            "target_delivered": 25,
+            "wrong_branch": 22,
+            "certified": 34,
+            "rejected_echo": 4,
+            "artifact": 21,
+            "certified_incorrect_geometry": 22,
+            "certified_joint": 4,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 58,
+            "true_peak_median": 0.9922753998099159,
+            "mean_program_ticks_without_sync": 36.361111111111114
+          },
+          "read_mean": {
+            "joint": 13,
+            "pass": 38,
+            "seen_and_geometry": 33,
+            "target_seen": 66,
+            "target_delivered": 24,
+            "wrong_branch": 22,
+            "certified": 45,
+            "rejected_echo": 5,
+            "artifact": 21,
+            "certified_incorrect_geometry": 22,
+            "certified_joint": 10,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 58,
+            "true_peak_median": 0.9737217574995531,
+            "mean_program_ticks_without_sync": 37.80555555555556
+          },
+          "read_full": {
+            "joint": 7,
+            "pass": 33,
+            "seen_and_geometry": 27,
+            "target_seen": 64,
+            "target_delivered": 24,
+            "wrong_branch": 24,
+            "certified": 44,
+            "rejected_echo": 5,
+            "artifact": 19,
+            "certified_incorrect_geometry": 23,
+            "certified_joint": 6,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 58,
+            "true_peak_median": 1.0333312032760549,
+            "mean_program_ticks_without_sync": 36.583333333333336
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "certified": {
+              "gained": 15,
+              "lost": 4,
+              "net": 11
+            },
+            "decisions": {
+              "raw_changes": 24,
+              "sector_changes": 13,
+              "orientation_changes_ge_1_degree": 14,
+              "physical_changes": 14
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 3,
+              "net": 2
+            },
+            "certified": {
+              "gained": 14,
+              "lost": 4,
+              "net": 10
+            },
+            "decisions": {
+              "raw_changes": 31,
+              "sector_changes": 20,
+              "orientation_changes_ge_1_degree": 21,
+              "physical_changes": 21
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 4,
+              "net": -4
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 5,
+              "net": -5
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 1,
+              "net": 4
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 4,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 22,
+              "sector_changes": 16,
+              "orientation_changes_ge_1_degree": 16,
+              "physical_changes": 16
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 6,
+              "net": -6
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 5,
+              "net": -5
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 6,
+              "net": -6
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 5,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 3,
+              "net": 2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 23,
+              "sector_changes": 21,
+              "orientation_changes_ge_1_degree": 21,
+              "physical_changes": 21
+            }
+          }
+        }
+      },
+      "5": {
+        "records": 72,
+        "arms": {
+          "masked_mean": {
+            "joint": 17,
+            "pass": 66,
+            "seen_and_geometry": 60,
+            "target_seen": 66,
+            "target_delivered": 17,
+            "wrong_branch": 22,
+            "certified": 32,
+            "rejected_echo": 0,
+            "artifact": 33,
+            "certified_incorrect_geometry": 4,
+            "certified_joint": 8,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 72,
+            "true_peak_median": 0.7671357638048666,
+            "mean_program_ticks_without_sync": 20.47222222222222
+          },
+          "masked_full": {
+            "joint": 14,
+            "pass": 68,
+            "seen_and_geometry": 54,
+            "target_seen": 58,
+            "target_delivered": 14,
+            "wrong_branch": 22,
+            "certified": 30,
+            "rejected_echo": 4,
+            "artifact": 32,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 7,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 72,
+            "true_peak_median": 0.781428322494821,
+            "mean_program_ticks_without_sync": 25.25
+          },
+          "read_mean": {
+            "joint": 15,
+            "pass": 67,
+            "seen_and_geometry": 62,
+            "target_seen": 65,
+            "target_delivered": 15,
+            "wrong_branch": 20,
+            "certified": 32,
+            "rejected_echo": 0,
+            "artifact": 37,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 11,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 72,
+            "true_peak_median": 0.7652912736721575,
+            "mean_program_ticks_without_sync": 21.333333333333332
+          },
+          "read_full": {
+            "joint": 11,
+            "pass": 68,
+            "seen_and_geometry": 53,
+            "target_seen": 57,
+            "target_delivered": 11,
+            "wrong_branch": 26,
+            "certified": 32,
+            "rejected_echo": 2,
+            "artifact": 33,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 8,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 72,
+            "true_peak_median": 0.7786554911895561,
+            "mean_program_ticks_without_sync": 25.125
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 4,
+              "net": -2
+            },
+            "pass": {
+              "gained": 3,
+              "lost": 2,
+              "net": 1
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 4,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 4,
+              "net": -2
+            },
+            "certified": {
+              "gained": 5,
+              "lost": 5,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 43,
+              "sector_changes": 27,
+              "orientation_changes_ge_1_degree": 29,
+              "physical_changes": 29
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 0,
+              "net": 4
+            },
+            "certified": {
+              "gained": 5,
+              "lost": 3,
+              "net": 2
+            },
+            "decisions": {
+              "raw_changes": 37,
+              "sector_changes": 26,
+              "orientation_changes_ge_1_degree": 31,
+              "physical_changes": 31
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 3,
+              "lost": 6,
+              "net": -3
+            },
+            "pass": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 4,
+              "lost": 10,
+              "net": -6
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 8,
+              "net": -8
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 6,
+              "net": -3
+            },
+            "wrong_branch": {
+              "gained": 6,
+              "lost": 6,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "decisions": {
+              "raw_changes": 48,
+              "sector_changes": 46,
+              "orientation_changes_ge_1_degree": 48,
+              "physical_changes": 48
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 3,
+              "lost": 7,
+              "net": -4
+            },
+            "pass": {
+              "gained": 3,
+              "lost": 2,
+              "net": 1
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 12,
+              "net": -9
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 10,
+              "net": -8
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 7,
+              "net": -4
+            },
+            "wrong_branch": {
+              "gained": 13,
+              "lost": 7,
+              "net": 6
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 51,
+              "sector_changes": 43,
+              "orientation_changes_ge_1_degree": 49,
+              "physical_changes": 49
+            }
+          }
+        }
+      },
+      "6": {
+        "records": 72,
+        "arms": {
+          "masked_mean": {
+            "joint": 14,
+            "pass": 70,
+            "seen_and_geometry": 66,
+            "target_seen": 68,
+            "target_delivered": 14,
+            "wrong_branch": 15,
+            "certified": 28,
+            "rejected_echo": 0,
+            "artifact": 43,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 5,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 70,
+            "true_peak_median": 0.5893376344224178,
+            "mean_program_ticks_without_sync": 22.083333333333332
+          },
+          "masked_full": {
+            "joint": 15,
+            "pass": 70,
+            "seen_and_geometry": 66,
+            "target_seen": 68,
+            "target_delivered": 15,
+            "wrong_branch": 16,
+            "certified": 26,
+            "rejected_echo": 0,
+            "artifact": 41,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 6,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 70,
+            "true_peak_median": 0.6358437711974443,
+            "mean_program_ticks_without_sync": 21.694444444444443
+          },
+          "read_mean": {
+            "joint": 11,
+            "pass": 67,
+            "seen_and_geometry": 65,
+            "target_seen": 70,
+            "target_delivered": 13,
+            "wrong_branch": 17,
+            "certified": 25,
+            "rejected_echo": 0,
+            "artifact": 42,
+            "certified_incorrect_geometry": 1,
+            "certified_joint": 4,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 70,
+            "true_peak_median": 0.5757523648891523,
+            "mean_program_ticks_without_sync": 20.97222222222222
+          },
+          "read_full": {
+            "joint": 12,
+            "pass": 67,
+            "seen_and_geometry": 65,
+            "target_seen": 69,
+            "target_delivered": 13,
+            "wrong_branch": 15,
+            "certified": 25,
+            "rejected_echo": 0,
+            "artifact": 44,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 5,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 70,
+            "true_peak_median": 0.6000498012504052,
+            "mean_program_ticks_without_sync": 19.666666666666668
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "certified": {
+              "gained": 7,
+              "lost": 10,
+              "net": -3
+            },
+            "decisions": {
+              "raw_changes": 41,
+              "sector_changes": 19,
+              "orientation_changes_ge_1_degree": 26,
+              "physical_changes": 26
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "certified": {
+              "gained": 8,
+              "lost": 9,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 39,
+              "sector_changes": 22,
+              "orientation_changes_ge_1_degree": 29,
+              "physical_changes": 29
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "decisions": {
+              "raw_changes": 14,
+              "sector_changes": 10,
+              "orientation_changes_ge_1_degree": 12,
+              "physical_changes": 12
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 3,
+              "net": -2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 19,
+              "sector_changes": 17,
+              "orientation_changes_ge_1_degree": 19,
+              "physical_changes": 19
+            }
+          }
+        }
+      }
+    },
+    "profile": {
+      "ordinary": {
+        "records": 108,
+        "arms": {
+          "masked_mean": {
+            "joint": 25,
+            "pass": 86,
+            "seen_and_geometry": 86,
+            "target_seen": 108,
+            "target_delivered": 31,
+            "wrong_branch": 36,
+            "certified": 48,
+            "rejected_echo": 0,
+            "artifact": 41,
+            "certified_incorrect_geometry": 14,
+            "certified_joint": 13,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 96,
+            "true_peak_median": 0.7567651297302421,
+            "mean_program_ticks_without_sync": 26.85185185185185
+          },
+          "masked_full": {
+            "joint": 21,
+            "pass": 82,
+            "seen_and_geometry": 80,
+            "target_seen": 106,
+            "target_delivered": 32,
+            "wrong_branch": 32,
+            "certified": 48,
+            "rejected_echo": 1,
+            "artifact": 43,
+            "certified_incorrect_geometry": 18,
+            "certified_joint": 11,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 96,
+            "true_peak_median": 0.7936527567876686,
+            "mean_program_ticks_without_sync": 27.5
+          },
+          "read_mean": {
+            "joint": 21,
+            "pass": 84,
+            "seen_and_geometry": 84,
+            "target_seen": 108,
+            "target_delivered": 29,
+            "wrong_branch": 32,
+            "certified": 59,
+            "rejected_echo": 0,
+            "artifact": 47,
+            "certified_incorrect_geometry": 19,
+            "certified_joint": 16,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 96,
+            "true_peak_median": 0.7678629823394864,
+            "mean_program_ticks_without_sync": 26.73148148148148
+          },
+          "read_full": {
+            "joint": 16,
+            "pass": 80,
+            "seen_and_geometry": 76,
+            "target_seen": 104,
+            "target_delivered": 27,
+            "wrong_branch": 34,
+            "certified": 58,
+            "rejected_echo": 1,
+            "artifact": 46,
+            "certified_incorrect_geometry": 22,
+            "certified_joint": 12,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 96,
+            "true_peak_median": 0.7963914983463081,
+            "mean_program_ticks_without_sync": 27.583333333333332
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 6,
+              "net": -4
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 5,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 5,
+              "net": -4
+            },
+            "certified": {
+              "gained": 14,
+              "lost": 3,
+              "net": 11
+            },
+            "decisions": {
+              "raw_changes": 50,
+              "sector_changes": 20,
+              "orientation_changes_ge_1_degree": 25,
+              "physical_changes": 25
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 6,
+              "net": -5
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 3,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 5,
+              "net": -4
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 5,
+              "net": -5
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "certified": {
+              "gained": 13,
+              "lost": 3,
+              "net": 10
+            },
+            "decisions": {
+              "raw_changes": 43,
+              "sector_changes": 19,
+              "orientation_changes_ge_1_degree": 26,
+              "physical_changes": 26
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 6,
+              "net": -4
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 4,
+              "net": -4
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 6,
+              "net": -6
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_delivered": {
+              "gained": 6,
+              "lost": 5,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 8,
+              "net": -4
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 38,
+              "sector_changes": 34,
+              "orientation_changes_ge_1_degree": 38,
+              "physical_changes": 38
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 7,
+              "net": -5
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 4,
+              "net": -4
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 8,
+              "net": -8
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 4,
+              "net": -4
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 7,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 8,
+              "lost": 6,
+              "net": 2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 40,
+              "sector_changes": 32,
+              "orientation_changes_ge_1_degree": 38,
+              "physical_changes": 38
+            }
+          }
+        }
+      },
+      "stress": {
+        "records": 108,
+        "arms": {
+          "masked_mean": {
+            "joint": 18,
+            "pass": 90,
+            "seen_and_geometry": 75,
+            "target_seen": 93,
+            "target_delivered": 21,
+            "wrong_branch": 23,
+            "certified": 46,
+            "rejected_echo": 4,
+            "artifact": 60,
+            "certified_incorrect_geometry": 10,
+            "certified_joint": 6,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 104,
+            "true_peak_median": 0.7754363673356209,
+            "mean_program_ticks_without_sync": 27.48148148148148
+          },
+          "masked_full": {
+            "joint": 18,
+            "pass": 92,
+            "seen_and_geometry": 70,
+            "target_seen": 86,
+            "target_delivered": 22,
+            "wrong_branch": 28,
+            "certified": 42,
+            "rejected_echo": 7,
+            "artifact": 51,
+            "certified_incorrect_geometry": 6,
+            "certified_joint": 6,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 104,
+            "true_peak_median": 0.7969876725638442,
+            "mean_program_ticks_without_sync": 28.037037037037038
+          },
+          "read_mean": {
+            "joint": 18,
+            "pass": 88,
+            "seen_and_geometry": 76,
+            "target_seen": 93,
+            "target_delivered": 23,
+            "wrong_branch": 27,
+            "certified": 43,
+            "rejected_echo": 5,
+            "artifact": 53,
+            "certified_incorrect_geometry": 6,
+            "certified_joint": 9,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 104,
+            "true_peak_median": 0.7817498858216115,
+            "mean_program_ticks_without_sync": 26.675925925925927
+          },
+          "read_full": {
+            "joint": 14,
+            "pass": 88,
+            "seen_and_geometry": 69,
+            "target_seen": 86,
+            "target_delivered": 21,
+            "wrong_branch": 31,
+            "certified": 43,
+            "rejected_echo": 6,
+            "artifact": 50,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 7,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 104,
+            "true_peak_median": 0.837069322351325,
+            "mean_program_ticks_without_sync": 26.666666666666668
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "pass": {
+              "gained": 3,
+              "lost": 5,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 5,
+              "lost": 4,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "wrong_branch": {
+              "gained": 7,
+              "lost": 3,
+              "net": 4
+            },
+            "certified": {
+              "gained": 13,
+              "lost": 16,
+              "net": -3
+            },
+            "decisions": {
+              "raw_changes": 58,
+              "sector_changes": 39,
+              "orientation_changes_ge_1_degree": 44,
+              "physical_changes": 44
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 5,
+              "net": -4
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 4,
+              "net": -4
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 3,
+              "lost": 3,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 9,
+              "lost": 6,
+              "net": 3
+            },
+            "certified": {
+              "gained": 14,
+              "lost": 13,
+              "net": 1
+            },
+            "decisions": {
+              "raw_changes": 64,
+              "sector_changes": 49,
+              "orientation_changes_ge_1_degree": 55,
+              "physical_changes": 55
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 3,
+              "lost": 3,
+              "net": 0
+            },
+            "pass": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 4,
+              "lost": 9,
+              "net": -5
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 7,
+              "net": -7
+            },
+            "target_delivered": {
+              "gained": 4,
+              "lost": 3,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 8,
+              "lost": 3,
+              "net": 5
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 4,
+              "net": -4
+            },
+            "decisions": {
+              "raw_changes": 46,
+              "sector_changes": 38,
+              "orientation_changes_ge_1_degree": 38,
+              "physical_changes": 38
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 3,
+              "lost": 7,
+              "net": -4
+            },
+            "pass": {
+              "gained": 4,
+              "lost": 4,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 4,
+              "lost": 11,
+              "net": -7
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 9,
+              "net": -7
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 7,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 11,
+              "lost": 7,
+              "net": 4
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 53,
+              "sector_changes": 49,
+              "orientation_changes_ge_1_degree": 51,
+              "physical_changes": 51
+            }
+          }
+        }
+      }
+    }
+  },
+  "shear": {
+    "records": 108,
+    "unexecuted": {},
+    "verification": {
+      "layouts": 54,
+      "paired_records": 108,
+      "checks_passed": true,
+      "executed_unique_actions": 266,
+      "unshared_menus": 0,
+      "axial_max_error_mm": 0.0,
+      "shared_actual_contact_and_acoustic_clock": true
+    },
+    "arms": {
+      "masked_mean": {
+        "joint": 11,
+        "pass": 50,
+        "seen_and_geometry": 43,
+        "target_seen": 91,
+        "target_delivered": 19,
+        "wrong_branch": 44,
+        "certified": 28,
+        "rejected_echo": 6,
+        "artifact": 39,
+        "certified_incorrect_geometry": 18,
+        "certified_joint": 0,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 68,
+        "true_peak_median": 1.027591527332988,
+        "mean_program_ticks_without_sync": 25.40740740740741
+      },
+      "masked_full": {
+        "joint": 11,
+        "pass": 54,
+        "seen_and_geometry": 48,
+        "target_seen": 93,
+        "target_delivered": 21,
+        "wrong_branch": 40,
+        "certified": 28,
+        "rejected_echo": 7,
+        "artifact": 40,
+        "certified_incorrect_geometry": 18,
+        "certified_joint": 0,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 68,
+        "true_peak_median": 0.9963171711218126,
+        "mean_program_ticks_without_sync": 25.537037037037038
+      },
+      "read_mean": {
+        "joint": 10,
+        "pass": 51,
+        "seen_and_geometry": 46,
+        "target_seen": 94,
+        "target_delivered": 16,
+        "wrong_branch": 45,
+        "certified": 27,
+        "rejected_echo": 6,
+        "artifact": 41,
+        "certified_incorrect_geometry": 17,
+        "certified_joint": 1,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 68,
+        "true_peak_median": 1.027591527332988,
+        "mean_program_ticks_without_sync": 25.38888888888889
+      },
+      "read_full": {
+        "joint": 11,
+        "pass": 52,
+        "seen_and_geometry": 49,
+        "target_seen": 97,
+        "target_delivered": 21,
+        "wrong_branch": 42,
+        "certified": 26,
+        "rejected_echo": 7,
+        "artifact": 38,
+        "certified_incorrect_geometry": 17,
+        "certified_joint": 1,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 68,
+        "true_peak_median": 1.0223357868659364,
+        "mean_program_ticks_without_sync": 25.435185185185187
+      }
+    },
+    "evidence": {
+      "records": 108,
+      "executed": 108,
+      "probe_pulses": 4512,
+      "probe_echo_candidates": 11955,
+      "belief_tv_ge_0p02": 80,
+      "belief_tv_median": 0.08783413831088183,
+      "A_B_argmax_changed": 10,
+      "exclusive_real_branch_records": 44,
+      "target_mass_mean_delta": 0.0954183424845191,
+      "target_mass_increased_ge_0p02": 24,
+      "target_mass_decreased_ge_0p02": 4,
+      "full_selected_action_newly_certified": 5,
+      "full_newly_certified_selected_joint": 1,
+      "full_newly_certified_selected_joint_rescue": 0
+    },
+    "pooled_pairs": {
+      "read_mean_vs_masked_mean": {
+        "joint": {
+          "gained": 2,
+          "lost": 3,
+          "net": -1
+        },
+        "pass": {
+          "gained": 3,
+          "lost": 2,
+          "net": 1
+        },
+        "seen_and_geometry": {
+          "gained": 6,
+          "lost": 3,
+          "net": 3
+        },
+        "target_seen": {
+          "gained": 5,
+          "lost": 2,
+          "net": 3
+        },
+        "target_delivered": {
+          "gained": 1,
+          "lost": 4,
+          "net": -3
+        },
+        "wrong_branch": {
+          "gained": 7,
+          "lost": 6,
+          "net": 1
+        },
+        "certified": {
+          "gained": 6,
+          "lost": 7,
+          "net": -1
+        },
+        "decisions": {
+          "raw_changes": 71,
+          "sector_changes": 43,
+          "orientation_changes_ge_1_degree": 54,
+          "physical_changes": 54
+        }
+      },
+      "read_full_vs_masked_full": {
+        "joint": {
+          "gained": 1,
+          "lost": 1,
+          "net": 0
+        },
+        "pass": {
+          "gained": 1,
+          "lost": 3,
+          "net": -2
+        },
+        "seen_and_geometry": {
+          "gained": 3,
+          "lost": 2,
+          "net": 1
+        },
+        "target_seen": {
+          "gained": 4,
+          "lost": 0,
+          "net": 4
+        },
+        "target_delivered": {
+          "gained": 2,
+          "lost": 2,
+          "net": 0
+        },
+        "wrong_branch": {
+          "gained": 5,
+          "lost": 3,
+          "net": 2
+        },
+        "certified": {
+          "gained": 5,
+          "lost": 7,
+          "net": -2
+        },
+        "decisions": {
+          "raw_changes": 73,
+          "sector_changes": 35,
+          "orientation_changes_ge_1_degree": 52,
+          "physical_changes": 52
+        }
+      },
+      "masked_full_vs_masked_mean": {
+        "joint": {
+          "gained": 2,
+          "lost": 2,
+          "net": 0
+        },
+        "pass": {
+          "gained": 4,
+          "lost": 0,
+          "net": 4
+        },
+        "seen_and_geometry": {
+          "gained": 6,
+          "lost": 1,
+          "net": 5
+        },
+        "target_seen": {
+          "gained": 6,
+          "lost": 4,
+          "net": 2
+        },
+        "target_delivered": {
+          "gained": 6,
+          "lost": 4,
+          "net": 2
+        },
+        "wrong_branch": {
+          "gained": 5,
+          "lost": 9,
+          "net": -4
+        },
+        "certified": {
+          "gained": 0,
+          "lost": 0,
+          "net": 0
+        },
+        "decisions": {
+          "raw_changes": 54,
+          "sector_changes": 46,
+          "orientation_changes_ge_1_degree": 52,
+          "physical_changes": 52
+        }
+      },
+      "read_full_vs_read_mean": {
+        "joint": {
+          "gained": 2,
+          "lost": 1,
+          "net": 1
+        },
+        "pass": {
+          "gained": 3,
+          "lost": 2,
+          "net": 1
+        },
+        "seen_and_geometry": {
+          "gained": 4,
+          "lost": 1,
+          "net": 3
+        },
+        "target_seen": {
+          "gained": 5,
+          "lost": 2,
+          "net": 3
+        },
+        "target_delivered": {
+          "gained": 7,
+          "lost": 2,
+          "net": 5
+        },
+        "wrong_branch": {
+          "gained": 8,
+          "lost": 11,
+          "net": -3
+        },
+        "certified": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "decisions": {
+          "raw_changes": 54,
+          "sector_changes": 44,
+          "orientation_changes_ge_1_degree": 52,
+          "physical_changes": 52
+        }
+      }
+    },
+    "clustered_intervals": {
+      "read_mean_vs_masked_mean": {
+        "joint": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -6.481481481481482,
+            4.62962962962963
+          ]
+        },
+        "pass": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -3.7037037037037037,
+            6.481481481481482
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": 2.7777777777777777,
+          "ci95_pp": [
+            -3.7037037037037037,
+            10.185185185185185
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 2.7777777777777777,
+          "ci95_pp": [
+            -2.7777777777777777,
+            9.25925925925926
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": -2.7777777777777777,
+          "ci95_pp": [
+            -8.333333333333334,
+            0.9259259259259259
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -7.407407407407407,
+            8.333333333333334
+          ]
+        },
+        "certified": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -9.25925925925926,
+            6.481481481481482
+          ]
+        }
+      },
+      "read_full_vs_masked_full": {
+        "joint": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -2.7777777777777777,
+            2.7777777777777777
+          ]
+        },
+        "pass": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -5.555555555555555,
+            1.8518518518518519
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -2.7777777777777777,
+            5.555555555555555
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 3.7037037037037037,
+          "ci95_pp": [
+            0.9259259259259259,
+            7.407407407407407
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -3.7037037037037037,
+            3.7037037037037037
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 1.8518518518518519,
+          "ci95_pp": [
+            -3.7037037037037037,
+            8.333333333333334
+          ]
+        },
+        "certified": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -9.25925925925926,
+            5.555555555555555
+          ]
+        }
+      },
+      "masked_full_vs_masked_mean": {
+        "joint": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -3.7037037037037037,
+            4.62962962962963
+          ]
+        },
+        "pass": {
+          "mean_pp": 3.7037037037037037,
+          "ci95_pp": [
+            0.0,
+            9.25925925925926
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": 4.62962962962963,
+          "ci95_pp": [
+            -0.9259259259259259,
+            11.11111111111111
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 1.8518518518518519,
+          "ci95_pp": [
+            -4.62962962962963,
+            9.25925925925926
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 1.8518518518518519,
+          "ci95_pp": [
+            -3.7037037037037037,
+            8.333333333333334
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": -3.7037037037037037,
+          "ci95_pp": [
+            -11.11111111111111,
+            3.7037037037037037
+          ]
+        },
+        "certified": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "read_full_vs_read_mean": {
+        "joint": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -1.8518518518518519,
+            3.7037037037037037
+          ]
+        },
+        "pass": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -3.7037037037037037,
+            6.481481481481482
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": 2.7777777777777777,
+          "ci95_pp": [
+            -0.9259259259259259,
+            8.333333333333334
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 2.7777777777777777,
+          "ci95_pp": [
+            -1.8518518518518519,
+            7.407407407407407
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 4.62962962962963,
+          "ci95_pp": [
+            0.0,
+            10.185185185185185
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": -2.7777777777777777,
+          "ci95_pp": [
+            -12.037037037037036,
+            6.481481481481482
+          ]
+        },
+        "certified": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -2.7777777777777777,
+            0.0
+          ]
+        }
+      },
+      "information_by_full_posterior_interaction": {
+        "joint": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -6.481481481481482,
+            7.407407407407407
+          ]
+        },
+        "pass": {
+          "mean_pp": -2.7777777777777777,
+          "ci95_pp": [
+            -9.25925925925926,
+            1.8518518518518519
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -1.8518518518518519,
+          "ci95_pp": [
+            -10.185185185185185,
+            4.62962962962963
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -5.555555555555555,
+            6.481481481481482
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 2.7777777777777777,
+          "ci95_pp": [
+            -1.8518518518518519,
+            8.333333333333334
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 0.9259259259259259,
+          "ci95_pp": [
+            -6.481481481481482,
+            8.333333333333334
+          ]
+        },
+        "certified": {
+          "mean_pp": -0.9259259259259259,
+          "ci95_pp": [
+            -2.7777777777777777,
+            0.0
+          ]
+        }
+      }
+    },
+    "band": {
+      "0": {
+        "records": 54,
+        "arms": {
+          "masked_mean": {
+            "joint": 8,
+            "pass": 25,
+            "seen_and_geometry": 23,
+            "target_seen": 45,
+            "target_delivered": 14,
+            "wrong_branch": 23,
+            "certified": 14,
+            "rejected_echo": 1,
+            "artifact": 16,
+            "certified_incorrect_geometry": 9,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.027591527332988,
+            "mean_program_ticks_without_sync": 25.40740740740741
+          },
+          "masked_full": {
+            "joint": 8,
+            "pass": 27,
+            "seen_and_geometry": 26,
+            "target_seen": 47,
+            "target_delivered": 14,
+            "wrong_branch": 20,
+            "certified": 14,
+            "rejected_echo": 2,
+            "artifact": 18,
+            "certified_incorrect_geometry": 9,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 0.9963171711218126,
+            "mean_program_ticks_without_sync": 25.537037037037038
+          },
+          "read_mean": {
+            "joint": 8,
+            "pass": 25,
+            "seen_and_geometry": 24,
+            "target_seen": 47,
+            "target_delivered": 12,
+            "wrong_branch": 23,
+            "certified": 16,
+            "rejected_echo": 1,
+            "artifact": 18,
+            "certified_incorrect_geometry": 10,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0461021268507023,
+            "mean_program_ticks_without_sync": 25.59259259259259
+          },
+          "read_full": {
+            "joint": 9,
+            "pass": 27,
+            "seen_and_geometry": 27,
+            "target_seen": 49,
+            "target_delivered": 15,
+            "wrong_branch": 21,
+            "certified": 15,
+            "rejected_echo": 2,
+            "artifact": 16,
+            "certified_incorrect_geometry": 10,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0044827123650788,
+            "mean_program_ticks_without_sync": 24.75925925925926
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 2,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "certified": {
+              "gained": 5,
+              "lost": 3,
+              "net": 2
+            },
+            "decisions": {
+              "raw_changes": 38,
+              "sector_changes": 21,
+              "orientation_changes_ge_1_degree": 27,
+              "physical_changes": 27
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 2,
+              "net": 1
+            },
+            "certified": {
+              "gained": 4,
+              "lost": 3,
+              "net": 1
+            },
+            "decisions": {
+              "raw_changes": 41,
+              "sector_changes": 19,
+              "orientation_changes_ge_1_degree": 28,
+              "physical_changes": 28
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "target_seen": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 3,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 6,
+              "net": -3
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 27,
+              "sector_changes": 23,
+              "orientation_changes_ge_1_degree": 26,
+              "physical_changes": 26
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "target_seen": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 2,
+              "net": 3
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 7,
+              "net": -2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 26,
+              "sector_changes": 23,
+              "orientation_changes_ge_1_degree": 26,
+              "physical_changes": 26
+            }
+          }
+        }
+      },
+      "1": {
+        "records": 54,
+        "arms": {
+          "masked_mean": {
+            "joint": 3,
+            "pass": 25,
+            "seen_and_geometry": 20,
+            "target_seen": 46,
+            "target_delivered": 5,
+            "wrong_branch": 21,
+            "certified": 14,
+            "rejected_echo": 5,
+            "artifact": 23,
+            "certified_incorrect_geometry": 9,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.027591527332988,
+            "mean_program_ticks_without_sync": 25.40740740740741
+          },
+          "masked_full": {
+            "joint": 3,
+            "pass": 27,
+            "seen_and_geometry": 22,
+            "target_seen": 46,
+            "target_delivered": 7,
+            "wrong_branch": 20,
+            "certified": 14,
+            "rejected_echo": 5,
+            "artifact": 22,
+            "certified_incorrect_geometry": 9,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 0.9963171711218126,
+            "mean_program_ticks_without_sync": 25.537037037037038
+          },
+          "read_mean": {
+            "joint": 2,
+            "pass": 26,
+            "seen_and_geometry": 22,
+            "target_seen": 47,
+            "target_delivered": 4,
+            "wrong_branch": 22,
+            "certified": 11,
+            "rejected_echo": 5,
+            "artifact": 23,
+            "certified_incorrect_geometry": 7,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0162284850155037,
+            "mean_program_ticks_without_sync": 25.185185185185187
+          },
+          "read_full": {
+            "joint": 2,
+            "pass": 25,
+            "seen_and_geometry": 22,
+            "target_seen": 48,
+            "target_delivered": 6,
+            "wrong_branch": 21,
+            "certified": 11,
+            "rejected_echo": 5,
+            "artifact": 22,
+            "certified_incorrect_geometry": 7,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0275433248807013,
+            "mean_program_ticks_without_sync": 26.11111111111111
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 4,
+              "net": 1
+            },
+            "certified": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "decisions": {
+              "raw_changes": 33,
+              "sector_changes": 22,
+              "orientation_changes_ge_1_degree": 27,
+              "physical_changes": 27
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 3,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 1,
+              "lost": 4,
+              "net": -3
+            },
+            "decisions": {
+              "raw_changes": 32,
+              "sector_changes": 16,
+              "orientation_changes_ge_1_degree": 24,
+              "physical_changes": 24
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 27,
+              "sector_changes": 23,
+              "orientation_changes_ge_1_degree": 26,
+              "physical_changes": 26
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 28,
+              "sector_changes": 21,
+              "orientation_changes_ge_1_degree": 26,
+              "physical_changes": 26
+            }
+          }
+        }
+      }
+    },
+    "region": {
+      "4": {
+        "records": 36,
+        "arms": {
+          "masked_mean": {
+            "joint": 4,
+            "pass": 12,
+            "seen_and_geometry": 7,
+            "target_seen": 24,
+            "target_delivered": 6,
+            "wrong_branch": 17,
+            "certified": 18,
+            "rejected_echo": 4,
+            "artifact": 9,
+            "certified_incorrect_geometry": 16,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 18,
+            "true_peak_median": 1.1246385485366701,
+            "mean_program_ticks_without_sync": 32.166666666666664
+          },
+          "masked_full": {
+            "joint": 3,
+            "pass": 12,
+            "seen_and_geometry": 9,
+            "target_seen": 25,
+            "target_delivered": 7,
+            "wrong_branch": 15,
+            "certified": 18,
+            "rejected_echo": 4,
+            "artifact": 10,
+            "certified_incorrect_geometry": 16,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 18,
+            "true_peak_median": 1.1045862982959416,
+            "mean_program_ticks_without_sync": 31.833333333333332
+          },
+          "read_mean": {
+            "joint": 2,
+            "pass": 12,
+            "seen_and_geometry": 10,
+            "target_seen": 29,
+            "target_delivered": 4,
+            "wrong_branch": 16,
+            "certified": 15,
+            "rejected_echo": 4,
+            "artifact": 12,
+            "certified_incorrect_geometry": 14,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 18,
+            "true_peak_median": 1.104585769368397,
+            "mean_program_ticks_without_sync": 32.166666666666664
+          },
+          "read_full": {
+            "joint": 3,
+            "pass": 12,
+            "seen_and_geometry": 10,
+            "target_seen": 28,
+            "target_delivered": 7,
+            "wrong_branch": 18,
+            "certified": 15,
+            "rejected_echo": 4,
+            "artifact": 7,
+            "certified_incorrect_geometry": 14,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 18,
+            "true_peak_median": 1.1132238011533968,
+            "mean_program_ticks_without_sync": 29.97222222222222
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 4,
+              "lost": 1,
+              "net": 3
+            },
+            "target_seen": {
+              "gained": 5,
+              "lost": 0,
+              "net": 5
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "decisions": {
+              "raw_changes": 25,
+              "sector_changes": 20,
+              "orientation_changes_ge_1_degree": 20,
+              "physical_changes": 20
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 3,
+              "net": -3
+            },
+            "decisions": {
+              "raw_changes": 27,
+              "sector_changes": 13,
+              "orientation_changes_ge_1_degree": 18,
+              "physical_changes": 18
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 4,
+              "lost": 3,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 2,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 3,
+              "net": -2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 16,
+              "sector_changes": 16,
+              "orientation_changes_ge_1_degree": 16,
+              "physical_changes": 16
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 4,
+              "lost": 1,
+              "net": 3
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 16,
+              "sector_changes": 15,
+              "orientation_changes_ge_1_degree": 15,
+              "physical_changes": 15
+            }
+          }
+        }
+      },
+      "5": {
+        "records": 36,
+        "arms": {
+          "masked_mean": {
+            "joint": 5,
+            "pass": 22,
+            "seen_and_geometry": 21,
+            "target_seen": 33,
+            "target_delivered": 8,
+            "wrong_branch": 14,
+            "certified": 4,
+            "rejected_echo": 1,
+            "artifact": 13,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 30,
+            "true_peak_median": 0.8036498418225784,
+            "mean_program_ticks_without_sync": 21.944444444444443
+          },
+          "masked_full": {
+            "joint": 6,
+            "pass": 24,
+            "seen_and_geometry": 22,
+            "target_seen": 33,
+            "target_delivered": 10,
+            "wrong_branch": 10,
+            "certified": 4,
+            "rejected_echo": 2,
+            "artifact": 14,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 30,
+            "true_peak_median": 0.8680708729668488,
+            "mean_program_ticks_without_sync": 22.555555555555557
+          },
+          "read_mean": {
+            "joint": 7,
+            "pass": 24,
+            "seen_and_geometry": 23,
+            "target_seen": 33,
+            "target_delivered": 9,
+            "wrong_branch": 13,
+            "certified": 8,
+            "rejected_echo": 1,
+            "artifact": 13,
+            "certified_incorrect_geometry": 1,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 30,
+            "true_peak_median": 0.8959471886845833,
+            "mean_program_ticks_without_sync": 20.97222222222222
+          },
+          "read_full": {
+            "joint": 6,
+            "pass": 22,
+            "seen_and_geometry": 22,
+            "target_seen": 34,
+            "target_delivered": 11,
+            "wrong_branch": 9,
+            "certified": 7,
+            "rejected_echo": 2,
+            "artifact": 14,
+            "certified_incorrect_geometry": 1,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 30,
+            "true_peak_median": 0.9389679136543962,
+            "mean_program_ticks_without_sync": 23.666666666666668
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "certified": {
+              "gained": 4,
+              "lost": 0,
+              "net": 4
+            },
+            "decisions": {
+              "raw_changes": 21,
+              "sector_changes": 15,
+              "orientation_changes_ge_1_degree": 18,
+              "physical_changes": 18
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "certified": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "decisions": {
+              "raw_changes": 23,
+              "sector_changes": 14,
+              "orientation_changes_ge_1_degree": 21,
+              "physical_changes": 21
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 5,
+              "net": -4
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 20,
+              "sector_changes": 16,
+              "orientation_changes_ge_1_degree": 20,
+              "physical_changes": 20
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 6,
+              "net": -4
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 22,
+              "sector_changes": 16,
+              "orientation_changes_ge_1_degree": 22,
+              "physical_changes": 22
+            }
+          }
+        }
+      },
+      "6": {
+        "records": 36,
+        "arms": {
+          "masked_mean": {
+            "joint": 2,
+            "pass": 16,
+            "seen_and_geometry": 15,
+            "target_seen": 34,
+            "target_delivered": 5,
+            "wrong_branch": 13,
+            "certified": 6,
+            "rejected_echo": 1,
+            "artifact": 17,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 20,
+            "true_peak_median": 1.2958257414890113,
+            "mean_program_ticks_without_sync": 22.11111111111111
+          },
+          "masked_full": {
+            "joint": 2,
+            "pass": 18,
+            "seen_and_geometry": 17,
+            "target_seen": 35,
+            "target_delivered": 4,
+            "wrong_branch": 15,
+            "certified": 6,
+            "rejected_echo": 1,
+            "artifact": 16,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 20,
+            "true_peak_median": 1.1861567626255263,
+            "mean_program_ticks_without_sync": 22.22222222222222
+          },
+          "read_mean": {
+            "joint": 1,
+            "pass": 15,
+            "seen_and_geometry": 13,
+            "target_seen": 32,
+            "target_delivered": 3,
+            "wrong_branch": 16,
+            "certified": 4,
+            "rejected_echo": 1,
+            "artifact": 16,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 20,
+            "true_peak_median": 1.3359021280357655,
+            "mean_program_ticks_without_sync": 23.02777777777778
+          },
+          "read_full": {
+            "joint": 2,
+            "pass": 18,
+            "seen_and_geometry": 17,
+            "target_seen": 35,
+            "target_delivered": 3,
+            "wrong_branch": 15,
+            "certified": 4,
+            "rejected_echo": 1,
+            "artifact": 17,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 20,
+            "true_peak_median": 1.1861627683104938,
+            "mean_program_ticks_without_sync": 22.666666666666668
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 4,
+              "net": -2
+            },
+            "decisions": {
+              "raw_changes": 25,
+              "sector_changes": 8,
+              "orientation_changes_ge_1_degree": 16,
+              "physical_changes": 16
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 4,
+              "net": -2
+            },
+            "decisions": {
+              "raw_changes": 23,
+              "sector_changes": 8,
+              "orientation_changes_ge_1_degree": 13,
+              "physical_changes": 13
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 1,
+              "net": 2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 18,
+              "sector_changes": 14,
+              "orientation_changes_ge_1_degree": 16,
+              "physical_changes": 16
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "seen_and_geometry": {
+              "gained": 4,
+              "lost": 0,
+              "net": 4
+            },
+            "target_seen": {
+              "gained": 3,
+              "lost": 0,
+              "net": 3
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 16,
+              "sector_changes": 13,
+              "orientation_changes_ge_1_degree": 15,
+              "physical_changes": 15
+            }
+          }
+        }
+      }
+    },
+    "profile": {
+      "ordinary": {
+        "records": 54,
+        "arms": {
+          "masked_mean": {
+            "joint": 5,
+            "pass": 24,
+            "seen_and_geometry": 23,
+            "target_seen": 49,
+            "target_delivered": 11,
+            "wrong_branch": 24,
+            "certified": 16,
+            "rejected_echo": 4,
+            "artifact": 15,
+            "certified_incorrect_geometry": 10,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.030527942563295,
+            "mean_program_ticks_without_sync": 26.59259259259259
+          },
+          "masked_full": {
+            "joint": 5,
+            "pass": 26,
+            "seen_and_geometry": 25,
+            "target_seen": 50,
+            "target_delivered": 10,
+            "wrong_branch": 25,
+            "certified": 16,
+            "rejected_echo": 4,
+            "artifact": 15,
+            "certified_incorrect_geometry": 10,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0202477345417915,
+            "mean_program_ticks_without_sync": 27.962962962962962
+          },
+          "read_mean": {
+            "joint": 5,
+            "pass": 24,
+            "seen_and_geometry": 23,
+            "target_seen": 49,
+            "target_delivered": 10,
+            "wrong_branch": 26,
+            "certified": 16,
+            "rejected_echo": 4,
+            "artifact": 14,
+            "certified_incorrect_geometry": 9,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.027591527332988,
+            "mean_program_ticks_without_sync": 25.90740740740741
+          },
+          "read_full": {
+            "joint": 5,
+            "pass": 26,
+            "seen_and_geometry": 25,
+            "target_seen": 50,
+            "target_delivered": 9,
+            "wrong_branch": 25,
+            "certified": 16,
+            "rejected_echo": 4,
+            "artifact": 16,
+            "certified_incorrect_geometry": 9,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0139573622310456,
+            "mean_program_ticks_without_sync": 27.537037037037038
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 33,
+              "sector_changes": 17,
+              "orientation_changes_ge_1_degree": 21,
+              "physical_changes": 21
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 32,
+              "sector_changes": 12,
+              "orientation_changes_ge_1_degree": 20,
+              "physical_changes": 20
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 3,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 18,
+              "sector_changes": 10,
+              "orientation_changes_ge_1_degree": 16,
+              "physical_changes": 16
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 3,
+              "lost": 4,
+              "net": -1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 16,
+              "sector_changes": 11,
+              "orientation_changes_ge_1_degree": 16,
+              "physical_changes": 16
+            }
+          }
+        }
+      },
+      "stress": {
+        "records": 54,
+        "arms": {
+          "masked_mean": {
+            "joint": 6,
+            "pass": 26,
+            "seen_and_geometry": 20,
+            "target_seen": 42,
+            "target_delivered": 8,
+            "wrong_branch": 20,
+            "certified": 12,
+            "rejected_echo": 2,
+            "artifact": 24,
+            "certified_incorrect_geometry": 8,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0183075626297866,
+            "mean_program_ticks_without_sync": 24.22222222222222
+          },
+          "masked_full": {
+            "joint": 6,
+            "pass": 28,
+            "seen_and_geometry": 23,
+            "target_seen": 43,
+            "target_delivered": 11,
+            "wrong_branch": 15,
+            "certified": 12,
+            "rejected_echo": 3,
+            "artifact": 25,
+            "certified_incorrect_geometry": 8,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 0.9583916349889113,
+            "mean_program_ticks_without_sync": 23.11111111111111
+          },
+          "read_mean": {
+            "joint": 5,
+            "pass": 27,
+            "seen_and_geometry": 23,
+            "target_seen": 45,
+            "target_delivered": 6,
+            "wrong_branch": 19,
+            "certified": 11,
+            "rejected_echo": 2,
+            "artifact": 27,
+            "certified_incorrect_geometry": 8,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0226461513408673,
+            "mean_program_ticks_without_sync": 24.87037037037037
+          },
+          "read_full": {
+            "joint": 6,
+            "pass": 26,
+            "seen_and_geometry": 24,
+            "target_seen": 47,
+            "target_delivered": 12,
+            "wrong_branch": 17,
+            "certified": 10,
+            "rejected_echo": 3,
+            "artifact": 22,
+            "certified_incorrect_geometry": 8,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 34,
+            "true_peak_median": 1.0348553913115224,
+            "mean_program_ticks_without_sync": 23.333333333333332
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 3,
+              "net": -1
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "seen_and_geometry": {
+              "gained": 5,
+              "lost": 2,
+              "net": 3
+            },
+            "target_seen": {
+              "gained": 5,
+              "lost": 2,
+              "net": 3
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 3,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 6,
+              "net": -1
+            },
+            "certified": {
+              "gained": 4,
+              "lost": 5,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 38,
+              "sector_changes": 26,
+              "orientation_changes_ge_1_degree": 33,
+              "physical_changes": 33
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 4,
+              "lost": 0,
+              "net": 4
+            },
+            "target_delivered": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "certified": {
+              "gained": 3,
+              "lost": 5,
+              "net": -2
+            },
+            "decisions": {
+              "raw_changes": 41,
+              "sector_changes": 23,
+              "orientation_changes_ge_1_degree": 32,
+              "physical_changes": 32
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "pass": {
+              "gained": 2,
+              "lost": 0,
+              "net": 2
+            },
+            "seen_and_geometry": {
+              "gained": 4,
+              "lost": 1,
+              "net": 3
+            },
+            "target_seen": {
+              "gained": 5,
+              "lost": 4,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 5,
+              "lost": 2,
+              "net": 3
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 6,
+              "net": -5
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 36,
+              "sector_changes": 36,
+              "orientation_changes_ge_1_degree": 36,
+              "physical_changes": 36
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "pass": {
+              "gained": 1,
+              "lost": 2,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 4,
+              "lost": 2,
+              "net": 2
+            },
+            "target_delivered": {
+              "gained": 6,
+              "lost": 0,
+              "net": 6
+            },
+            "wrong_branch": {
+              "gained": 5,
+              "lost": 7,
+              "net": -2
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 38,
+              "sector_changes": 33,
+              "orientation_changes_ge_1_degree": 36,
+              "physical_changes": 36
+            }
+          }
+        }
+      }
+    },
+    "shear": {
+      "accepted_layouts": 43,
+      "median_peak_mm": 2.2966934927858413,
+      "median_added_slope_deg": 12.040525118037074,
+      "accepted_only_records": 86,
+      "accepted_only_arms": {
+        "masked_mean": {
+          "joint": 5,
+          "pass": 32,
+          "seen_and_geometry": 30,
+          "target_seen": 74,
+          "target_delivered": 11,
+          "wrong_branch": 40,
+          "certified": 26,
+          "rejected_echo": 5,
+          "artifact": 30,
+          "certified_incorrect_geometry": 16,
+          "certified_joint": 0,
+          "moment_only_certified": 0,
+          "true_geometry_opportunity": 46,
+          "true_peak_median": 1.219973520536446,
+          "mean_program_ticks_without_sync": 25.558139534883722
+        },
+        "masked_full": {
+          "joint": 5,
+          "pass": 34,
+          "seen_and_geometry": 32,
+          "target_seen": 75,
+          "target_delivered": 15,
+          "wrong_branch": 35,
+          "certified": 26,
+          "rejected_echo": 6,
+          "artifact": 30,
+          "certified_incorrect_geometry": 16,
+          "certified_joint": 0,
+          "moment_only_certified": 0,
+          "true_geometry_opportunity": 46,
+          "true_peak_median": 1.2398823339691276,
+          "mean_program_ticks_without_sync": 25.813953488372093
+        },
+        "read_mean": {
+          "joint": 5,
+          "pass": 30,
+          "seen_and_geometry": 27,
+          "target_seen": 74,
+          "target_delivered": 10,
+          "wrong_branch": 38,
+          "certified": 25,
+          "rejected_echo": 5,
+          "artifact": 33,
+          "certified_incorrect_geometry": 16,
+          "certified_joint": 1,
+          "moment_only_certified": 0,
+          "true_geometry_opportunity": 46,
+          "true_peak_median": 1.2265861399586422,
+          "mean_program_ticks_without_sync": 25.11627906976744
+        },
+        "read_full": {
+          "joint": 5,
+          "pass": 32,
+          "seen_and_geometry": 31,
+          "target_seen": 77,
+          "target_delivered": 14,
+          "wrong_branch": 36,
+          "certified": 25,
+          "rejected_echo": 6,
+          "artifact": 30,
+          "certified_incorrect_geometry": 16,
+          "certified_joint": 1,
+          "moment_only_certified": 0,
+          "true_geometry_opportunity": 46,
+          "true_peak_median": 1.2398823339691276,
+          "mean_program_ticks_without_sync": 25.372093023255815
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "schema": "adaptive_stopping_runner_v1",
+  "stage": "smoke",
+  "count": 1,
+  "case_start": 0,
+  "fixture_index": 0,
+  "arms": [
+    "B_H1"
+  ],
+  "mode": "constrained",
+  "train_seed": 721501,
+  "calibration_seed": 721502,
+  "test_seed": 721503,
+  "noise_seed": 721504,
+  "model_artifact": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/models/v3/MODEL.json",
+  "freeze_file": null,
+  "freeze_sha256": null,
+  "frozen_selected_arm": null,
+  "no_deadline": true,
+  "watchdog_max_probe_frames": 1,
+  "guard_sensitivity": {
+    "primary": 8,
+    "continuation": 12
+  },
+  "future_mechanical_feasibility": "unknown_until_selected_native_check",
+  "predicted_search_policy": "public_goal_geometry_only; no native certificate",
+  "pair_dwell": 0.3,
+  "backend": "native",
+  "source_manifest": {
+    "acoustics": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/acoustics.py",
+      "sha256": "c246cfe812af9fa3552efc385b1b20d767baaf59c60fa15f246d297f13e07ac9"
+    },
+    "fixture": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/fixture.py",
+      "sha256": "559353c7b2a21317337baacaa54742bffe0acb658cf577c87c064b141f7af787"
+    },
+    "robot_motion": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/robot_motion.py",
+      "sha256": "e14393104c76b4bf96512062d35c14a83c1a962458e3a402565a0bcee0fa6994"
+    },
+    "belief_model": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/belief_model.py",
+      "sha256": "e43fed5b42f090e3158d72f79a5e4a9f9fed337719ddb2862e0b9914545d700f"
+    },
+    "native_adapter": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/native_adapter.py",
+      "sha256": "740cd538e660615e7a814aca657581ec42819940000721be2d46d1ae1f63de0b"
+    },
+    "adaptive_planning": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_planning.py",
+      "sha256": "748842a4d225b61bf37f541653df62896da3ff954ec3c7166350ed3a855e6cee"
+    },
+    "train_calibrate": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/train_calibrate.py",
+      "sha256": "95968c25a11a95c2a2c7eca5d18d6e8a8bda39e09fdb2d178abd8b8459de20ad"
+    }
+  },
+  "fixed_pair_order": [
+    "fork_plus",
+    "fork_minus"
+  ],
+  "fixed_pair_public_costs": [
+    {
+      "order": [
+        "fork_plus",
+        "fork_minus"
+      ],
+      "worstcase_total_s": 7.415,
+      "terminal_option_worstcase_s": 4.665
+    },
+    {
+      "order": [
+        "fork_minus",
+        "fork_plus"
+      ],
+      "worstcase_total_s": 7.489999999999999,
+      "terminal_option_worstcase_s": 4.739999999999999
+    }
+  ],
+  "initial_decision_cache": {
+    "B_H1": {
+      "kind": "probe",
+      "action_id": "side_right__single_dwell_0.6",
+      "reason": "B_expected_future_option",
+      "score": 0.43092214489733954
+    }
+  },
+  "initial_decision_wall_s": {
+    "B_H1": 13.017602235002414
+  },
+  "initial_decision_precompute_wall_s": 13.017602235002414,
+  "initial_decision_cache_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_smoke_current_20261111/INITIAL_DECISIONS_00_constrained.json",
+  "initial_decision_cache_hits": 1,
+  "initial_decision_cache_misses": 0
+}

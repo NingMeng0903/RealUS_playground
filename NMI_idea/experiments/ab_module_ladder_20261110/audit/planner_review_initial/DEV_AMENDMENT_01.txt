@@ -1,0 +1,13 @@
+Before opening test, development-only runtime correction,2026-11-10
+First dev B episode spent26.75s wall. Profiling by query counts identified repeated
+all-branch finite searches for identical endpoints with different hypothetical q.
+Adopt a declared finite witness transition model: endpoint pose/rail is queried
+once from the public scene start seed; its exact FK/limits/collision-checked q
+witness is reused for that endpoint. Future q_kin is this fixed witness, not
+actual native q_out and not the best solution for every incoming state. Joint
+travel cost still depends on current q. All methods share this same transition
+model and isolated per-episode cache. Static search failure remains unresolved.
+Only endpoint check is required in this model; unused joint-interpolation checks
+are not computed. Actual native execution subset stays separate. No privateworld,
+prior, sensor, thresholds, seeds or testresults informed this optimization.
+Old dev results/code/protocol snapshots retained in dev_before_witness_cache/.

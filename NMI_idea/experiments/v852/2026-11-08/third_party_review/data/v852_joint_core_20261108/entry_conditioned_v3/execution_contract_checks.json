@@ -1,0 +1,24 @@
+{
+  "prediction_sha256_matches": true,
+  "frozen_before_all_full_chains": true,
+  "source_sha256_matches": {
+    "core_execution.py": true,
+    "joint_execution.py": true,
+    "run_joint_core.py": true,
+    "run_joint_core_entry.py": true
+  },
+  "same_historical_payload_hash": true,
+  "fresh_capture_times_after_new_request": true,
+  "fixed_ignored_information_command_identity": {
+    "entry_test_000": true,
+    "entry_test_001": true
+  },
+  "independent_training_configurations": 2,
+  "independent_test_configurations": 2,
+  "local_program_records": 18,
+  "complete_test_runs": 6,
+  "test_chain_terminal_labels_used_in_fit": 0,
+  "q_and_qdot_propagated": true,
+  "cartesian_transition_time_used": false,
+  "formal_guarantee": false
+}

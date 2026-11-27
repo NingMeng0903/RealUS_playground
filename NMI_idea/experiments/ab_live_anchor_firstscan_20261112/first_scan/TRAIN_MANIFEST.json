@@ -1,0 +1,19 @@
+{
+  "cases": 128,
+  "rows": 768,
+  "seeds": [
+    7,
+    29
+  ],
+  "steps": 120,
+  "feature_shape": [
+    768,
+    9,
+    32
+  ],
+  "models": {
+    "cql_firstscan_7.pt": "e6861ec571c967cab8520bcabbf6b05875649d0230d9e4c8172c50835b7d8102",
+    "cql_firstscan_29.pt": "f2cf81c75308b4e05a49b6933084d25f5412d053d8258a433ad31b95d69c1479"
+  },
+  "source": "new first-scan fork-window task; no recheck checkpoint reused"
+}

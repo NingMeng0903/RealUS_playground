@@ -1,0 +1,135 @@
+{
+  "scope": "Local coarse-ROI scene, one continuous vessel, synthetic acoustic quality, offline static robot endpoint witnesses.",
+  "labels": [
+    "start",
+    "probe_minus",
+    "probe_plus",
+    "terminal_minus",
+    "terminal_plus"
+  ],
+  "poses_xy_yaw": [
+    [
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      -0.025
+    ],
+    [
+      0.0,
+      0.0,
+      0.025
+    ],
+    [
+      0.0,
+      0.0,
+      -0.1
+    ],
+    [
+      0.0,
+      0.0,
+      0.1
+    ]
+  ],
+  "geometric_thresholds": {
+    "u_m": 0.002,
+    "geometric_length_m": 0.015,
+    "angle_rad": 0.17453292519943295
+  },
+  "geometry_fields": [
+    "y0_m",
+    "y_slope",
+    "y_curvature_per_m",
+    "depth_m",
+    "z_slope",
+    "z_curvature_per_m"
+  ],
+  "nominal_centerline": [
+    2e-05,
+    0.008,
+    0.22,
+    0.034,
+    0.006,
+    0.4
+  ],
+  "public_uniform_shape_prior_halfwidth": [
+    0.00017,
+    0.015,
+    0.35,
+    0.002,
+    0.015,
+    0.22
+  ],
+  "planner_geometry_input": "Shared nominal clipping only. The public shape prior describes the simulator support; there is no runtime particle filter.",
+  "simulator": {
+    "b_sd": 0.065,
+    "theta_sd": 0.23,
+    "sensor_sd": 0.035,
+    "mechanism": "Y = -0.20 + 0.09*tanh((clipped image length in m - .018)/.015) + b + theta*(yaw/.10) + eps",
+    "success": "Realized terminal Y >= 0 and independent evaluation of the physical gate on the rendered true centerline.",
+    "arms": "Persistent theta or an independent theta redraw at terminal only. b and geometry are unchanged.",
+    "paired_noise": "Common Gaussian noise keyed by object and action, plus visit number for probes. The arms share probe outcomes and same-action terminal noise."
+  },
+  "split": {
+    "train": [
+      721210,
+      384
+    ],
+    "dev": [
+      721211,
+      128
+    ],
+    "test": [
+      721219,
+      128
+    ],
+    "independent": true,
+    "repeated_train_y_per_pose": 4
+  },
+  "action_price": {
+    "budget_s": 5.4,
+    "dwell_s": [
+      0.0,
+      0.15,
+      0.15,
+      3.0,
+      3.0
+    ],
+    "max_probes": 3,
+    "utility": "Pr(physical and acoustic success) - .04 * elapsed seconds",
+    "time_price_per_s": 0.04,
+    "longest_allowed_three_probe_sequence_s": 4.570916842945278,
+    "termination": "Exactly one terminal. Two terminal dwells exceed budget. Each probe endpoint can be revisited."
+  },
+  "planner": {
+    "quad_order": 25,
+    "pretest_quad_check_order": 41,
+    "horizons": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "learned": "Fit random intercept and slope moments to grouped repeated public Y minus nominal geometry. Carry Gaussian precision and precision-weighted mean.",
+    "fixed": "Select one of two balanced probe orders by public expected utility before observations, then use same learned terminal selection; also compare the canonical minus then plus order.",
+    "difference": "Canonical minus then plus; subtract nominal geometry at each probe; intercept is mean, slope is difference divided by .50; choose highest nominal terminal plus extrapolated residual.",
+    "reset_aware": "Retain learned posterior on b. Marginalize a fresh independent theta using the learned prior marginal."
+  },
+  "source_sha256": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_core_memory_20261111/residual_scene/scene.py": "1df7aa287b840b711cb33c4433351ac018090e7a0b40765c80925910f60bff75",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/observation/environment.py": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/motion.py": "d2138760422dc4ccf073d797d2c4bfd853f9662d07a50102bc2d7496e6e7c884",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/capability/capability.py": "8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/CAPABILITY.json": "dcfa5dcb5f41ee7c6e3a3c5dbb8fdbf0b5b9756d025348155e9b357e6b0aefb8"
+  },
+  "pretest_artifact_sha256": {
+    "ROBOT.json": "0ca0a39bbb8a4a604d8418a13ba63e29f11cb1530a70648cff7b482f1519fd83",
+    "MODEL.json": "b9c50427de68de0a42c96ba563894d5592fc1fec8575cbbf237bbe434e78ac19",
+    "TRAIN_PUBLIC.npz": "31a8da6a57d0f2b05611eb893f652dbc112d3bec2f8b446531bdf84e1e58576a",
+    "DEV.json": "cc3648e58c827549d81ae0e66a800dbc78ec09fb9fece1a4cbc55201de9fba11",
+    "PUBLIC_PREDICTIONS.json": "88fef821cd1e034338a9db9ef3441b45f0f9226530c2c437b72f49f1c3355662"
+  }
+}

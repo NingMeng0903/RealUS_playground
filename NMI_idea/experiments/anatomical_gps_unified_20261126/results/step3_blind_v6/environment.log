@@ -1,0 +1,7 @@
+/media/camp/EXT_DRIVE/envs/genesis/bin/python
+3.10.20 (main, Mar 11 2026, 17:46:40) [GCC 14.3.0]
+Linux-6.8.0-90-generic-x86_64-with-glibc2.35
+torch 2.12.0+cu126 torch CUDA 12.6 available True
+devices [('NVIDIA GeForce RTX 4080 Laptop GPU', (8, 9))]
+index, name, uuid, driver_version
+0, NVIDIA GeForce RTX 4080 Laptop GPU, GPU-e58f5d53-ce96-f86d-cbb4-6a5605252c51, 580.178.04

@@ -1,0 +1,11 @@
+{
+  "out": "results/learned_b_cem_v1",
+  "phase": "collect",
+  "split": "train",
+  "cases": 144,
+  "jobs": 24,
+  "samples": 10,
+  "replicas": 4,
+  "offset": 0,
+  "elapsed_s": 451.74311249499806
+}

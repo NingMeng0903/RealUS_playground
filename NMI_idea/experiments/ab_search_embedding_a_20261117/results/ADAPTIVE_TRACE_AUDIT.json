@@ -1,0 +1,23 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/adaptive_discovery_v2/cases.jsonl.gz": {
+      "worlds": 36,
+      "trajectories": 135,
+      "retractions": 4,
+      "centered_mistakes": 180
+    },
+    "results/adaptive_paired_v2/cases.jsonl.gz": {
+      "worlds": 112,
+      "trajectories": 448,
+      "retractions": 16,
+      "centered_mistakes": 526
+    },
+    "results/adaptive_budgeted_v2/cases.jsonl.gz": {
+      "worlds": 56,
+      "trajectories": 168,
+      "retractions": 0,
+      "centered_mistakes": 0
+    }
+  }
+}

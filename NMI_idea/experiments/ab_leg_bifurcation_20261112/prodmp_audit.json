@@ -1,0 +1,67 @@
+{
+  "audit": "independent learned 2-D ProDMP arrays and endpoint contract",
+  "basis_source_declared": "reference",
+  "endpoint_constraint_max_abs": {
+    "advance": 1.1102230246251565e-16,
+    "sweep_left": 1.6673861488930978e-16,
+    "sweep_right": 1.28140642603188e-16
+  },
+  "endpoint_only_position_rmse_normalized": {
+    "advance": 0.24429233351274257,
+    "sweep_left": 0.27890995416352987,
+    "sweep_right": 0.28669859281943366
+  },
+  "heldout_position_rmse_normalized": {
+    "advance": 0.015242616797267792,
+    "sweep_left": 0.040316801542784754,
+    "sweep_right": 0.042277415180012504
+  },
+  "learned_beats_endpoint_only_all_skills": true,
+  "seed": 20261112,
+  "skills": [
+    "advance",
+    "sweep_left",
+    "sweep_right"
+  ],
+  "stored_analytic_derivative_max_abs": {
+    "advance": 1.4037105214818142e-05,
+    "sweep_left": 1.9835867221529996e-05,
+    "sweep_right": 2.2477119502345433e-05
+  },
+  "stored_retimed_position_max_abs_mm": 0.0,
+  "stored_retimed_velocity_ratio_max_abs_error": 0.0,
+  "sweep_center_mean_signed_chart": {
+    "advance": 0.06918117004404878,
+    "sweep_left": 0.22785900509334878,
+    "sweep_right": -0.25484098456766097
+  },
+  "test_count_per_skill": 8,
+  "train_count_per_skill": 12,
+  "train_test_parameter_hashes": {
+    "advance": {
+      "disjoint": true,
+      "test": "f834bead27f51e660ee3c73c6efc88f4ca37737acec71d232ab066444ab34f71",
+      "train": "6c38ff4a9d7639b61ece8ed76943ccd40bb6d225e70f6984f40fc8b1038507fa"
+    },
+    "sweep_left": {
+      "disjoint": true,
+      "test": "83d1273e9981588349c1a0350c72080c722861ba8c83767de1e4ef2b0dfefe0d",
+      "train": "a9aa6b03376638de9465926abc7338864e1725fd1d8e73616990144e5b6fadb1"
+    },
+    "sweep_right": {
+      "disjoint": true,
+      "test": "55a98dcbce6e9fdac6244658b8e1e889063529e84fe27d2450fe1813f975368f",
+      "train": "901b8086c971cead884fb562efad722beb07515c0f7f9a6d30f628be1807117c"
+    }
+  },
+  "weight_covariance_validation_max_abs": {
+    "advance": 0.0,
+    "sweep_left": 0.0,
+    "sweep_right": 0.0
+  },
+  "weight_mean_validation_max_abs": {
+    "advance": 0.0,
+    "sweep_left": 0.0,
+    "sweep_right": 0.0
+  }
+}

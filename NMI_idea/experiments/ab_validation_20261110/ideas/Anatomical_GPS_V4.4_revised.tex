@@ -1,0 +1,979 @@
+% !TeX program = xelatex
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\IfFontExistsTF{Noto Serif CJK SC}{
+  \setmainfont{Noto Serif CJK SC}[AutoFakeSlant=.15]
+  \setsansfont{Noto Serif CJK SC}
+}{\IfFontExistsTF{FandolSong-Regular.otf}{
+  \setmainfont{FandolSong-Regular.otf}[BoldFont=FandolSong-Bold.otf,AutoFakeSlant=.15]
+  \setsansfont{FandolSong-Regular.otf}[BoldFont=FandolSong-Bold.otf]
+}{
+  \setmainfont{NotoSerifCJKsc-Regular.otf}[Path=fonts/,BoldFont=NotoSerifCJKsc-Bold.otf,AutoFakeSlant=.15]
+  \setsansfont{NotoSerifCJKsc-Regular.otf}[Path=fonts/,BoldFont=NotoSerifCJKsc-Bold.otf]
+}}
+\setmonofont{Latin Modern Mono}
+\XeTeXlinebreaklocale "zh"
+\XeTeXlinebreakskip=0pt plus 1pt
+\usepackage[margin=23mm,headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm,mathtools}
+\usepackage{booktabs,tabularx,longtable,array}
+\usepackage{xcolor,hyperref,xurl,fancyhdr,enumitem}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=blue!45!black,urlcolor=blue!45!black}
+\setlength{\emergencystretch}{4em}
+\setlength{\parskip}{0.3em}
+\linespread{1.05}
+\setlist{nosep,leftmargin=2em}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small Anatomical GPS V4.4：核心整合增补}
+\fancyhead[R]{\small 理论审读与证明稿}
+\fancyfoot[C]{\thepage}
+\numberwithin{equation}{section}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{假设}
+\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+\renewcommand{\abstractname}{摘要}
+\renewcommand{\refname}{参考文献}
+\renewcommand{\contentsname}{目录}
+\newcommand{\R}{\mathbb R}
+\newcommand{\B}{\mathbb B}
+\newcommand{\U}{\mathcal U}
+\newcommand{\V}{\mathcal V}
+\newcommand{\A}{\mathcal A}
+\newcommand{\C}{\mathcal C}
+\newcommand{\Id}{\mathrm I}
+\DeclareMathOperator{\conv}{conv}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\TV}{TV}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\begin{document}
+\title{Anatomical GPS V4.4 核心整合增补\\[2mm]
+\large 同一材料目标、数据条件共同输入能力\\与物理实现选择的最少探查资源}
+\author{多方向交叉审读与数学推导工作稿}
+\date{2026年10月10日}
+\maketitle
+\begin{abstract}
+本稿回应一个具体问题：如何使调和材料坐标与可微逆可达性进入V4.4的核心证明，
+而不只出现在校准谱理论的附录。建议将共同未知对象明确为材料目标的局部几何参数，
+由经过验证的材料逆映射将不同物理实现的观测写入同一数据一致集合；
+将dIRD的能力查询改为后验全部模型共享同一个实际输入的任务能力，
+再研究数据后物理实现选择所允许的最大不确定集合与最少探查资源。
+本文给出共同输入的精确堆叠集合判据、支持函数对偶、几何与代理误差传播，
+并扩展V4.4的一维全历史资源定理。
+一个来自真实切片交点几何的可重配置滑台例子证明：
+所有任务Jacobian均满秩，固定实现即使参数全知、允许任意变速仍可能因有限行程无法完成；
+有噪声中心观测后的实现选择可以同时满足纠偏、行程和正推进要求。
+对明确的有界位置噪声观测合同，证明最少探查跨度，并给出固定时限、
+有限速度和加速度下不超过$\pi^2/8$倍最优二次运动代价的往返方案。
+低频SMPL-X与延迟仅进入几何误差预算。本文是可并入V4.4的增补证明稿，
+不代表完整论文、真实人体模型或现有代码已经获得全部定理的保证。
+\end{abstract}
+\tableofcontents
+\newpage
+
+\section{本次基线、主线与审读结论}
+\subsection{实际读取的版本}
+本次仓库读取固定在\href{https://github.com/NingMeng0903/RealUS_playground/tree/b84b13e99e79650b6ea949c3768075f06763c133}{RealUS\_playground}提交\\
+\texttt{b84b13e99e79650b6ea949c3768075f06763c133}。
+该版本\path{NMI_idea/ideas}中实际列出V3.1、V3.2、V4.1；
+V4.4依据本会话此前完成的\path{Anatomical_GPS_V4.4.tex}。
+另外读到的新稿为
+\path{NMI_idea/LaTeX/Anatomical_Geometry_Online_Belief_Overleaf/main.tex}。
+它已经把三个独立体积标量的方案改为一个调和势与两个沿流运输的标签，
+并区分材料坐标、内部目标、声学视角与在线观测。
+
+dIRD依据\path{ird_playground/README.md}、
+\path{ird_playground/ird_playground/neural/capacity_head.py}、
+\path{ird_playground/ird_playground/region/trajectory_operator.py}等接口审读。
+当前README称其为signed reachability-margin proxy，不是距离场或碰撞证书；
+capacity head已经采用Jacobian列生成元与速度zonotope支持函数。
+代码未完成不作为本稿的理论扣分理由，代码也不构成尚未验收假设的证明。
+
+\subsection{建议保留的核心问题}
+建议研究问题写成：
+\begin{quote}
+在同一个可追踪的材料目标上，机器人需要取得多少观测信息，
+才能选择一种实际可达、具有完整反馈能力且能完成任务的物理实现？
+\end{quote}
+核心证明链为
+\[
+\boxed{\text{共同材料目标与数据}}
+\ \longrightarrow\
+\boxed{\text{共同输入能力}}
+\ \longrightarrow\
+\boxed{\text{数据后实现选择与资源界}}.
+\]
+原$D_Q$、谱阈值和最少方向数保留为明确理想模型下的闭式结果。
+一般有输入约束的能力不能只由$D_Q$决定。
+本稿不要求“所有正确算法都只能用这一种坐标名称”；
+要求的是本文的材料映射、共同参数和能力算子有不可省略的数学职责。
+
+\section{材料图册怎样成为共同数据空间}
+\subsection{采用实际新几何稿的正则流图}
+在有解剖边界意义的局部参考域上，给定Dirichlet/Neumann边界问题，
+求一个深度势$d$，并定义
+\begin{equation}
+ \Delta d=0,\qquad
+ V=\frac{\nabla d}{\|\nabla d\|^2},\qquad
+ \partial_\zeta\Psi(u,\zeta)=V(\Psi(u,\zeta)),\quad
+ \Psi(u,0)=X(u).
+ \label{eq:flow}
+\end{equation}
+$X$是二维种子面的嵌入；$u=(u^1,u^2)$是沿同一条流保持的标签。
+假设在共同扩展域上$d\in C^3$、$\|\nabla d\|\ge m>0$，
+流存在且不越出已验证边界，$X\in C^2$并位于$d=0$面。
+
+\begin{proposition}[材料地址的条件性定义]
+上述条件下，$\Psi$是其有效参数域到其像的微分同胚。
+若$\varphi^r$是$V$的流，则
+\[
+ \chi(p)=\left(X^{-1}(\varphi^{-d(p)}(p)),\,d(p)\right)
+\]
+是其逆。对其有效域到像为$C^1$微分同胚的当前材料映射$\Phi_t$，
+\[
+ P_t=\Phi_t\circ\Psi,\qquad
+ \chi_t=\chi\circ\Phi_t^{-1},\qquad
+ \chi_t(P_t(\xi))=\xi.
+\]
+\end{proposition}
+\begin{proof}
+沿流有$\frac{d}{d\zeta}d(\Psi)=1$，故$d(\Psi)=\zeta$。
+若两个参数点映到同一点，势值先给出相同$\zeta$；
+反向流唯一性和$X$单射再给出相同$u$。
+$D_u\Psi$的两个列向量与$\nabla d$正交，
+而$\nabla d^\top V=1$，故完整Jacobian满秩，逆由上述反向流给出。
+当前材料映射的结论由复合直接得到。
+\end{proof}
+
+这保证同一个材料对象有一致地址，不保证当前欧氏距离、角度或内部器官位置精确。
+三个独立调和函数一般不保证三维单射。
+积分曲线构造与条件性可逆性已有明确先例\cite{huynh2015}；
+本稿使用它们作基础，不声称是新的微分几何定理。
+
+\subsection{共同未知对象与物理实现分开}
+在一个有效图内定义目标族
+\begin{equation}
+ \Gamma_\theta(s)=\Psi\big(\xi_0(s)+B(s)\theta\big),\qquad
+ p_\theta(s,t)=\Phi_t(\Gamma_\theta(s)).
+ \label{eq:latent}
+\end{equation}
+$\theta$是同一个局部材料目标的形状或配准参数，
+$s$和离散分支身份标识任务位置。
+物理实现$a$包括接触点、声束、机器人构型、冗余角与已选IK分支；
+改变$a$不允许改变$\Gamma_\theta$来迁就可达性。
+
+用标定后的超声特征、采集时刻位姿与材料几何，形成数据一致集合
+\begin{equation}
+ \C(D)=
+ \{\theta\in\Theta_0:\ 
+   \exists s_i\in S_i,\ 
+   p_i^{\rm US}\in\Phi_{t_i}\Gamma_\theta(s_i)+\mathcal E_i,\quad\forall i\}.
+ \label{eq:data}
+\end{equation}
+实际构造还应包含切片交点、目标关联与共享配准变量。
+同一帧只算一次证据；采集时间不能换成结果到达时间。
+多个交点或多个分支时保留假设集合，不得凭最近点选择宣称全局正确。
+
+\begin{remark}[共享参数的范围]
+材料坐标可以保证多个实现中的$\theta$指向同一个材料对象，
+但不会自动保证不同接触点的组织刚度、压缩、滑移或任意执行器增益相同。
+这些量若进入参数，必须独立给出共享模型或转移误差。
+一般$\Gamma_\theta$及真实声学交点对$\theta$非仿射；
+后文有限顶点的精确结论只适用于仿射子类，或带统一余项界的局部近似。
+\end{remark}
+
+\subsection{材料导数与机器人能力必须组成同一个响应矩阵}
+在一条已验证的机器人分支和材料图内，令探头接触参考点和姿态为$(p(q),R(q))$。
+$p(q)$位于有效图域内，TCP/法兰到该点的物理偏置已经纳入运动学，
+并将同一任务输出写成
+\[
+ y=\bar h_a\bigl(\chi_t(p(q)),R(q),t;\theta\bigr).
+\]
+$\bar h_a$包括经过验证的切片交点及真实相位规则；
+交点不唯一或不横截时，不能假设它自动可微。
+若实际输入$u$产生的线速度、角速度分别为$J_{p,a}u,J_{\omega,a}u$，
+且$D_R\bar h_a$按同一角速度约定解释为旋转切空间微分，则链式法则给出
+\begin{align}
+ J_a(\theta)
+ &=D_\xi\bar h_a\,D\chi_t(p)J_{p,a}
+   +D_R\bar h_a\,J_{\omega,a},\label{eq:coupled-jacobian}\\
+ d_a(\theta)
+ &=D_\xi\bar h_a\,\partial_t\chi_t(p)
+   +\partial_t\bar h_a.\label{eq:coupled-drift}
+\end{align}
+所有导数在同一当前状态、同一参数假设和同一实现处求值；
+若实现$a$在窗口内连续改变，其已知或受约束的运动项也必须加入输入或漂移。
+机械关节、基座或接触有其他状态时，可将其增广进同一链式法则。
+
+式\eqref{eq:coupled-jacobian}是两项技术进入同一主定理的具体位置：
+图册提供任务与材料相位的微分，dIRD的分支条件能力模型提供真实运动列生成元。
+从位姿可达分数无法恢复这个乘积。
+现有capacity head的TCP线速度列可服务固定姿态子类；
+完整姿态与接触任务还必须提供相应的角速度和接触输入模型。
+
+若仅换材料标签$\eta=f(\xi)$，同时令
+$\widetilde\chi_t=f\circ\chi_t$、
+$\widetilde h_a(\eta,\cdot)=\bar h_a(f^{-1}(\eta),\cdot)$，则
+\[
+ D_\eta\widetilde h_a\,D\widetilde\chi_t
+ =D_\xi\bar h_a\,D\chi_t.
+\]
+因此在相同物理输出及误差度量下，精确任务Jacobian和可执行性保持不变。
+这解释了为何材料映射的职责不可省略，同时又不能声称一个具体坐标名称
+对所有正确算法具有唯一性。调和构造的可比较优势应落在有效域、误差与计算条件上。
+
+\section{dIRD的核心对象：后验下的共同输入能力}
+\subsection{先固定知识与动作的次序}
+在当前局部执行窗口定义
+\begin{equation}
+ \dot y=J_a(\theta)u+d_a(\theta),\qquad u\in\U_a.
+ \label{eq:response}
+\end{equation}
+$y$包含实际任务输出，必要时增广真实材料相位与姿态误差。
+$\U_a$是已知的真实非空紧凸输入集合；
+相位等式、接触约束及执行速度限制应在这里出现。
+不同输出单位须先用预定物理尺度统一，权重不随实现$a$改变。
+以下范数均使用这一固定任务度量。
+令$\V$是非空紧凸反馈需求集合，$\tau\ge0$是相同度量下的绝对响应误差。
+
+正确的决策次序为
+\begin{equation}
+ \forall D\quad
+ \exists a(D)\quad
+ \forall v\in\V\quad
+ \exists u(D,v)\in\U_a\quad
+ \forall\theta\in\C(D).
+ \label{eq:quantifier}
+\end{equation}
+$a$在未来整个反馈集合之前选择；$u$可随已知$v$变化，
+不能依赖尚未辨明的真实$\theta$。
+
+逐模型包含
+$\V\subseteq\bigcap_\theta(J_a(\theta)\U_a+d_a(\theta))$
+只表达每个模型各自存在输入，并不等价于式\eqref{eq:quantifier}。
+例如$J(\theta)=\theta\in[1,2]$、$\U=[-1,1]$，
+每个模型的容量均包含$[-1,1]$，但对$v=1$，
+\[
+ \min_{|u|\le1}\max\{|u-1|,|2u-1|\}=\frac13.
+\]
+最优共同输入为$2/3$，所以传统的逐模型容量交集仍可能误判。
+
+\subsection{共同输入的堆叠集合与精确对偶}
+设$I=\conv\{\theta_1,\ldots,\theta_r\}$，
+$J_a,d_a$关于$\theta$仿射。写$J_s=J_a(\theta_s)$、$d_s=d_a(\theta_s)$。
+定义
+\begin{align}
+ \mathcal Z_I(a)&=
+ \{(J_1u+d_1,\ldots,J_ru+d_r):u\in\U_a\},\\
+ \Delta(v)&=(v,\ldots,v),\\
+ r^\star(a,I)&=
+ \max_{v\in\V}\min_{u\in\U_a}\max_s\|J_su+d_s-v\|_2.
+ \label{eq:risk}
+\end{align}
+所有块共享同一个实际输入。
+
+\begin{theorem}[共同输入能力的精确表示]
+以下两项等价：
+\[
+ \forall v\in\V\ \exists u\in\U_a\
+ \forall\theta\in I:\ \|J_a(\theta)u+d_a(\theta)-v\|_2\le\tau,
+\]
+\begin{equation}
+ \boxed{\Delta(\V)\subseteq\mathcal Z_I(a)+(\tau\B_2)^r.}
+ \label{eq:stack}
+\end{equation}
+并且
+\begin{equation}
+ \boxed{
+ r^\star(a,I)=
+ \max_{\sum_s\|n_s\|_2\le1}
+ \left[
+ h_{\V}\!\left(\sum_s n_s\right)
+ -\sum_s n_s^\top d_s
+ -h_{\U_a}\!\left(\sum_sJ_s^\top n_s\right)
+ \right].}
+ \label{eq:dual}
+\end{equation}
+$h_K$表示集合$K$的支持函数。
+\end{theorem}
+\begin{proof}
+固定$u,v$，关于$\theta$的误差范数为凸函数，故其最大值由参数多面体顶点达到。
+每个顶点都以同一个$u$接近同一个$v$，等价于式\eqref{eq:stack}。
+乘积最大块范数的对偶单位球为$\sum_s\|n_s\|_2\le1$，因此
+\[
+ \max_s\|v-J_su-d_s\|_2
+ =\max_{\sum_s\|n_s\|\le1}\sum_s n_s^\top(v-J_su-d_s).
+\]
+对固定$v$，两个可行集紧凸，表达式双线性，可交换$\min_u$与$\max_n$。
+对$u$取最小值给出负的输入支持函数，再对$v$取最大值给出任务支持函数，
+得到式\eqref{eq:dual}。
+\end{proof}
+
+对箱输入$|u_j|\le\bar u_j$，关键项是
+\begin{equation}
+ h_{\U_a}\!\left(\sum_sJ_s^\top n_s\right)
+ =\sum_j\bar u_j\left|\sum_s n_s^\top J_{s,j}\right|.
+ \label{eq:generator}
+\end{equation}
+必须先跨后验情景求和，再取绝对值。
+将它改成$\sum_{s,j}\bar u_j|n_s^\top J_{s,j}|$会重新允许各情景各选输入。
+
+这个表达式与仓库capacity head的Jacobian列生成元直接相连，
+但不是把现有pose score宣称成证书。
+可微能力裕度和机器人多面体能力已经有先例\cite{sagar2023,murooka2025,forte2026}；
+本稿新增定位应放在后验共同输入结构及其与材料数据、探查资源的连接。
+
+\subsection{可执行见证、分支与光滑近似}
+若$\V=\conv\{v_1,\ldots,v_K\}$，每个任务顶点求得一个通过全部后验顶点的输入$u_k$。
+对$v=\sum_k\lambda_kv_k$，取$u=\sum_k\lambda_ku_k$即可覆盖全部需求。
+这提供可验收的动作族，不只提供一个分数。
+
+同一个机器人pose可能有多个IK分支及不同Jacobian。
+任何不接收分支的单值预测器，对同一pose的两个真值$G_1,G_2$均满足
+\[
+ \max\{\|\widehat G-G_1\|,\|\widehat G-G_2\|\}\ge\tfrac12\|G_1-G_2\|.
+\]
+因此需分支/冗余参数条件化，或明确一条已验证的连续分支选择。
+逐方向$\max_bh_{\mathcal Z_b}$描述的是$\conv(\cup_b\mathcal Z_b)$，
+不能当成一个实际构型的能力。整段任务也不能逐点免费换分支。
+
+在固定分支上，若响应系数局部Lipschitz、输入集合以Hausdorff距离局部Lipschitz变化，
+则能力值也局部Lipschitz；跨分支或可行域跳变处不作此保证。
+即使在该正则域内，活动顶点和输入面切换也可能使精确$r^\star$不可微。
+可在固定分支和正则条件下求局部导数，或用有误差界的平滑近似。
+例如$\sqrt{x^2+\epsilon^2}$比$|x|$最多大$\epsilon$；
+若用于容量上估计，必须扣回相应误差才能作为保守接受条件。
+梯度法找到的候选提供可行上界，不能据此宣布完整非凸实现空间全局最优。
+
+\section{把数据后物理实现纳入V4.4的精确资源定理}
+\subsection{从能力值定义可容后验}
+设$\A$是同一材料任务的实现集合，
+每个元素已包含从共同校准终态出发的可行转场条件及局部有效域。
+为使下述极小值可达到，要求实现与输入的联合可行集紧，
+响应连续，且相关图为闭集；离散分支可作为有限并处理。
+定义
+\begin{equation}
+ \mathsf F_\tau(I)
+ \iff
+ \exists a\in\A\quad r^\star(a,I)\le\tau.
+ \label{eq:F}
+\end{equation}
+这里$a$不能在任务顶点之间变化。
+若只验证了有限候选库，式\eqref{eq:F}及最优性都相对于该库；
+不能将库内失败称为整个物理任务不可行。
+
+\subsection{一维完整观测合同的精确扩展}
+设$\theta_-<\theta_+$、$\epsilon_{\rm obs}>0$、$\eta\ge0$，
+$\theta\in[\theta_-,\theta_+]$，全部参数相关观测满足
+\begin{equation}
+ z_i=\theta p_i+w_i,\qquad
+ P^2=\sum_i p_i^2\le E,\qquad
+ \|w\|_2\le\epsilon_{\rm obs}+\eta P.
+ \label{eq:oracle}
+\end{equation}
+观测策略与停时可以是确定性因果规则，须在每个合法历史有限停止。
+还要求预算$E$的一个预定探查可实际达到，并已计入保持输入与运动约束；
+若存在额外参数观测，式\eqref{eq:oracle}不能继续当完整信息合同。
+转场的资源须单独声明；这里优化的是校准端口二次代价。
+
+\begin{theorem}[实现可重选的一维全历史资源前沿]
+对$E>0$令
+\[
+ d_E=\min\{\theta_+-\theta_-,\
+             2(\epsilon_{\rm obs}/\sqrt E+\eta)\}.
+\]
+存在满足全部合法历史、全部任务需求的策略，当且仅当
+\begin{equation}
+ \boxed{\forall L\in[\theta_-,\theta_+-d_E],\
+              \mathsf F_\tau([L,L+d_E]).}
+ \label{eq:frontier}
+\end{equation}
+$E=0$时使用整个先验。
+\end{theorem}
+\begin{proof}
+充分性：用$p=\sqrt E$的已实现探查。数据给出一个半径
+$\epsilon_{\rm obs}/\sqrt E+\eta$的区间，与先验相交后长度不超过$d_E$。
+将它嵌入先验内某个长度$d_E$的区间，按式\eqref{eq:frontier}选择一个共同实现，
+并为各需求选择对应的共同可行输入。
+当$\V$为有限多面体时，可用上一节的顶点输入插值构造。
+在一般紧凸情形，有限维紧性和闭图条件支持可测选择。
+
+必要性：若某个$I=[L,L+d_E]$失败，沿中心参数$\theta_c=L+d_E/2$
+的零噪声历史运行任意声称有效的因果策略。其终止输入满足$P\le\sqrt E$。
+在端点$\theta_\pm=L,L+d_E$上分别选择
+$w_i^\pm=\mp(d_E/2)p_i$，
+每个前缀都满足噪声合同，并产生完全相同的历史。
+策略必须选择同一个$a$，对每个已知$v$选择同一个$u$。
+因为$I$在式\eqref{eq:F}下失败，这个已选$a$至少有一个需求没有共同可行输入，
+故两端至少一个世界违约。物理实现可重选不破坏这条不可区分性论证。
+\end{proof}
+
+当全部已知单点模型可以执行时，定义
+\[
+ d_{\rm adm}=
+ \max\{d\in[0,\theta_+-\theta_-]:\forall L\in[\theta_-,\theta_+-d],\
+                 \mathsf F_\tau([L,L+d])\}.
+\]
+紧性与闭性保证最大值存在；可行宽度集合向下闭合。于是
+\begin{equation}
+ E_*=
+ \begin{cases}
+ 0,&d_{\rm adm}=\theta_+-\theta_-,\\
+ \epsilon_{\rm obs}^2/(d_{\rm adm}/2-\eta)^2,
+     &d_{\rm adm}<\theta_+-\theta_-,\ d_{\rm adm}>2\eta,\\
+ +\infty,&\text{其他有限预算不可达情形}.
+ \end{cases}
+ \label{eq:E}
+\end{equation}
+式\eqref{eq:E}还要求所涉及预算都满足式\eqref{eq:oracle}的可达到合同；
+若实际探查存在额外幅值、时限或有效域上限，需与这些可行预算取交集。
+$\epsilon_{\rm obs}=0$的退化情形不使用式\eqref{eq:E}，应直接检验式\eqref{eq:frontier}。
+这是V4.4原有标量定理的实现族扩展，不应独立声称“数据后再决策”首次出现。
+付费信息与后续鲁棒决策的框架已有DDID与任务导向探索先例\cite{vayanos2020,wagenmaker2021,bombois2006}。
+本稿的价值须由共同材料参数的来源、真实能力集合及下面的物理资源结果共同支撑。
+
+\section{图册与dIRD误差怎样进入资源结论}
+\subsection{调和流误差的一个显式界}
+若真势与近似势满足共同梯度下界$m$、
+$\|\nabla d-\nabla\widehat d\|\le\epsilon_g$，
+则欧氏反演恒等式给出
+\[
+ \|V-\widehat V\|\le\epsilon_g/m^2.
+\]
+在共同流域、$\zeta\ge0$、场的Lipschitz界$L$和种子误差$\epsilon_X$下，
+\begin{equation}
+ \|\Psi-\widehat\Psi\|
+ \le e^{L\zeta}\epsilon_X+
+ \frac{\epsilon_g}{m^2}\frac{e^{L\zeta}-1}{L},
+ \label{eq:flowerror}
+\end{equation}
+$L=0$时取连续极限。
+Jacobian误差可沿同一变分方程积分，
+再与$P_t=\Phi_t\circ\Psi$的当前形变误差合成。
+若$\|DP_t-D\widehat P_t\|\le\epsilon_P$且
+$\sigma_{\min}(D\widehat P_t)\ge\widehat m>\epsilon_P$，则
+\begin{equation}
+ \|(DP_t)^{-1}-(D\widehat P_t)^{-1}\|
+ \le\frac{\epsilon_P}{\widehat m(\widehat m-\epsilon_P)}.
+ \label{eq:inverseerror}
+\end{equation}
+有限位置逆误差还需要已验证的共同局部逆Lipschitz域，
+不能仅以任意非凸全局域上处处满秩替代。
+
+\subsection{共同输入能力的统一误差与成本夹逼}
+设同一$a,I$的近似模型满足
+$\|J_{s,j}-\widehat J_{s,j}\|\le e_{s,j}$、
+$\|d_s-\widehat d_s\|\le e_{d,s}$，
+任务集合Hausdorff误差不超过$e_\V$。
+对箱输入定义
+\[
+ \epsilon_{\rm cap}=
+ e_\V+\max_s\left(e_{d,s}+\sum_j\bar u_j e_{s,j}\right).
+\]
+\begin{proposition}[能力误差的直接预算]
+在相同输入集合、相同实现集合下，
+\begin{equation}
+ |r^\star(a,I)-\widehat r^\star(a,I)|\le\epsilon_{\rm cap}.
+ \label{eq:caperror}
+\end{equation}
+若该界对所有参与选择的$a,I$统一有效，
+且使用相同完整观测合同，则
+\begin{equation}
+ \boxed{
+ \widehat E_*(\tau+\epsilon_{\rm cap})
+ \le E_*^{\rm true}(\tau)
+ \le \widehat E_*(\tau-\epsilon_{\rm cap}).}
+ \label{eq:costsandwich}
+\end{equation}
+右侧在$\tau-\epsilon_{\rm cap}<0$时可视为无可用保证。
+\end{proposition}
+\begin{proof}
+对任意输入，响应差不超过各列误差乘输入界的和。
+三角不等式及任务集合Hausdorff界给出逐输入误差；
+依次取情景最大、输入最小、任务最大，保持同一界。
+因此近似模型在$\tau-\epsilon_{\rm cap}$下可行的策略一定在真模型$\tau$下可行，
+真模型$\tau$可行的策略一定在近似模型$\tau+\epsilon_{\rm cap}$下可行。
+对同一观测与成本合同取最小值即得式\eqref{eq:costsandwich}。
+\end{proof}
+
+这里图册、材料运输和dIRD预测质量直接改变校准资源。
+但测试集平均误差不能作为经过优化选择后仍有效的统一误差。
+若dIRD只提供可行域内近似，可保留可行上界，不能直接保留最优下界。
+输入可行域、几何状态约束或观测合同本身也变化时，必须一并传播它们的误差。
+
+具体到式\eqref{eq:coupled-jacobian}，写$J_s=A_sG_a$，
+其中$A_s$为材料/声学任务微分，$G_a$为实际机器人运动列生成元。
+若$\|A_s-\widehat A_s\|\le\epsilon_{A,s}$、
+$\|G_{a,j}-\widehat G_{a,j}\|\le\epsilon_{G,j}$、
+$\|G_{a,j}\|\le M_{G,j}$，则
+\[
+ e_{s,j}\le\epsilon_{A,s}M_{G,j}
+                 +\|\widehat A_s\|\epsilon_{G,j}.
+\]
+这把材料图册和dIRD的误差放进同一个能力与资源预算，
+而不是在算法末尾分别附上互不相干的精度数值。
+
+\section{解析任务：满秩并不等于有限行程下可完成}
+\subsection{真实切片几何与全部物理输入}
+考虑平直局部材料图，深度势$d=z/z_0$，两个表面标签沿深度流运输。
+它是正则调和图册的一个精确子类。
+目标曲线为
+\begin{equation}
+ \Gamma_{\theta,c}(s)=(c+\theta s,\ s,\ z_0),\qquad
+ |\theta|\le b,\quad |c|\le C_0.
+ \label{eq:vessel}
+\end{equation}
+探头平面为$y=p_y$，声束沿深度方向，
+所以切片的真实材料相位是$s=p_y$，图像横误差为
+\[
+ e=c+\theta p_y-p_x .
+\]
+$b=0.3$时成像平面与理想横截面的夹角不超过$\arctan 0.3$，
+故此例是允许约$17^\circ$斜切的横向居中扫描，不是完全精确短轴成像。
+
+一个横向纠偏滑台位置$x_c$满足$|x_c|\le S$，速度输入$|u|\le U$。
+另一个推进方向可在探查后重配置为$a=\tan\beta\in[-b,b]$，
+且实际沿轨速度受限于$P$。定义
+\begin{equation}
+ p_x=x_c+a s,\quad
+ \dot p_x=u+a v,\quad
+ \dot p_y=v,\quad
+ |v|\sqrt{1+a^2}\le P.
+ \label{eq:stage}
+\end{equation}
+固定$a$时，
+\begin{equation}
+ \dot e=-u+(\theta-a)v,\qquad
+ \dot s=v,\qquad
+ J_\theta(a)=
+ \begin{bmatrix}-1&\theta-a\\0&1\end{bmatrix},
+ \quad \det J_\theta(a)=-1.
+ \label{eq:shear}
+\end{equation}
+这里所有真实输入都可由控制器选择。
+规定的是实际任务相位$v=\nu>0$，不是暗中固定某个内部“推进端口”。
+
+这是可重配置滑台的解析机械族；不能据此声称RealUS现有固定rail本身可以转向。
+真实机器人中的对应实现需要dIRD、IK与整段行程验证，
+或通过合适的基座、冗余构型与接触实现获得。
+
+\subsection{精确后验能力}
+\begin{theorem}[数据后能力与全知固定实现的严格差距]
+设$I=[\mu-r,\mu+r]\subseteq[-b,b]$，需求为$|w|\le R$和$v=\nu$。
+若$P\ge\nu\sqrt{1+b^2}$，则固定$a$的精确最坏响应误差为
+\begin{equation}
+ \mathcal R_a(I)
+ =\nu r+\bigl(\nu|\mu-a|+R-U\bigr)_+.
+ \label{eq:closedrisk}
+\end{equation}
+当$U\ge R$时，选择$a=\mu,u=-w$达到
+\[
+ \inf_a\mathcal R_a(I)=\nu r.
+\]
+而预选固定$a$、之后完全知道$\theta$的最强分配规则仍有
+\begin{equation}
+ \inf_a\sup_{\theta\in[-b,b]}
+ \mathcal R_a(\{\theta\})=(\nu b+R-U)_+.
+ \label{eq:fixedrisk}
+\end{equation}
+\end{theorem}
+\begin{proof}
+固定$w$，两个后验端点给出
+\[
+ \sup_{\theta\in I}|-u+\nu(\theta-a)-w|
+ =|u-(\nu(\mu-a)-w)|+\nu r.
+\]
+对$u\in[-U,U]$取最小值，再对$w\in[-R,R]$取最大值，
+得到式\eqref{eq:closedrisk}。
+$a=\mu$与$u=-w$达到$\nu r$；任何共同输入的两端响应相差$2\nu r$，
+故不可能更小。固定$a$时取单点后验并最大化$\theta$；
+$\min_a\max_{|\theta|\le b}|\theta-a|=b$，得到式\eqref{eq:fixedrisk}。
+\end{proof}
+
+\subsection{有限行程使固定实现真的不能完成}
+\begin{proposition}[允许任意控制与时间安排的完成障碍]
+对于任意固定$a$，任何从$s=0$完成到$s=L$、
+起止都满足$|e|\le E_{\rm tube}$且全程$|x_c|\le S$的运动，
+必要满足
+\begin{equation}
+ |\theta-a|L\le2S+2E_{\rm tube}.
+ \label{eq:strokenec}
+\end{equation}
+因此若
+\begin{equation}
+ bL>2S+2E_{\rm tube},
+ \label{eq:fixedfail}
+\end{equation}
+则每一种预选固定实现，都存在一个患者参数使该有限任务无法完成。
+该结论允许参数全知、任意控制分配、变速、停顿、返扫和任意执行时间。
+\end{proposition}
+\begin{proof}
+精确几何恒等式为$e=c+(\theta-a)s-x_c$。
+将起止相减得到
+$(\theta-a)L=x_c(T)-x_c(0)+e(T)-e(0)$，取绝对值得必要条件。
+再用$\max_{|\theta|\le b}|\theta-a|\ge b$即可。
+\end{proof}
+数据后$a=\mu$、$|\theta-\mu|\le r$时，全程有充分界
+\begin{equation}
+ |x_c|\le C_0+rL+E_{\rm tube}.
+ \label{eq:strokesuff}
+\end{equation}
+这条分离不是首次误差合同的重新命名；它直接限制有限任务能否完成。
+一个同样允许学习后重配置的经典规划器可能获得相同收益，
+故它证明的是该决策原则的必要性，而非某个软件名称的唯一性。
+
+\section{普通B-mode中心观测的最少探查跨度}
+\subsection{明确观测合同}
+在探查阶段使用$a=0$、$x_c=0$，位置观测为
+\begin{equation}
+ y_i=e_i+p_{x,i}=c+\theta s_i+n_i,\qquad |n_i|\le\sigma.
+ \label{eq:pixel}
+\end{equation}
+相位$s_i$是已知的真实切片相位，初始$s=0$纳入访问集合，
+截距先验满足$C_0\ge\sigma$。
+该合同的全部参数信息来自中心观测和已知位姿，
+不包括额外的切向、截面形状、Doppler或其他可识别$\theta$的观测。
+
+设整个探查轨迹的真实访问跨度为
+\[
+ B=\max_{t\in[0,T]}s(t)-\min_{t\in[0,T]}s(t).
+\]
+该定义包含未采样的运动和初始相位；达到方案在访问区间的两端采样。
+两个端点差分给出斜率区间半径不超过$2\sigma/B$。
+
+\begin{theorem}[最少真实相位跨度]
+令执行余项预算为$\rho$，总响应容差为$\tau$，并写$q=\tau-\rho$。
+在$0<q<\nu b$、$U\ge R$、$P\ge\nu\sqrt{1+b^2}$下，
+保证所有合法观测历史上均可数据后选实现、达到首次响应误差$q$的最少探查跨度为
+\begin{equation}
+ \boxed{B_*=\frac{2\sigma\nu}{q}.}
+ \label{eq:Bstar}
+\end{equation}
+若$q\ge\nu b$则此能力合同无需探查；
+$q=0,\sigma>0$时不存在有限跨度保证。
+关于$\rho$的结论是保留余量后的保证；只有误差模型允许相应最坏对手时，
+才能把总误差容差的同一预算也称为精确最优。
+若$\rho$来自执行速度误差，完整物理验收还要求命令留出相应输入余量，
+例如$R+\rho\le U$。达到方案同时要求访问区间和重配置满足前述机械与声窗合同。
+\end{theorem}
+\begin{proof}
+充分性：在跨度$B$的两端观测，差分误差不超过$2\sigma$；
+与先验相交后半径$r\le2\sigma/B$。用$a=\mu,u=-w$，
+最坏响应误差不超过$\nu r$。
+
+必要性：对任意声称以跨度上限$B_{\rm cap}<2\sigma\nu/q$成功的确定性因果策略，
+在合法中心世界$(c,\theta)=(0,0)$上给出零噪声历史，直到有限停止。
+选择
+$q/\nu<r<\min\{b,2\sigma/B_{\rm cap}\}$，
+令$m$为该实际访问区间的中点，构造
+\[
+ \theta_\pm=\pm r,\qquad c_\pm=\mp rm,\qquad
+ n_i^\pm=\mp r(s_i-m).
+\]
+两种固定参数世界产生完全相同的全部记录。
+噪声满足$|n_i^\pm|\le rB_{\rm cap}/2<\sigma$；
+因$0$在访问跨度中，$|m|\le B_{\rm cap}/2$，故$|c_\pm|<\sigma\le C_0$。
+因果探查、停时与事后实现在两世界相同，
+而任何共同动作在斜率两端至少有$\nu r>q$的响应误差，矛盾。
+\end{proof}
+
+有界对抗性误差不能通过同一点重复拍摄无限缩小。
+若使用统计独立噪声、更强图像特征或已知精确截距，
+下界必须重新推导。一般材料相位误差会形成errors-in-variables：
+\[
+ |\widehat y-c-\theta\widehat s|
+ \le\epsilon_y+b\epsilon_s .
+\]
+这样的膨胀提供保守上界，不自动提供匹配下界；
+共同刚体偏差可能被$c$吸收并在端点差分中消去。
+
+\subsection{固定时限下的往返运动与近优代价}
+\begin{proposition}[有限幅值、速度、加速度的可达到方案]
+要求在时长$T$内从$s=0$出发并返回，探查跨度至少为$B$。
+对二次相位运动代价$E_{\rm ph}=\int_0^T\dot s^2dt$，任何可行方案满足
+\[
+ E_{\rm ph}\ge\frac{4B^2}{T}.
+\]
+方案
+\begin{equation}
+ s(t)=\frac B2\left(1-\cos\frac{2\pi t}{T}\right)
+ \label{eq:probe}
+\end{equation}
+从静止出发并回到静止，满足
+\begin{align}
+ \max|\dot s|&=\pi B/T,&
+ \max|\ddot s|&=2\pi^2B/T^2,&
+ E_{\rm ph}&=\pi^2B^2/(2T).
+ \label{eq:probebounds}
+\end{align}
+若该方案通过已声明的幅值、速度、加速度和声窗约束，则相对于同一约束类的最优代价，
+\begin{equation}
+ E_{\rm ph}/E_{\rm opt}\le\pi^2/8\approx1.234.
+ \label{eq:approx}
+\end{equation}
+\end{proposition}
+\begin{proof}
+往返访问跨度$B$的总变差至少为$2B$；
+Cauchy--Schwarz不等式给出$\int\dot s^2dt\ge\TV(s)^2/T$。
+对式\eqref{eq:probe}直接微分积分得到所列数值。
+受限最优值也不小于$4B^2/T$，故比值界成立。
+\end{proof}
+这个量是速度平方积分，不直接等于焦耳；
+转场、力保持、其他关节动作的代价需另计。
+没有固定时间约束时令$T\to\infty$即可令该代价趋零，
+所以不能从有界位置噪声直接声称存在正的最少速度能量。
+
+\section{同一组参数下的完整非空实例}
+下列数值是解析机械族的设计参数，不是真机或患者测量结果。
+\begin{center}
+\begin{tabularx}{\textwidth}{lYY}
+\toprule
+参数 & 数值 & 含义\\
+\midrule
+$b$ & $0.3$ & 材料斜率与可重配置方向范围\\
+$\nu$ & $5\ {\rm mm/s}$ & 真实巡航相位速度\\
+$R,U,P$ & $0.5,\ 1,\ 5.5\ {\rm mm/s}$ & 反馈、横向输入与推进轨速度\\
+$\tau,\rho$ & $0.25,\ 0.05\ {\rm mm/s}$ & 响应容差与横向执行速度误差\\
+$\sigma,C_0$ & $0.1,\ 0.1\ {\rm mm}$ & 探查中心噪声与截距先验\\
+$\sigma_f,k$ & $0.05\ {\rm mm},\ 2\ {\rm s^{-1}}$ & 执行图像误差界与反馈增益\\
+$L,S$ & $50\ {\rm mm},\ 3\ {\rm mm}$ & 扫描长度与横向位置半行程\\
+\bottomrule
+\end{tabularx}
+\end{center}
+探查与执行的观测误差界分别声明；更小的执行界不是由滤波名称自动保证。
+
+\subsection{探查与重配置}
+保留$q=\tau-\rho=0.20\ {\rm mm/s}$，要求
+\[
+ r\le q/\nu=0.04,\qquad B_*=5\ {\rm mm}.
+\]
+取$T=3.2\,{\rm s}$：
+\[
+ \max|\dot s|=4.909<5.5\ {\rm mm/s},\quad
+ \max|\ddot s|=9.638<10\ {\rm mm/s^2},
+\]
+\[
+ E_{\rm ph}=38.553\ {\rm mm^2/s},\qquad
+ E_{\rm opt}\ge31.25\ {\rm mm^2/s}.
+\]
+探查真实横向图像摆幅不超过$C_0+bB=1.6\,{\rm mm}$；
+需明确可保持可见的视野大于该值，且模型在整个往返区间有效。
+
+探查返回后重配置$a=\mu$，转角不超过
+$\arctan(0.3)=0.2915\,{\rm rad}$。
+解析机构可让转轴通过返回点并由腕部保持成像姿态；
+例如一秒五次多项式角度桥的最大角速度不超过$0.547\,{\rm rad/s}$、
+最大角加速度不超过$1.683\,{\rm rad/s^2}$。
+实际机器人的对应桥必须由其完整运动学与接触条件验收。
+其资源不含在$E_{\rm ph}$之内。
+
+\subsection{反馈、真实相位与行程}
+以实际图像测量$\widehat e=e+n_f$，$|n_f|\le\sigma_f$，使用
+\[
+ u_{\rm cmd}=k\widehat e,\qquad a=\mu,\qquad v=\nu .
+\]
+本例把非零余项明确限定为执行阶段的横向速度误差：
+实际输入保持第6节定义，$u=\dot x_c=u_{\rm cmd}-d$、$|d|\le\rho$。
+因此精确材料几何与真实相位等式保持成立，而
+\[
+ \dot e=-ke+\nu(\theta-\mu)+d-kn_f .
+\]
+因此半径
+\[
+ E_{\rm tube}=\tau/k+\sigma_f=0.175\ {\rm mm}
+\]
+为不变误差管，只要初始误差在管内。
+初始$|c|\le0.1\,{\rm mm}$满足这一条件。
+完整反馈需求与输入同时满足
+\[
+ |u_{\rm cmd}|\le k(E_{\rm tube}+\sigma_f)=0.45
+ <R=0.5\ {\rm mm/s},\qquad
+ |u|\le0.45+0.05=0.50<U=1\ {\rm mm/s}.
+\]
+这里$x_c$是实际位置，所以行程界不需要额外加上$\rho T$。
+若改为曲线几何余项$g(s)$，则必须同时声明其位置界并加入下面的行程预算，
+不能只给出$\dot g$的响应界。
+推进轨速度最多为
+\[
+ \nu\sqrt{1+b^2}=5.220<5.5\ {\rm mm/s}.
+\]
+横向行程满足
+\[
+ |x_c|\le C_0+rL+E_{\rm tube}
+ =0.1+2+0.175=2.275<S=3\ {\rm mm}.
+\]
+推进轨从材料相位$0$到$L$需不超过$52.202\,{\rm mm}$的轨行程；
+取不小于$53\,{\rm mm}$即可。
+巡航速度为$\dot s=5\,{\rm mm/s}$；$50\,{\rm mm}$的理想恒速耗时为$10\,{\rm s}$。
+将启停纳入同一个$[0,L]$相位区间时，可用一秒线性加速、九秒巡航和一秒减速，
+总相位位移仍为$50\,{\rm mm}$，总时长$11\,{\rm s}$。
+因坡段满足$0\le v(t)\le\nu$，以上误差管与行程界仍成立，
+无需额外增加扫描区间；巡航主段保持严格正速度。
+不能同时宣称起止静止与整个闭区间统一严格正速度。
+执行加速度若纳入合同，还须给反馈测量导数或受限滤波器的相应界；
+本例只对探查与重配置给出显式加速度结果。
+
+\subsection{固定实现的真实失败}
+固定实现的最优全知首次响应风险为
+\[
+ \nu b+R-U=1.5+0.5-1=1\ {\rm mm/s}>\tau.
+\]
+更强的是完整任务的行程障碍：
+\[
+ bL=15\ {\rm mm}>
+ 2S+2E_{\rm tube}=6.35\ {\rm mm}.
+\]
+因此不论固定实现之后获得多少参数信息、怎样分配输入或改变扫描速度，
+总有一个合法目标无法在相同行程和误差管内完成。
+数据后选择实现则通过全部上面的有限条件。
+这些不等式有严格余量，结论不只依靠某个退化等号。
+
+该分离证明的是受限物理实现选择的价值。
+它没有证明所有使用正确材料几何、相同观测和完整优化的其他规划器都会失败；
+那些规划器若执行同样的数据后重配置，可能得到相同结果。
+
+\section{低频SMPL-X与延迟：作为执行条件}
+主线不改为低频连续扫描。对采集时间$t_k^c$、结果到达时间$t_k^a$，
+当前信息龄为$t-t_k^c$。
+只有在最大采样间隔$h_{\max}$、最大延迟$\ell_{\max}$和掉帧条件均已给定时，
+才能使用
+\[
+ t-t_k^c\le h_{\max}+\ell_{\max}.
+\]
+$1.5$--$2\,{\rm Hz}$的平均更新率本身不构成这个最坏时间界。
+若材料形变误差初值$\epsilon_{\Phi,0}$、对应运动速度上界$V_\Phi$可验证，
+可将
+\[
+ \epsilon_\Phi(t)\le
+ \epsilon_{\Phi,0}+V_\Phi(t-t_k^c)
+\]
+传播到式\eqref{eq:flowerror}--\eqref{eq:caperror}。
+若建模还允许真实位移跳变，令$\mathcal J(\alpha)$约束信息龄$\alpha$内的总跳变量，
+则使用
+\[
+ \epsilon_\Phi(t)\le\epsilon_{\Phi,0}+V_\Phi\alpha+\mathcal J(\alpha),
+ \qquad\alpha=t-t_k^c.
+\]
+仅有单次跳幅界而没有窗口内次数或总变差界，并不足以得到这个最坏误差预算。
+观测到达后在相同材料目标和采集时刻语义下更新数据集合，
+再重算剩余能力余量与可执行实现。
+
+估计模型的跳变、纯坐标换图和真实人体位移跳变是不同事件。
+纯换图应一致运输目标、状态与度量；估计修正需检验物理参考接续；
+真实位移跳变不能被坐标名称消除。
+若当前证书不再通过，应停止承诺新的任务推进并重新建立有效实现，
+而不是从“2Hz”自动推出稳定或安全。
+这些是本文的执行边界，不是新的独立主贡献。
+
+\section{先例、删减与IJRR定位}
+\subsection{必须承认的最接近先例}
+\begin{longtable}{p{0.27\textwidth}p{0.30\textwidth}p{0.35\textwidth}}
+\toprule
+先例 & 已有内容 & 本稿还需要证明的实质差异\\
+\midrule
+\endhead
+Bombois等\cite{bombois2006} &
+以满足鲁棒控制要求为目标的最小辨识成本 &
+材料目标共享参数、受限实现选择与位置观测的有限资源结果\\
+Wagenmaker等\cite{wagenmaker2021} &
+任务相关探索与实例/任务下界、匹配复杂度 &
+不同物理实现改变任务能力且保持同一材料对象的具体结构\\
+Vayanos等\cite{vayanos2020} &
+付费信息发现、数据后鲁棒决策与候选实现近似 &
+真实声学观测、机器人能力与可达到探查动作的统一推导\\
+Sagar等\cite{sagar2023} &
+可微多面体能力裕度与解析梯度 &
+后验模型共享同一输入的堆叠能力及资源连接\\
+Murooka等\cite{murooka2025} &
+可微可达场与连续运动优化 &
+任务需求、未知模型与真实输入的一致保证；非单纯pose score\\
+Huynh与Gingold\cite{huynh2015} &
+积分曲线坐标与条件性双射 &
+材料观测运输、数值有效域与其对校准资源的误差影响\\
+\bottomrule
+\end{longtable}
+FORTE进一步将任务力需求与残余力多面体配合用于全身优化\cite{forte2026}，
+所以“把任务需要的能力放进可达性优化”也不宜单独称首创。
+以上对照是查到的直接近邻，不是排除了所有先例的穷尽性证明。
+
+\subsection{推荐三项核心贡献}
+\begin{enumerate}
+ \item 构造并验证共同材料对象，使不同声学/机器人实现的数据能约束同一个未知几何量；
+       给出图册、形变与声学近似误差进入任务模型的明确路径。
+ \item 定义数据条件下的共同输入能力算子，在选择实现、任务需求与未知模型之间保持正确量词；
+       提供可执行输入见证、失败对偶与近似误差预算。
+ \item 建立实现能力与最少探查资源的连接，在真实切片解析族中给出匹配跨度下界、
+       固定时间近优往返方案，以及固定实现无法完成而事后实现能够完成的严格分离。
+\end{enumerate}
+其中基础凸对偶、流映射和不可区分性技巧应明确引用为工具。
+新增主张是这些结构产生的具体任务结论，而不是技巧的重新命名。
+
+\subsection{保留、压缩与暂缓}
+保留$D_Q$精确阈值和理想方向复杂度，但将其放在一般能力理论的特殊情形中。
+压缩多个相互近似的标量和多通道预算例，
+保留最服务主定理的一个一般结果和一个物理主例。
+GP/DMP/KMP参考生成器若不改变本文资源定理，降为接口或另稿，
+不与新的材料几何后验混成同一个未知对象。
+
+“整段任务最少共同校准子空间”值得继续研究，但当前不列为已完成主贡献。
+对完整二维B-mode的直线血管，两个斜率参数不等于两个独立探查方向；
+一个相位激励可以同时读出两个输出分量。
+也不能从逐点可行自动推出同一连续IK分支的整段提升。
+会持续产生新的空间不确定性的几何过程，不能通过一次有限校准永久清除全部未来不确定性。
+
+\subsection{对评分的准确表述}
+本稿给出了可审查的定义、证明和严格物理分离，足以使4.4的修订方向更有实质。
+但“整体已经稳定达到理论、新颖性、严密性各4/5”仍不是此稿可以保证的事实。
+特别是整篇论文还需在同一符号和合同下完成：
+真实机器人实现集与可执行桥接；
+非仿射声学模型的统一余项；
+图册与dIRD误差界对优化后候选的有效性；
+及与上述近邻的逐定理差异。
+这些是理论范围与主张闭合问题，即使不评价实验完成度也存在。
+
+可以认真以IJRR强理论稿为目标推进本路线。
+不应为了达到预设分数，强称“调和必优”“dIRD不能被任何其他算法替代”
+或把抽象先例的直接推论统统列作原创定理。
+
+\begingroup\small
+\begin{thebibliography}{9}
+\bibitem{bombois2006}
+X. Bombois, G. Scorletti, M. Gevers, P. M. J. Van den Hof, R. Hildebrand.
+Least costly identification experiment for control.
+\emph{Automatica}, 42:1651--1662, 2006.
+\url{https://doi.org/10.1016/j.automatica.2006.05.016}.
+\bibitem{wagenmaker2021}
+A. Wagenmaker, M. Simchowitz, K. Jamieson.
+Task-Optimal Exploration in Linear Dynamical Systems. 2021.
+\url{https://arxiv.org/abs/2102.05214}.
+\bibitem{vayanos2020}
+P. Vayanos, A. Georghiou, H. Yu.
+Robust Optimization with Decision-Dependent Information Discovery.
+2020; revised 2022.
+\url{https://arxiv.org/abs/2004.08490}.
+\bibitem{sagar2023}
+K. Sagar, S. Caro, T. {\fontspec{Latin Modern Roman}Pad{\i}r}, P. Long.
+Polytope-Based Continuous Scalar Performance Measure With Analytical Gradient for Effective Robot Manipulation.
+\emph{IEEE Robotics and Automation Letters}, 8(11):7289--7296, 2023.
+\url{https://doi.org/10.1109/LRA.2023.3313926}.
+\bibitem{murooka2025}
+M. Murooka, I. Kumagai, M. Morisawa, F. Kanehiro.
+Learning Differentiable Reachability Maps for Optimization-based Humanoid Motion Generation.
+2025. \url{https://arxiv.org/abs/2508.11275}.
+\bibitem{huynh2015}
+L. Huynh, Y. Gingold.
+Bijective Deformations in $\R^n$ via Integral Curve Coordinates.
+2015. \url{https://arxiv.org/abs/1505.00073}.
+\bibitem{forte2026}
+X. Wang, H. Zhang, G. Solak, F. Zhao, A. Ajoudani.
+FORTE: Task-Adaptive Force Capability Optimization for Mobile Manipulators.
+2026. \url{https://arxiv.org/abs/2609.21497}.
+\end{thebibliography}
+\endgroup
+\end{document}
+

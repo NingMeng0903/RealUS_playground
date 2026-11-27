@@ -48,6 +48,9 @@ static:
   m_max: 5.0
   r_max_m: 0.12
   drift_eps_b: 0.02
+  # Mean force this far from the gravity model is a snagged cable or contact.
+  # Those poses are removed and m, h, b are refit. They are not averaged in.
+  outlier_force_n: 1.5
 
 dynamic:
   f0_hz: 0.6

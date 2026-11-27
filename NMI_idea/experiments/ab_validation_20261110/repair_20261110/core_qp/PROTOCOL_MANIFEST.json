@@ -1,0 +1,20 @@
+{
+  "protocol_sha256": "91eb771a7cd7af819fdd50f1827299d2da2e13b52a83b675644f43a73a0f9e73",
+  "frozen_old_graph": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/core/graph.json",
+  "frozen_old_graph_sha256": "bb9d5c394a6a7bc0d374430f8de6a71ed91312155e0dc7ea783861d7ec7d0734",
+  "frozen_edges": 192,
+  "tcp_mode": "urdf",
+  "primary_position_max_m": 0.002,
+  "primary_rotation_max_deg": 2,
+  "sensitivity_position_max_m": 0.005,
+  "sensitivity_rotation_max_deg": 5,
+  "velocity_margin_min": -1e-05,
+  "acceleration_margin_min": -0.0001,
+  "joint_limit_margin_min": -1e-08,
+  "self_distance_min_m": 0.01,
+  "speed_m_s": 0.02,
+  "soft_start_s": 0.4,
+  "settle_s": 2,
+  "continuous_state_required": true,
+  "n_cpu_visible": 32
+}

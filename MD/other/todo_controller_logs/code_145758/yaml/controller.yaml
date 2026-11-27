@@ -1,0 +1,829 @@
+# peirastic Window A machine config — peirastic/configs/controller.yaml
+# Inner / rail / robot. Force-axis law is peirastic/configs/force.yaml (loaded separately).
+#
+# URDF: rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+# Genesis viz: python -m rm75_control.control.joint_admittance_8dof.viewer.demo --show-viewer
+# Param spec: joint_admittance_8dof/config/slider_rail.yaml (default viewer scene)
+
+robot:
+  ip: "192.168.1.18"
+  port: 8080
+  thread_mode: 2
+
+timing:
+  # 5.0 ms target.  t_ref advances by wall time; integration clips a late
+  # tick to [dt_nom, 1.25*dt_nom].  If deadline_slack_s > 0 on <99% of
+  # ticks, raise this back to 7.0.
+  dt_ms: 5.0
+  # Post-solve gate re-reads UDP; 80 ms still fails closed on a true push gap.
+  feedback_timeout_ms: 80.0
+  # Consecutive rejected/stale feedback before abort.  One hitch coasts.
+  feedback_coast_ms: 300.0
+  rt_disable_gc: true
+  verbose_json: false
+  # Best-effort RT: pin the control thread; hold /dev/cpu_dma_latency at 0.
+  control_cpu: 2
+  disable_cstates: true
+
+# UDP arm-state push (rm_set_realtime_push). Requires robot.thread_mode: 2.
+realtime_push:
+  cycle: 1              # broadcast period = cycle * 5 ms (1 -> 200 Hz)
+  port: 8098
+  ip: "192.168.1.80"    # PC NIC on robot subnet — do not auto-detect on multi-NIC hosts
+  force_coordinate: 0   # 0=sensor frame (matches rm_get_force_data force_data)
+
+# Shared-memory state relay for split-process Genesis twin (same host).
+# Match realtime_push (cycle=1 -> 200 Hz) so attach-mode WBC does not stair-step.
+# Window B (`run_with_twin.py`) only mirrors hardware if this is on.
+state_relay:
+  enabled: true
+  name: rm75_state
+  hz: 200
+
+# Slack-QP inner loop (Escande). Physical q/v/a/collision live under hard_limits;
+# Cartesian/nullspace/rail-extension tuning lives under inner.
+qpik:
+  hard_limits:
+    v_scale: 0.8
+    a_max_arm_rad_s2: 3.0
+    a_max_rail_m_s2: 0.60
+    position_margin_deg: 0.3
+    position_margin_rail_mm: 0.0
+    command_lead_arm_deg: 6.0
+    command_lead_rail_mm: 20.0
+    velocity_damper:
+      arm_band_rad: 0.25
+      rail_band_m: 0.025
+    collision:
+      enabled: true
+      d_safe: 0.01
+      d_activate: 0.04
+      gamma: 5.0
+      max_pairs: 8
+    rail:
+      mode: coupled
+      locked_style: hold
+      lock_vel_eps_m_s: 0.0
+      v_max_m_s: 0.15
+      travel_m: 0.80
+      # Linear taper inner edge (must match rail_band_m).  Stick-speed
+      # braking is the stopping envelope, not a step at this line.
+      soft_min_m: 0.030
+      soft_max_m: 0.755
+      # QP / servo box.  5–780 mm is the full travel; 780 is reachable.
+      hard_min_m: 0.005
+      hard_max_m: 0.78
+
+inner:
+  # python = in-process QPIK. native = separate wbc_rt process (SHM).
+  backend: native
+  native_bin: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt
+  control_frame: tool
+  euler_order: xyz
+  # Sync RealMan active tool into Pinocchio link_7→tcp (force-hybrid / tool-Z).
+  sync_tcp_from_robot: true
+
+  qp:
+    task_weight: [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+    reg: [1.0e-3, 1.0e-2, 1.0e-2, 1.0e-2, 1.0e-2, 1.2e-2, 1.2e-2, 1.2e-2]
+    backend: proxqp
+    use_cpp_kernel: true
+    eps_abs: 1.0e-6
+    max_iter: 400
+    max_iter_cap: 400
+    max_solve_ms: 5.0
+    fail_qdot_decay: 0.85
+    twist_sigma_floor: 0.02
+    warn_on_fail: false
+    sr_damping:
+      lam0: 0.05
+      sigma_ref: 0.08
+      sigma_floor: 1.0e-6
+    task_weight_min_frac: 0.05
+    task_weight_lpf_tau_s: 0.25
+    aniso_task_damping: true
+    use_mass_weighted_reg: true
+    mass_reg_floor: 0.05
+    mass_weight_exempt_rail: true
+    mass_reg_lpf_tau_s: 0.2
+    limit_damper_band_rad: 0.25
+    limit_damper_band_rail_m: 0.025
+    near_arm_margin_rad: 0.08
+    # Rail continuity is the hard a/j box + macro filter, not a soft glue term.
+    smoothness_weight: [0.0, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
+    # Third-order box: bounds how fast the commanded acceleration may turn.
+    # Measured jerk RMS was 250-570 rad/s³ with the acceleration flipping sign
+    # on ~half the ticks while the reference twist was smooth.
+    j_max_arm_rad_s3: 300.0
+    # 3.0 made a full rail acceleration reversal take 2*a_max/j = 0.2 s versus
+    # 0.02 s on the arm; 60 keeps 2*a_max/j = 0.02 s after a_max rose to 0.60.
+    j_max_rail_m_s3: 60.0
+    sigma_setbased:
+      enabled: true
+      activate: 0.12
+      safe: 0.06
+      exit: 0.16
+      gamma: 8.0
+      slack_weight: 200.0
+      grad_period_ticks: 10
+    branch_barrier:
+      enabled: true
+      # Soft preference at 30°.  The hard velocity box starts at 50° so
+      # J4 cannot blast through 0 when QP1 is holding TCP (035411).
+      activate_rad: 0.52
+      box_activate_rad: 0.87
+      eps_rad: 0.35
+      # J4 ±135° damper (open travel only).  Do not reuse eps_rad=20°
+      # or the upper wall sits at 115° and vertical press dies.
+      j4_limit_eps_rad: 0.08726646259971647   # 5° → zero at ~130°
+      j4_limit_activate_rad: 0.4363323129985824  # 25° → taper from ~110°
+      # J1 same-sign over-fold.  Zero at 140°; 0→−90° startup stays free.
+      j1_overfold_abs_rad: 2.443460952792061   # 140°
+      j1_overfold_activate_rad: 0.4363323129985824  # 25° → taper from ~115°
+      gamma: 6.0
+      slack_weight: 80.0
+      dwell_free_s: 0.3
+      dwell_ramp_s: 1.0
+      dwell_scale_max: 5.0
+    # Moe/Kanoun set-based comfort: each arm joint, own slack, 15–25° band.
+    joint_comfort:
+      enabled: true
+      m_comfort_deg: 15.0
+      activate_deg: 25.0
+      gamma: 6.0
+      slack_weight: 80.0
+    j4_design_comfort:
+      enabled: true
+      lower_deg: 70.0
+      upper_deg: 115.0
+      gamma: 4.0
+      slack_weight: 60.0
+
+  collision:
+    enabled: true
+    d_safe: 0.01
+    d_activate: 0.04
+    gamma: 5.0
+    max_pairs: 8
+
+  nullspace:
+    k_center: 1.0
+    k_limit: 2.0
+    activation: 0.75
+    weights: [0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    # Side-lying family (Pin–Culioli minmax on the photo seed): ψ=68°,
+    # d=−0.185, J4≈96°.  Same branch as the taught lean; the 104° seed
+    # already hit 124° under a typical Δx/roll shake.  Signs are fixed.
+    q_nominal_deg: [0.0, -89.5, -94.5, 65.2, 96.0, 89.3, 61.0, 94.6]
+    manipulability:
+      k_mu: 0.8
+      eps_rad: 5.0e-4
+      sigma_fade_ref: 0.12
+      grad_period_ticks: 10
+      qdot_tau_s: 0.05
+
+  nullspace_d_null: 0.5
+  nullspace_d_null_adaptive: 1.0
+  nullspace_max_qdot_frac: 0.2
+  # Continuous nullspace fade from task slack.  Not a binary latch.
+  saturation:
+    slack_enter: 0.15
+    slack_exit: 0.03
+    secondary_scale: 0.15
+    secondary_scale_tau_s: 0.10
+
+  arm_angle:
+    enabled: true
+    k_psi: 1.5
+    psi_ref_deg: null
+    obs_smooth_floor: 0.3
+
+  psi_retarget:
+    enabled: true
+    n_y: 9
+    n_d: 8
+    n_psi: 9
+    w_sigma: 0.5
+    # Band around the 60° attractor — not |q6|/128°, which sacrificed J2.
+    w_wrist: 0.5
+    margin_floor_deg: 20.0
+    psi_rate_deg_s: 25.0
+    # Design split: J4≈96° (band center 95°).  Unplanned step shares one
+    # progress s across (d*, ψ*, q*); q* is srs_ik at the live TCP, not
+    # the yaml photo at t=0.
+    psi_attr_deg: 68.0
+    d_attr_m: -0.185
+    d_center_rate_m_s: 0.02
+    psi_cmd_lead_deg: 18.0
+    psi_replan_period_s: 0.1
+    psi_search_half_span_deg: 45.0
+    psi_search_n: 9
+    psi_wrist_ok_deg: 40.0
+    psi_return_dwell_s: 1.0
+    # >110° collapses J6 on this family.  Never cross ψ=0.
+    psi_envelope_deg: [40.0, 110.0]
+    require_design_family: false
+    rail_margin_m: 0.02
+    # Reject cells whose wrist sits on the ~20° branch-barrier floor.
+    wrist_min_deg: 30.0
+
+  # Signed IRD field (ird_playground).  One-shot d* at plan_scan_stroke only.
+  # Hot-path RailGoodness is σ_min (autograd IRD caused 127 ms hitches).
+  # Queries rebuild probe45 TCP from link_7 so gripper2 is ok.
+  ird:
+    enabled: true
+    device: cpu
+    allow_stale: true
+
+  rail_extension:
+    enabled: true
+    k_ext: 2.0
+    k_ff: 1.0
+    v_ff_thr_m_s: 0.005
+    v_ff_span_m_s: 0.015
+    e0_m: 0.02
+    e1_m: 0.08
+    w_max: 2.0
+    v_max_m_s: 0.08
+    limit_margin_m: 0.15
+    pin_margin_m: 0.008
+    escape_leave_m: 0.04
+    healthy_sigma_mute: 0.08
+    press_v_force_min_m_s: 0.02
+    press_dz_max_m: 0.002
+    press_y_err_m: 0.005
+    press_stall_s: 0.5
+    d_band_m: 0.005
+    k_sigma_boost: 2.0
+    k_esc: 0.5
+    w_sigma_floor: 1.0
+    k_pose: 2.0
+    pose_e0_m: 0.005
+    pose_e1_m: 0.04
+    pose_w_max: 4.0
+    sigma_guard_enter: 0.45
+    sigma_guard_exit: 0.70
+    v_guard_max_m_s: 0.04
+    v_lpf_tau_s: 0.05
+    v_lpf_fc_hz: 5.0
+    v_lpf_tau_escape_s: 0.04
+    # Narrow latch: deep σ or true near-limit only (healthy = FF + allocator).
+    sigma_escape_enter: 0.55
+    sigma_escape_exit: 0.80
+    margin_escape_enter: 0.12
+    margin_escape_exit: 0.25
+    sigma_drop_rate: 0.0
+    escape_enter_dwell_s: 0.05
+    k_escape_boost: 1.2
+    escape_grad_floor: 0.0
+    k_margin_boost: 4.0
+    w_ext_cap: 24.0
+    d_star_err0_m: 0.01
+    d_star_err1_m: 0.04
+    d_star_w_mult: 6.0
+    d_star_reg_mult: 20.0
+    # Escape sign: auto = open travel / σ gradient.  minus/plus force a side.
+    escape_sign_policy: auto
+
+  rail_allocator:
+    v0_m_s: 0.05
+    w0_rad_s: 0.30
+    k_margin: 4.0
+    kp_mid: 1.2
+    ki_mid: 0.80
+    u_mid_max_m_s: 0.12
+    k_err_rail: 4.0
+    e_ref_m: 0.08
+    # Rail velocity LPF after the live-Y e_mid fix. 2 Hz follows Y faster than
+    # 1 Hz without the 5–10 Hz hunting the reversal tests guard against.
+    f_c_hz: 2.0
+    kaw_mid: 8.0
+    rho_mirror_a: 0.50
+    rho_mirror_j: 0.30
+    reaction_s: 0.06
+    observer_pos_gain: 0.35
+    observer_vel_gain: 2.0
+    observer_vel_lpf_hz: 8.0
+
+
+frames:
+  # Prefer inner.control_frame / inner.euler_order; this block only supplies
+  # euler_order fallback for older loaders.
+  euler_order: xyz
+
+force:
+  desired_z_n: 1.0
+  phi_source: phi_recommended
+  fc_hz: 6.0
+  min_samples: 22
+  causal_fc_hz: 12.0
+  causal_order: 1
+  causal_history: 5
+  # Inertia compensation off on the joint stream (re-enable only with telemetry).
+  use_inertia: false
+
+# Outer-loop Cartesian P for CARTESIAN_TRACK / GOTO.  CLI --move-kp
+# overrides k_task_lin only.  Rotation stays here.
+# fb_lpf_tau_s filters k*e only; vel_ff is never filtered.  0 = off.
+cartesian_track:
+  k_task_lin: 12.0
+  k_task_rot: 2.0
+  max_pos_err_m: 0.05
+  max_rot_err_rad: 0.35
+  fb_lpf_tau_s: 0.0
+
+hybrid_motion:
+  force_axes:
+  - 0
+  - 0
+  - 1
+  - 0
+  - 0
+  - 0
+  track_axes:
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  - 1
+  kp_pos:
+  - 10.0
+  - 10.0
+  - 5.0
+  - 1.5
+  - 1.5
+  - 1.5
+  pos_err_deadband_m: 0.0005
+  pos_correction_max_m_s: 0.08
+  system_delay_s: 0.055
+  contact_threshold_n: 0.8
+  contact_use_fz_only: true
+  physical_contact:
+    enabled: true
+    # Initial acquire uses filtered force only.  Replaying 162413 with
+    # 0.85 N / 20 ms moves the false 3.49 s acquire to the stable load at
+    # 4.14 s, while remaining reachable below the shipped 1 N target.
+    enter_n: 0.85
+    hard_enter_n: 1.5
+    # Force task may stay armed across a bounce.  Physical CONTACT must
+    # still be allowed to go LOST, or 80 mm/s press reopens in air.
+    hold_until_reset: false
+    exit_n: 0.70
+    enter_confirm_s: 0.02
+    exit_confirm_s: 0.1
+  # Slightly wider band: blunt single-tick contact dips without sticky D.
+  deadband_n: 0.08
+  deadband_width_n: 0.10
+  max_velocity:
+  - 0.22
+  - 0.22
+  - 0.1
+  - 0.6
+  - 0.6
+  - 0.6
+  max_acceleration:
+  - 1.0
+  - 1.0
+  - 0.8
+  - 2.0
+  - 2.0
+  - 2.0
+  # 022208: continuous damping for the residual 2.73 Hz base-admittance mode.
+  # Chatter: short-lived ΔD_hf(Is). Steady offset: force_dob. Not sticky Ke·D.
+  admittance_mass_z: 1.0
+  admittance_damping_z: 40.0
+  max_vz_tool_m_s: 0.08
+  desired_force_ramp_s: 0.30
+  var_damping_enabled: true
+  var_damping_omega_c_hz: 2.5
+  var_damping_lambda: 0.951
+  var_damping_f_max_n: 7.0
+  # Dimeas Iₛ raises virtual mass briefly; ΔD_hf authority is off.
+  var_damping_d_u: 0.0
+  var_damping_m_u: 0.0
+  var_damping_m_max: 3.0
+  var_damping_dc_alpha: 0.02
+  var_damping_hf_attack_s: 0.02
+  var_damping_hf_hold_s: 0.08
+  var_damping_hf_release_s: 0.12
+  var_damping_hf_release_fast_s: 0.04  # dump ΔD on hand-release / large |e_f|
+  var_damping_hf_on: 0.30
+  var_damping_hf_off: 0.15
+  var_damping_hf_err_n: 0.8
+  recontact_vz_cap_m_s: 0.012
+  # Safety recontact speed latches on contact *loss* / suspect_loss, not on
+  # reacquire.  hold / episode_release only manage estimator episodes.
+  recontact_hold_s: 0.80
+  recontact_settle_m_s: 0.003
+  recontact_settle_hold_s: 0.050
+  contact_episode_release_s: 0.80
+  contact_episode_release_force_n: 0.75
+  # Slow DC chase.  Must stay well below CDYOB Q (0.75 Hz).  034244
+  # ki=8 / leak=0.4 s sat in the same band as Q and overshot on soft.
+  force_dob:
+    enabled: true
+    ki: 2.0
+    leak_s: 1.5
+    u_max_n: 1.5
+    freeze_is: 0.45
+    reset_on_reversal: true
+  # Contact impact is limited before BEFM/tank intervention.  In free space
+  # this preserves the 80 mm/s approach; after contact F+Fdot*T and the
+  # stiffness estimate continuously tighten positive press speed.
+  force_barrier:
+    enabled: true
+    t_react_s: 0.055
+    budget_min_n: 1.0
+    budget_frac: 0.20
+    f_keep_n: 0.5
+    f_escape_n: 0.5
+    v_ref_m_s: 0.08
+    v_min_retract_m_s: 0.0
+    v_min_press_m_s: 0.0
+    v_underforce_press_m_s: 0.0
+    underforce_band_n: 0.20
+    # Extra clip only.  First contact is K_ub T_stop, not this number.
+    v_seek_free_m_s: 0.020
+    tau_stop_s: 0.080
+    e_x_m: 0.0004
+    e_f_n: 0.20
+    bar_f_n: 0.15
+    fdot_lpf_s: 0.040
+    precontact_raw_trigger_n: 1.50 # short impact sleeve; never latches contact
+    stiffness_cap_enabled: true
+    ke_floor_n_m: 50.0
+    mass_floor_kg: 0.05
+  # Independent chirps 031234/031605 select T0=30 ms, Tp=12 ms.  Do not
+  # invert Γd or claim Y=A when any downstream constraint is active.
+  cdyob:
+    mode: active
+    omega_q_hz: 0.75
+    t0_s: 0.030
+    tp_s: 0.012
+    tau_s: 0.030
+    t_n_s: 0.012
+    pn_m: 0.0
+    v_corr_max_m_s: 0.015
+    blend_s: 0.30
+    active_press_max_m_s: 0.010
+    active_retract_max_m_s: 0.015
+    active_q_max_hz: 1.0
+    active_force_ratio: 0.90
+    active_settle_speed_m_s: 0.010
+    active_settle_hold_s: 0.05
+    # 032041 A-only contact shadow passes polarity/clip + settled-apply gates.
+    active_model_validated: true
+  # Normal-port delay-aware shield. Stay in observe until the same solver
+  # is feasible on hardware. force/observe are empirical peak guards:
+  # require_contact_free_terminal is false until a release model exists.
+  # Do not enable passive/ospf/CDYOB from this file.
+  safety_shield:
+    enabled: true
+    mode: observe
+    terminal_invariance_proven: false
+    energy_sign_verified: false
+    # Certificate domain.  Declared without numeric bounds is still false.
+    pose_domain_declared: false
+    payload_domain_declared: false
+    max_feedback_age_s: 0.015
+    k_ub_n_m: 8000.0
+    recovery_hold_s: 0.050
+    require_contact_free_terminal: false
+    r_f_n_s: 8.0
+    r_f_window_steps: 20
+    f_release_n: 0.70
+    u_retract_m_s: 0.040
+    a_max_m_s2: 1.20
+    j_max_m_s3: 40.0
+    rho: 0.15
+    e0_j: 0.004
+    eps_j: 0.0005
+    # One-pose free-space fit from run_20260821_000011 identify tail.
+    # Not a passivity certificate; another pose/load still needed.
+    plant:
+      t0_s: 0.050
+      tp_s: 0.020
+      horizon_steps: 40
+    # stop_dx_ub is written by --analyze-stop --write-yaml.
+    # certified: false until 200 Hz motion-SHM backup replay + independent
+    # val covers every stop event.  Tail lookup uses the worst successor
+    # (v_{1,q}, a_{1,q}), not the nominal (v̂_1, â_1).
+
+    velocity_error_ub_m_s:
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002822
+    - 0.002820
+    - 0.002800
+    - 0.002834
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002829
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    - 0.002810
+    - 0.002800
+    - 0.002800
+    - 0.002410
+    - 0.002800
+    - 0.002820
+    - 0.002820
+    - 0.002820
+    - 0.002800
+    - 0.002800
+    position_error_ub_m:
+    - 0.0000140
+    - 0.0000280
+    - 0.0000420
+    - 0.0000541
+    - 0.0000681
+    - 0.0000822
+    - 0.0000963
+    - 0.0001104
+    - 0.0001244
+    - 0.0001386
+    - 0.0001526
+    - 0.0001666
+    - 0.0001806
+    - 0.0001927
+    - 0.0002067
+    - 0.0002208
+    - 0.0002349
+    - 0.0002490
+    - 0.0002630
+    - 0.0002770
+    - 0.0002911
+    - 0.0003051
+    - 0.0003191
+    - 0.0003311
+    - 0.0003451
+    - 0.0003592
+    - 0.0003733
+    - 0.0003874
+    - 0.0004014
+    - 0.0004154
+    - 0.0004295
+    - 0.0004435
+    - 0.0004575
+    - 0.0004695
+    - 0.0004835
+    - 0.0004976
+    - 0.0005117
+    - 0.0005258
+    - 0.0005398
+    - 0.0005538
+  # Historical keys. Force-axis a/j now live inside the shield; these
+  # values are not applied after u_sent.
+  force_axis_slew_press_m_s2: 1.20
+  force_axis_slew_retract_m_s2: 1.20
+  force_axis_slew_reverse_m_s2: 2.00
+  force_axis_jerk_max_m_s3: 40.0
+  # Lee-structure speed-level engineering adapter.  Observe is deliberately
+  # non-mutating until the slow press/retract sign check and 2/5/10 mm/s
+  # no-contact delay identification have been recorded.
+  bidirectional_flow:
+    mode: observe
+    normal_sign: 1.0
+    sign_verified: false
+    feedback_delay_verified: false
+    require_sign_verification: true
+    require_delay_verification: true
+    # Lee Sec. V-C: alpha is zero in free space.  Below this |fz| the gate is
+    # held off and the tank charges from proxy damping.
+    free_space_force_n: 0.5
+    Dtrack: 25.0
+    Kd: 25.0
+    Kp: 250.0              # Dtrack / 0.10 s
+    Ki: 0.0
+    lambda_gain: 0.25
+    track_correction_max_m_s: 0.020
+    M_p: 1.0
+    D_p: 25.0
+    # Provisional conservative auxiliary values; retune only after the
+    # velocity-step identification.  This branch can hold/retract, never press.
+    M_a: 0.05
+    D_a: 5.0
+    K_a: 50.0
+    B_a: 5.0
+    u_retract_n: 0.0
+    aux_max_retract_m_s: 0.050
+    alpha_attack_s: 0.020
+    alpha_release_s: 0.150
+    max_feedback_age_s: 0.020
+    T0: 0.0010
+    Tmax: 0.0040
+    Tmin: 0.0001
+    mu_power_w: 0.0
+    positive_switching_cost_j: 0.0
+  # Optional Piedra-style elastic-surface force reduction.  Disabled until
+  # stable-contact hardware validation; it is not a passivity guarantee.
+  surface_force_modulation:
+    enabled: false
+    min_force_scale: 0.25
+    beta_per_m: 80.0
+    stable_contact_s: 0.20
+    attack_s: 0.05
+    release_s: 0.15
+  # Soften under-force chase near scan turnaround (tool-XY slow).
+  force_lateral_soft_m_s: 0.006
+  force_lateral_full_m_s: 0.018
+  force_lateral_gain_floor: 0.35
+  adaptive_ke:
+    enabled: true
+    # Observe Ke / impact burst only — do not hold high critical D in steady contact.
+    drive_damping: false
+    zeta: 0.9
+    ke_initial: 80.0
+    ke_min: 40.0
+    ke_max: 2500.0
+    ke_impact_initial: 0.0
+    ke_cap_ub_n_m: 2000.0
+    ke_forgetting: 0.995
+    ke_forgetting_inc: 0.88
+    ke_idle_decay_s: 2.0
+    ke_soft_floor: 120.0
+    ke_detach_decay_s: 1.0
+    displacement_source: admittance
+    dx_threshold_m: 8.0e-05
+    contact_force_n: 0.8
+    settle_ticks: 10
+    gate_lateral_velocity: true
+    lateral_vel_gate_m_s: 0.02
+    gate_df_spike: true
+    df_spike_n: 4.0
+    f_err_gate_n: 1.2
+    f_err_gate_frac: 0.35
+    bd_min: 25.0
+    bd_max: 180.0
+    bd_slew_max: 400.0
+    ke_slew_max: 1200.0
+  proactive_feedforward: true
+  # Legacy parameters are retained for isolated non-CDYOB tests only.
+  proactive_retract_only: false
+  # 014140 showed why this inactive v_r branch must not contaminate shadow.
+  proactive_gain: 0.02
+  proactive_retract_gain: 0.02
+  proactive_leak_s: 1.50
+  v_r_max_m_s: 0.008
+  proactive_gate_press_on_is: false
+  proactive_press_is_gate_start: 0.2
+  proactive_press_is_gate: 0.6
+  proactive_press_is_soft_floor: 0.45
+  proactive_press_is_soft_stop: 0.85
+  proactive_press_slew_max_m_s2: 0.35
+  proactive_retract_slew_max_m_s2: 0.35
+  proactive_press_drive_max: 1.4
+  proactive_retract_drive_max: 1.4
+  proactive_reset_on_reversal: true
+  proactive_in_band_n: 0.08
+  proactive_in_band_leak_s: 0.12
+  force_scale_min_n: 0.18
+  force_scale_fraction: 0.0
+  fast_retract_guard:
+    enabled: true
+    cutoff_hz: 20.0
+    stop_margin_n: 0.25
+    stop_margin_fraction: 0.05
+    rearm_margin_n: 0.45
+    rearm_margin_fraction: 0.1
+    stop_confirm_s: 0.015
+    rearm_confirm_s: 0.01
+    min_hold_s: 0.025
+    max_sensor_age_s: 0.02
+hw:
+  lw100:
+    enabled: true
+    host: 192.168.0.7
+    port: 8234
+    slave: 1
+    lead_mm: 10.0
+    # calibrated_file: load var/lw100_rail_zero.json (run apps/lw100_rail_home_limit.py first).
+    # current/fixed are debug-only; with require_calibration true, current is refused.
+    zero_mode: calibrated_file
+    counts0: 0
+    calibration_path: var/lw100_rail_zero.json
+    require_calibration: true
+    home_di: di4             # −Y home switch (confirmed on HW; was swapped vs DI3)
+    plus_di: di3             # +Y end (run-time e-stop if hit)
+    di_nc: true
+    di_debounce_n: 3
+    soft_min_m: 0.030        # full-speed inner edge; must match qpik.hard_limits.rail
+    soft_max_m: 0.755
+    hard_min_m: 0.005        # travel box 5–780 mm
+    hard_max_m: 0.78
+    post_home_m: 0.025
+    # Home-script only (controller does not auto-home on start):
+    home_search_m_s: 0.020
+    home_creep_m_s: 0.003
+    home_backoff_mm: 5.0
+    home_touch_count: 3
+    home_search_timeout_s: 60.0
+    home_to_post_m_s: 0.030
+    limit_poll_every: 5
+    # Host rail_y ↔ motor: -1 flips FA24 RPM (+ encoder map in rail_servo).
+    sign: -1
+    enable_settle_s: 0.3
+    # Cold start: prove worker Modbus read+FA24=0 before any set_target / move→D.
+    arm_good_reads: 30          # ~0.6 s @ 50 Hz consecutive healthy polls
+    arm_settle_s: 0.8           # extra FA24=0 hold after good polls
+    arm_max_span_mm: 2.0
+    arm_timeout_s: 10.0
+    fault_margin_m: 0.05
+    # 205605: t_read med 5.8 ms, FA24 write usually skipped.  43 Hz left
+    # ~17 ms of sleep.  60 Hz (16.7 ms) still has ~11 ms median headroom;
+    # 80 Hz is tight on p95.  Do not change FA72 or the USR-TCP232-304 baud
+    # alone — both ends must match, then power-cycle the drive.  Confirm no
+    # DI is mapped to 7 (ZCLAMP) and FC-15 bit6 is 0; do not query while A
+    # is live.  FA40/FA41 = time 0→1000 r/min, not 0→vel_max.
+    poll_hz: 60
+    inter_frame_delay_s: 0.0005
+    timeout_s: 0.06             # poll-budget; was 0.15 / class-default 1.0
+    retries: 1
+    deadband_mm: 0.5
+    # FA23 overspeed trip: must sit ABOVE commanded peak (0.15 m/s ≈ 900 rpm
+    # @ 10 mm/rev). Equal FA23=cmd caused Er-01 on scan overshoot (151334).
+    max_speed_rpm: 1200
+    # Soft CSP via FA24 (see apps/lw100_vel_pos_follow_demo.py).
+    # POSITION scan/home PD.  Coupled QPIK is pure velocity (no FA24 P).
+    # Loaded PD scan BEST (400±40 mm): kp=14/kd=0.22.
+    vel_kp: 14.0
+    vel_kd: 0.22
+    vel_kd_max_m_s: 0.005
+    # Matches QP box rail.v_max_m_s 0.15 × v_scale 0.8.  parse_rail_servo_config
+    # also caps hw.vel_max by that product so the two cannot drift apart.
+    vel_max_m_s: 0.12
+    vel_amax_m_s2: 1.2
+    # Coupled-mode catch-up of x_ref toward x_goal while moving.  20 mm/s
+    # clears a 20 mm standing offset in ~1 s without outrunning FF.
+    catch_v_max_m_s: 0.02
+    catch_k: 5.0
+    catch_frac: 0.3
+    decel_request_margin_m_s: 0.005
+    match_drive_accel: true
+    fa24_rpm_deadband: 0   # write every worker tick; skip only if rpm is unchanged
+    vel_deadband_mm: 0.05   # tight tracking band (not a permanent accuracy sacrifice)
+    # Standstill hysteresis: freeze FA24 after tight settle; wake only if pushed.
+    standstill_enter_mm: 0.05
+    standstill_exit_mm: 0.25
+    standstill_dwell_s: 0.08
+    approach_m: 0.040
+    latch_watch_s: 0.12
+    target_timeout_s: 0.25
+    # Extra coast after timeout before FA24=0.  A 127 ms hitch must not brake.
+    target_stale_coast_s: 0.35
+    encoder_freeze_s: 1.0
+    encoder_freeze_min_v_m_s: 0.02
+    encoder_freeze_min_move_mm: 0.15
+    # End-of-stream / task-end settle before releasing follow (closes latched overshoot).
+    settle_tol_mm: 0.05
+    settle_v_m_s: 0.006
+    settle_timeout_s: 1.5
+    # Stall-safe speed: worst-case latched FA24 overshoot ≤ |err| for max_stall_s.
+    max_stall_s: 0.06
+    stall_v_floor_m_s: 0.004
+    # Soft-reject above v_max·gap + margin; wipe cal only on ≥50 mm or 2 soft jumps.
+    jump_margin_mm: 3.0
+    jump_hard_mm: 50.0
+    jump_soft_streak_panic: 2
+    # FA40/41: 120 ms → drive a ≈ 1.0 m/s².  Host a_max is min(this, QP
+    # a_max_rail_m_s2 0.60, 0.85 × vel_max/accel_s) so the servo cannot
+    # outrun the QP model.
+    accel_ms: 120
+    decel_ms: 120
+    scurve_ms: 30            # FA42
+    busy_speed_rpm: 1
+    home_on_exit: false
+    release_son_on_exit: false  # stop with FA24=0 and keep SON; avoids enable-edge frame wipe
+    home_speed_rpm: 900
+    home_approach_mm: 40
+    home_timeout_s: 60
+    verbose: false
+
+startup:
+  # Used by window A / C bring-up (not 6-DOF pose_slot).
+  enable_force: false
+  follow: true
+  move_speed: 20
+  realtime: false
+  # Control-loop stall timeout.  QP backend pulses the watchdog during ProxQP.
+  watchdog_timeout_s: 0.50

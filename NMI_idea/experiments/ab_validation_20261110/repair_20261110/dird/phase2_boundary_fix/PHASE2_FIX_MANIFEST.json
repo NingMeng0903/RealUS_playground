@@ -1,0 +1,108 @@
+{
+  "schema": "phase2_command_boundary_fix_v1",
+  "old_qp_replay_sha256": "0ed30e40c55ea57f72a2858c4de022b75db26ddf5d90281079bb797b84365fda",
+  "new_qp_replay_sha256": "9b72a782dd70c034b1aaacefb295d442649f7477621ce3f885be621391ec3ce1",
+  "old_sealed_artifacts_preserved": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/REPORT.txt": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/REPORT.txt",
+      "expected_old_sha256": "f1d2bafcf21d031579bf7e1cea962f2c01a08757f03fd0ab7c39b58618e632d9",
+      "actual_sha256": "f1d2bafcf21d031579bf7e1cea962f2c01a08757f03fd0ab7c39b58618e632d9",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/SUMMARY.json": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/SUMMARY.json",
+      "expected_old_sha256": "6e7053766943cb21259baa3314da0d70f7cfa309c93661b9ea995cfddeaa9d7e",
+      "actual_sha256": "6e7053766943cb21259baa3314da0d70f7cfa309c93661b9ea995cfddeaa9d7e",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/COMMANDS.txt": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/COMMANDS.txt",
+      "expected_old_sha256": "9c9cf39f024f6797ce5f71734b559a166bea5cab07fcfda8369a9e75d6bfa1f0",
+      "actual_sha256": "9c9cf39f024f6797ce5f71734b559a166bea5cab07fcfda8369a9e75d6bfa1f0",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/QP_API.txt": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/QP_API.txt",
+      "expected_old_sha256": "4e7372f5e993b43ef6af737b3cd3b968c760c6f8a60dfc9dbf661c8c37d20477",
+      "actual_sha256": "4e7372f5e993b43ef6af737b3cd3b968c760c6f8a60dfc9dbf661c8c37d20477",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/before/qp_replay.py",
+      "expected_old_sha256": "0ed30e40c55ea57f72a2858c4de022b75db26ddf5d90281079bb797b84365fda",
+      "actual_sha256": "0ed30e40c55ea57f72a2858c4de022b75db26ddf5d90281079bb797b84365fda",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/run_checks.sh": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/run_checks.sh",
+      "expected_old_sha256": "7e1b01a228c45745f5e96f3ffc1caee45ba1fda8ae3db206b632e71af58bf7c5",
+      "actual_sha256": "7e1b01a228c45745f5e96f3ffc1caee45ba1fda8ae3db206b632e71af58bf7c5",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/retrain.py": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/retrain.py",
+      "expected_old_sha256": "a91b28d239441d84a1902b201ed5b3e23ee9a779ad96a4440c73000cf2ef349e",
+      "actual_sha256": "a91b28d239441d84a1902b201ed5b3e23ee9a779ad96a4440c73000cf2ef349e",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/selected.pt": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/selected.pt",
+      "expected_old_sha256": "32f9fc6483e502141a8b5b094b7741f094de38c3c2c1058bdbd333754d86b90e",
+      "actual_sha256": "32f9fc6483e502141a8b5b094b7741f094de38c3c2c1058bdbd333754d86b90e",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/train.yaml": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/train.yaml",
+      "expected_old_sha256": "c1e4d61ae6b16c3e66150e4bc2da438def526d1b546e5794fc904c9945469c95",
+      "actual_sha256": "c1e4d61ae6b16c3e66150e4bc2da438def526d1b546e5794fc904c9945469c95",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/conformal.json": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/conformal.json",
+      "expected_old_sha256": "49530501246b16933fbb16bad6840638bb63cdf2299811cbb9c5e76543dde60f",
+      "actual_sha256": "49530501246b16933fbb16bad6840638bb63cdf2299811cbb9c5e76543dde60f",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/eval_report.json": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/eval_report.json",
+      "expected_old_sha256": "48a7475a1779594568d13dba04991b9e6a1d928929606aba01728dbcd13123b0",
+      "actual_sha256": "48a7475a1779594568d13dba04991b9e6a1d928929606aba01728dbcd13123b0",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/native_rail_diagnostic/build/wbc_rt": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/native_rail_diagnostic/build/wbc_rt",
+      "expected_old_sha256": "855f6aa3397c355b1a5e8ef7255769308fcc45c276a85fe9266841eefb339508",
+      "actual_sha256": "855f6aa3397c355b1a5e8ef7255769308fcc45c276a85fe9266841eefb339508",
+      "matches": true
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/native_rail_diagnostic/source/native/wbc_rt/src/inner.cpp": {
+      "verified_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/native_rail_diagnostic/source/native/wbc_rt/src/inner.cpp",
+      "expected_old_sha256": "12074fb44eb377cde70d0d99cd898b93530a35ce8d0ba0fc995bb3c93e282028",
+      "actual_sha256": "12074fb44eb377cde70d0d99cd898b93530a35ce8d0ba0fc995bb3c93e282028",
+      "matches": true
+    }
+  },
+  "files_sha256": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/frozen_boundary_native.json": "0877dbe9bacd0d57d6be8996473bdf9bddbe907f11a4bc4c2fbc6e0258631f42",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/actual_continuation_native.json": "ff408ccaed18db1b4fa5703dd52ceaa0ab15203885ea8f52d2a22ed34f143850",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/actual_continuation_python.json": "400fa01905dc94b98433a0b4ff37bd764cc69a367654b5b778a206584cde51de",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/frozen_boundary_python.json": "2e25c0e8451a21b1b469f05ae4bb6e7536645366b6d9d84f8a7ed6ef760b5633",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py": "9b72a782dd70c034b1aaacefb295d442649f7477621ce3f885be621391ec3ce1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/ADDENDUM_PHASE2.txt": "f34155d3ddb72467e5bc246132c185dc984015c40b98815a676c6512e53162d1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/test_boundary_derivatives.py": "20b8a8c98b424d59a78dec47d38d1437891ec7dafe1ab3a9297a97960a53fda3",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/API_V2.txt": "1203746e43ff1f77f146026233759515553119386aeb85063faaec471c5ac010",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/run_checks.sh": "477d6bfd8864654a1a8909ccf8bddbdc74fb8c26fcdb00d4bb7eb1332f91e4b2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/boundary_derivatives.patch": "6fc0a8a2146d53d0655f91b9bc0e5d84863c5cd4a0b2431ecdf5109a059e059c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/phase2_boundary_fix/logs/boundary_regressions.txt": "ea6f3ceef2e5403c627a85b79705412b7b5ab6763c82305d270b27f6965b9f33",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/PHASE2_REPORT.txt": "7655f7129e8abb4a327af96f7a145e3feab9a997e25b95d8547782903c58f914",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/phase2_native_first_invalid_tick.json": "c0ed0e64b33aeb7f0d8c62d2d93523e3125e719cad8dc59cda8757bf06713abc"
+  },
+  "regressions": {
+    "passed": 6,
+    "seconds": 9.19,
+    "native_residual_hold_jerk_margin": -0.008656222398144564,
+    "root_statistics_bitwise_unchanged": true,
+    "global_concatenation_derivatives_exact_match": true
+  },
+  "remaining_blocker": "fresh independent branch0 native rail anomaly; no system execution certificate or new continuous-B gain claim"
+}

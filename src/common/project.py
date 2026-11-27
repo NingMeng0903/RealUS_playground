@@ -76,7 +76,8 @@ class ProjectPaths:
 
     @property
     def default_scene_spec_path(self) -> Path:
-        return self.scene_configs_root / "amass_lie_sync_scene.yaml"
+        realus = self.scene_configs_root / "realus_bed_rail_scene.yaml"
+        return realus if realus.is_file() else self.scene_configs_root / "amass_lie_sync_scene.yaml"
 
     @property
     def bedlam_unreal_root(self) -> Path:

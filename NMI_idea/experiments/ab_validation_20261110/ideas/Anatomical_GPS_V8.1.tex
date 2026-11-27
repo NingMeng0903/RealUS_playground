@@ -1,0 +1,1069 @@
+% !TeX program = xelatex
+% Self-contained: xelatex Anatomical_GPS_V8.1.tex (run twice).
+% No external images, bibliography database, or custom font files required.
+\documentclass[UTF8,11pt,a4paper,fontset=fandol]{ctexart}
+\usepackage[margin=23mm,headheight=16pt,footskip=12mm]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
+\usepackage{booktabs,tabularx,longtable,array,multirow}
+\usepackage{xcolor,graphicx,tikz,float}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem,fancyhdr,xurl,hyperref}
+\definecolor{ink}{HTML}{16334A}
+\definecolor{teal}{HTML}{1C696A}
+\definecolor{muted}{HTML}{526371}
+\definecolor{pale}{HTML}{EEF4F5}
+\hypersetup{unicode=true,colorlinks=true,linkcolor=ink,citecolor=teal,urlcolor=teal,
+ pdftitle={Anatomical GPS V8.1：身体中心的共享感知—动作表示},
+ pdfauthor={NMI Research Design},pdfsubject={方法、条件性分析、实验方案与创新归属审查}}
+\setlength{\emergencystretch}{3em}
+\setlength{\parskip}{.35em}
+\linespread{1.08}
+\setlist{nosep,leftmargin=2em}
+\setcounter{tocdepth}{2}
+\renewcommand{\arraystretch}{1.2}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{muted}Anatomical GPS\quad V8.1}
+\fancyhead[R]{\small\color{muted}共享表示、检查技能与真实执行}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{.3pt}
+\numberwithin{equation}{section}
+\newtheorem{proposition}{命题}[section]
+\newtheorem{lemma}[proposition]{引理}
+\theoremstyle{definition}
+\newtheorem{assumption}[proposition]{条件}
+\newtheorem{remark}[proposition]{说明}
+\renewcommand{\proofname}{证明}
+\newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\Prob}{\mathbb P}
+\newcommand{\N}{\mathcal N}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\ip}[2]{\left\langle#1,#2\right\rangle}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\dist}{dist}
+\DeclareMathOperator{\argmin}{arg\,min}
+\DeclareMathOperator{\argmax}{arg\,max}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\Cov}{Cov}
+\newcommand{\sk}[1]{[#1]_{\times}}
+\newcommand{\RealBase}{https://github.com/NingMeng0903/RealUS_playground/blob/6a943e3dcf8c6ea68b9f75c398eb1f4307a9b81a}
+\newcommand{\AmongBase}{https://github.com/NingMeng0903/AMONG_US/blob/f1ffc5078d6a08c32b59107ab16086a7bbde488e}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newtcolorbox{keybox}{colback=pale,colframe=teal,boxrule=.5pt,arc=1mm,
+ left=3mm,right=3mm,top=2mm,bottom=2mm,breakable}
+\newcommand{\cmark}[1]{\textbf{\color{teal}#1}}
+
+\begin{document}
+\begin{titlepage}
+\vspace*{10mm}
+{\Large\color{teal}\sffamily NMI\quad RESEARCH DESIGN}\par
+\vspace{12mm}
+{\fontsize{32}{40}\selectfont\bfseries\color{ink}Anatomical GPS}\par
+\vspace{3mm}
+{\fontsize{24}{32}\selectfont\bfseries\color{ink}V8.1}\par
+\vspace{10mm}
+{\LARGE\bfseries 身体中心的共享感知—动作表示}\par
+\vspace{4mm}
+{\Large 面向可迁移、可恢复的机器人超声检查}\par
+\vspace{8mm}
+{\large\color{muted}A Body-Centred Perception--Action Representation\\
+for Reusable Robotic Ultrasound Examination}\par
+\vspace{12mm}
+\begin{keybox}
+\textbf{中心问题}\par
+机器人能否将检查知识与具体对象、姿态和关节轨迹解耦，在同一个身体中心状态中使用仿真先验和真实证据，以同一套技能完成未见过的对象—姿态—检查要求组合？
+\medskip\par
+\textbf{确定的方法路线}\par
+共同任务地址与成像关系 $\rightarrow$ 对象相关的证据和检查记忆 $\rightarrow$ 共享任务动作偏好 $\rightarrow$ dIRD 连续实现选择 $\rightarrow$ 接触—成像联合 QP 与原有内环。
+\end{keybox}
+\vfill
+{\large 2026 年 10 月 12 日}\par
+\vspace{3mm}
+{\color{muted}完整中文方法稿\quad|\quad 条件性分析\quad|\quad 真机验证方案\quad|\quad 创新审查附录}\par
+\vspace{5mm}
+{\small 本稿区分拟议系统、已核对代码、已执行代数检查与待开展实验。没有将仿真真值、源码注释或计划中的性能作为真实机器人结果。论文面向 Nature Machine Intelligence 的系统研究目标组织，不预判首创性或录用结果。}
+\end{titlepage}
+
+\begin{abstract}
+机器人超声检查需要在身体几何、内部目标与机器人执行条件共同变化时复用检查知识。记录一条 TCP 轨迹难以表达检查要求，而仅有通用几何先验也不足以支持当前对象的持续扫描。本文提出 Anatomical GPS V8.1：一种身体中心的共享感知—动作架构，将任务位置、成像关系、目标估计、观测来源与合格检查记忆放入同一状态。系统以程序化 Genesis 场景构造技能训练数据，以实际超声和登记后的执行状态更新当前目标；一个任务条件化策略只生成推进与允许视角的动作偏好，dIRD 与连续运动学选择实际实现，扩展后的 UltraPoC 外层 QP 则联合协调接触、目标成像与物理推进。方法保留 CoP 的增量法向—转动配对，并引入成像任务微分和实际站位速度约束，避免接触修正造成目标漂移，以及推进变量脱离真实运动。检查完成由带任务类型、时间与关联条件的实际图像足迹判定，同一对象姿态变化后对历史证据重新登记与验收。本文给出完整模型、学习目标、分层求解、条件性误差分析、实现接口和组合泛化实验协议。方法的拟议贡献是共享表示与执行接口带来的技能复用和数据效率，而非重新提出调和坐标、运动基元、滤波或 QP。附录逐项说明旧版取舍、外部先例、可主张的新颖性与所需证据；本稿仅报告可重复的局部代数检查，真实跨对象检查收益仍待实验验证。
+\end{abstract}
+\noindent\textbf{关键词：}机器人超声；身体中心表示；任务条件化技能；程序化仿真；检查记忆；任务等价实现；接触—成像协调。
+
+\begin{keybox}
+\textbf{论文主张的单位是能力。}同一模型、同一任务语义和同一执行接口能否跨未见组合复用，是主要研究假设。具体几何、学习、估计和控制工具作为这一假设的实现方式。\textbf{创新归属与反方检验见附录\ref{app:novelty}；旧版组合与工程改动见附录\ref{app:versions}和\ref{app:implementation}。}
+\end{keybox}
+\tableofcontents
+\clearpage
+
+\section{研究问题与系统贡献}
+\label{sec:intro}
+\subsection{从一次成功扫描到一套可复用检查知识}
+一次成功示教或规划同时包含对象位置、工具运动、机器人构型以及操作者对图像的响应。部署条件改变后，真正需要保留的是检查目标和成像要求；具体运动只是一种实现。本文研究在已声明的血管／管状结构任务族中，如何通过共享状态和动作接口减少按对象、姿态与流程重新开发技能的需要。
+
+V8.1 的主要验证范围是长程短轴跟踪、指定区段长轴观察，以及对先前记录区段的定点复查。三者使用同一个目标身份与观测历史，但成像关系、覆盖要求和新鲜度要求不同。本文将这种差异编码为任务输入，使技能共享成为可测试的设计，而不是分别训练模型后将其统一命名。
+
+现有机器人超声已覆盖自主完整检查、解剖初始化、运动后重定位和结构化导航\cite{ultrabot,same,reposition,sonograph}。因此，本文不以“能够扫描”“能够恢复”或“使用解剖空间”为单独创新，而检验共享表示是否在\emph{相同任务信息和物理约束}下带来未见组合泛化、较少任务专属数据或较低重复检查成本。
+
+\subsection{三项待实验验证的系统主张}
+\begin{description}[style=nextline]
+\item[H1：可迁移的共同接口。]
+把仿真任务和真实观测组织到身体中心状态后，同一任务策略可用于未见对象—姿态—任务组合；相对匹配的三维地图或任务专属策略，获得更好的数据—性能关系。
+\item[H2：可持续使用的对象证据。]
+记忆保存目标关联、采集时刻和质量条件，姿态或任务更新后仍能有选择地复用证据，减少重复搜索；失效证据不会继续充当当前任务已完成的依据。
+\item[H3：不牺牲目标成像的接触执行。]
+同一角速度引起的接触点法向变化与深部目标成像变化被联合协调，在共同机械限制下减少接触修正对目标跟踪的副作用。
+\end{description}
+H1 是主要智能能力主张；H2、H3 是支撑它的设计与机制。H3 中的刚体运动学配对属于已有基础，独立价值需要以统一执行接口及对照实验体现。
+
+\subsection{研究对象与范围}
+对象外部几何可由 RGB-D、人体模型或经过验证的体模模型提供；内部目标需由实际超声逐步确认。第一阶段以已知类型但具体几何不同的体模为对象，不学习人体本构，也不把数字人体的内部结构当作患者真值。人体实验必须另行取得伦理审批、知情同意、合格监护与适合具体部位的安全边界。本稿只定义研究系统，不给出临床安全认证或疾病诊断性能主张。
+
+\section{直接先例与设计定位}
+\label{sec:related}
+DOF 用扩散方向场建立曲面上的局部任务参考并迁移接触操作\cite{dof}；Franzese 等通过关键点运输位置、速度、姿态和刚度策略\cite{transport}。它们说明几何参考和运动运输本身已有成熟方法。EMMP 学习连续运动族，覆盖规划也已联合使用任务容差与机器人冗余\cite{emmp,coverageplan}；因此“一个任务允许多个执行解”是本文采用的建模原则。
+
+SAMe 提供显式解剖先验与探头初始化；SonoGraph-WM 使用动作条件场景图开展结构化超声导航，其论文说明机器人实验中的场景图来自标签图\cite{same,sonograph}。UltraBot 则展示了大规模真实专家数据支持的自主颈动脉流程\cite{ultrabot}。V8.1 的拟议差异在于：\emph{同一身体中心状态在训练、在线目标更新、任务记忆和真实执行之间保持一致，并以组合留出和真实数据预算曲线检验复用}。不同任务、传感器与验证人群不能直接用数据量或成功率横向排名。
+
+空间 DMP 和 ProDMP 分别提供空间—时间分离、轨迹相关性与重规划机制\cite{aldmp,prodmp}；它们是可替换的参考工具。RMPflow 已建立几何一致的任务策略组合\cite{rmpflow}。V8.1 使用已有的线性化、滤波和凸优化，不宣称新的普适反馈生成定理。过程中心的触觉技能研究表明，共享规格与实现接口可以成为系统研究的中心\cite{taxonomy}；本文借鉴这一研究组织方式，但不把其他系统的验证结果转移到自身。
+
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{P{28mm}YY}
+\toprule
+比较维度 & 已有能力 & V8.1 必须另外兑现的证据\\\midrule
+几何迁移 & 跨表面运输参考或策略 & 带当前内部目标估计的检查技能跨未见组合复用\\
+自主超声 & 初始化、导航、完整流程及恢复 & 同一检查状态与模型在多种要求下复用，且实际 B-mode 进入闭环\\
+运动族与冗余 & 多解生成、覆盖和连续路径选择 & 改变实现时保留目标、任务约束及带来源的检查记忆\\
+在线残差与反馈 & 根据观测修正局部行为 & 目标证据与动作偏好不混淆，接触和成像在最终动作上共同验收\\\bottomrule
+\end{tabularx}
+\caption{本表给出比较责任，不是宣称全部责任已经由实验完成。}
+\end{table}
+
+\section{身体中心任务表示}
+\label{sec:representation}
+\subsection{坐标、对象映射与当前目标}
+在有效局部图块上，以纵向、周向和深度标签表示任务地址
+\begin{equation}
+a=(h,\varphi,d)\in\mathcal A,\qquad
+P_{j,t}:\mathcal A\rightarrow\R^3 .
+\label{eq:map}
+\end{equation}
+$j$ 标记对象，$P_{j,t}$ 把该对象参考域映射到当前世界空间。纵向标签可由调和边值问题获得：
+\begin{equation}
+\nabla\cdot(A_g\nabla h)=0,\qquad h|_{\partial\mathcal M}=g_h,
+\quad A_g\succ0.
+\label{eq:harmonic}
+\end{equation}
+周向接缝使用重叠图册，深度可以采用经过验收的射线或流坐标。本文不要求所有标签都是调和解；部署必须检查局部映射的方向、单值性和条件数。SMPL-X 提供外部身体参数化\cite{smplx}，内部目标的真实位置另由观测估计。
+
+令当前目标在参考域中的曲线为
+\begin{equation}
+\gamma_j(s;w_j)=\gamma_0(s)+B(s)w_j,\qquad s\in[0,1],
+\label{eq:targetbasis}
+\end{equation}
+其中加法仅在有效局部图内使用，$B$ 可为三次样条基。周向采用局部展开或圆周表示，不跨接缝直接平均角度。当前空间中的位置和切向为
+\begin{equation}
+p_j(s,t)=P_{j,t}(\gamma_j(s;w_j)),\quad
+\widehat t_j=\frac{\partial_s p_j}{\norm{\partial_s p_j}},
+\quad \norm{\partial_s p_j}\ge t_{\min}>0.
+\label{eq:targetworld}
+\end{equation}
+同一对象的姿态更新可运输同一目标记录；跨对象仅共享任务语义、结构先验和模型参数，不共享患者特定观测作为事实。
+
+当前物理长度与角度由映射诱导的度量决定：
+\begin{equation}
+G_{j,t}(a)=D_aP_{j,t}(a)^\top D_aP_{j,t}(a).
+\label{eq:metric}
+\end{equation}
+共享标签不意味着毫米、弧长或欧氏垂直关系在任意形状变化下数值不变。有限动作步长、误差容限和速度均在当前物理空间验收。
+
+\subsection{共享状态与三种不同来源的信息}
+身体中心检查状态记为
+\begin{equation}
+\mathcal B_{j,t}=\left(P_{j,t},\,\mu_{j,t},\Sigma_{j,t},\,
+\mathcal E_{j,t},\,\mathcal O_{j,t},\,v_{j,t}^{\rm map}\right).
+\label{eq:sharedstate}
+\end{equation}
+$(\mu,\Sigma)$ 是目标参数估计；$\mathcal E$ 是带来源的观测记录；$\mathcal O$ 是仍需完成的检查义务；$v^{\rm map}$ 是映射版本。状态不是把所有历史压成一个网络隐变量，也不宣称它是一般部分可观测系统的精确充分统计量。
+
+必须区分：\textbf{对象信念}来自真实观测；\textbf{参考偏好}描述希望怎样运动；\textbf{机器人能力}描述当前可以怎样运动。策略和 dIRD 可以修改后两者，不能通过奖励、QP 输出或可达性分数直接缩小目标信念。过去发出的纠偏命令只有与真实回传和新观测共同进入测量模型后，才能提供额外证据。
+
+\subsection{检查规格：位置相同不等于任务相同}
+每项检查义务定义为
+\begin{equation}
+\mathcal R_k=(j,\iota_k,\mathcal S_k,\,r_k,\epsilon_k,
+\mathcal Q_k,\,t_k^{\min},\,T_k),
+\label{eq:task}
+\end{equation}
+其中 $\iota_k$ 是目标身份，$\mathcal S_k$ 是要求区段，$r_k$ 是成像规则，$\epsilon_k$ 是固定物理容差，$\mathcal Q_k$ 是质量与关联规则，$t_k^{\min}$ 是有效采集的最早时刻，$T_k$ 是允许的执行时限。复查设置新的 $t_k^{\min}$，旧图像不能自动满足新的复查义务。
+
+探头声学原点为 $o(q)$，声学姿态为 $R(q)=[r_x,r_y,r_z]$。本文约定 $r_z$ 朝组织内部，$r_y$ 是成像平面法向，成像平面为 $x$--$z$；真实 TCP 与该约定之间使用实测刚体变换。令 $d_p=p_j-o$，短轴原始残差为
+\begin{equation}
+h_{\rm SA}=
+\begin{bmatrix}
+r_x^\top d_p & r_y^\top d_p &
+r_x^\top\widehat t_j & r_z^\top\widehat t_j
+\end{bmatrix}^{\top}.
+\label{eq:sa}
+\end{equation}
+长轴模式至少要求目标中心及切向位于图像平面：
+\begin{equation}
+h_{\rm LA}=
+\begin{bmatrix}
+r_x^\top d_p & r_y^\top d_p & r_y^\top\widehat t_j
+\end{bmatrix}^{\top}.
+\label{eq:la}
+\end{equation}
+同时检查正深度、视场与允许入射角。长轴是否额外要求 $r_z\perp\widehat t_j$ 应由具体协议决定，不能当作通用长轴条件。各类残差通过固定尺度矩阵 $S_r$ 归一化为 $e_r=S_r^{-1}h_r$，便于共享策略和 QP 权重；验收仍回到毫米与角度。
+
+短轴、长轴都依赖当前目标估计。单帧 B-mode 没有直接提供真实三维切向时，方向要求通过过去的登记观测和不确定性预算处理，不将仿真切向作为部署输入。
+
+\subsection{任务允许的实现族}
+固定估计目标和任务站位 $s$，设皮肤面为 $o=S(u)$。对于已知单位目标切向 $t$，短轴允许接触点满足
+\begin{equation}
+t^\top(S(u)-p_j(s))=0,\quad
+b=\frac{p_j(s)-S(u)}{\norm{p_j(s)-S(u)}},\quad
+R=[t\times b,\ t,\ b].
+\label{eq:viewfamily}
+\end{equation}
+当该标量方程对二维 $u$ 的梯度非零时，接触点局部构成一维曲线。更多接触、声窗与碰撞约束可以缩小或消除这族实现。我们记局部视角参数为 $\zeta$，把所需声学位姿写为 $\mathcal T_{j,r}(s,\zeta;\mathcal B)$。长轴一般有不同维数的局部自由度；网络输出使用固定长度加有效维掩码。
+
+机械冗余满足 $J_{\rm TCP}\delta q=0$；任务冗余满足 $D_qh_r\delta q=0$。后者允许 TCP 改变。dIRD 搜索的是这族位姿的实际可行实现，最终仍需要一条从当前真实构型出发的连续关节路线。单点网络分数不能替代它。
+
+\section{真实观测、目标更新与检查记忆}
+\label{sec:evidence}
+\subsection{统一观测接口与因果时间}
+每帧记录
+\begin{equation}
+E_k=(\mathrm{id}_k,t_k^{\rm acq},t_k^{\rm recv},q_k^{\rm acq},
+ y_k,R_k,\mathrm{assoc}_k,v_k^{\rm map},v_k^{\rm calib}).
+\label{eq:evidencerecord}
+\end{equation}
+$y_k$ 是实际可取得的图像特征，如二维目标中心、分割轮廓与质量描述；$R_k$ 含相关误差。姿态与力使用采集时刻对应的同步或插值记录。接收时刻只决定何时可以使用该帧。对同一 $\mathrm{id}_k$，高频控制反复读取不等于重复观测。
+
+通过观测模型
+\begin{equation}
+y_k=\mathcal H_r(w_j,P_{j,t_k^{\rm acq}},q_k^{\rm acq})+\nu_k
+\label{eq:observation}
+\end{equation}
+更新目标。$\mathcal H_r$ 包括实际成像几何、有限切片厚度、目标关联和可见性规则。短轴局部切面交点可由
+\begin{equation}
+r_y(q_k)^{\top}[p_j(s,t_k)-o(q_k)]=0
+\label{eq:intersection}
+\end{equation}
+寻找，但需验证局部唯一性及 $|r_y^\top\partial_sp_j|$ 的下界。未知站位、切向与深度要联合处理；不能先用真实血管给出站位，再宣称系统已从图像恢复目标。
+
+长轴可能同时看到多个站位，直接对目标曲线与图像特征的联合关系拟合。出现分支关联歧义时保留多个候选或暂停强更新；不以最高分假设自动替代可靠关联。固定时延缓存保存近期目标状态与实际动作，新帧到达后在采集时刻更新，再重放已知状态转移到当前时刻。
+
+\subsection{第一版估计器：共享样条状态，而非完整概率编译}
+V8.1 默认使用有限维目标样条系数的递推估计。单一可信关联和局部线性化成立时，设先验为 $(\mu^-,\Sigma^-)$、$H_k=D_w\mathcal H_r|_{\mu^-}$，则
+\begin{align}
+S_k&=H_k\Sigma^-H_k^\top+R_k,\\
+K_k&=\Sigma^-H_k^\top S_k^{-1},\\
+\mu^+&=\mu^-+K_k[y_k-\mathcal H_r(\mu^-)],\\
+\Sigma^+&=(I-K_kH_k)\Sigma^-(I-K_kH_k)^\top+K_kR_kK_k^\top.
+\label{eq:filter}
+\end{align}
+此为局部 Gaussian 近似，不对任意非线性声学宣称精确后验。时间演化中加入目标漂移与登记误差的过程预算。多关联情形使用有限混合并保存权重，或拒绝无法判断的更新；其实现优先级见附录\ref{app:implementation}。
+
+Genesis 中目标规律用于设置 $\mu_0,\Sigma_0$ 或生成训练情景，并非目标患者数据。若仿真分布未经真实人群校准，协方差只是一项算法不确定性描述。风险阈值在独立真实验证集上检查；不能仅从仿真拟合优度推出患者置信水平。
+
+\subsection{新增差异与已有模型解释的关系}
+整体配准、局部目标偏移和传感偏差可能产生相似残差。第一版使用明确的目标基和登记误差，采用创新量门控和独立几何观测减少混淆；不新增人体材料辨识模块。若现有目标基持续无法解释可靠观测，可增加局部样条节点并扩展协方差。扩展依据是模型拟合缺口，不能直接把全部差异命名为“真实未建模解剖”。对映射与目标无法区分的方向保留不确定性。
+
+\subsection{带任务类型的实际覆盖}
+对每项义务 $\mathcal R$ 和每一帧，定义可靠性门控 $\kappa_{k,\mathcal R}\in\{0,1\}$。它同时要求：目标身份可靠、图像质量合格、所需方向条件成立、接触与执行记录有效、采集时间符合该义务。近场置信度只是声学接触的代理之一，不能单独证明血管识别和切面正确。
+
+在允许登记与关联误差集合 $\Theta_k^{\rm reg}$ 中，用图像真实支持映回任务域，取保守内足迹：
+\begin{equation}
+\Omega^-_{k,\mathcal R}
+=
+\bigcap_{\theta\in\Theta_k^{\rm reg}}
+\Omega_{k,\mathcal R}(\theta).
+\label{eq:footprint}
+\end{equation}
+该定义只有在误差集合有效、足迹映射可计算时提供条件性保证。实际可用区间腐蚀或经过校准的保守近似实现；有限采样的交集不能自动当作连续误差域的证明。无法构造可信内足迹时，保存原始证据但不将其计入保证性覆盖。
+
+当前有效覆盖与任务缺口为
+\begin{align}
+\mathcal C_{\mathcal R}(t)
+&=\bigcup_{k:\ t_k^{\rm recv}\le t,\ \kappa_{k,\mathcal R}=1}
+\Omega^-_{k,\mathcal R},\\
+\mathcal U_{\mathcal R}(t)&=\mathcal S_{\mathcal R}\setminus\mathcal C_{\mathcal R}(t).
+\label{eq:coverage}
+\end{align}
+集合并集自然避免重复帧和重复扫过同一区域造成重复计数。短轴覆盖不代替长轴覆盖；同一区域的旧帧不满足要求新采集的复查。系统在线覆盖与实验中的独立真值覆盖分别报告，避免用自身预测给自身打分。
+
+\subsection{姿态变化、任务切换和记忆复用}
+同一对象姿态更新后，保持原始图像、采集姿态和旧映射版本不可变，以新映射重新投影目标记录及其误差。有效性审核通过的证据继续使用；变换不确定性增大或目标重新关联失败时，将相应条目标记为待确认。历史存档是追加式的，但\emph{当前可信覆盖}允许减少，不能一旦写入就永久有效。
+
+任务切换首先更换规则类型和覆盖义务，再生成姿态转换段。转换运动只计入实际满足的义务，不能假设短轴到长轴的过渡帧同时满足两者。大幅对象运动、失锁或目标分支变化触发重新定位；通过独立观测重建关联后，再复用历史目标与待检查区域。
+
+\section{Genesis 中的共享技能学习}
+\label{sec:learning}
+\subsection{固定的一条学习路线}
+V8.1 采用\textbf{任务条件化的动作偏好策略蒸馏}，而非同时学习目标模型、关节控制器和多种运动基元。教师是使用相同检查状态和任务约束的短时域规划器；学生学习其推进与局部视角调整偏好。真机保持冻结策略权重，目标状态仍按新图像在线更新。需要真实策略微调时，作为独立数据预算条件报告。
+
+确定性的空间参考提供平滑名义视角：
+\begin{equation}
+\zeta_0''(s)+D_\zeta\zeta_0'(s)+K_\zeta(\zeta_0(s)-g_\zeta)
+=f_0(s),\qquad f_0(s)=\Phi(s)^\top w_{\rm ref}.
+\label{eq:spatialdmp}
+\end{equation}
+这是沿用空间 DMP 的参考构造\cite{aldmp}；$w_{\rm ref}$ 是设计或示教偏好，与当前对象目标参数 $w_j$ 分开。时间执行使用
+\begin{equation}
+\dot\zeta_0=\zeta_0'\dot s,\qquad
+\ddot\zeta_0=\zeta_0''\dot s^2+\zeta_0'\ddot s,
+\label{eq:timechain}
+\end{equation}
+并由执行器限制实际速度与加速度。任意变化的 $\dot s$ 不能在省略第二项时仍声称保留原加速度限制。V8.1 不要求新增 GP forcing 或 ProDMP；可将其作为匹配对照。
+
+\subsection{观测编码与输出接口}
+每个任务地址 token 包含相对站位、周期角编码、目标均值／不确定性、观测质量、已检查类型、任务需求、证据年龄及有效性掩码。还输入当前局部物理尺度、实测接触信息和上一段实际执行动作。机器人能力采用候选余量与可用动作摘要；不把未观测的真实目标、仿真分支答案或未来图像作为输入。
+
+共享编码器处理局部窗口与全局未完成区段摘要，输出
+\begin{equation}
+(\alpha_{\rm pref},\dot\zeta_{\rm pref})
+=\pi_\psi\bigl(\mathcal B_{j,t},\mathcal R,
+\mathcal K_t,\text{近期实际执行历史}\bigr).
+\label{eq:policy}
+\end{equation}
+$\alpha_{\rm pref}\in[0,1]$；$\dot\zeta_{\rm pref}$ 为有界局部视角速率，未启用维度通过任务掩码置零。三种任务共享编码器和权重，仅任务 token 与掩码不同。第一版可用逐 token 两层 MLP、带掩码池化及小型 GRU；网络宽度和窗口长度是待调的实现参数，不属于理论主张。
+
+策略输出经当前几何解码为接触坐标 twist 偏好
+\begin{equation}
+\nu_{\rm pref}
+=b_{\mathcal T}
++D_s\mathcal T\,\alpha_{\rm pref}\dot s_0
++D_\zeta\mathcal T\,\dot\zeta_{\rm pref},
+\label{eq:decodepolicy}
+\end{equation}
+其中位姿导数理解为与执行帧一致的 twist Jacobian。它只是优化偏好，不改变任务目标和安全阈值。跨形状共享的是策略参数和语义接口，当前度量、可达条件与观测可以使动作不同；不宣称任意非等距形变下输出完全相同。
+
+\subsection{情景生成与传感隔离}
+每个 episode 先采样一个固定的隐藏场景：对象几何、目标曲线、当前姿态、机器人位置及要求序列。内部目标沿 episode 固定或按已声明动态变化，不能每帧重新随机生成一条“真血管”。独立改变外表面和目标走向，用于检验几何迁移与在线修正是否各自承担正确职责。
+
+Genesis 主要提供运动学、接触场景和几何任务生成。第一版采用部署同形的\emph{特征级传感接口}：从真实执行探头状态生成可见区域中的二维目标特征，加入连续偏差、丢失、延迟和相关噪声；不假设已有高保真的真实 B-mode 声学仿真。真实前端输出相同类型的特征，需独立检验域差异。
+
+已有 TR-FDF 工作已研究任务特征动力学一致性对超声 sim-to-real 的作用\cite{trfdf}；因此“使用结构特征而非完整图像”不是本文独立创新。仿真误差检查除静态定位外，还比较相同小动作引起的特征变化和时间相关性。
+
+\subsection{教师生成、蒸馏与闭环数据聚合}
+在当前估计状态下，教师对短时域动作序列 $a_{0:H-1}$ 优化
+\begin{equation}
+J_H=\sum_{h=0}^{H-1}
+\left[
+\lambda_e\widehat{\mathcal L}_{\mathcal R,h}
++\lambda_u\norm{a_h}^2
++\lambda_\Delta\norm{a_h-a_{h-1}}^2
++\lambda_U\widehat{\mathcal L}_{\mathrm{unc},h}
+-\lambda_C\Delta\widehat C_h
+\right].
+\label{eq:teacher}
+\end{equation}
+教师预测只使用当前信念、候选动作和同一执行模型。隐藏真值可以用于环境观测生成、独立奖励分析或评价，但默认教师动作标签不能读取被遮挡血管真值。特权教师如另行研究，应单列实验而非混入主结果。
+
+教师输出经实际下游求解和轨迹验收后才成为标签。存在多个同等好的实现时，按当前实际分支与连续性作确定性选择；不把相反方向标签直接均值化成一个无意义动作。学生最小化
+\begin{equation}
+\mathcal L_{\rm distill}
+=\E_{(z,a^*)\sim\mathcal D}
+\norm{W_a[\pi_\psi(z)-a^*]}^2
++\lambda_{\rm slew}\norm{\Delta a_{\rm policy}}^2.
+\label{eq:distill}
+\end{equation}
+使用学生闭环 rollout 收集偏离教师分布的状态，再以同样信息重新查询教师并聚合训练集；该流程采用已有 DAgger 思想\cite{dagger}。不将数据聚合算法本身列为新贡献。
+
+主要对照包含在线教师，以判断蒸馏是否在相近任务质量下减少计算；以及共享输入但无学习的确定性规划器，以判断学习是否真正必要。若二者已在预算内完成同样任务，不能单凭网络存在宣称智能提升。
+
+\subsection{训练划分与拟议初始化配置}
+数据首先按\emph{对象家族、目标生成种子、任务组合和姿态范围}划分，再在各集合生成完整 episode。禁止将同一血管实例的相邻帧拆入训练与测试。前端标注集、策略训练集和最终真实测试对象也须分离。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{34mm}YY}
+\toprule
+设置 & 第一版建议 & 目的与限制\\\midrule
+任务窗口 & 32 个局部地址 token＋全局未完成摘要 & 可调；不是已验证的最优配置\\
+学生结构 & 共享 MLP 编码＋GRU＋有界动作头 & 单一策略，避免按任务分别训练后冒充共享\\
+教师时域 & 约 1 秒，离散为约 10 步 & 待基准确定；不把离线时长当实时能力\\
+策略更新 & 5--10 Hz 起步 & 非硬安全回路；真实频率依据测量调整\\
+接触执行 & 保留原快环目标频率 & 统计新增 QP 的延迟与越期，超时走既有拒绝流程\\
+真实微调 & 默认关闭；另设有限预算组 & 在线状态估计不是策略权重微调\\\bottomrule
+\end{tabularx}
+\caption{均为拟议实现起点，不是实测系统参数或安全推荐。}
+\end{table}
+
+\section{dIRD 引导的连续实现选择}
+\label{sec:dird}
+在较慢时标上优化未来局部区段的视角参数、轨道参考与构型路线。用 $\rho$ 表示这些变量，令 $T_h(\rho)$ 满足当前估计的任务规则。一个固定的局部目标可写为
+\begin{equation}
+\min_\rho\quad
+\sum_h \left[
+\lambda_T\mathcal L_{\mathcal R}(T_h;\mathcal B)
++\lambda_S\norm{\Delta^2\rho_h}^2
++\lambda_P\norm{\rho_h-\rho_h^{\rm pref}}^2
++\lambda_I\phi(m_{\rm req}-\widehat m_{\rm IRD}(T_h,\ell_h))
+\right],
+\label{eq:dirdcost}
+\end{equation}
+其中 $\ell_h$ 是 rail 参考，$\phi$ 为平滑罚函数。障碍物距离与原始 IRD 分开，实际障碍变化不修改人体目标或原始可达场。
+
+误差情景与控制选择具有不同量词：同一组 $\rho$ 对登记误差情景进行检验；允许视角属于决策，不能在每个未知世界中先各选一个有利视角，再把聚合分数解释成同一可执行策略。完整候选应从实际 $q_t$ 连续提升，验收关节／轨道限位、碰撞、速度和加速度。
+
+仓库已有任务样条能量、情景聚合和 SRS 整段 DP 接口，且 README 明确 IRD 是 signed reachability-margin proxy，不是距离场或碰撞证书\cite{repoird,reposrs}。本方法因此将 IRD 用于提案排序与可微搜索；最终运动学和连续检查决定是否接受。采样分支未找到解时报告搜索失败，不直接报告全球不可达。
+
+新慢层候选通过桥接段从当前实际状态接入，未接入前保持旧的有效参考。前缀边界使用实际位置、速度与必要的时延记忆，不能只锁定上一版规划的理想端点。若身体映射失效或新路线无法接入，转入有界恢复／重新定位流程。
+
+\section{接触—成像联合外层 QP}
+\label{sec:qp}
+\subsection{执行坐标和扩展的必要性}
+当前 UltraPoC 外层以法向 $U$、面内摇摆 $\Omega$、推进比例 $\alpha$ 和图像松弛 $\sigma_I$ 为变量，并在固定仿射运动族内分配动作\cite{repoouter,repogeom}。V8.1 将外层变量扩展为接触／声学帧中的六维 twist
+\begin{equation}
+\nu=[v_x,v_y,v_n,\omega_x,\omega_y,\omega_z]^\top
+\label{eq:twist}
+\end{equation}
+以及 $\alpha$ 与必要松弛。六个分量成为决策变量，不意味着六个方向都可任意使用；机械限制、任务条件与局部信任域共同约束它们。
+
+若声学面相对 TCP 的刚体变换为 $T_{TC}=(R_{TC},p_{TC})$，则
+\begin{equation}
+\nu_C=X_{CT}\nu_T,\qquad
+X_{CT}=
+\begin{bmatrix}
+R_{TC}^{\top}&-R_{TC}^{\top}\sk{p_{TC}}\\
+0&R_{TC}^{\top}
+\end{bmatrix}.
+\label{eq:twisttransform}
+\end{equation}
+力旋量满足 $w_C=X_{CT}^{-\top}w_T$，保持 $w_C^\top\nu_C=w_T^\top\nu_T$。实际部署必须统一 URDF、TCP、图像外参、成像正负方向和探头安装版本。
+
+\subsection{保留 CoP 的增量法向—摇摆耦合}
+对于环境作用于工具的接触力，法向取朝组织内部，压缩力幅值为 $F=-f_n>0$。接触面上的压力中心沿图像横向记为
+\begin{equation}
+c_{\rm CoP}=-\frac{\tau_y}{f_n}.
+\label{eq:cop}
+\end{equation}
+仅在力与接触几何有效时使用，不将超过探头面的估计强制截断成“有效 CoP”。接触点 $[c_{\rm CoP},0,0]^\top$ 的法向速度为
+\begin{equation}
+v_{n,\rm CoP}=v_n-c_{\rm CoP}\omega_y.
+\label{eq:copvelocity}
+\end{equation}
+机械反馈提供已调试的名义请求 $U_m,\Omega_m$；V8.1 保留其设计，仅优化增量配对：
+\begin{equation}
+\mathcal J_c=
+ w_n\left[
+\frac{(v_n-U_m)-c_{\rm CoP}(\omega_y-\Omega_m)}{v_*}
+\right]^2
++w_\omega\left[\frac{\omega_y-\Omega_m}{\omega_*}\right]^2.
+\label{eq:contactcost}
+\end{equation}
+这样，额外摇摆不会无条件替代原力控制产生的法向请求。CoP 无效时退化为法向与转动名义跟踪，不凭空推断接触中心。
+
+\subsection{同一次摇摆也改变深部目标成像}
+令 $a_p=R^\top(p_j-o)$ 为目标在探头中的坐标，则
+\begin{equation}
+\dot a_p=-v-\omega\times a_p+R^\top\dot p_j.
+\label{eq:imagingdynamics}
+\end{equation}
+在居中、深度 $d_p>0$ 的局部状态，$a_p=[0,0,d_p]^\top$，故
+\begin{equation}
+\dot a_{p,x}=-v_x-d_p\omega_y+(R^\top\dot p_j)_x.
+\label{eq:dualcoupling}
+\end{equation}
+因此，接触修复角速度同时引起目标横移。将式\eqref{eq:copvelocity}与式\eqref{eq:dualcoupling}放在同一个优化问题内，可在允许输入下同时配对 $v_n$ 与 $v_x$。这是 V8.1 对原 UltraPoC 接口的实质扩展：目标来自共享状态，而不是新增一条与目标无关的固定轨迹锁。
+
+姿态方向误差使用式\eqref{eq:sa}或式\eqref{eq:la}的完整 Jacobian。所有矩阵、目标估计和尺度在当前 QP 内冻结。更新估计改变下一次求解，不在求解过程中改变参考目标。
+
+\subsection{相位必须有物理站位见证}
+\label{sec:phase}
+将六维 twist 与 $\alpha$ 分开优化后，仅奖励较大的 $\alpha$ 可能产生没有相应物理运动的推进。为此，每个扫描模式定义局部、单值的站位函数
+\begin{equation}
+\widehat s=\varsigma(q,\mathcal B,t),\qquad
+\dot{\widehat s}=\ell_t\nu+b_{s,t}.
+\label{eq:station}
+\end{equation}
+$\varsigma$ 根据当前执行位姿与估计目标求取，使用连续分支与上一步站位限制搜索区间。短轴可用切面交点；长轴可用中心声束与目标曲线最近点对应的局部焦点。具体构造与退化条件见附录\ref{app:phase}。
+
+在有效扫描模式中加入硬的局部速度耦合
+\begin{equation}
+\boxed{\ell_t\nu+b_{s,t}=\alpha\dot s_0.}
+\label{eq:phasecoupling}
+\end{equation}
+其中 $b_{s,t}$ 包含对象运动和几何映射随时间改变的贡献。站位失去单值性或误差超过门限时，退出扫描推进模式，进行重新关联；不能继续累加参考相位。局部恢复允许真实站位变化，但不据此自动增加合格覆盖。
+
+式\eqref{eq:phasecoupling}是当前估计模型下的运动一致性约束，不是实际图像覆盖证明。最终参考相位只能基于接受并发送的动作更新，并持续与实测／图像支持的站位校核。拒绝发送的候选不产生相位债务；真实覆盖始终由式\eqref{eq:coverage}更新。
+
+\subsection{固定线性化与统一误差预算}
+令 $\tau>0$ 为当前控制保持步长。归一化任务残差在下一控制步预测为
+\begin{equation}
+\widehat e_r^+
+=\widehat e_r+\tau\bigl(G_t\nu+g_{s,t}\alpha\dot s_0+g_{t,t}\bigr),
+\label{eq:onepred}
+\end{equation}
+$G_t$ 是固定任务站位时的 twist Jacobian，$g_s$ 是目标随任务进度变化的导数，$g_t$ 是已测对象运动与时间变化项。若以移动目标已经包含相位导数，不得在 $g_s$ 中再计一次。
+
+把定位、目标估计、延迟补偿、有限线性化与执行偏差组合为分量误差界 $\rho_t\ge0$：
+\begin{equation}
+|e_r^{+,\rm true}-\widehat e_r^+|\le\rho_t.
+\label{eq:errorbudget}
+\end{equation}
+$\rho_t$ 对当前信任域预先固定，使 QP 保持线性约束。可以使用有界误差，或在明确条件下使用校准概率界；不能将两种保证混写。观测协方差、残差分位数或线性化近似自身不构成任意自适应部署下的无条件覆盖保证。
+
+\subsection{完整优化问题}
+令 $D_\nu$ 按各速度分量的物理尺度归一化，$\varepsilon_r$ 为固定容差。声窗修复方向和幅值分别为 $s_I\in\{-1,1\}$、$r_I\ge0$，由可信声学反馈给出。扩展外层为
+\begin{equation}
+\boxed{
+\begin{aligned}
+\min_{\nu,\alpha,\sigma_I,\sigma_r}\quad &
+\mathcal J_c
++\norm{\widehat e_r^+}_{W_r}^2
++\norm{D_\nu(\nu-\nu_{\rm pref})}_{W_p}^2\\
+&+w_\alpha(\alpha-\alpha_{\rm pref})^2
++w_I(\sigma_I/\omega_*)^2+\norm{\sigma_r}_{W_\sigma}^2
++\epsilon_0\norm{D_\nu\nu}^2\\
+\text{s.t.}\quad & A_t\nu\in[\underline b_t,\overline b_t],\qquad 0\le\alpha\le1,\\
+&\ell_t\nu+b_{s,t}=\alpha\dot s_0,\\
+&-\varepsilon_r+\rho_t-\sigma_r
+\le\widehat e_r^+
+\le\varepsilon_r-\rho_t+\sigma_r,\\
+&s_I\omega_y+\sigma_I\ge r_I,\qquad
+\sigma_I\ge0,\quad\sigma_r\ge0.
+\end{aligned}}
+\label{eq:fullqp}
+\end{equation}
+信任域、速度、加速度与经过验收的接触限制包含在 $A_t$ 中。过力撤离由固定优先级的独立机械策略和约束处理，不允许学习代价交换硬停止条件。声窗无可信请求时删除对应单侧行，并将 $\sigma_I$ 固定为零。
+
+$\sigma_r$ 允许任务误差暂时超出通常容限，以避免为了跟踪而破坏机械限制；超容限帧不能计入该检查义务。若 $\rho_t$ 已大于容差，系统可以进行受限恢复，但不能宣称当前保证性成像合格。所有学习权重只影响偏好，不在线改变力阈值、碰撞距离或质量验收标准。
+
+$\epsilon_0>0$ 和正的标量／松弛权重使规范化变量上的目标严格凸。QP 可行性仍取决于硬动作集合和站位耦合，不能从软化任务自动推出总可行。不可行或超时调用原有已验证的降级流程；不能假设零速度永远满足加速度、制动距离及接触状态约束。
+
+\subsection{外层可行性必须落实到内层}
+$A_t$ 必须来自当前实际机器人状态、已执行速度历史和短期运动学验收；不能直接由 dIRD 分数代替。若使用 twist 内近似集合，可通过一个局部提升
+\begin{equation}
+\dot q=L_t\nu+z_t,\qquad
+X_tJ_tL_t=I,\quad X_tJ_tz_t=0
+\label{eq:lift}
+\end{equation}
+将关节约束代入得到 $A_t$。这要求当前有效任务 Jacobian 足够满秩。接近秩亏时，改用同时含 $\dot q$ 的扩展 QP 和精确等式 $\nu=X_tJ_t\dot q+b_{\rm exec}$；不能沿用不存在的全六维右逆。
+
+对于 arm 与 rail 不同的响应时序，当前任务映射使用测得的 rail 贡献，并把下一步 rail 指令与当前实际速度区分；具体执行模型必须与原内环保持一致。外层候选进入内层后，重新检查\emph{最终发送动作}是否满足机械行、接触配对预算、任务容限和式\eqref{eq:phasecoupling}。不能仅锁住一个“最接近外层 twist”的结果就宣称原证书继续成立。
+
+发布记录包含原快照、外层提案、内层接受量、两路传输事实和实际回传。任何后处理限幅或参考平滑都会触发重新验收。只有成功发布才提交指令历史；图像和编码器回传再分别更新目标证据与真实站位。V8.1 不在此新增能量罐，亦不由 QP 可行性宣称人体交互无源性。
+
+\section{条件性性质与保证边界}
+\label{sec:theory}
+本节用于验证接口的一致性，而非宣称新的普适控制理论。完整证明与退化情况见附录\ref{app:proofs}。
+
+\begin{proposition}[坐标改写下的物理任务一致性]
+若 $\chi:\mathcal A\rightarrow\mathcal A'$ 是合法的可逆坐标改写，并同时设置 $P'=P\circ\chi^{-1}$、$\gamma'=\chi\circ\gamma$，则当前目标位置、由该物理目标重建的成像关系及对应实际足迹保持不变。导数、协方差、容差尺度及记忆地址须相应变换。
+\end{proposition}
+这不保证任意非线性变换后的有限样条或 Gaussian 近似仍精确闭合，也不自动保证数值网络图册无关。相关离散误差和学习误差应由实验报告。
+
+\begin{proposition}[单步收紧的成像容差]
+若式\eqref{eq:errorbudget}在当前信任域和接受动作上成立，且 QP 解满足 $\sigma_r=0$，则下一步真实残差满足 $|e_r^{+,\rm true}|\le\varepsilon_r$。若松弛非零，只能推出 $|e_r^{+,\rm true}|\le\varepsilon_r+\sigma_r$。
+\end{proposition}
+因此当前解的任务松弛具有直接验收含义；它不是只存在于数值求解器中的无关变量。
+
+\begin{proposition}[受模型与执行失配影响的局部跟踪界]
+设在一个持续有效的执行窗口内，归一化真实任务误差满足
+\begin{equation}
+\dot e=-\kappa e+\eta(t)+\Delta(t),\qquad
+\norm{\eta(t)}\le d_{\rm alloc}(t),\quad
+\norm{\Delta(t)}\le d_{\rm model}(t),
+\label{eq:issmodel}
+\end{equation}
+其中 $\eta$ 是最终动作相对目标反馈律的实际分配残差，$\Delta$ 包含几何、目标、延迟和执行模型误差。则
+\begin{equation}
+\norm{e(t)}\le e^{-\kappa t}\norm{e(0)}+
+\int_0^t e^{-\kappa(t-\tau)}
+[d_{\rm alloc}(\tau)+d_{\rm model}(\tau)]\,d\tau.
+\label{eq:issbound}
+\end{equation}
+\end{proposition}
+式\eqref{eq:fullqp}的代价本身不保证任意状态都满足给定的 $d_{\rm alloc}$；必须在接受动作上计算并检查该残差。该命题也不自动证明接触安全、全程可行或有限时完成。
+
+\begin{proposition}[检查完成的证据语义]
+若每个被接受内足迹确实属于该帧对同一义务的真实合格足迹，则 $\mathcal S_{\mathcal R}\subseteq\mathcal C_{\mathcal R}$ 蕴含该义务已被真实合格采集覆盖。若登记假设更新使某内足迹失效，必须重新计算当前覆盖后再判断完成。
+\end{proposition}
+这一集合结论明确了何种证据足以支持完成。如何校准质量、目标关联和内足迹，则是实际系统必须完成的验证工作。
+
+\section{完整运行流程与失效处理}
+\label{sec:runtime}
+状态机仅负责任务义务与安全阶段，不另行训练一套高层语言规划器。任务模式包括初始化、接近、短轴扫描、长轴观察、复查、恢复、完成与人工接管。学习策略在允许的扫描／观察模式内给出偏好；阶段切换由实际目标与任务验收条件控制。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{10mm}YY}
+\toprule
+步骤 & 操作 & 必须维持的条件\\\midrule
+1 & 建立对象身份、映射与检查义务 & 当前图册、TCP 与图像标定有效\\
+2 & 处理新到达的唯一帧，按采集时刻更新目标 & 不读取未来信息，不重复同化\\
+3 & 重投影并审核记忆，计算未完成区段 & 已预测目标不充当已检查事实\\
+4 & 共享策略产生推进和视角偏好 & 只读部署可得状态，不更改硬阈值\\
+5 & 慢层生成／更新连续实现并检查接入 & dIRD 提案与最终运动学验收分离\\
+6 & 快层构造任务 Jacobian、站位行与收紧预算 & 当前状态、时钟与约束版本一致\\
+7 & 求解外层，内层接收后检查最终发送量 & 所有后处理需重新验收\\
+8 & 提交动作历史；由实测站位和图像足迹更新进展 & 提案、发送、实际执行、合格覆盖分别记录\\
+9 & 若全部义务已完成则结束，否则继续或恢复 & 超时和失败也保留在统计中\\\bottomrule
+\end{tabularx}
+\caption{V8.1 的端到端运行协议。此表是拟议接口，不表示集成已完成。}
+\end{table}
+
+图像失锁时继续使用机械安全策略，但停止强目标更新与保证性覆盖；短期保持或减速仅在允许输入和误差预算内使用。身体大幅运动时暂停沿旧地图推进，重新登记后检查证据有效性。有限局部恢复失败、机械硬集冲突或异常目标关联触发接管，不允许为完成率持续削弱任务标准。
+
+任务端点附近令名义推进率平滑下降；当 $\dot s_0=0$ 时直接固定 $\alpha=0$，不再用接近零的路径列构造伪逆推进比例。站位保持、退出接触或下一任务转换分别有独立阶段，避免终点数值退化引起控制语义混淆。
+
+\section{验证设计：组合泛化、数据效率与真实检查}
+\label{sec:experiments}
+\subsection{实验问题与评价单位}
+主要终点是\textbf{完整义务成功率}和\textbf{截止前独立评估的合格覆盖}。一次完整对象—任务 episode 是实验单位，图像帧不是独立样本。失败、超时、接管和无法重关联均计入分母，不只统计成功完成的轨迹。
+
+对义务 $\mathcal R$，独立评价器给出 $\mathcal C^{\rm eval}_{\mathcal R}$，定义
+\begin{equation}
+\mathrm{Coverage}_{\mathcal R}
+=\frac{\mu_{\mathcal R}(\mathcal S_{\mathcal R}\cap\mathcal C^{\rm eval}_{\mathcal R})}
+{\mu_{\mathcal R}(\mathcal S_{\mathcal R})}.
+\label{eq:covermetric}
+\end{equation}
+$\mu_{\mathcal R}$ 是协议事先固定的材料区间或物理弧长度量，不在运行中为改善评分而改变。成功要求该覆盖、最大允许缺口、成像质量与机械条件共同通过。定点复查另报告定位误差、获得新合格帧的耗时和错误对象关联率。
+
+\subsection{三层实验}
+\textbf{层 I：可控仿真。}独立改变外形、内部目标、姿态和机器人条件，程序化生成未见组合。固定同一传感预算、执行器和随机种子，比较所有方法。仿真真值仅用于环境与独立评价；策略和教师不能读取未来真实目标。
+
+\textbf{层 II：真实体模长程检查。}使用外形与内部目标可独立改变的体模条件。B-mode 前端、力／姿态回传进入完整闭环，数字孪生只提供当前可用几何与先验。至少覆盖短轴、长轴及复查三类义务，比较不同姿态与机器人相对位置。提出一个起始协议：预注册 18 个分层选取的场景，每种方法每场景重复 3 次；该数量只是工程起点，需根据预实验方差、预期效应和对象间相关性修订，不能视为临床样本量论证。
+
+\textbf{层 III：受控人体可行性。}若资源与伦理条件允许，在限定部位和经过批准的任务下评价，包含独立专家图像质量评分及所有干预记录。只有完成足够的独立人体验证，才主张跨真实人体泛化；少量示范视频只能支持技术可行性，不能推断诊断、患者安全或临床等效性。
+
+\subsection{组合留出与真实数据预算}
+使用两个互补划分：其一，留出整个对象及目标生成种子；其二，在训练中分别出现的对象属性、姿态与任务，在测试时形成新的组合。不能用随机帧划分代替这两种泛化。检查组合留出的每个因子有训练覆盖，同时禁止同一真实血管／体模实例跨训练测试泄漏。
+
+真实数据预算分开统计：感知标注、机器人／探头标定、专家动作示教、策略微调、在线执行帧。报告数据预算—任务表现曲线，固定总真实数据量和训练计算量进行公平比较。零专家轨迹示教不等于零真实标注、零标定或零在线观测。
+
+\subsection{强基线与核心消融}
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{P{17mm}YY}
+\toprule
+方法 & 完整配置 & 回答的问题\\\midrule
+B0 & 固定 TCP 参考＋实际超声纠偏＋原接触执行 & 基本自主跟踪能做到什么；不作为唯一强基线\\
+B1 & 普通三维地图／配准＋相同目标证据、完整历史、任务自由度和扩展 QP & 共享任务坐标本身是否有额外收益\\
+B2 & DOF 或关键点运输＋相同图像前端、记忆预算和下游执行 & 是否优于已有几何迁移而非只是增加观察能力\\
+B3 & 任务专属策略，输入和训练预算匹配 & 参数共享节省了什么、损失了什么\\
+B4 & 在线运行短时域教师，不蒸馏 & 学习是否减少计算而保持任务质量\\
+V8.1 & 共享状态＋同一任务策略＋dIRD＋联合执行 & 系统主张在匹配信息条件下是否成立\\\bottomrule
+\end{tabularx}
+\caption{B1 必须具有同样的历史和任务信息，不能把“有记忆”和“更好表示”混成一种优势。}
+\end{table}
+
+核心消融分别移除历史记忆、用真空白先验替代仿真先验、删除 dIRD 排序但保留精确运动学、以及取消接触—成像联合协调。用“任务自由度是否释放”与“释放后是否联合分配”的二乘二实验，区分自由度收益和耦合机制收益。取消相位约束仅用于仿真与软件语义检查，不把故意缺失物理进度见证的弱基线作为真机主要竞争者。
+
+\subsection{统计与报告}
+采用配对场景和随机化运行次序；按对象或场景簇计算置信区间，使用簇级 bootstrap 或适当的混合效应模型。多个任务的比较事先指定主要终点，次要指标注明探索性。报告效应量、区间和失败分类，而不只给显著性值。
+
+除成功率与覆盖外，记录横向偏移、切面角误差、图像有效率、力分布与过限事件、重复采集量、恢复时间、QP 和规划延迟分位数、最坏延迟与超时率。速度增加若伴随质量下降不能单独当作提升。所有方法共享底层安全边界、观测接口和合理调参预算。
+
+\subsection{论文图表计划}
+主文建议五组图：系统共享状态与数据流；未见组合下的检查迁移；数据预算曲线；相同目标上的姿态更新及复查记忆；接触—成像耦合的真机消融。照片和视频展示完整 episode 及失败例，不只展示最顺畅的片段。结果表按对象级聚合，同时公开任务定义、验收门限和实际数据来源。当前稿件不填任何待测性能数值。
+
+\section{已执行检查、限制与结论}
+\label{sec:conclusion}
+\subsection{本次可重复的局部检查}
+随稿附带 \code{verify_v81.py} 和 \code{checks_v81.json}。本次实际运行了坐标改写、局部成像 Jacobian、双重耦合、相位一致性、唯一帧同化、义务类型计数以及二次目标正定性检查。它们验证公式和接口语义，不验证学习泛化、真实组织接触、超声图像质量或机器人运行性能。具体结果在附录\ref{app:checks}。
+
+\subsection{主要限制}
+外部身体对应不能单独确定内部目标；严重配准错误、未知目标关联和长时失锁会使共享状态不可用。坐标一致性命题只适用于正确变换的物理量，有限网格、非线性后验和网络近似仍产生误差。局部 QP 不等于全程可行性；dIRD 提案不能证明所有未找到的动作不存在。多时标机械执行必须保持最新的有效约束和实际动作历史。
+
+特征级 Genesis 环境可能遗漏真实声学与接触效应，必须通过真实前端和小动作响应验证。学习策略的跨对象复用由组合留出和真实测试建立，不由一个空间映射或稳定性不等式自动推出。若匹配的普通三维地图与在线教师已经达到相同能力，本文的共享表示或学习部分就不能继续声称独立优势。
+
+\subsection{结论}
+V8.1 将旧版最有实际价值的内容组织成同一个检查系统：身体中心任务与目标分离、持续更新的对象证据、可迁移的任务动作偏好，以及能力约束下的真实执行。扩展外层 QP 同时协调 CoP、成像关系和物理站位，不再把参考推进误当合格覆盖。论文的研究价值将由未见组合下的技能复用、真实数据效率和连续检查收益决定。数学分析说明模型内接口性质与失效边界；它不替代真实系统证据。
+
+\clearpage
+\appendix
+\section{创新归属、直接先例与主张边界}
+\label{app:novelty}
+\subsection{哪些地方可以作为 V8.1 的拟议核心贡献}
+\begin{keybox}
+\textbf{拟议主贡献 C1：身体中心的共享检查状态与任务动作接口。}\par
+同一状态同时承担仿真任务组织、当前目标更新、带类型的检查记忆、共享策略输入与执行验收。主张不是某个坐标或网络首创，而是这个接口使相同参数的检查技能在未见组合中复用。\textbf{成立证据：}B1、B2 和任务专属策略在同样信息条件下的对照，以及真实数据预算曲线。
+\end{keybox}
+\begin{keybox}
+\textbf{拟议主贡献 C2：证据驱动的跨任务连续检查。}\par
+检查知识以对象、目标、任务类型、时间和映射版本索引；姿态变化与任务切换时重新验收，而不是仅保存一条成功轨迹或无类型覆盖图。\textbf{成立证据：}在普通完整三维记忆基线之外，减少重复采集、加快新复查且不增加错误关联。单纯保存地图和恢复扫描不够新。
+\end{keybox}
+\begin{keybox}
+\textbf{拟议方法增量 C3：接触、目标成像与物理推进的统一执行。}\par
+把目标状态给出的成像 Jacobian 接入原 UltraPoC 的 CoP 增量配对，释放必要的横移／姿态协调，并将相位绑定到最终真实动作的局部站位变化。\textbf{成立证据：}在同样自由度、底层控制和输入限制下的机制消融与整段任务提升。CoP 公式、成像交互矩阵及 QP 凸性均不是新的数学发明。
+\end{keybox}
+C1 是稿件主要系统贡献候选，C2 与 C3 共同支撑它。Genesis 教师蒸馏、DMP、滤波与 dIRD 提案属于具体实现路径；只有单独出现可验证的新性质时，才增列贡献。三个框中的用语在完成实验之前均应保持“提出／设计／拟议”，不能改成“证明实现了跨患者通用智能”。
+
+\subsection{新颖性责任矩阵}
+\small
+\begin{longtable}{@{}P{23mm}P{42mm}P{49mm}P{36mm}@{}}
+\toprule
+候选主张 & 最接近的先例 & V8.1 必须区分的具体增量 & 当前证据状态\\\midrule
+\endfirsthead
+\toprule 候选主张 & 最接近的先例 & V8.1 必须区分的具体增量 & 当前证据状态\\\midrule
+\endhead
+共同身体空间 & SMPL-X、DOF、策略运输\cite{smplx,dof,transport} & 同一状态跨训练、在线证据、不同检查义务和执行持续使用 & 已定义；集成与跨组合验证待完成\\
+解剖引导检查 & SAMe 的初始化；UltraBot 的完整流程\cite{same,ultrabot} & 在限定任务族中检验共享接口与较少任务专属真实数据，不宣称首次自主超声 & 已核对先例；无 V8.1 真机结果\\
+结构化仿真迁移 & SonoGraph-WM、TR-FDF\cite{sonograph,trfdf} & 真实观测输入、长期对象记忆及任务组合复用；不是第一次使用中间结构域 & 仅给出训练协议\\
+任务多解执行 & EMMP、冗余覆盖规划\cite{emmp,coverageplan} & 同一目标状态驱动当前合法实现，并在执行后维护任务证据 & 原则继承；整体收益待验证\\
+跨姿态恢复 & 配准与置信度重定位\cite{reposition} & 保留可审核的带类型证据和新鲜度要求，而非只更新旧路径 & 记忆定义和单元检查已有\\
+任务策略合成 & RMPflow、过程中心技能框架\cite{rmpflow,taxonomy} & 单一检查接口的部署复用，以及真实接触—成像相互制约下的任务能力 & 条件性分析；不宣称新普适合成理论\\
+空间参考与学习 & AL-DMP、ProDMP、DAgger\cite{aldmp,prodmp,dagger} & 在共同检查状态上蒸馏有物理接口的动作偏好 & 采用已有方法；不是单独首创\\\bottomrule
+\end{longtable}
+\normalsize
+
+\subsection{哪些内容明确不单独算创新}
+调和 PDE、SMPL-X、材料坐标思想、局部坐标／协方差变换、任务 Jacobian、伪逆、Gaussian 递推、空间 DMP、教师蒸馏、零空间、CoP 刚体速度配对、线性化约束、二次规划及输入到状态误差界均属于已有工具。原 UltraPoC 已有的接触机制作为前期工作继承。将它们写在同一篇论文中，也不自动成为系统级原创。
+
+“系统级贡献”必须由因果实验建立：共享接口带来的复用范围、真实数据节省与连续检查表现，在信息与控制资源相同的强基线上不能被完全解释。如果主要收益仅来自增加感知输入、放松任务要求或使用更高速度，则应据实缩小主张。
+
+\subsection{可以使用与不应使用的论文表述}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\linewidth}{YY}
+\toprule
+在当前阶段可以写 & 当前阶段不应写\\\midrule
+提出一种身体中心共享检查状态与动作接口 & 首次建立通用解剖智能或通用机器人检查理论\\
+设计并分析接触—成像联合执行器 & 证明任意人体表面无源、安全且无弹跳\\
+在假设成立时给出单步误差与条件性跟踪界 & 外层 QP 全局最优并保证任意场景完整完成\\
+计划通过未见组合和真实数据预算检验复用 & 已达到跨患者零样本泛化或专家级诊断表现\\
+dIRD 提议并经完整运动学验收的实现 & 学习可达分数是连续路径／碰撞安全证书\\
+同一对象的证据运输与重新验收 & 外形对应足以确定另一个患者的真实内部目标\\\bottomrule
+\end{tabularx}
+\caption{创新审查针对具体证据，不使用未经支持的期刊分数。}
+\end{table}
+
+\subsection{直接相关工作的核验范围}
+本稿外部文献于 2026 年 10 月 12 日核对。DOF、策略运输、AL-DMP、ProDMP、EMMP、冗余覆盖、运动后重定位、UltraBot 与过程中心技能引用对应正式论文或作者／机构的出版记录。SAMe、SonoGraph-WM 和 TR-FDF 在本文按\textbf{预印本}处理，不自行附加期刊或会议录用信息。相关方法比较依据所列公开论文内容；没有找到完全同构工作不等于完成穷尽性首创证明。
+
+\section{旧版本取舍与 V8.1 的具体组合}
+\label{app:versions}
+下表依据固定提交中的前期稿件\cite{repoversions}组织；它是内容取舍，不是对各版本作录用评分。
+\small
+\begin{longtable}{@{}P{23mm}P{48mm}P{44mm}P{35mm}@{}}
+\toprule
+旧版 & V8.1 保留 & 不带入正文的内容 & 新稿位置\\\midrule
+\endfirsthead
+\toprule 旧版 & V8.1 保留 & 不带入正文的内容 & 新稿位置\\\midrule
+\endhead
+V3.1 & 任务地址、类型明确成像关系、允许视角族与连续实现 & 完整区间盒／走廊证明链不作为论文中心 & 第\ref{sec:representation}、\ref{sec:dird}节\\
+V3.2 & 对象证据、旧新映射版本及失配后的选择性复用 & 不以新缓存算法或增量图搜索为首创 & 第\ref{sec:evidence}、\ref{sec:runtime}节\\
+V4.1 & 几何变化与任务关系重建；实际分支连续性 & 联络、holonomy 与整族运输不单列主贡献 & 坐标与慢层接口\\
+V4.2 & 不同观测解释同一潜在对象 & Gaussian 实验比较和完整 SDP 编译 & 目标估计原则\\
+V4.2 revised & 已观测信息与任务自由度分离 & $D_Q$ 最少方向与首次 minimax 主线 & 仅保留建模边界\\
+V4.3 & 空间参考与平滑恢复 & 不再并列引入多套 GP／DMP 理论 & 第\ref{sec:learning}节\\
+V4.3 revised & 真实输入、延迟、目标更新和接入条件 & 完整鲁棒谱定理与恢复证明链 & 执行误差与接口\\
+V4.4 & 任务进度与时钟分开；有限输入 & 标量／多通道最小资源扩写 & 相位及验收\\
+V4.4 revised & 同一动作对当前有效模型一致；不确定性与实现选择分开 & 不研究最少探查跨度或辨识人体响应 & 情景验收原则\\
+V4.5 & 真实构型、余下任务和合格足迹 & 前视—回扫精确资源定理不做主线 & 运行状态与评价\\
+V5.1 & 所有观测与任务查询共享当前目标估计 & 最小条件维数、非交换秩和概率编译器 & 第\ref{sec:evidence}节的轻量估计\\
+V6.1 & 任务等价执行；目标不确定性与偏好分离；条件性任务容差 & 完整概率编译闭合性不再主导方法 & \textbf{主体执行设计}\\
+V7.1 & 证据与实际执行状态不能任意拆开 & 选后统计提取与信息支配 & 记录与时序原则\\
+V7.2 & 实际连续状态、相关观测与历史保留 & 短接矩阵和卷积充要条件 & 不进入主方法\\
+V7.3 & 真实覆盖、剩余时间和实际接入 & Blackwell 后继缺陷及匹配边际反例 & 运行与实验边界\\\bottomrule
+\end{longtable}
+\normalsize
+\textbf{确定组合：}V3.1 提供任务表示，V6.1 提供执行语义，V3.2 提供检查记忆；V4.3 提供空间参考工具，V5.1 只保留共享目标估计原则。Genesis 负责程序化训练条件，dIRD 负责实现提案，UltraPoC/QPIK 负责真实执行。不是按旧版目录拼接全文。
+
+\section{条件性性质的证明与控制接口展开}
+\label{app:proofs}
+\subsection{物理任务一致性}
+由 $P'=P\circ\chi^{-1}$ 和 $\gamma'=\chi\circ\gamma$，有 $P'(\gamma')=P(\gamma)$。链式法则给出同一物理切向；在当前物理空间重新定义成像关系后，其残差不变。观测支持和任务集合也按同一个可逆映射重编号，因此准确足迹和集合覆盖关系不变。
+
+概率量必须按完整分布推送。仅将均值与协方差线性变换，对一般非线性 $\chi$ 不保持精确 Gaussian 分布；有限图册内需要相应线性化误差或采样。网络的离散表示与插值也需另外检查。本命题是物理表示的一致性，不是网络自动等变性的定理。
+
+\subsection{QP 的凸性、存在性与唯一性}
+将变量堆叠为 $z=[\nu^\top,\alpha,\sigma_I,\sigma_r^\top]^\top$，固定线性化后
+\begin{equation}
+\widehat e_r^+=B_rz+d_r,\qquad
+B_r=[\tau G_t,\ \tau g_{s,t}\dot s_0,\ 0,\ 0],\quad
+d_r=\widehat e_r+\tau g_{t,t}.
+\label{eq:qpmatrix}
+\end{equation}
+每个代价项都是仿射函数的正权平方和，Hessian 为这些 $2B^\top WB$ 的和。加上各变量的正则／正权后严格正定。所有约束为固定线性等式或不等式，因此可行集凸且闭。可行时，强制正二次增长使最优解存在并唯一；硬约束不可行时没有解。该结论不保证参数变化、约束激活、地图跳变或非光滑切换下控制律全局光滑。
+
+图像任务项对标准 QP 系数的贡献为
+\begin{equation}
+H_r=2B_r^\top W_rB_r,\qquad g_r=2B_r^\top W_rd_r.
+\end{equation}
+CoP 行取
+\begin{equation}
+b_c=\frac{1}{v_*}[0,0,1,0,-c_{\rm CoP},0],\qquad
+r_c=\frac{U_m-c_{\rm CoP}\Omega_m}{v_*}.
+\end{equation}
+代价为 $w_n(b_c\nu-r_c)^2$。这与原代码的增量配对相同，不能误将右侧设为零。
+
+\subsection{单步误差收紧}
+由 $|e^{+,\rm true}-\widehat e^+|\le\rho$ 及 QP 行 $|\widehat e^+|\le\varepsilon-\rho+\sigma_r$，三角不等式直接得到 $|e^{+,\rm true}|\le\varepsilon+\sigma_r$。只在 $\sigma_r=0$ 时恢复原容差。
+
+若 $\rho$ 以置信事件形式给出，则结论也条件于该事件。逐帧置信水平不能直接当作整段相同置信水平；需要适合自适应选择的统一界或预先分配的风险预算。实现和论文必须标注采用的是模型内有界保证、经验校准概率还是纯经验门控。
+
+\subsection{局部跟踪误差界}
+对 $\dot e=-\kappa e+\eta+\Delta$ 使用常数变易公式，再对积分取范数，得到式\eqref{eq:issbound}。当两个误差界分别不超过常数 $\bar d_a,\bar d_m$ 时，
+\begin{equation}
+\limsup_{t\to\infty}\norm{e(t)}
+\le(\bar d_a+\bar d_m)/\kappa
+\end{equation}
+只在相关模型与执行条件持续有效的时间域内有意义。接触丢失、地图更新跳变、任务切换或硬集不可行会终止这个窗口，需重新初始化相关参考和界。
+
+\subsection{检查义务的集合语义}
+每个 $\Omega^-_{k,\mathcal R}$ 都属于真实合格支持时，其并集也属于真实合格支持并集。若要求集合被这个并集覆盖，则义务完成。重复同一集合不增大并集；任务类型和新鲜度不符的帧不进入该并集。该证明不保证图像质量判定器或登记误差集合本身正确，二者是单独的实验证据责任。
+
+\section{站位函数、参考提交与连续运动验收}
+\label{app:phase}
+\subsection{短轴交点的局部站位}
+令 $F(q,s,t)=r_y(q)^\top[p_j(s,t)-o(q)]$。若 $F=0$ 且 $|F_s|\ge m_s>0$，隐函数定理给出局部站位，且
+\begin{equation}
+\dot s=-\frac{F_q\dot q+F_t}{F_s}
+=\ell_t\nu+b_{s,t}.
+\label{eq:implicitstation}
+\end{equation}
+$F_t$ 只含站位固定时的模型时间变化。使用连续站位窗口防止跳到邻近目标或不同曲线分支；目标估计更新造成的站位跳变需显式重新关联，不能解释为机器人已扫描新区域。
+
+\subsection{长轴局部焦点的站位}
+长轴时 $r_y^\top\partial_sp_j$ 可能接近零，不能继续使用上一公式。可定义局部中心声束焦点：
+\begin{equation}
+(\widehat s,\widehat d)=
+\argmin_{s\in I_t,\ d\in[d_-,d_+]}
+\frac12\norm{p_j(s,t)-o(q)-d\,r_z(q)}^2.
+\label{eq:longstation}
+\end{equation}
+要求局部唯一的内点解及关于 $(s,d)$ 的正定 Hessian；对一阶最优条件隐式微分得到站位行。边界解、多解或声束几乎沿血管时使用显式的区段／焦点切换，不强行引用光滑公式。长轴图像覆盖多个站位时，实际覆盖仍由整帧足迹决定，而非只算焦点。
+
+\subsection{简单直线情形与零运动}
+对于长度尺度为 $L$、沿探头 $y$ 的静止直线目标，站位速度为 $v_y/L$。式\eqref{eq:phasecoupling}化为
+\begin{equation}
+v_y=L\alpha\dot s_0.
+\end{equation}
+在 $\dot s_0>0$ 时，静止动作强制 $\alpha=0$。同一冻结模型内，不能只通过改变一个优化标量增加任务进度。移动身体的贡献必须通过 $b_s$ 计入；这仍不替代真实图像验收。
+
+\subsection{数值候选到实际提交}
+外层输出必须附带快照标识、约束有效期、目标与地图版本、相位行、任务 Jacobian 和允许松弛。内层改变 twist 后，按实际量重算任务和站位行；超出容差则拒绝或返回重新求解。两路执行器传输成功后提交命令历史；回传实际状态后检查误差。如果只能证明部分传输成功，按部署安全协议处理，不能假定另一部分已执行。
+
+路径平滑、Ruckig 时间化或额外限幅必须在最终验收之前，或其影响被显式界定。不能在验收之后把位置再投影到表面，却继续声称原速度／加速度约束仍成立。
+
+\section{源码证据、接口改动与实施顺序}
+\label{app:implementation}
+\subsection{核对的版本与实际证据级别}
+RealUS\_playground 固定在提交 \href{https://github.com/NingMeng0903/RealUS_playground/tree/6a943e3dcf8c6ea68b9f75c398eb1f4307a9b81a}{\code{6a943e3}}；本文撰写时的 \code{main} 与该提交一致。AMONG\_US 关联实现采用会话已核对的固定提交 \href{https://github.com/NingMeng0903/AMONG_US/tree/f1ffc5078d6a08c32b59107ab16086a7bbde488e}{\code{f1ffc50}}。相关路径用于说明设计对接位置，而不是声称 V8.1 已集成。源码存在、README 中的报告、局部单元检查、完整仿真和真机验证是不同证据级别。
+
+\small
+\begin{longtable}{P{35mm}P{58mm}P{57mm}}
+\toprule
+模块 & 已有代码／接口 & V8.1 尚需完成\\\midrule
+\endfirsthead
+\toprule 模块 & 已有代码／接口 & V8.1 尚需完成\\\midrule
+\endhead
+Genesis 运行时 & \href{\RealBase/src/projects/genesis_ue_sync/sim_platform/simulation/runtime.py}{\path{sim_platform/simulation/runtime.py}}；仿真、相机和策略 I/O & 数据分割、统一特征接口、实例固定的隐藏目标与训练日志\\
+材料运输 & \href{\RealBase/src/projects/genesis_ue_sync/anatomy_retarget/material_runtime_v13.py}{\path{anatomy_retarget/material_runtime_v13.py}}；编译附着与姿态更新 & 当前对象误差预算、足迹重投影与目标关联验证\\
+图册与目标 & V3.1／V6.1 的局部图册和成像规则；AMONG\_US 几何接口 & 统一地图版本、单位、目标样条与观测状态\\
+空间参考 & \href{\AmongBase/DMP_playground/core_algorithms/spatial_dmp.py}{\path{core_algorithms/spatial_dmp.py}} & 明确与共享策略偏好的组合，不将 forcing telemetry 当作已学完整策略\\
+合成观测 & \href{\AmongBase/DMP_playground/core_algorithms/observation.py}{\path{core_algorithms/observation.py}} & 替换部署端真值接口；真实 B-mode 关联、切向估计与延迟数据融合\\
+dIRD & \href{\RealBase/ird_playground/README.md}{\path{ird_playground/README.md}}；代理场与轨迹提案 & 与当前探头标定、任务族和共享状态统一；保持独立精确验收\\
+SRS 提升 & \href{\RealBase/ird_playground/ird_playground/optimization/srs_trajectory_dp.py}{\path{optimization/srs_trajectory_dp.py}} & 从给定路径候选扩展到任务允许视角；连接当前真实状态\\
+CoP 几何 & \href{\RealBase/peirastic/contact_qp/geometry.py}{\path{contact_qp/geometry.py}} & 全六维动作及新站位约束的变换和验收\\
+外层分配 & \href{\RealBase/peirastic/contact_qp/weighted_outer.py}{\path{contact_qp/weighted_outer.py}}；四变量仿射 QP & 接触—成像联合 QP、完整误差预算、矩阵单元测试\\
+内层 QPIK & \href{\RealBase/rm75_control/rm75_control/control/joint_admittance_8dof/solver/qp_builder.py}{\path{solver/qp_builder.py}} & 新外层约束传递、最终动作再验收及多时标 rail 一致性\\
+共享技能／记忆 & 本稿已定义 & 网络训练、带类型的覆盖账本和端到端集成待实现\\\bottomrule
+\end{longtable}
+\normalsize
+
+\subsection{发布前必须统一的工程契约}
+\textbf{探头与坐标。}dIRD README 使用 \code{probe45}，原接触配置标注 \code{probe50_center_tcp}。名称不一致不必然代表错误，但必须核对实际几何、声学原点、变换链和校准散列；在确认之前不得直接复用两者的六维位姿数值。内环关节角、raw rail URDF 值和用户显示的相对 rail 坐标也须显式变换。
+
+\textbf{安全行。}现有外层在线路径允许对部分不相容的加速度行进行专门处理，不能将其笼统描述为所有原限制无条件保持。V8.1 要把最终采用的硬集、放松原因、制动／撤离规则及发送后的误差分别写入日志。新构造的任务约束不可绕过既有机械拒绝路径。
+
+\textbf{快慢时标。}策略可先从 5--10 Hz 开始，慢层在需要时更新连续实现；这些不是当前已实测可达频率。现有 dIRD 整段优化文档包含秒级运行报告，不能直接放入每个快环 tick。策略使用最新已接受路线摘要，慢层越期不发布半成品。快环是否继续保持、减速或退出，由当前有效期与机械合同决定。
+
+\textbf{质量代理。}原声学置信特征和图像任务质量分开记录。近场质量改善可以支持接触修复效果，但不能单独支持完整目标覆盖或诊断图像合格。
+
+\subsection{最小新增数据结构}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\linewidth}{P{35mm}Y}
+\toprule
+数据结构 & 必要字段\\\midrule
+\code{TaskSpec} & 对象／目标 ID、任务类型、区段、容差、质量规则、最早采集时刻、截止时刻\\
+\code{AnatomyState} & 目标参数均值／协方差、图册与映射版本、关联假设、有效域、时间戳\\
+\code{EvidenceRecord} & 唯一帧 ID、采集与到达时间、实际位姿、特征／相关误差、校准版本和支持区域\\
+\code{ExecutionProposal} & 提案 ID、快照、六维 twist、相位行、任务行、松弛、误差预算、有效期\\
+\code{ExecutionReceipt} & 内层接受量、修改量、两路传输事实、真实回传、约束残差、拒绝原因\\
+\code{CoverageLedger} & 义务 ID、有效帧、保守足迹、历史有效性、当前有效性、需补采集合\\\bottomrule
+\end{tabularx}
+\caption{名称为拟议新接口，不表示这些类已存在于仓库。}
+\end{table}
+
+\subsection{三阶段实施门槛}
+\textbf{阶段 A：表示与证据闭环。}保持原四变量执行器，打通对象状态、真实帧时间与目标估计；通过真值隔离、同帧去重、目标身份和地图版本测试。先验证“能正确知道正在讨论哪个目标”，再扩大动作空间。
+
+\textbf{阶段 B：扩展执行器。}冻结学习器，使用同一程序化参考比较原 QP、释放动作但不联合分配、完整联合分配。通过双重耦合、相位、内层改写、端点退化和机械拒绝测试后再上接触体模。只有量化真实最终动作，才能报告约束符合率。
+
+\textbf{阶段 C：共享技能与检查记忆。}用相同输入的教师生成标签、蒸馏学生并开展组合留出。冻结评估协议后测试体模；具备伦理与实验资源后才进入人体可行性。若共享策略不优于直接教师或普通地图，不应为维持叙事增加更多网络，应缩小主张或修改核心表示。
+
+\section{局部代数与接口检查结果}
+\label{app:checks}
+本次实际运行的检查为 \code{verify_v81.py}，固定随机种子 81，输出 \code{checks_v81.json}。脚本依赖 NumPy 和 SciPy，不需要 Genesis 或机器人。\textbf{以下结果全部是局部模型与软件语义检查，不是 V8.1 的性能实验。}
+
+\subsection{CoP 与成像的双重耦合}
+设静止目标深度 $d_p=40\,\mathrm{mm}$、$c_{\rm CoP}=8\,\mathrm{mm}$，请求 $\omega_y=0.1\,\mathrm{rad/s}$，机械名义增量取零。按式\eqref{eq:copvelocity}、\eqref{eq:dualcoupling}计算：
+\begin{table}[H]\centering\small
+\begin{tabular}{lrrrr}
+\toprule
+局部动作 & $v_x$ & $v_n$ & $\dot a_{p,x}$ & $v_{n,\rm CoP}$\\
+ & \multicolumn{4}{c}{单位：$\mathrm{mm/s}$}\\\midrule
+仅摇摆 & 0 & 0 & $-4$ & $-0.8$\\
+仅 CoP 配对 & 0 & $0.8$ & $-4$ & 0\\
+接触＋成像配对 & $-4$ & $0.8$ & 0 & 0\\\bottomrule
+\end{tabular}
+\caption{固定角速度下的刚体运动学恒等式。表中没有声学、弹性或闭环真机数据。}
+\end{table}
+脚本用旋转矩阵中央差分检查图像横向导数，最大绝对差约为 $2.13\times10^{-20}$（当前浮点计算）。这只验证局部符号和导数，不意味着真实测量达到该精度。
+
+\subsection{其余检查}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\linewidth}{P{41mm}YY}
+\toprule
+检查 & 本次结果 & 解释\\\midrule
+可逆仿射图册改写，100 组 & 最大物理重建差 $1.84\times10^{-15}$ 以下 & 验证对应映射同时变换时的代数一致性\\
+直线物理推进 & $L=0.2\,\mathrm m$、$\dot s_0=0.075\,\mathrm{s^{-1}}$、$\alpha=0.8$ 对应 $v_y=12\,\mathrm{mm/s}$ & 零运动时约束给出 $\alpha=0$\\
+同一帧读取 20 次 & 仅更新一次；后验方差 $3.84615\times10^{-6}\,\mathrm{m^2}$ & 验证唯一证据账本，不是滤波精度评价\\
+短轴／长轴义务各 10 格 & 两格短轴被重复提交仍只计 2/20 & 任务类型与去重正确；旧帧不能满足新复查\\
+11 维固定二次目标 & 最小 Hessian 特征值约 $0.002$ & 验证正权平方和＋正则的正定性\\\bottomrule
+\end{tabularx}
+\caption{这些检查是实现前的最低门槛，不能替代对完整 QP、真实图像与物理执行的测试。}
+\end{table}
+
+\clearpage
+\section{实验预注册与证据清单}
+\label{app:preregister}
+正式实验前冻结以下内容：任务区段及类型、质量标准、最早有效时刻、最大允许缺口、恢复次数和时限、对象级划分、数据预算、主要终点、样本量依据及排除规则。所有排除必须与方法无关，并保留原日志；不能因某方法困难就删除对应场景。
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\linewidth}{P{28mm}YY}
+\toprule
+主张 & 最小证据链 & 不能作为替代的结果\\\midrule
+共享技能泛化 & 对象／组合留出＋同一冻结模型＋强表示基线＋真实 episode & 随机帧测试或每任务专门调参\\
+真实数据效率 & 统一任务、统一前端／标定成本、预算曲线和置信区间 & 与不同临床难度论文直接比较数据量\\
+记忆有用 & 同一对象的姿态／义务变化＋错误关联记录＋重复采集成本 & 只展示地图能重绘或轨迹能重新规划\\
+联合执行有用 & 相同自由度和机械限制下的耦合消融＋实际动作与图像评价 & 只报告预测 QP 目标或网络可达分数\\
+模型内约束有效 & 误差预算来源＋全部后处理后的发送验收＋真实回传 & 求解器返回成功或源码有验证函数\\
+人体适用 & 伦理审批、独立对象、完整任务和专家评价 & 体模成功直接推广到患者安全与诊断\\\bottomrule
+\end{tabularx}
+\caption{附录 A 中每项创新主张都须由对应证据链支持。}
+\end{table}
+
+\clearpage
+\addcontentsline{toc}{section}{参考文献与代码来源}
+\begin{thebibliography}{99}\small
+\bibitem{ultrabot}
+H. Jiang, A. Zhao, Q. Yang, et al.
+Towards expert-level autonomous carotid ultrasonography with large-scale learning-based robotic system.
+\emph{Nature Communications}, 16:7893, 2025.
+\url{https://doi.org/10.1038/s41467-025-62865-w}.
+
+\bibitem{same}
+J. Zhang, D. Chen, W. Jiang, et al.
+SAMe: A Semantic Anatomy Mapping Engine for Robotic Ultrasound.
+\emph{arXiv preprint}, 2604.25646, 2026.
+\url{https://arxiv.org/abs/2604.25646}.
+
+\bibitem{reposition}
+Z. Jiang, N. Danis, Y. Bi, M. Zhou, M. Kroenke, T. Wendler, N. Navab.
+Precise Repositioning of Robotic Ultrasound: Improving Registration-Based Motion Compensation Using Ultrasound Confidence Optimization.
+\emph{IEEE Transactions on Instrumentation and Measurement}, 71:5020611, 2022.
+\url{https://doi.org/10.1109/TIM.2022.3200360}.
+
+\bibitem{sonograph}
+X. Li, S. Chen, F. Li, Z. Jiang, N. Navab, Y. Bi.
+Scanning While Imagining: A Scene-Graph World Model for Robotic Ultrasound Navigation.
+\emph{arXiv preprint}, 2609.32837, 2026.
+\url{https://arxiv.org/abs/2609.32837}.
+
+\bibitem{dof}
+C. Bilaloglu, T. L\"ow, S. Calinon.
+Object-centric task representation and transfer using diffused orientation fields.
+\emph{Science Robotics}, 11(113):eaea1762, 2026.
+\url{https://doi.org/10.1126/scirobotics.aea1762}.
+
+\bibitem{transport}
+G. Franzese, R. Prakash, C. Della Santina, J. Kober.
+Generalizable Motion Policies Through Keypoint Parameterization and Transportation Maps.
+\emph{IEEE Transactions on Robotics}, 41:4557--4573, 2025.
+\url{https://doi.org/10.1109/TRO.2025.3582821}.
+
+\bibitem{emmp}
+B. Lee, Y. Lee, S. Kim, M. Son, F. C. Park.
+Equivariant Motion Manifold Primitives.
+\emph{Proceedings of the Conference on Robot Learning}, PMLR 229:1199--1221, 2023.
+\url{https://proceedings.mlr.press/v229/lee23a.html}.
+
+\bibitem{coverageplan}
+Y. Wang, M. Gleicher.
+Hierarchically Accelerated Coverage Path Planning for Redundant Manipulators.
+\emph{IEEE International Conference on Robotics and Automation}, 2025.
+\url{https://graphics.cs.wisc.edu/Papers/2025/WG25a/}.
+
+\bibitem{aldmp}
+T. Ga\v{s}par, B. Nemec, J. Morimoto, A. Ude.
+Skill learning and action recognition by arc-length dynamic movement primitives.
+\emph{Robotics and Autonomous Systems}, 100:225--235, 2018.
+\url{https://doi.org/10.1016/j.robot.2017.11.012}.
+
+\bibitem{prodmp}
+G. Li, Z. Jin, M. Volpp, F. Otto, R. Lioutikov, G. Neumann.
+ProDMP: A Unified Perspective on Dynamic and Probabilistic Movement Primitives.
+\emph{IEEE Robotics and Automation Letters}, 8(4):2325--2332, 2023.
+\url{https://doi.org/10.1109/LRA.2023.3248443}.
+
+\bibitem{rmpflow}
+C.-A. Cheng, M. Mukadam, J. Issac, S. Birchfield, D. Fox, B. Boots, N. Ratliff.
+RMPflow: A Geometric Framework for Generation of Multi-Task Motion Policies.
+\emph{IEEE Transactions on Automation Science and Engineering}, 2021.
+\url{https://research.nvidia.com/labs/lpr/publication/cheng2021rmpflow/}.
+
+\bibitem{taxonomy}
+L. Johannsmeier, S. Schneider, Y. Li, E. Burdet, S. Haddadin.
+A process-centric manipulation taxonomy for the organization, classification and synthesis of tactile robot skills.
+\emph{Nature Machine Intelligence}, 7:916--927, 2025.
+\url{https://doi.org/10.1038/s42256-025-01045-3}.
+
+\bibitem{smplx}
+G. Pavlakos, V. Choutas, N. Ghorbani, T. Bolkart, A. A. A. Osman, D. Tzionas, M. J. Black.
+Expressive Body Capture: 3D Hands, Face, and Body from a Single Image.
+\emph{IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 2019.
+\url{https://arxiv.org/abs/1904.05866}.
+
+\bibitem{trfdf}
+Y. Qian, J. Luo, W. Zhu, Y. Zhang, M. Q.-H. Meng, Y. Yuan, L. Liu.
+Task-Relevant Feature-Dynamics Fidelity Enables Zero-Shot Sim-to-Real Transfer for Robotic Ultrasound Scanning.
+\emph{arXiv preprint}, 2608.29516, 2026.
+\url{https://arxiv.org/abs/2608.29516}.
+
+\bibitem{dagger}
+S. Ross, G. J. Gordon, J. A. Bagnell.
+A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning.
+\emph{Proceedings of AISTATS}, PMLR 15:627--635, 2011.
+\url{https://proceedings.mlr.press/v15/ross11a.html}.
+
+\bibitem{repoird}
+NingMeng0903. RealUS\_playground，固定提交 \code{6a943e3}，dIRD 接口与证据说明。
+\href{\RealBase/ird_playground/README.md}{\path{ird_playground/README.md}}. 核对日期：2026-10-12。
+
+\bibitem{reposrs}
+NingMeng0903. RealUS\_playground，固定提交 \code{6a943e3}，整段 SRS 轨迹提升。
+\href{\RealBase/ird_playground/ird_playground/optimization/srs_trajectory_dp.py}{\path{ird_playground/ird_playground/optimization/srs_trajectory_dp.py}}.
+
+\bibitem{repoouter}
+NingMeng0903. RealUS\_playground，固定提交 \code{6a943e3}，UltraPoC 接触外层分配实现。
+\href{\RealBase/peirastic/contact_qp/weighted_outer.py}{\path{peirastic/contact_qp/weighted_outer.py}}.
+
+\bibitem{repogeom}
+NingMeng0903. RealUS\_playground，固定提交 \code{6a943e3}，功率配对几何、CoP 与参考推进接口。
+\href{\RealBase/peirastic/contact_qp/geometry.py}{\path{peirastic/contact_qp/geometry.py}}.
+
+\bibitem{repoversions}
+NingMeng0903. Anatomical GPS V3.1--V7.3 研究稿。
+\href{https://github.com/NingMeng0903/RealUS_playground/tree/6a943e3dcf8c6ea68b9f75c398eb1f4307a9b81a/NMI_idea/ideas}{\path{RealUS_playground/NMI_idea/ideas}}.
+内部前期研究资料；版本取舍见附录 B，不作为外部同行验证。
+\end{thebibliography}
+\end{document}

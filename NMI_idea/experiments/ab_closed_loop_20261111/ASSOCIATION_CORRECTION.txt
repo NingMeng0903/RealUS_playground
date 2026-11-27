@@ -1,0 +1,40 @@
+Software-validation amendment
+2026-11-11
+
+The first frozen run is retained. Its first independent audit found an
+association likelihood error before interpreting its held-out success rates.
+The renderer emitted p_real genuine, (1-p_real)*0.10 clutter, and the
+remainder missing; the Bayes update accidentally used 0.9*p_real and 0.10.
+The corrected run uses the renderer-consistent branch probabilities.
+The public predictor integrates quality at quadrature nodes per Gaussian
+association component and per clutter distribution, with no true identity
+labels. Same acquisition event IDs are still deduplicated.
+Seeds, physical fixture, prior, quality thresholds and deadline rule are
+retained. The fitted geometry in the predictive model is nominal.
+
+Tracking is also audited at the same native tick by pairing desired[t]
+with FK(measured q before update[t]). The preexisting native 2 mm / 2 degree
+gate remains, and the aligned metrics are added to each trace. Configured
+jerk margins are recorded, with no added jerk admission cut. The reference
+uses rest-to-rest ProDMP phase at each anchor; the actual native velocity
+and acceleration histories are continuously restored.
+
+The primary planner scores one terminal in lookahead. Execution may try
+one additional fresh terminal after a public rejection, so this is a
+finite rollout approximation to the full third equation. The physical
+model is deterministic conditional on the public entry and program.
+The frozen feature-based acceptance requires a genuinely detected target
+in the same fresh packet and the declared geometry/quality thresholds.
+It measures fresh qualifying detected features, not raster ultrasound
+or a detector-independent image outcome.
+
+Individual acquisition IDs include their executed prefix. Matched arms use
+common random numbers at a given view and visit; physical pose changes the
+beam and expected response, not the random draw. Open/control and mirrored
+results remain separate. All-missing is added as a direct negative control.
+Fixed-pair order is frozen before private draw using the minimum of the
+checked worst-case completion times. Pair order fallback to legal direct
+scan is shared and logged when the pair cannot fit.
+
+This amendment was made from code and public motion review, without using
+held-out outcome rates to choose a model, fixture, cutoff, or threshold.

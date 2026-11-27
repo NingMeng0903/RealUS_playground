@@ -86,15 +86,42 @@ class TriangulationConfig:
         )
 
 
-def _triangulate_linear(xy: np.ndarray, p: np.ndarray,
-                        weights: np.ndarray) -> np.ndarray | None:
+def _weighted_dlt_row_block(
+    xy: np.ndarray,
+    proj: np.ndarray,
+    weight: float,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Build the exact two weighted DLT rows for one view/candidate."""
+    u, v = xy
+    if not np.isfinite(u) or not np.isfinite(v) or weight <= 0:
+        return None
+    w = float(np.sqrt(weight))
+    return (
+        w * (u * proj[2] - proj[0]),
+        w * (v * proj[2] - proj[1]),
+    )
+
+
+def _triangulate_linear(
+    xy: np.ndarray,
+    p: np.ndarray,
+    weights: np.ndarray,
+    *,
+    row_blocks: list[tuple[np.ndarray, np.ndarray] | None] | None = None,
+) -> np.ndarray | None:
     """Weighted homogeneous DLT for one joint."""
     rows: list[np.ndarray] = []
-    for (u, v), proj, weight in zip(xy, p, weights):
-        if not np.isfinite(u) or not np.isfinite(v) or weight <= 0:
-            continue
-        w = float(np.sqrt(weight))
-        rows.extend((w * (u * proj[2] - proj[0]), w * (v * proj[2] - proj[1])))
+    if row_blocks is None:
+        for point, proj, weight in zip(xy, p, weights):
+            block = _weighted_dlt_row_block(point, proj, weight)
+            if block is not None:
+                rows.extend(block)
+    else:
+        # Cached blocks are assembled in the caller's inlier order, which is
+        # the same row order used by the uncached loop above.
+        for block in row_blocks:
+            if block is not None:
+                rows.extend(block)
     if len(rows) < 4:
         return None
     _u, _s, vh = np.linalg.svd(np.asarray(rows, dtype=np.float64),
@@ -126,23 +153,94 @@ def _camera_center(p: np.ndarray) -> np.ndarray | None:
     return c if np.all(np.isfinite(c)) else None
 
 
-def _minimum_ray_angle_deg(xyz: np.ndarray, p: np.ndarray) -> float:
-    centers = [_camera_center(pi) for pi in p]
-    vectors = []
-    for center in centers:
-        if center is None:
-            continue
-        direction = np.asarray(xyz, dtype=np.float64) - center
-        norm = float(np.linalg.norm(direction))
-        if norm > 1e-9:
-            vectors.append(direction / norm)
-    if len(vectors) < 2:
+def _minimum_ray_angle_deg(
+    xyz: np.ndarray,
+    p: np.ndarray,
+    *,
+    camera_centers: list[np.ndarray | None] | tuple[np.ndarray | None, ...] | None = None,
+) -> float:
+    centers = (
+        list(camera_centers)
+        if camera_centers is not None
+        else [_camera_center(pi) for pi in p]
+    )
+    # Keep the center filtering semantics of the original implementation, but
+    # normalize all usable rays in one NumPy operation.  The old pairwise
+    # ``combinations`` loop was hot: every DLT hypothesis called it once.
+    usable_centers = [center for center in centers if center is not None]
+    if len(usable_centers) < 2:
         return 0.0
-    angles = []
-    for a, b in combinations(vectors, 2):
-        angles.append(
-            float(np.degrees(np.arccos(np.clip(np.dot(a, b), -1.0, 1.0)))))
-    return min(angles) if angles else 0.0
+    # Most hypotheses have only two or three inlier rays.  Keep their scalar
+    # normalization fast path (there is no pair loop for either case) and use
+    # the batched path below when a four/five-view hypothesis makes the
+    # vectorized reduction worthwhile.
+    if len(usable_centers) <= 3:
+        vectors = []
+        for center in usable_centers:
+            direction = np.asarray(xyz, dtype=np.float64) - center
+            norm = float(np.linalg.norm(direction))
+            if norm > 1e-9:
+                vectors.append(direction / norm)
+        if len(vectors) < 2:
+            return 0.0
+        if len(vectors) == 2:
+            return float(
+                np.degrees(
+                    np.arccos(
+                        np.clip(np.dot(vectors[0], vectors[1]), -1.0, 1.0)
+                    )
+                )
+            )
+        angles = (
+            float(
+                np.degrees(
+                    np.arccos(
+                        np.clip(np.dot(vectors[0], vectors[1]), -1.0, 1.0)
+                    )
+                )
+            ),
+            float(
+                np.degrees(
+                    np.arccos(
+                        np.clip(np.dot(vectors[0], vectors[2]), -1.0, 1.0)
+                    )
+                )
+            ),
+            float(
+                np.degrees(
+                    np.arccos(
+                        np.clip(np.dot(vectors[1], vectors[2]), -1.0, 1.0)
+                    )
+                )
+            ),
+        )
+        return min(angles)
+    centers_array = np.asarray(usable_centers, dtype=np.float64)
+    directions = np.asarray(xyz, dtype=np.float64) - centers_array
+    norms = np.sqrt(np.einsum("ij,ij->i", directions, directions))
+    valid = norms > 1e-9
+    if int(np.sum(valid)) < 2:
+        return 0.0
+    vectors = directions[valid] / norms[valid, None]
+    # Avoid materializing an NxN matrix for the common two/three-ray cases;
+    # larger hypotheses use one vectorized pairwise reduction instead of the
+    # old Python ``combinations`` loop.
+    if len(vectors) == 2:
+        cosine = np.asarray([np.dot(vectors[0], vectors[1])], dtype=np.float64)
+    elif len(vectors) == 3:
+        cosine = np.asarray(
+            [
+                np.dot(vectors[0], vectors[1]),
+                np.dot(vectors[0], vectors[2]),
+                np.dot(vectors[1], vectors[2]),
+            ],
+            dtype=np.float64,
+        )
+    else:
+        row, col = np.triu_indices(len(vectors), k=1)
+        cosine = np.sum(vectors[row] * vectors[col], axis=1)
+    angles = np.degrees(np.arccos(np.clip(cosine, -1.0, 1.0)))
+    return float(np.min(angles)) if angles.size else 0.0
 
 
 def _meta_array(
@@ -220,6 +318,7 @@ def _joint_candidates(
             var = np.maximum(var, 0.0)
         except (IndexError, TypeError, ValueError):
             var = np.zeros((len(xy), 2), dtype=np.float64)
+
         result_xy.append(xy)
         result_prob.append(prob)
         result_var.append(var)
@@ -241,12 +340,33 @@ def _geman_mcclure_unit(value: np.ndarray) -> np.ndarray:
     return squared / (1.0 + squared)
 
 
+def _hypothesis_cost_static_components(
+    confidences: np.ndarray,
+    probabilities: np.ndarray,
+    variances_px2: np.ndarray,
+    *,
+    scale: float,
+) -> tuple[float, float, float]:
+    """Return cost terms independent of a candidate's reconstructed geometry."""
+    weights = np.maximum(confidences, 1e-6)
+    probability_cost = float(
+        np.average(-np.log(np.clip(probabilities, 1e-12, 1.0)),
+                   weights=weights))
+    uncertainty = np.sqrt(np.maximum(np.mean(variances_px2, axis=1), 0.0))
+    uncertainty_cost = float(
+        np.average(np.log1p(uncertainty / scale), weights=weights))
+    confidence_cost = float(np.mean(1.0 - np.clip(confidences, 0.0, 1.0)))
+    return probability_cost, uncertainty_cost, confidence_cost
+
+
 def _hypothesis_cost(
     errors: np.ndarray,
     confidences: np.ndarray,
     probabilities: np.ndarray,
     variances_px2: np.ndarray,
     config: TriangulationConfig,
+    *,
+    static_components: tuple[float, float, float] | None = None,
 ) -> float:
     scale = max(float(config.two_view_max_reproj_px), 1.0)
     weights = np.maximum(confidences, 1e-6)
@@ -260,13 +380,16 @@ def _hypothesis_cost(
     residual = float(
         np.average(_geman_mcclure_unit(clipped_errors / scale),
                    weights=weights))
-    probability_cost = float(
-        np.average(-np.log(np.clip(probabilities, 1e-12, 1.0)),
-                   weights=weights))
-    uncertainty = np.sqrt(np.maximum(np.mean(variances_px2, axis=1), 0.0))
-    uncertainty_cost = float(
-        np.average(np.log1p(uncertainty / scale), weights=weights))
-    confidence_cost = float(np.mean(1.0 - np.clip(confidences, 0.0, 1.0)))
+    if static_components is None:
+        probability_cost = float(
+            np.average(-np.log(np.clip(probabilities, 1e-12, 1.0)),
+                       weights=weights))
+        uncertainty = np.sqrt(np.maximum(np.mean(variances_px2, axis=1), 0.0))
+        uncertainty_cost = float(
+            np.average(np.log1p(uncertainty / scale), weights=weights))
+        confidence_cost = float(np.mean(1.0 - np.clip(confidences, 0.0, 1.0)))
+    else:
+        probability_cost, uncertainty_cost, confidence_cost = static_components
     return (residual +
             float(config.simcc_probability_weight) * probability_cost +
             float(config.simcc_uncertainty_weight) * uncertainty_cost +
@@ -310,6 +433,8 @@ def _joint_solution(
     joint_index: int,
     is_body25: bool,
     observation_meta: dict[str, Any] | None = None,
+    camera_centers: tuple[np.ndarray | None, ...] | None = None,
+    cache_enabled: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
     """Find the lowest-cost geometrically valid hypothesis for one joint."""
     conf_gate = float(max(config.confidence_threshold, config.min_conf))
@@ -347,6 +472,63 @@ def _joint_solution(
         observations, observation_meta, joint_index)
     hypotheses: list[dict[str, Any]] = []
     best: dict[str, Any] | None = None
+    observation_weight_cache: dict[tuple[int, int], float] = {}
+    log_probability_cache: dict[int, np.ndarray] = {}
+    # A seed can produce the same inlier subset and candidate ranks as another
+    # seed.  The refit geometry depends only on that inlier tuple and its
+    # candidate ranks, while all-observed scoring additionally depends on the
+    # discarded views' ranks.  Keep those cache keys separate so no hypothesis
+    # is removed or merged in the diagnostics.
+    geometry_cache: dict[
+        tuple[tuple[int, ...], tuple[int, ...]], dict[str, Any] | None
+    ] = {}
+    refit_cache: dict[
+        tuple[tuple[int, ...], tuple[int, ...]], dict[str, Any] | None
+    ] = {}
+    static_cost_cache: dict[
+        tuple[int, ...], tuple[float, float, float]
+    ] = {}
+    weighted_row_cache: dict[
+        tuple[int, int], tuple[np.ndarray, np.ndarray] | None
+    ] = {}
+
+    def observation_weight(view: int, rank: int) -> float:
+        key = (int(view), int(rank))
+        if cache_enabled and key in observation_weight_cache:
+            return observation_weight_cache[key]
+        value = _observation_weight(
+            observations[int(view), 2],
+            candidates_prob[int(view)][int(rank)],
+            candidates_var[int(view)][int(rank)],
+        )
+        if cache_enabled:
+            observation_weight_cache[key] = value
+        return value
+
+    def weighted_rows(
+        view: int,
+        rank: int,
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        key = (int(view), int(rank))
+        if cache_enabled and key in weighted_row_cache:
+            return weighted_row_cache[key]
+        block = _weighted_dlt_row_block(
+            candidates_xy[int(view)][int(rank)],
+            p_all[int(view)],
+            observation_weight(int(view), int(rank)),
+        )
+        if cache_enabled:
+            weighted_row_cache[key] = block
+        return block
+
+    def log_probability(view: int) -> np.ndarray:
+        view = int(view)
+        if cache_enabled and view in log_probability_cache:
+            return log_probability_cache[view]
+        value = -np.log(np.clip(candidates_prob[view], 1e-12, 1.0))
+        if cache_enabled:
+            log_probability_cache[view] = value
+        return value
     # Candidate pairs are sufficient seeds.  Each seed chooses the nearest
     # SimCC mode in every other camera, then is re-fit on only those inliers.
     # This avoids the K**V explosion while still allowing a secondary peak to
@@ -372,19 +554,25 @@ def _joint_solution(
                 candidates_xy[seed_views[0]][seed_rank0],
                 candidates_xy[seed_views[1]][seed_rank1]
             ])
-            seed_prob = np.asarray([
-                candidates_prob[seed_views[0]][seed_rank0],
-                candidates_prob[seed_views[1]][seed_rank1]
-            ])
-            seed_var = np.asarray([
-                candidates_var[seed_views[0]][seed_rank0],
-                candidates_var[seed_views[1]][seed_rank1]
-            ])
             seed_weights = np.asarray([
-                _observation_weight(observations[v, 2], p, var)
-                for v, p, var in zip(seed_views, seed_prob, seed_var)
+                observation_weight(int(v), int(rank))
+                for v, rank in zip(seed_views, (seed_rank0, seed_rank1))
             ])
-            xyz = _triangulate_linear(seed_xy, p_all[seed_views], seed_weights)
+            if cache_enabled:
+                seed_row_blocks = [
+                    weighted_rows(int(v), int(rank))
+                    for v, rank in zip(seed_views, (seed_rank0, seed_rank1))
+                ]
+                xyz = _triangulate_linear(
+                    seed_xy,
+                    p_all[seed_views],
+                    seed_weights,
+                    row_blocks=seed_row_blocks,
+                )
+            else:
+                xyz = _triangulate_linear(
+                    seed_xy, p_all[seed_views], seed_weights
+                )
             diagnostic: dict[str, Any] = {
                 "hypothesis_id": hypothesis_id,
                 "xyz": None,
@@ -420,8 +608,7 @@ def _joint_solution(
                                            axis=1)
                 quality = distances + float(
                     config.simcc_probability_weight) * float(
-                        config.two_view_max_reproj_px) * (-np.log(
-                            np.clip(candidates_prob[view], 1e-12, 1.0)))
+                        config.two_view_max_reproj_px) * log_probability(view)
                 ranks[view] = int(np.argmin(quality))
             selected_xy = np.asarray(
                 [candidates_xy[v][ranks[v]] for v in observed])
@@ -450,129 +637,243 @@ def _joint_solution(
             for inliers in inlier_subsets:
                 candidate_diagnostic = dict(diagnostic)
                 candidate_diagnostic["hypothesis_id"] = len(hypotheses)
-                inlier_xy = np.asarray(
-                    [candidates_xy[v][ranks[v]] for v in inliers])
-                probabilities = np.asarray(
-                    [candidates_prob[v][ranks[v]] for v in inliers])
-                variances = np.asarray(
-                    [candidates_var[v][ranks[v]] for v in inliers])
-                confidences = observations[inliers, 2]
-                weights = np.asarray([
-                    _observation_weight(c, p, var)
-                    for c, p, var in zip(confidences, probabilities, variances)
-                ])
-                xyz_refit = _triangulate_linear(inlier_xy, p_all[inliers],
-                                                weights)
-                if xyz_refit is None:
+                cache_key = (
+                    tuple(int(v) for v in inliers.tolist()),
+                    tuple(int(ranks[v]) for v in observed.tolist()),
+                )
+                if cache_enabled and cache_key in refit_cache:
+                    cached = refit_cache[cache_key]
+                else:
+                    inlier_xy = np.asarray(
+                        [candidates_xy[v][ranks[v]] for v in inliers])
+                    probabilities = np.asarray(
+                        [candidates_prob[v][ranks[v]] for v in inliers])
+                    variances = np.asarray(
+                        [candidates_var[v][ranks[v]] for v in inliers])
+                    confidences = observations[inliers, 2]
+                    geometry_key = (
+                        tuple(int(v) for v in inliers.tolist()),
+                        tuple(int(ranks[v]) for v in inliers.tolist()),
+                    )
+                    if cache_enabled and geometry_key in geometry_cache:
+                        geometry = geometry_cache[geometry_key]
+                    else:
+                        inlier_ranks = [int(ranks[v]) for v in inliers]
+                        weights = np.asarray([
+                            observation_weight(int(v), rank)
+                            for v, rank in zip(inliers, inlier_ranks)
+                        ])
+                        if cache_enabled:
+                            inlier_row_blocks = [
+                                weighted_rows(int(v), rank)
+                                for v, rank in zip(inliers, inlier_ranks)
+                            ]
+                            xyz_refit = _triangulate_linear(
+                                inlier_xy,
+                                p_all[inliers],
+                                weights,
+                                row_blocks=inlier_row_blocks,
+                            )
+                        else:
+                            xyz_refit = _triangulate_linear(
+                                inlier_xy, p_all[inliers], weights
+                            )
+                        if xyz_refit is None:
+                            geometry = None
+                        else:
+                            repro_refit = _project(
+                                xyz_refit, p_all[inliers]
+                            )
+                            err_refit = np.linalg.norm(
+                                repro_refit - inlier_xy, axis=1
+                            )
+                            subset_centers = (
+                                [camera_centers[int(v)] for v in inliers]
+                                if camera_centers is not None else None
+                            )
+                            geometry = {
+                                "xyz": np.asarray(
+                                    xyz_refit, dtype=np.float64
+                                ).copy(),
+                                "mean_reprojection_error_px": float(
+                                    np.mean(err_refit)
+                                ),
+                                "max_reprojection_error_px": float(
+                                    np.max(err_refit)
+                                ),
+                                "min_ray_angle_deg": float(
+                                    _minimum_ray_angle_deg(
+                                        xyz_refit,
+                                        p_all[inliers],
+                                        camera_centers=subset_centers,
+                                    )
+                                ),
+                            }
+                        if cache_enabled:
+                            geometry_cache[geometry_key] = geometry
+                    if geometry is None:
+                        cached = None
+                    else:
+                        xyz_refit = np.asarray(
+                            geometry["xyz"], dtype=np.float64
+                        )
+                        # Compare every 2/3/4-view subset on the same
+                        # observed-view support.  Geometry gates below still
+                        # use only the views claimed as inliers.
+                        repro_evaluation = _project(
+                            xyz_refit, p_all[observed]
+                        )
+                        evaluation_xy = np.asarray(
+                            [candidates_xy[v][ranks[v]] for v in observed]
+                        )
+                        evaluation_errors = np.linalg.norm(
+                            repro_evaluation - evaluation_xy, axis=1
+                        )
+                        evaluation_probabilities = np.asarray(
+                            [candidates_prob[v][ranks[v]] for v in observed]
+                        )
+                        evaluation_variances = np.asarray(
+                            [candidates_var[v][ranks[v]] for v in observed]
+                        )
+                        evaluation_confidences = observations[observed, 2]
+                        observed_rank_key = tuple(
+                            int(ranks[v]) for v in observed
+                        )
+                        if cache_enabled and observed_rank_key in static_cost_cache:
+                            static_components = static_cost_cache[observed_rank_key]
+                        else:
+                            static_components = _hypothesis_cost_static_components(
+                                evaluation_confidences,
+                                evaluation_probabilities,
+                                evaluation_variances,
+                                scale=max(
+                                    float(config.two_view_max_reproj_px),
+                                    1.0,
+                                ),
+                            )
+                            if cache_enabled:
+                                static_cost_cache[observed_rank_key] = static_components
+                        cost = _hypothesis_cost(
+                            evaluation_errors,
+                            evaluation_confidences,
+                            evaluation_probabilities,
+                            evaluation_variances,
+                            config,
+                            static_components=static_components,
+                        )
+                        inlier_mask = np.zeros((len(observations), ), dtype=bool)
+                        inlier_mask[inliers] = True
+                        probabilities_all: list[float | None] = [None] * len(observations)
+                        variances_all: list[list[float] | None] = [None] * len(observations)
+                        errors_out: list[float | None] = [None] * len(observations)
+                        observations_out: list[list[float] | None] = [None] * len(observations)
+                        for view, probability, var, error in zip(
+                                observed,
+                                evaluation_probabilities,
+                                evaluation_variances,
+                                evaluation_errors,
+                        ):
+                            probabilities_all[int(view)] = float(probability)
+                            variances_all[int(view)] = np.asarray(
+                                var, dtype=float
+                            ).tolist()
+                            errors_out[int(view)] = float(error)
+                            observations_out[int(view)] = np.asarray(
+                                candidates_xy[view][ranks[view]],
+                                dtype=float,
+                            ).tolist()
+                        confidence = float(np.mean(confidences))
+                        if len(inliers) == 2:
+                            confidence *= float(config.low_view_confidence_scale)
+                        cached = {
+                            "xyz": geometry["xyz"],
+                            "confidence": confidence,
+                            "used_views": inliers.astype(int).tolist(),
+                            "inlier_mask": inlier_mask.tolist(),
+                            "candidate_probabilities": probabilities_all,
+                            "simcc_variance_px2": variances_all,
+                            "observation_xy": observations_out,
+                            "reprojection_errors_px": errors_out,
+                            "mean_reprojection_error_px": geometry[
+                                "mean_reprojection_error_px"
+                            ],
+                            "max_reprojection_error_px": geometry[
+                                "max_reprojection_error_px"
+                            ],
+                            "all_observed_mean_reprojection_error_px": float(
+                                np.mean(evaluation_errors)
+                            ),
+                            "robust_cost": float(cost),
+                            "min_ray_angle_deg": geometry["min_ray_angle_deg"],
+                            "candidate_probabilities_used": probabilities,
+                            "confidences_used": confidences,
+                        }
+                    if cache_enabled:
+                        refit_cache[cache_key] = cached
+                if cached is None:
                     candidate_diagnostic["candidate_ranks"] = ranks.astype(
-                        int).tolist()
+                        int
+                    ).tolist()
                     candidate_diagnostic["rejection_reason"] = "refit_failed"
                     hypotheses.append(candidate_diagnostic)
                     continue
-                repro_refit = _project(xyz_refit, p_all[inliers])
-                err_refit = np.linalg.norm(repro_refit - inlier_xy, axis=1)
-                mean_err = float(np.mean(err_refit))
-                max_err = float(np.max(err_refit))
-                angle = _minimum_ray_angle_deg(xyz_refit, p_all[inliers])
-                # Compare every 2/3/4-view subset on the same observed-view
-                # support.  Geometry gates below still use only the views
-                # claimed as inliers.
-                repro_evaluation = _project(xyz_refit, p_all[observed])
-                evaluation_xy = np.asarray(
-                    [candidates_xy[v][ranks[v]] for v in observed])
-                evaluation_errors = np.linalg.norm(repro_evaluation -
-                                                   evaluation_xy,
-                                                   axis=1)
-                evaluation_probabilities = np.asarray(
-                    [candidates_prob[v][ranks[v]] for v in observed])
-                evaluation_variances = np.asarray(
-                    [candidates_var[v][ranks[v]] for v in observed])
-                evaluation_confidences = observations[observed, 2]
-                cost = _hypothesis_cost(
-                    evaluation_errors,
-                    evaluation_confidences,
-                    evaluation_probabilities,
-                    evaluation_variances,
-                    config,
-                )
-                inlier_mask = np.zeros((len(observations), ), dtype=bool)
-                inlier_mask[inliers] = True
-                probabilities_all: list[float
-                                        | None] = [None] * len(observations)
-                variances_all: list[list[float]
-                                    | None] = [None] * len(observations)
-                errors_out: list[float | None] = [None] * len(observations)
-                observations_out: list[list[float]
-                                       | None] = [None] * len(observations)
-                for view, probability, var, error in zip(
-                        observed,
-                        evaluation_probabilities,
-                        evaluation_variances,
-                        evaluation_errors,
-                ):
-                    probabilities_all[int(view)] = float(probability)
-                    variances_all[int(view)] = np.asarray(
-                        var, dtype=float).tolist()
-                    errors_out[int(view)] = float(error)
-                    observations_out[int(view)] = np.asarray(
-                        candidates_xy[view][ranks[view]],
-                        dtype=float).tolist()
-                confidence = float(np.mean(confidences))
-                if len(inliers) == 2:
-                    confidence *= float(config.low_view_confidence_scale)
+                xyz_refit = np.asarray(cached["xyz"], dtype=np.float64)
                 candidate_diagnostic.update({
-                    "xyz":
-                    np.asarray(xyz_refit, dtype=float).tolist(),
-                    "confidence":
-                    confidence,
-                    "used_views":
-                    inliers.astype(int).tolist(),
-                    "inlier_mask":
-                    inlier_mask.tolist(),
-                    "candidate_ranks":
-                    ranks.astype(int).tolist(),
-                    "candidate_probabilities":
-                    probabilities_all,
-                    "simcc_variance_px2":
-                    variances_all,
-                    "observation_xy":
-                    observations_out,
-                    "reprojection_errors_px":
-                    errors_out,
-                    "mean_reprojection_error_px":
-                    mean_err,
-                    "max_reprojection_error_px":
-                    max_err,
-                    "all_observed_mean_reprojection_error_px":
-                    float(np.mean(evaluation_errors)),
-                    "robust_cost":
-                    float(cost),
-                    "min_ray_angle_deg":
-                    float(angle),
+                    "xyz": np.asarray(xyz_refit, dtype=float).tolist(),
+                    "confidence": cached["confidence"],
+                    "used_views": cached["used_views"],
+                    "inlier_mask": cached["inlier_mask"],
+                    "candidate_ranks": ranks.astype(int).tolist(),
+                    "candidate_probabilities": cached["candidate_probabilities"],
+                    "simcc_variance_px2": cached["simcc_variance_px2"],
+                    "observation_xy": cached["observation_xy"],
+                    "reprojection_errors_px": cached["reprojection_errors_px"],
+                    "mean_reprojection_error_px": cached["mean_reprojection_error_px"],
+                    "max_reprojection_error_px": cached["max_reprojection_error_px"],
+                    "all_observed_mean_reprojection_error_px": cached[
+                        "all_observed_mean_reprojection_error_px"
+                    ],
+                    "robust_cost": cached["robust_cost"],
+                    "min_ray_angle_deg": cached["min_ray_angle_deg"],
                     # Private comparison-only values are removed below.
-                    "candidate_probabilities_used":
-                    probabilities,
-                    "confidences_used":
-                    confidences,
+                    "candidate_probabilities_used": cached[
+                        "candidate_probabilities_used"
+                    ],
+                    "confidences_used": cached["confidences_used"],
                 })
                 if len(inliers) < required:
-                    candidate_diagnostic[
-                        "rejection_reason"] = "insufficient_views"
-                elif len(inliers) == 2 and angle < float(
-                        config.two_view_min_ray_angle_deg):
-                    candidate_diagnostic[
-                        "rejection_reason"] = "ray_angle_too_small"
-                elif (len(inliers) == 2 or not is_core) and max_err > float(
-                        config.two_view_max_reproj_px):
+                    candidate_diagnostic["rejection_reason"] = "insufficient_views"
+                elif len(inliers) == 2 and float(
+                        cached["min_ray_angle_deg"]
+                ) < float(config.two_view_min_ray_angle_deg):
+                    candidate_diagnostic["rejection_reason"] = "ray_angle_too_small"
+                elif (len(inliers) == 2 or not is_core) and float(
+                        cached["max_reprojection_error_px"]
+                ) > float(config.two_view_max_reproj_px):
                     # The 12 px precision gate applies to every distal
                     # hypothesis, including hypotheses with 3+ cameras.
                     candidate_diagnostic[
                         "rejection_reason"] = "precision_reprojection_outlier"
+                elif (
+                    not np.isfinite(
+                        float(cached["max_reprojection_error_px"])
+                    )
+                    or float(cached["max_reprojection_error_px"])
+                    > float(config.dist_max_px)
+                ):
+                    # Every accepted refit, including a core 3+ view refit,
+                    # must remain inside the configured gross reprojection
+                    # gate.  The distal precision gate above intentionally
+                    # runs first so its existing diagnostic is preserved.
+                    # np.max(err_refit) propagates any NaN/Inf, so its finite
+                    # check also covers all claimed inliers without rebuilding
+                    # a Python list for each cached hypothesis.
+                    candidate_diagnostic[
+                        "rejection_reason"] = "gross_reprojection_outlier"
                 else:
                     candidate_diagnostic["geometry_ok"] = True
                     candidate_diagnostic["rejection_reason"] = None
-                    if _hypothesis_is_better(candidate_diagnostic, best,
-                                             config):
+                    if _hypothesis_is_better(candidate_diagnostic, best, config):
                         best = candidate_diagnostic
                 hypotheses.append(candidate_diagnostic)
 
@@ -650,6 +951,7 @@ def triangulate_multiview(
     *,
     previous: np.ndarray | None = None,
     observation_meta: dict[str, Any] | None = None,
+    _cache_enabled: bool = True,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Triangulate all joints and expose the exact per-joint view decision.
 
@@ -669,6 +971,7 @@ def triangulate_multiview(
     masked = kp.copy()
     masked[..., 2] = 0.0
     details: list[dict[str, Any]] = []
+    camera_centers = tuple(_camera_center(pi) for pi in rt)
     for joint in range(n_joints):
         point, inlier_mask, detail = _joint_solution(
             kp[:, joint, :3],
@@ -677,6 +980,8 @@ def triangulate_multiview(
             joint_index=joint,
             is_body25=n_joints == 25,
             observation_meta=observation_meta,
+            camera_centers=camera_centers,
+            cache_enabled=bool(_cache_enabled),
         )
         out[joint] = point
         masked[inlier_mask, joint, :3] = kp[inlier_mask, joint, :3]

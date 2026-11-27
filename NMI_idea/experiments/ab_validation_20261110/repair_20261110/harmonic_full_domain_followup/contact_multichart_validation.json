@@ -1,0 +1,236 @@
+{
+  "right": {
+    "asset_sha256": "1f98c55cd623adc6e060680f5aec60b9f11366e9b6b03cd770726c8e8b532da8",
+    "charts": 29287,
+    "source_faces": 58100,
+    "all_faces_covered_by_three_charts": true,
+    "local_uv_area_min": 1.0372346121938689e-07,
+    "physical_jacobian_min_singular": 0.028753946518246313,
+    "local_metric_condition_max": 69.53410066658556,
+    "within_chart_periodic_free_material_overlap_pairs": 0,
+    "canonical_roundtrip_max_error_m": 4.458205583648681e-16,
+    "public_query_roundtrip_max_error_m": 4.443601777255714e-16,
+    "transition_max_error_m": 4.44522679167363e-16,
+    "transition_jacobian_cycle_max_error": 1.3804516264997779e-15,
+    "pose_sweep": [
+      {
+        "knee_deg": 0,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.458205583648681e-16,
+        "cross_chart_transition_max_error_m": 4.443059973708341e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.322262855672904e-16,
+        "cgal_wall_s": 0.5077527110006486
+      },
+      {
+        "knee_deg": 15,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.484050470211362e-16,
+        "cross_chart_transition_max_error_m": 4.449557262054371e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.7336071744532853e-16,
+        "cgal_wall_s": 0.5290886879993195
+      },
+      {
+        "knee_deg": 30,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.526797389797801e-16,
+        "cross_chart_transition_max_error_m": 4.443059973708341e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.618455766672135e-16,
+        "cgal_wall_s": 0.515859866001847
+      },
+      {
+        "knee_deg": 45,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.484050470211362e-16,
+        "cross_chart_transition_max_error_m": 2.3055512673781017e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.5438405243138006e-16,
+        "cgal_wall_s": 0.5059003649985243
+      },
+      {
+        "knee_deg": 60,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.484050470211362e-16,
+        "cross_chart_transition_max_error_m": 2.2929868617541516e-16,
+        "posed_public_query_roundtrip_max_error_m": 3.4359788356585895e-16,
+        "cgal_wall_s": 0.5078418650009553
+      },
+      {
+        "knee_deg": 75,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 3.4219371797089426e-16,
+        "cross_chart_transition_max_error_m": 2.3055512673781017e-16,
+        "posed_public_query_roundtrip_max_error_m": 3.3335590258932494e-16,
+        "cgal_wall_s": 0.509870548001345
+      },
+      {
+        "knee_deg": 90,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 3.379462171739212e-16,
+        "cross_chart_transition_max_error_m": 2.2887833992611187e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.3714374201337736e-16,
+        "cgal_wall_s": 0.5092925910030317
+      }
+    ],
+    "template_path_reprojection": {
+      "R_COM_FEM_V": {
+        "count": 17,
+        "exact_original_face_retained": 17,
+        "projection_distance_max_m": 8.280303992243034e-09,
+        "reprojected_count": 17
+      },
+      "R_SUPFEMV": {
+        "count": 85,
+        "exact_original_face_retained": 85,
+        "projection_distance_max_m": 1.778234676637087e-08,
+        "reprojected_count": 85
+      },
+      "R_SAPH_V": {
+        "count": 44,
+        "exact_original_face_retained": 44,
+        "projection_distance_max_m": 1.0326439663932337e-08,
+        "reprojected_count": 44
+      },
+      "R_DEEP_FEM_V": {
+        "count": 20,
+        "exact_original_face_retained": 20,
+        "projection_distance_max_m": 1.4450403129454029e-08,
+        "reprojected_count": 20
+      },
+      "R_POPV": {
+        "count": 18,
+        "exact_original_face_retained": 18,
+        "projection_distance_max_m": 1.037240031123054e-08,
+        "reprojected_count": 18
+      },
+      "R_POST_TIB_V": {
+        "count": 114,
+        "exact_original_face_retained": 114,
+        "projection_distance_max_m": 1.803869363507029e-08,
+        "reprojected_count": 114
+      },
+      "R_PERONEAL_V": {
+        "count": 116,
+        "exact_original_face_retained": 116,
+        "projection_distance_max_m": 1.9628388872560575e-08,
+        "reprojected_count": 116
+      }
+    },
+    "wall_s": 8.617667103000713
+  },
+  "left": {
+    "asset_sha256": "49c1532996606407144e915b189d4f81643a71a94c934472af8e0e1f580f8990",
+    "charts": 29195,
+    "source_faces": 57900,
+    "all_faces_covered_by_three_charts": true,
+    "local_uv_area_min": 1.0372881014893849e-07,
+    "physical_jacobian_min_singular": 0.017270617723211264,
+    "local_metric_condition_max": 81.87941654644904,
+    "within_chart_periodic_free_material_overlap_pairs": 0,
+    "canonical_roundtrip_max_error_m": 4.450098274550997e-16,
+    "public_query_roundtrip_max_error_m": 2.3178213917123674e-16,
+    "transition_max_error_m": 2.238801616996866e-16,
+    "transition_jacobian_cycle_max_error": 1.0848921369199606e-15,
+    "pose_sweep": [
+      {
+        "knee_deg": 0,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.450098274550997e-16,
+        "cross_chart_transition_max_error_m": 4.443059973708341e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.42158733570447e-16,
+        "cgal_wall_s": 0.5201814950014523
+      },
+      {
+        "knee_deg": 15,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.460365043975677e-16,
+        "cross_chart_transition_max_error_m": 2.2929868617541516e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.3714374201337736e-16,
+        "cgal_wall_s": 0.5183811120004975
+      },
+      {
+        "knee_deg": 30,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.477603233993732e-16,
+        "cross_chart_transition_max_error_m": 4.440892098500626e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.482534153247273e-16,
+        "cgal_wall_s": 0.5201220719973207
+      },
+      {
+        "knee_deg": 45,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.52041112178401e-16,
+        "cross_chart_transition_max_error_m": 2.3055512673781017e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.618455766672135e-16,
+        "cgal_wall_s": 0.5161759919974429
+      },
+      {
+        "knee_deg": 60,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 4.579669976578771e-16,
+        "cross_chart_transition_max_error_m": 2.3055512673781017e-16,
+        "posed_public_query_roundtrip_max_error_m": 3.510833468576701e-16,
+        "cgal_wall_s": 0.5167796450004971
+      },
+      {
+        "knee_deg": 75,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 3.387999773988765e-16,
+        "cross_chart_transition_max_error_m": 2.3055512673781017e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.5438405243138006e-16,
+        "cgal_wall_s": 0.5229073430018616
+      },
+      {
+        "knee_deg": 90,
+        "surface_self_intersection_pairs": 0,
+        "material_decode_max_error_m": 3.334281122517314e-16,
+        "cross_chart_transition_max_error_m": 2.242025235105681e-16,
+        "posed_public_query_roundtrip_max_error_m": 2.68024601344063e-16,
+        "cgal_wall_s": 0.5201495670007716
+      }
+    ],
+    "template_path_reprojection": {
+      "L_COM_FEM_V": {
+        "count": 17,
+        "exact_original_face_retained": 17,
+        "projection_distance_max_m": 1.2697144481873754e-08,
+        "reprojected_count": 17
+      },
+      "L_SUPFEMV": {
+        "count": 90,
+        "exact_original_face_retained": 90,
+        "projection_distance_max_m": 1.6732648731516108e-08,
+        "reprojected_count": 90
+      },
+      "L_SAPH_V": {
+        "count": 39,
+        "exact_original_face_retained": 39,
+        "projection_distance_max_m": 1.7876342383761135e-08,
+        "reprojected_count": 39
+      },
+      "L_DEEP_FEM_V": {
+        "count": 23,
+        "exact_original_face_retained": 23,
+        "projection_distance_max_m": 1.181819563266889e-08,
+        "reprojected_count": 23
+      },
+      "L_POPV": {
+        "count": 15,
+        "exact_original_face_retained": 15,
+        "projection_distance_max_m": 9.683454551529326e-09,
+        "reprojected_count": 15
+      },
+      "L_POST_TIB_V": {
+        "count": 113,
+        "exact_original_face_retained": 113,
+        "projection_distance_max_m": 1.885092510094443e-08,
+        "reprojected_count": 113
+      },
+      "L_PERONEAL_V": {
+        "count": 116,
+        "exact_original_face_retained": 116,
+        "projection_distance_max_m": 2.176237371879832e-08,
+        "reprojected_count": 116
+      }
+    },
+    "wall_s": 8.457895872998051
+  }
+}

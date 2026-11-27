@@ -1,0 +1,1343 @@
+{
+  "models_sha256": "f80482a15b63ac8ea6951a7271db2055d7031d5897e923288fd24be1e9021469",
+  "archive_sha256": "2901341be6c9a351978bb7c6f4003747c2d9d86c2966e9f621fab242e1e93104",
+  "groups": {
+    "all": {
+      "pooled": {
+        "worlds": 128,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.900390625,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.0107421875,
+            "tcp_mm": 37.46726476706493,
+            "turn_degs": 6.731724616814984,
+            "seconds": 6.1376953125,
+            "frames": 62.376953125,
+            "ever_wrong": 0.0107421875,
+            "feedback_revisions": 19.8408203125,
+            "centered_complete": 0.052734375,
+            "first_interval_recaptured": 0.9091796875,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.9814453125,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0107421875,
+            "tcp_mm": 36.84599277055309,
+            "turn_degs": 6.363992761045065,
+            "seconds": 6.0400390625,
+            "frames": 61.400390625,
+            "ever_wrong": 0.0107421875,
+            "feedback_revisions": 18.48828125,
+            "centered_complete": 0.0498046875,
+            "first_interval_recaptured": 0.984375,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.0810546875,
+              "ci95": [
+                0.0498046875,
+                0.115234375
+              ]
+            },
+            "final_wrong": {
+              "delta": -0.001953125,
+              "ci95": [
+                -0.0048828125,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                -0.0048828125,
+                0.0048828125
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.6212719965118438,
+              "ci95": [
+                -1.1199429047356921,
+                -0.15623122627477073
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.36773185576991896,
+              "ci95": [
+                -0.5061905645397035,
+                -0.24410937479570322
+              ]
+            },
+            "seconds": {
+              "delta": -0.09765625,
+              "ci95": [
+                -0.181640625,
+                -0.0166015625
+              ]
+            },
+            "frames": {
+              "delta": -0.9765625,
+              "ci95": [
+                -1.81640625,
+                -0.166015625
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                -0.0048828125,
+                0.0048828125
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.3525390625,
+              "ci95": [
+                -1.8291015625,
+                -0.873046875
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.0029296875,
+              "ci95": [
+                -0.0283203125,
+                0.02734375
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0751953125,
+              "ci95": [
+                0.0458984375,
+                0.107421875
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 922,
+            "final_wrong": 2,
+            "new_identity_mistake": 11,
+            "ever_wrong": 11
+          },
+          "learned_b": {
+            "corrected_complete": 1005,
+            "final_wrong": 0,
+            "new_identity_mistake": 11,
+            "ever_wrong": 11
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": true,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": false
+          }
+        }
+      },
+      "connection": {
+        "worlds": 64,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.97265625,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.0078125,
+            "tcp_mm": 37.904691249074176,
+            "turn_degs": 6.827073535470269,
+            "seconds": 6.07421875,
+            "frames": 61.7421875,
+            "ever_wrong": 0.0078125,
+            "feedback_revisions": 21.83203125,
+            "centered_complete": 0.021484375,
+            "first_interval_recaptured": 0.982421875,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.984375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.01171875,
+            "tcp_mm": 36.944471128638845,
+            "turn_degs": 6.506176449668226,
+            "seconds": 6.06640625,
+            "frames": 61.6640625,
+            "ever_wrong": 0.01171875,
+            "feedback_revisions": 20.494140625,
+            "centered_complete": 0.0078125,
+            "first_interval_recaptured": 0.986328125,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.01171875,
+              "ci95": [
+                -0.005859375,
+                0.03515625
+              ]
+            },
+            "final_wrong": {
+              "delta": -0.001953125,
+              "ci95": [
+                -0.005859375,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.009765625
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.9602201204353307,
+              "ci95": [
+                -1.8354069130351665,
+                -0.20957259804106362
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.32089708580204324,
+              "ci95": [
+                -0.535572219643992,
+                -0.12569867823493044
+              ]
+            },
+            "seconds": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0859375,
+                0.064453125
+              ]
+            },
+            "frames": {
+              "delta": -0.078125,
+              "ci95": [
+                -0.859375,
+                0.64453125
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.009765625
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.337890625,
+              "ci95": [
+                -1.921923828125,
+                -0.7479980468750007
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.013671875,
+              "ci95": [
+                -0.033203125,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.00390625,
+              "ci95": [
+                -0.00390625,
+                0.013671875
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 498,
+            "final_wrong": 1,
+            "new_identity_mistake": 4,
+            "ever_wrong": 4
+          },
+          "learned_b": {
+            "corrected_complete": 504,
+            "final_wrong": 0,
+            "new_identity_mistake": 6,
+            "ever_wrong": 6
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 64,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.828125,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.013671875,
+            "tcp_mm": 37.02983828505572,
+            "turn_degs": 6.63637569815972,
+            "seconds": 6.201171875,
+            "frames": 63.01171875,
+            "ever_wrong": 0.013671875,
+            "feedback_revisions": 17.849609375,
+            "centered_complete": 0.083984375,
+            "first_interval_recaptured": 0.8359375,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.978515625,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.009765625,
+            "tcp_mm": 36.7475144124673,
+            "turn_degs": 6.221809072421921,
+            "seconds": 6.013671875,
+            "frames": 61.13671875,
+            "ever_wrong": 0.009765625,
+            "feedback_revisions": 16.482421875,
+            "centered_complete": 0.091796875,
+            "first_interval_recaptured": 0.982421875,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.150390625,
+              "ci95": [
+                0.095703125,
+                0.208984375
+              ]
+            },
+            "final_wrong": {
+              "delta": -0.001953125,
+              "ci95": [
+                -0.005859375,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.00390625
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.28232387258842095,
+              "ci95": [
+                -0.766166819966662,
+                0.16593683190841904
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.4145666257377991,
+              "ci95": [
+                -0.5860261836961936,
+                -0.2633685592826162
+              ]
+            },
+            "seconds": {
+              "delta": -0.1875,
+              "ci95": [
+                -0.341796875,
+                -0.044921875
+              ]
+            },
+            "frames": {
+              "delta": -1.875,
+              "ci95": [
+                -3.41796875,
+                -0.44921875
+              ]
+            },
+            "ever_wrong": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.00390625
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.3671875,
+              "ci95": [
+                -2.173828125,
+                -0.6269042968750007
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0078125,
+              "ci95": [
+                -0.0390625,
+                0.0625
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.146484375,
+              "ci95": [
+                0.091796875,
+                0.205078125
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 424,
+            "final_wrong": 1,
+            "new_identity_mistake": 7,
+            "ever_wrong": 7
+          },
+          "learned_b": {
+            "corrected_complete": 501,
+            "final_wrong": 0,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": true,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": false
+          }
+        }
+      }
+    },
+    "zero": {
+      "pooled": {
+        "worlds": 64,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.986328125,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.01171875,
+            "tcp_mm": 38.13006489959924,
+            "turn_degs": 6.9056284274490425,
+            "seconds": 6.021484375,
+            "frames": 61.21484375,
+            "ever_wrong": 0.01171875,
+            "feedback_revisions": 18.6953125,
+            "centered_complete": 0.048828125,
+            "first_interval_recaptured": 0.98828125,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.017578125,
+            "tcp_mm": 37.36096502178929,
+            "turn_degs": 6.661598992467086,
+            "seconds": 6.041015625,
+            "frames": 61.41015625,
+            "ever_wrong": 0.017578125,
+            "feedback_revisions": 17.078125,
+            "centered_complete": 0.078125,
+            "first_interval_recaptured": 0.99609375,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.005859375,
+              "ci95": [
+                -0.00390625,
+                0.017578125
+              ]
+            },
+            "final_wrong": {
+              "delta": -0.001953125,
+              "ci95": [
+                -0.005859375,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.005859375,
+              "ci95": [
+                0.0,
+                0.013671875
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.7690998778099498,
+              "ci95": [
+                -1.3278796761225844,
+                -0.24443907827633243
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.2440294349819565,
+              "ci95": [
+                -0.42959737781652163,
+                -0.08044722343799933
+              ]
+            },
+            "seconds": {
+              "delta": 0.01953125,
+              "ci95": [
+                -0.037158203124999956,
+                0.080078125
+              ]
+            },
+            "frames": {
+              "delta": 0.1953125,
+              "ci95": [
+                -0.37158203124999956,
+                0.80078125
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.005859375,
+              "ci95": [
+                0.0,
+                0.013671875
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.6171875,
+              "ci95": [
+                -2.31640625,
+                -0.9257324218750007
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.029296875,
+              "ci95": [
+                -0.013671875,
+                0.08203125
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0078125,
+              "ci95": [
+                -0.001953125,
+                0.01953125
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 505,
+            "final_wrong": 1,
+            "new_identity_mistake": 6,
+            "ever_wrong": 6
+          },
+          "learned_b": {
+            "corrected_complete": 508,
+            "final_wrong": 0,
+            "new_identity_mistake": 9,
+            "ever_wrong": 9
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "connection": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.98828125,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.01171875,
+            "tcp_mm": 38.476472054551614,
+            "turn_degs": 6.881532866478546,
+            "seconds": 6.06640625,
+            "frames": 61.6640625,
+            "ever_wrong": 0.01171875,
+            "feedback_revisions": 20.890625,
+            "centered_complete": 0.03125,
+            "first_interval_recaptured": 0.98828125,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.01953125,
+            "tcp_mm": 37.83775418861075,
+            "turn_degs": 6.752200294039632,
+            "seconds": 6.14453125,
+            "frames": 62.4453125,
+            "ever_wrong": 0.01953125,
+            "feedback_revisions": 19.5546875,
+            "centered_complete": 0.01171875,
+            "first_interval_recaptured": 0.99609375,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.00390625,
+              "ci95": [
+                -0.015625,
+                0.02734375
+              ]
+            },
+            "final_wrong": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.01953125
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.6387178659408619,
+              "ci95": [
+                -1.5409092560600226,
+                0.20842406357379017
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.12933257243891383,
+              "ci95": [
+                -0.39135745562462454,
+                0.07978100313224763
+              ]
+            },
+            "seconds": {
+              "delta": 0.078125,
+              "ci95": [
+                -0.0078125,
+                0.171875
+              ]
+            },
+            "frames": {
+              "delta": 0.78125,
+              "ci95": [
+                -0.078125,
+                1.71875
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.01953125
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.3359375,
+              "ci95": [
+                -2.2734375,
+                -0.390625
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.01953125,
+              "ci95": [
+                -0.0546875,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0078125,
+              "ci95": [
+                -0.0078125,
+                0.02734375
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 253,
+            "final_wrong": 1,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          },
+          "learned_b": {
+            "corrected_complete": 254,
+            "final_wrong": 0,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.984375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.01171875,
+            "tcp_mm": 37.78365774464687,
+            "turn_degs": 6.929723988419532,
+            "seconds": 5.9765625,
+            "frames": 60.765625,
+            "ever_wrong": 0.01171875,
+            "feedback_revisions": 16.5,
+            "centered_complete": 0.06640625,
+            "first_interval_recaptured": 0.98828125,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 36.88417585496782,
+            "turn_degs": 6.570997690894542,
+            "seconds": 5.9375,
+            "frames": 60.375,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 14.6015625,
+            "centered_complete": 0.14453125,
+            "first_interval_recaptured": 0.99609375,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.01953125
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.01171875
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.8994818896790449,
+              "ci95": [
+                -1.5693253355166845,
+                -0.32618589502131107
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.3587262975249903,
+              "ci95": [
+                -0.6346135154288258,
+                -0.13642832585250683
+              ]
+            },
+            "seconds": {
+              "delta": -0.0390625,
+              "ci95": [
+                -0.11328125,
+                0.02734375
+              ]
+            },
+            "frames": {
+              "delta": -0.390625,
+              "ci95": [
+                -1.1328125,
+                0.2734375
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.01171875
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.8984375,
+              "ci95": [
+                -2.99228515625,
+                -0.9295898437500014
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.078125,
+              "ci95": [
+                0.0,
+                0.171875
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.01953125
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 252,
+            "final_wrong": 0,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          },
+          "learned_b": {
+            "corrected_complete": 254,
+            "final_wrong": 0,
+            "new_identity_mistake": 4,
+            "ever_wrong": 4
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": false
+          }
+        }
+      }
+    },
+    "one": {
+      "pooled": {
+        "worlds": 64,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.814453125,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.009765625,
+            "tcp_mm": 36.804464634530646,
+            "turn_degs": 6.557820806180948,
+            "seconds": 6.25390625,
+            "frames": 63.5390625,
+            "ever_wrong": 0.009765625,
+            "feedback_revisions": 20.986328125,
+            "centered_complete": 0.056640625,
+            "first_interval_recaptured": 0.830078125,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.970703125,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 36.33102051931685,
+            "turn_degs": 6.06638652962306,
+            "seconds": 6.0390625,
+            "frames": 61.390625,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 19.8984375,
+            "centered_complete": 0.021484375,
+            "first_interval_recaptured": 0.97265625,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.15625,
+              "ci95": [
+                0.099609375,
+                0.216796875
+              ]
+            },
+            "final_wrong": {
+              "delta": -0.001953125,
+              "ci95": [
+                -0.005859375,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": -0.005859375,
+              "ci95": [
+                -0.013671875,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.4734441152137947,
+              "ci95": [
+                -1.3028992181817258,
+                0.23429595066695402
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.4914342765578885,
+              "ci95": [
+                -0.6938635819845461,
+                -0.3136665081693803
+              ]
+            },
+            "seconds": {
+              "delta": -0.21484375,
+              "ci95": [
+                -0.37109375,
+                -0.068359375
+              ]
+            },
+            "frames": {
+              "delta": -2.1484375,
+              "ci95": [
+                -3.7109375,
+                -0.68359375
+              ]
+            },
+            "ever_wrong": {
+              "delta": -0.005859375,
+              "ci95": [
+                -0.013671875,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.087890625,
+              "ci95": [
+                -1.76171875,
+                -0.455078125
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.03515625,
+              "ci95": [
+                -0.05859375,
+                -0.013671875
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.142578125,
+              "ci95": [
+                0.087890625,
+                0.201171875
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 417,
+            "final_wrong": 1,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          },
+          "learned_b": {
+            "corrected_complete": 497,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": true,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": false
+          }
+        }
+      },
+      "connection": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.95703125,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 37.33291044359672,
+            "turn_degs": 6.772614204461988,
+            "seconds": 6.08203125,
+            "frames": 61.8203125,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 22.7734375,
+            "centered_complete": 0.01171875,
+            "first_interval_recaptured": 0.9765625,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.9765625,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 36.05118806866693,
+            "turn_degs": 6.2601526052968195,
+            "seconds": 5.98828125,
+            "frames": 60.8828125,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 21.43359375,
+            "centered_complete": 0.00390625,
+            "first_interval_recaptured": 0.9765625,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.01953125,
+              "ci95": [
+                0.0,
+                0.05859375
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": -1.2817223749297852,
+              "ci95": [
+                -2.7724844490291662,
+                -0.05336537030496303
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.5124615991651682,
+              "ci95": [
+                -0.8565436915349225,
+                -0.21097707514995462
+              ]
+            },
+            "seconds": {
+              "delta": -0.09375,
+              "ci95": [
+                -0.21484375,
+                0.0078125
+              ]
+            },
+            "frames": {
+              "delta": -0.9375,
+              "ci95": [
+                -2.1484375,
+                0.078125
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -1.33984375,
+              "ci95": [
+                -2.10546875,
+                -0.6756835937500014
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0234375,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 245,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          },
+          "learned_b": {
+            "corrected_complete": 250,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": false
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "mpc": {
+            "corrected_complete": 0.671875,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 36.27601882546457,
+            "turn_degs": 6.343027407899905,
+            "seconds": 6.42578125,
+            "frames": 65.2578125,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 19.19921875,
+            "centered_complete": 0.1015625,
+            "first_interval_recaptured": 0.68359375,
+            "both_vessels_observed": 1.0
+          },
+          "learned_b": {
+            "corrected_complete": 0.96484375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 36.61085296996679,
+            "turn_degs": 5.8726204539493025,
+            "seconds": 6.08984375,
+            "frames": 61.8984375,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 18.36328125,
+            "centered_complete": 0.0390625,
+            "first_interval_recaptured": 0.96875,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "learned_b": {
+            "corrected_complete": {
+              "delta": 0.29296875,
+              "ci95": [
+                0.203125,
+                0.38671875
+              ]
+            },
+            "final_wrong": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": -0.01171875,
+              "ci95": [
+                -0.02734375,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.33483414450222426,
+              "ci95": [
+                -0.35580021135834605,
+                0.9632612697014409
+              ]
+            },
+            "turn_degs": {
+              "delta": -0.4704069539506026,
+              "ci95": [
+                -0.6848685410852261,
+                -0.27328668883198565
+              ]
+            },
+            "seconds": {
+              "delta": -0.3359375,
+              "ci95": [
+                -0.609375,
+                -0.05859375
+              ]
+            },
+            "frames": {
+              "delta": -3.359375,
+              "ci95": [
+                -6.09375,
+                -0.5859375
+              ]
+            },
+            "ever_wrong": {
+              "delta": -0.01171875,
+              "ci95": [
+                -0.02734375,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -0.8359375,
+              "ci95": [
+                -1.9609375,
+                0.19921875
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.0625,
+              "ci95": [
+                -0.10546875,
+                -0.0234375
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.28515625,
+              "ci95": [
+                0.1953125,
+                0.375
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "mpc": {
+            "corrected_complete": 172,
+            "final_wrong": 1,
+            "new_identity_mistake": 4,
+            "ever_wrong": 4
+          },
+          "learned_b": {
+            "corrected_complete": 247,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          }
+        },
+        "contrast_checks": {
+          "learned_b": {
+            "completion": true,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": false
+          }
+        }
+      }
+    }
+  },
+  "changed_first_request_cases": 77,
+  "new_library_choices": {
+    "mpc": 5,
+    "learned_b": 57
+  },
+  "selected_names": {
+    "mpc": {
+      "advance": 87,
+      "cem_5": 2,
+      "forward_right": 35,
+      "cem_4": 3,
+      "forward_left": 1
+    },
+    "learned_b": {
+      "advance": 42,
+      "forward_right": 8,
+      "cem_5": 20,
+      "cem_4": 32,
+      "right": 9,
+      "cem_2": 5,
+      "side_right": 7,
+      "back_left": 2,
+      "back_right": 3
+    }
+  },
+  "mean_decision_cpu_ms": {
+    "mpc": 143.98901751562494,
+    "learned_b": 202.0787778671875
+  },
+  "completion_pairs": {
+    "0/0": 17,
+    "0/1": 85,
+    "1/0": 2,
+    "1/1": 920
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "inspection_offsets_m": [
+    [
+      -0.025,
+      -0.035,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.025,
+      0.035,
+      0.0
+    ]
+  ],
+  "target_offsets_m": [
+    [
+      -0.03,
+      -0.035,
+      0.0
+    ],
+    [
+      -0.03,
+      0.035,
+      0.0
+    ],
+    [
+      0.03,
+      -0.035,
+      0.0
+    ],
+    [
+      0.03,
+      0.035,
+      0.0
+    ]
+  ],
+  "placement_y_m": [
+    0.0,
+    0.04,
+    -0.04
+  ],
+  "n_waypoints": 21,
+  "fixed_rail_m": 0.2843715250492096,
+  "normal": "nominal TCP local z",
+  "terminal_loss": 20.0,
+  "movement_speed_m_s": 0.05,
+  "observation_cost": 0.4,
+  "proxy_cost_coefficient": 0.05,
+  "max_depth": 2,
+  "exact_max_joint_step_deg": 12.0,
+  "schema": "finite_history_graph_v1"
+}

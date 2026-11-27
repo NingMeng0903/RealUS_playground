@@ -1,0 +1,41 @@
+{
+  "test": {
+    "case_arm_scores": 3240,
+    "real_evidence_actions": 4895,
+    "continuations_after_evidence": 3551
+  },
+  "femoral": {
+    "case_arm_scores": 1080
+  },
+  "disjoint_layouts": 696,
+  "public_label_swap": true,
+  "v11_matched_layouts": 176,
+  "actor_cpu_cuda_max_abs": 2.2351741790771484e-08,
+  "v11_failure_localization": {
+    "sole_failed_region_6": 11,
+    "sole_failed_region_5": 28,
+    "r5_arteries": 19,
+    "r5_not_reviewed": 22,
+    "sole_failed_region_4": 6,
+    "sole_failed_region_3": 3
+  },
+  "relative_geometry_checks": {
+    "changed_layouts": 47,
+    "maximum_displacement_mm": 4.473104827841548
+  },
+  "r5_shared_incumbent_reader_dev": {
+    "v11": {
+      "have_b": 48,
+      "old_is_wrong": 10,
+      "same_instance": 12,
+      "old_wrong_alternative_target": 4
+    },
+    "v12": {
+      "have_b": 48,
+      "old_is_wrong": 10,
+      "same_instance": 3,
+      "old_wrong_alternative_target": 4
+    },
+    "identical_a": 48
+  }
+}

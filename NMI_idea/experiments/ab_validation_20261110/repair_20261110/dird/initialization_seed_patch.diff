@@ -1,0 +1,33 @@
+--- source_before/train_signed.py	2026-11-10 14:42:52.622246856 +0800
++++ /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/ird_playground/neural/train_signed.py	2026-11-10 14:42:52.934254381 +0800
+@@ -52,6 +52,7 @@
+     fourier_bands: int = 3
+     softplus_beta: float = 20.0
+     seed: int = 47
++    initialization_seed: int | None = None
+     device: str = "cuda"
+     epochs: int = 30
+     batch_size: int = 4096
+@@ -108,6 +109,11 @@
+         fourier_bands=int(model.get("fourier_bands", 3)),
+         softplus_beta=float(model.get("softplus_beta", 20.0)),
+         seed=int(train.get("seed", 47)),
++        initialization_seed=(
++            None
++            if train.get("initialization_seed") in (None, "null", "")
++            else int(train["initialization_seed"])
++        ),
+         device=str(train.get("device", "cuda")),
+         epochs=int(train.get("epochs", 30)),
+         batch_size=int(train.get("batch_size", 4096)),
+@@ -614,7 +620,9 @@
+     tr_idx, va_idx = splits["train"], splits["selection"]
+     input_center, input_scale = _resolve_input_normalization(arrays, tr_idx)
+     device = torch.device(cfg.device)
+-    torch.manual_seed(cfg.seed)
++    # Keep data partitions/minibatch order fixed when auditing independent
++    # initializations; changing the split seed would contaminate comparisons.
++    torch.manual_seed(cfg.seed if cfg.initialization_seed is None else cfg.initialization_seed)
+     rng = np.random.default_rng(cfg.seed)
+     tool = None
+     contract = dataset_meta.get("robot_contract") if isinstance(dataset_meta, dict) else None

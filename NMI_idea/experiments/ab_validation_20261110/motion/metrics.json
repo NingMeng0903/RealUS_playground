@@ -1,0 +1,1313 @@
+{
+  "provenance": {
+    "python": "/home/camp/.local/bin/python",
+    "version": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+    "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.35",
+    "packages": {
+      "numpy": "2.2.6",
+      "scipy": "1.15.3",
+      "matplotlib": "3.10.9",
+      "ruckig": "0.17.3"
+    },
+    "numpy": "2.2.6",
+    "threads": {
+      "OPENBLAS_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1"
+    },
+    "source_sha256": {
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/kmp.py": "0aed9c0ce73ddaeb30e1304aa2666ac2c1967cf350f21059101949a4bba761dd",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/__init__.py": "ee45468919c97ba75874c7bf61ddee16a28b3bbf1a1d662b62838a944b51f0b8",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/prior.py": "359a9c5adadabd54973b9358279b111313faf291995939745138f440fc7eb22f",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/servo.py": "143bc8f1d4ef944ca180ad1364117a867db5607e0c1916638b76877b273b7973",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/run_kmp_benchmark.py": "7baa4438c836321dd0e95a5393efb933b0d41e6321939dcc0aa6d8c5dd162af8",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/test_kmp.py": "dbc4d0549cc7a849c60622f0db6a34568c36935c97ddd4c58c41c8e819b7d7e1",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/kmp_honest/imaging.py": "61edf5009fdf9be12afd96f4b00d78885d35b059b960b2db05163992258e64ec",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/plot_compare.py": "ba0dd078d872ff9cf9786e8950b5f9c7ce813536ea9028bcda89a6640cc34f8d",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/__init__.py": "4140ed7354202ab5ee2dd7c9a8a37463e4af63d297d3a1daeadb768789c7aaa8",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/prior.py": "9e8cadab21aeb636d45c4c53ae9399431478f2c5298e3c3ad72fdb6d087a8ca6",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/run_dmp_benchmark.py": "c9b54d2402da171d8b6c1a9a6874c4235d363ac89c657694e4d7322e061fed5e",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/servo.py": "c432944e4648cd0ec1850ffb96c39ae093f807f63459078007903e16bfda3fad",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/test_dmp.py": "c373b16ab10e8f9ecea27085427cb641e1a2c0c6358d167554ccb9e5594606ef",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/imaging.py": "393fe70171519e35cffa664e4749f37912fb64e3d93f93c8303aab1f5be6298a",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/dmp.py": "c049d7e32df71c1a39038722924472a83ca8b70a90dee47877b09fe3bc9ff972",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/run_trajectory_extraction_demo.py": "69a3f0c92cb4d2d2bc4d934afa2acf4fd919707c65c0ed01d2856ab256274242",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/core_algorithms/controller.py": "9af57c724ed2cbff810eb7252757e596a7d522a21eb09ae5a9dff5268af3ba45",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/core_algorithms/module_c_smoothing.py": "4214bd49fe39e350bb76a7d9c25f67086885a87c5dc8ee7c81be14308e6a572c",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/core_algorithms/patch_binding.py": "70b7750295fe54bb59f2c7bf9b58ab092ec3cedbc5eb10422a4acb60cd89585d",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/configs/smplx_recovered_20261108.json": "505481fbb52b915f83bc4000febdb83cc8da2bf299b5f19e03df8b9bfd864d81",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/projection.py": "5cf9d441cdaf135c80580d9e2ad29522560b6d5f8dea0d1b0f53101d5f1885c5",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/lbs_bridge.py": "f655bba64850ddcf9b718af01d56cc5926b3361ac589a9802c94c3d949a70645",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py": "5fe71530fff81ab8e50430abefd4a2d2bff63b8a20981ea97f9b4e99e21cf32d",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/__init__.py": "24ed0cb633aad209fdf6b51971d10cd74bf4125de8d4201c48b3cf5159cdb436",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/pose_bundle.py": "e1a48b4cc6646478c93743d1cb37d3995888471e5cfe77623c8abc2325a3582d",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py": "081a0759f3c1389bc9cbfced719f72b060096168c98da2feed11901c9c80eec8",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/io.py": "6b410a5ecc6e5161c5cc14a893f5f5a32cbc6513a965a12d9d479a95d90ea205",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/surface_refine.py": "38ca8ba648991ac1c82066a2c2cbea0d1add650b7f9012d3d843d4248eb3b884",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/butterfly.py": "6c844c302e1e4cb05ab949e890f7d689b5e74710039fbceb737993f724b34865",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/layered_surface.py": "38b23ba6ca0076ccfb8c2b94403811acfc3513f0a86a0e150b1e0577573bfba8",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/visualize.py": "a5cae1cb2b6235287e742567099a6827252f0897dc79c79d8aba4bb159076104",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/paths.py": "6e88cbe865def8d6409305772d5fb85beacbef58f4208a2fe408b0adfbaf5000",
+      "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py": "990e2d70ab156e2c88d93d74e5aafb0fe699a0232d4f366ebae7bbb44f68ec79",
+      "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_right.npz": "06ab1236b096ba0e97132dd9d7831583fa9adf3f98d410f9995c58b30ccc8f86",
+      "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/material/surface_stencil_right.npz": "9503a9db4094bd172dd32baa0f8a7c8fe4afa374308f821a81d6c521d7829663",
+      "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/vessels/vessel_material_coordinates.npz": "98d332d8b2d4a3c9b3ed9c8874157d315c03d60cf20670fb3e3fd7160e0a9d1f",
+      "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/manifest.json": "0e6df091a44ecea80e74a6ad66224b4cde49ac231259f258bc96120867e02c44",
+      "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/base_atlas/atlas_right.npz": "40b84ec457d9c2146de21baaa0d8695e52ef91a871e6ca651bc4f9fc9903027f",
+      "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/smpl_canonical_weights.npz": "492eda4d279dac9ee5833fb46a20ee7841f58e124556cb61757984e9bd27fc0d",
+      "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/source_manifest.json": "cca8bbcb85d58a2b7e405e1b39e699b251f37dc23a8234ca1cfc5ef0544c5c74",
+      "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/smpl_canonical_tpose.obj": "8d2044a7b7ed9149e7665a8a71d092d314003f1f990c81a5651b17b00fca3f45",
+      "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/smpl_canonical_tpose_neutral.obj": "24b69fa9c0d486dfde4c93a31bf9ce417aeae7b4a76190a61cccd5c7247b43ef",
+      "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/vessel_centerlines_rest.obj": "595ef5c9167ba38fa0ea061e9b8fd14e412bf149dee1684c6dfd4b0d36ac1eb2",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/configs/visualization.json": "29561b89906c2faea0d51265e8ad12cb65cf71516e353f3924fba7ba020c8906",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/configs/default.json": "70ed12811fca7ab5e813b3b886abfc209d5e32dbb69680ee2f576deaabdc54ef",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/configs/controller.json": "10a68e013b54f4d22f2572c52cb99d134530a0c610b38beeb60c7454999862e3",
+      "/media/camp/EXT_DRIVE/Among_US/DMP_playground/configs/pipeline.json": "2c5f2baaf1696bb1ca01c95d140d541b82c71eb5156794cc111cff5300000b05",
+      "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/motion/adapter.py": "a606495738a6bff47fa5ac395976524ef19955ba0dd761ea8420aa34c326d403",
+      "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/motion/depth_adapter.py": "4cdc9bb29966267cdf984798475e25d4875da017e51d47d826bff9d897fd41bf",
+      "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/motion/run_motion_validation.py": "358a0a71d83c74683f93b4d01a049df52b49b35366d07450c528f41c8adb2e86"
+    },
+    "git_head": "f1ffc5078d6a08c32b59107ab16086a7bbde488e",
+    "dirty_status": " D DMP_playground/output/PIC/controller_loop_architecture_en.png\n D DMP_playground/output/PIC/controller_loop_architecture_zh.png\n D DMP_playground/output/PIC/latex/controller_architecture.tex\n D DMP_playground/output/PIC/latex/controller_architecture_en.aux\n D DMP_playground/output/PIC/latex/controller_architecture_en.out\n D DMP_playground/output/PIC/latex/controller_architecture_en.tex\n D DMP_playground/output/PIC/latex/controller_architecture_en.toc\n D DMP_playground/output/PIC/latex/coordinate_systems.aux\n D DMP_playground/output/PIC/latex/coordinate_systems.fdb_latexmk\n D DMP_playground/output/PIC/latex/coordinate_systems.fls\n D DMP_playground/output/PIC/latex/coordinate_systems.tex\n D DMP_playground/output/PIC/latex/coordinate_systems_en.tex\n D DMP_playground/output/PIC/latex/figures/surface2d_flow_bent60.png\n D DMP_playground/output/PIC/latex/figures/surface2d_flow_straight.png\n D DMP_playground/output/PIC/latex/figures/volume3d_flow_bent60.png\n D DMP_playground/output/PIC/latex/figures/volume3d_flow_straight.png\n D DMP_playground/output/PIC/manifest.json\n D DMP_playground/output/PIC/render_controller_loop_architecture_en.py\n D DMP_playground/output/PIC/render_controller_loop_architecture_zh.py\n D DMP_playground/output/PIC/surface2d_flow_bent60.png\n D DMP_playground/output/PIC/surface2d_flow_straight.png\n D DMP_playground/output/PIC/volume3d_flow_bent60.png\n D DMP_playground/output/PIC/volume3d_flow_straight.png\n D DMP_playground/output/ablation/A_clip25_legacy/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/A_clip25_legacy/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/A_clip25_legacy/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/ablation/A_clip25_legacy/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/ablation/A_clip25_legacy/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/A_clip25_legacy/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/A_clip25_legacy/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/ablation/A_clip25_legacy/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/ablation/A_clip25_legacy/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/ablation/A_clip25_legacy/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/ablation/A_clip25_legacy/prebake/prebake/summary.json\n D DMP_playground/output/ablation/A_clip25_legacy/spike_dynamics_time.png\n D DMP_playground/output/ablation/A_clip25_legacy/summary.json\n D DMP_playground/output/ablation/A_clip25_legacy/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/A_clip25_legacy/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/A_clip25_legacy/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/ablation/A_clip25_legacy/window_spike_1.png\n D DMP_playground/output/ablation/A_clip25_legacy/window_spike_2.png\n D DMP_playground/output/ablation/B_clip30_legacy/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/B_clip30_legacy/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/B_clip30_legacy/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/ablation/B_clip30_legacy/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/ablation/B_clip30_legacy/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/B_clip30_legacy/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/B_clip30_legacy/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/ablation/B_clip30_legacy/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/ablation/B_clip30_legacy/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/ablation/B_clip30_legacy/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/ablation/B_clip30_legacy/prebake/prebake/summary.json\n D DMP_playground/output/ablation/B_clip30_legacy/spike_dynamics_time.png\n D DMP_playground/output/ablation/B_clip30_legacy/summary.json\n D DMP_playground/output/ablation/B_clip30_legacy/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/B_clip30_legacy/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/B_clip30_legacy/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/ablation/B_clip30_legacy/window_spike_1.png\n D DMP_playground/output/ablation/B_clip30_legacy/window_spike_2.png\n D DMP_playground/output/ablation/C_clip25_ff/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/C_clip25_ff/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/C_clip25_ff/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/ablation/C_clip25_ff/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/ablation/C_clip25_ff/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/C_clip25_ff/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/C_clip25_ff/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/ablation/C_clip25_ff/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/ablation/C_clip25_ff/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/ablation/C_clip25_ff/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/ablation/C_clip25_ff/prebake/prebake/summary.json\n D DMP_playground/output/ablation/C_clip25_ff/spike_dynamics_time.png\n D DMP_playground/output/ablation/C_clip25_ff/summary.json\n D DMP_playground/output/ablation/C_clip25_ff/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/C_clip25_ff/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/C_clip25_ff/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/ablation/C_clip25_ff/window_spike_1.png\n D DMP_playground/output/ablation/C_clip25_ff/window_spike_2.png\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/ablation/D_clip30_ff_current/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/prebake/prebake/summary.json\n D DMP_playground/output/ablation/D_clip30_ff_current/spike_dynamics_time.png\n D DMP_playground/output/ablation/D_clip30_ff_current/summary.json\n D DMP_playground/output/ablation/D_clip30_ff_current/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/D_clip30_ff_current/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/ablation/D_clip30_ff_current/window_spike_1.png\n D DMP_playground/output/ablation/D_clip30_ff_current/window_spike_2.png\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/ablation/E_clip30_ff_norate/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/prebake/prebake/summary.json\n D DMP_playground/output/ablation/E_clip30_ff_norate/spike_dynamics_time.png\n D DMP_playground/output/ablation/E_clip30_ff_norate/summary.json\n D DMP_playground/output/ablation/E_clip30_ff_norate/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/E_clip30_ff_norate/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/ablation/E_clip30_ff_norate/window_spike_1.png\n D DMP_playground/output/ablation/E_clip30_ff_norate/window_spike_2.png\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/ablation/F_clip30_ff_k92/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/prebake/prebake/summary.json\n D DMP_playground/output/ablation/F_clip30_ff_k92/spike_dynamics_time.png\n D DMP_playground/output/ablation/F_clip30_ff_k92/summary.json\n D DMP_playground/output/ablation/F_clip30_ff_k92/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/ablation/F_clip30_ff_k92/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/ablation/F_clip30_ff_k92/window_spike_1.png\n D DMP_playground/output/ablation/F_clip30_ff_k92/window_spike_2.png\n D DMP_playground/output/ablation/summary.json\n D DMP_playground/output/clip_cmp_summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/comparison_metrics.json\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_20/metrics.json\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_20/visualization/closed_loop_servo/closed_loop_servo_dynamic_bent10_to_20.png\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_20/visualization/closed_loop_servo/overview_dynamic_bent10_to_20.png\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_20/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_20/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_20/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_60/metrics.json\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_60/visualization/closed_loop_servo/closed_loop_servo_dynamic_bent10_to_60.png\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_60/visualization/closed_loop_servo/overview_dynamic_bent10_to_60.png\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_60/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_60/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/dynamic_bent10_to_60/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent20/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent20/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent20/simulation/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent20/surface_scan_curve.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent60/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent60/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent60/simulation/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/poses/static_bent60/surface_scan_curve.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/dynamic_leg_servo_demo/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/dynamic_leg_servo_demo/poses/visualization/open_loop/static_bent20_pose_preview.png\n D DMP_playground/output/dynamic_leg_servo_demo/poses/visualization/open_loop/static_bent60_pose_preview.png\n D DMP_playground/output/dynamic_leg_servo_demo/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/dynamic_leg_servo_demo/prebake/prebake/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent10/metrics.json\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent10/visualization/closed_loop_servo/closed_loop_servo_static_bent10.png\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent10/visualization/closed_loop_servo/overview_static_bent10.png\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent10/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent10/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent10/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent60/metrics.json\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent60/visualization/closed_loop_servo/closed_loop_servo_static_bent60.png\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent60/visualization/closed_loop_servo/overview_static_bent60.png\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent60/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent60/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/dynamic_leg_servo_demo/static_bent60/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diag_after_fix/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diag_after_fix/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diag_after_fix/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diag_after_fix/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diag_after_fix/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diag_after_fix/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diag_after_fix/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diag_after_fix/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diag_after_fix/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diag_after_fix/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diag_after_fix/prebake/prebake/summary.json\n D DMP_playground/output/spike_diag_after_fix/spike_dynamics_time.png\n D DMP_playground/output/spike_diag_after_fix/summary.json\n D DMP_playground/output/spike_diag_after_fix/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diag_after_fix/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diag_after_fix/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diag_after_fix/window_spike_1.png\n D DMP_playground/output/spike_diag_after_fix/window_spike_2.png\n D DMP_playground/output/spike_diag_slew/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diag_slew/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diag_slew/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diag_slew/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diag_slew/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diag_slew/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diag_slew/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diag_slew/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diag_slew/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diag_slew/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diag_slew/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diag_slew/prebake/prebake/summary.json\n D DMP_playground/output/spike_diag_slew/spike_dynamics_time.png\n D DMP_playground/output/spike_diag_slew/summary.json\n D DMP_playground/output/spike_diag_slew/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diag_slew/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diag_slew/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diag_slew/window_spike_1.png\n D DMP_playground/output/spike_diag_slew/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/feature_phantom/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/feature_phantom/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/feature_phantom/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/feature_phantom2/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom2/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/feature_phantom2/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom2/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/feature_phantom2/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/feature_phantom2/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/feature_phantom2/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/image_fb/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/image_fb/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/image_fb/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/image_fb/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/image_fb/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/image_fb/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/image_fb/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/image_fb/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/image_fb/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/image_fb/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/image_fb/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/image_fb/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/image_fb/summary.json\n D DMP_playground/output/spike_diagnostics/image_fb/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/image_fb/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/image_fb/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/image_fb/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/image_fb/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/oracle_fix/ablation_spike_peaks.png\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/oracle_fix/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/oracle_fix/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/oracle_fix/summary.json\n D DMP_playground/output/spike_diagnostics/oracle_fix/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/oracle_fix/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/oracle_fix/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/oracle_fix/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/oracle_fix_ablation.json\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/phase_roll/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/phase_roll/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/phase_roll/summary.json\n D DMP_playground/output/spike_diagnostics/phase_roll/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/phase_roll/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/phase_roll/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/phase_roll/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/round2c/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/round2c/summary.json\n D DMP_playground/output/spike_diagnostics/round2c/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/round2c/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/spike2_fix/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_fix/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/spike2_fix/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_fix/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_fix/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_fix/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/spike2_fix/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/spike2_v3/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v3/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/spike2_v3/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v3/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_v3/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v3/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/spike2_v3/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/spike2_v4/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v4/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/spike2_v4/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v4/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/spike2_v4/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/spike2_v4/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/spike2_v4/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/u_blend/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/u_blend/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/u_blend/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/u_blend/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/u_blend/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/u_blend/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/u_blend/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/u_blend/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/u_blend/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/u_blend/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/u_blend/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/u_blend/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/u_blend/summary.json\n D DMP_playground/output/spike_diagnostics/u_blend/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/u_blend/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/u_blend/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/u_blend/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/u_blend/window_spike_2.png\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/static_bent10/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/static_bent10/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/static_bent10/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/static_bent10/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/straight_0deg/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/visualization/open_loop/static_bent10_pose_preview.png\n D DMP_playground/output/spike_diagnostics/xfeat_ema/poses/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_POPV_surface.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_POPV_truth.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/prebake/prebake/summary.json\n D DMP_playground/output/spike_diagnostics/xfeat_ema/spike_dynamics_time.png\n D DMP_playground/output/spike_diagnostics/xfeat_ema/summary.json\n D DMP_playground/output/spike_diagnostics/xfeat_ema/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/spike_diagnostics/xfeat_ema/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/spike_diagnostics/xfeat_ema/window_spike_1.png\n D DMP_playground/output/spike_diagnostics/xfeat_ema/window_spike_2.png\n D DMP_playground/output/trajectory_extraction_demo/bent_10deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/trajectory_extraction_demo/bent_10deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/trajectory_extraction_demo/bent_10deg/simulation/summary.json\n D DMP_playground/output/trajectory_extraction_demo/bent_10deg/surface_scan_curve.obj\n D DMP_playground/output/trajectory_extraction_demo/bent_60deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/trajectory_extraction_demo/bent_60deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/trajectory_extraction_demo/bent_60deg/simulation/summary.json\n D DMP_playground/output/trajectory_extraction_demo/bent_60deg/surface_scan_curve.obj\n D DMP_playground/output/trajectory_extraction_demo/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/trajectory_extraction_demo/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/trajectory_extraction_demo/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/trajectory_extraction_demo/comparison_metrics.json\n D DMP_playground/output/trajectory_extraction_demo/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_COM_FEM_V_surface.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_COM_FEM_V_truth.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_POPV_surface.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_POPV_truth.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_POST_TIB_V_surface.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_POST_TIB_V_truth.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_SUPFEMV_scan_trunk.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_SUPFEMV_surface.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/R_SUPFEMV_truth.obj\n D DMP_playground/output/trajectory_extraction_demo/prebake/summary.json\n D DMP_playground/output/trajectory_extraction_demo/straight_0deg/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/trajectory_extraction_demo/straight_0deg/simulation/probe_tcp_trace.obj\n D DMP_playground/output/trajectory_extraction_demo/straight_0deg/simulation/summary.json\n D DMP_playground/output/trajectory_extraction_demo/straight_0deg/surface_scan_curve.obj\n D DMP_playground/output/trajectory_extraction_demo/sweep_coupled_servo.json\n D DMP_playground/output/trajectory_extraction_demo/visualization/closed_loop_servo/closed_loop_servo_bent10.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/closed_loop_servo/closed_loop_servo_bent60.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/closed_loop_servo/open_loop_bake_diagnostic.json\n D DMP_playground/output/trajectory_extraction_demo/visualization/closed_loop_servo/simulation/probe_box_with_tcp.obj\n D DMP_playground/output/trajectory_extraction_demo/visualization/closed_loop_servo/simulation/probe_tcp_trace.obj\n D DMP_playground/output/trajectory_extraction_demo/visualization/closed_loop_servo/simulation/summary.json\n D DMP_playground/output/trajectory_extraction_demo/visualization/contact/task_space_contact_comparison.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/bent_10deg_pose_preview.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/bent_60deg_pose_preview.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/dmp_forcing_5d_components.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/dmp_gate_and_forcing.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/dmp_lwr_comparison.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/intrinsic_state_comparison.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/pose_surface_trajectory_overlay.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/open_loop/straight_0deg_pose_preview.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/topology_transfer/topology_transfer_module_c_light.png\n D DMP_playground/output/trajectory_extraction_demo/visualization/topology_transfer/topology_transfer_straight_to_bent.png\n M MD/GITHUB.md\n D my_motion_pipeline/workspace/1_llm_outputs/.gitkeep\n D my_motion_pipeline/workspace/1_llm_outputs/20260514_162312_motion_plan.json\n D my_motion_pipeline/workspace/1_llm_outputs/20260514_162336_motion_plan.json\n D my_motion_pipeline/workspace/1_llm_outputs/20260514_181708_motion_plan.json\n D my_motion_pipeline/workspace/1_llm_outputs/20260514_184858_motion_plan.json\n D my_motion_pipeline/workspace/1_llm_outputs/20260514_190035_motion_plan.json\n D my_motion_pipeline/workspace/1_llm_outputs/manual_motion_plan.json\n D tmp/humanml3d_hf/._HumanML3D\n D tmp/panda_mesh_audit.json\n D tmp/robot_urdf_consistency_genesis_env.json\n D tmp/robot_urdf_consistency_latest.json\n D tmp/robot_visual_link3_audit.json\n D tmp/robot_visual_link5_audit.json\n D tmp/robot_visual_mesh_audit.json\n D tmp/robot_visual_mesh_audit_second_pass.json\n D tmp/scene_current_rerun.json\n D tmp/scene_official_retry.json\n D tmp/scene_robot_collision_only.json\n D tmp/sync_scene_consistency_report.json\n D tmp/ue_bg_only/_generated/frame0_augmentation.json\n D tmp/ue_compare_dae_obj_import.py\n D tmp/ue_dump_robot_scene_probe.py\n D tmp/ue_robot_scene_probe.json\n D tmp/ue_rotator_probe.py\n D tmp/ue_seq_dump_exec2.json\n",
+    "seed": 20261110
+  },
+  "primitive": {
+    "rows": [
+      {
+        "id": "dmp_offset_-0.015m",
+        "position_se3_max_m": 1.6653345369377348e-16,
+        "rotation_se3_max": 0.0,
+        "wall_s": 0.004813978999663959,
+        "path_length_m": 0.07063421371539555,
+        "max_step_m": 0.0021349288873531037,
+        "start_error_m": 0.0,
+        "goal_error_m": 0.0005735576516382233,
+        "max_speed_m_s": 0.08539715549412415
+      },
+      {
+        "id": "kmp_offset_-0.015m",
+        "position_se3_max_m": 1.3426356273935429e-15,
+        "rotation_se3_max": 0.0,
+        "wall_s": 0.004922586000247975,
+        "path_length_m": 0.07008312418465246,
+        "max_step_m": 0.0019478976301378324,
+        "start_error_m": 1.0794404436497736e-06,
+        "goal_error_m": 4.064114753588616e-06,
+        "max_speed_m_s": 0.0779159052055133
+      },
+      {
+        "id": "dmp_offset_+0.000m",
+        "position_se3_max_m": 1.6653345369377348e-16,
+        "rotation_se3_max": 0.0,
+        "wall_s": 0.0046697269990545465,
+        "path_length_m": 0.06237404916806967,
+        "max_step_m": 0.0017106720216919895,
+        "start_error_m": 0.0,
+        "goal_error_m": 0.00045474684641878116,
+        "max_speed_m_s": 0.06842688086767958
+      },
+      {
+        "id": "kmp_offset_+0.000m",
+        "position_se3_max_m": 1.709166621382058e-15,
+        "rotation_se3_max": 0.0,
+        "wall_s": 0.005037123000874999,
+        "path_length_m": 0.06191440622810358,
+        "max_step_m": 0.0015566221221662785,
+        "start_error_m": 8.802829106933643e-07,
+        "goal_error_m": 4.015810636601513e-06,
+        "max_speed_m_s": 0.06226488488665114
+      },
+      {
+        "id": "dmp_offset_+0.015m",
+        "position_se3_max_m": 1.5700924586837752e-16,
+        "rotation_se3_max": 0.0,
+        "wall_s": 0.004571604999000556,
+        "path_length_m": 0.07063421371539552,
+        "max_step_m": 0.0021349288873531067,
+        "start_error_m": 0.0,
+        "goal_error_m": 0.0005735576516382127,
+        "max_speed_m_s": 0.08539715549412427
+      },
+      {
+        "id": "kmp_offset_+0.015m",
+        "position_se3_max_m": 1.5992607561452414e-15,
+        "rotation_se3_max": 0.0,
+        "wall_s": 0.004767960999743082,
+        "path_length_m": 0.07008312418465362,
+        "max_step_m": 0.0019478976301394444,
+        "start_error_m": 1.0794404432940795e-06,
+        "goal_error_m": 4.064114753508655e-06,
+        "max_speed_m_s": 0.07791590520557777
+      }
+    ],
+    "claim": "Actual primitive generation only; caller-defined candidate demonstration; no servo or feasibility guarantee.",
+    "total_wall_s": 0.0624318089994631
+  },
+  "production_geometry": {
+    "asset_counts": {
+      "skin_vertices": 31785,
+      "skin_faces": 63104,
+      "harmonic_vertices": 186624,
+      "tets": 1058184
+    },
+    "shared_information": "Same production mesh, corresponding faces/barycentric weights, canonical SMPL-X LBS weights, evaluated 60-degree knee transforms; no truth/reference points supplied to harmonic decoder.",
+    "samples": 96,
+    "surface_decode_error_m": {
+      "mean": 6.828905602573664e-05,
+      "p95": 0.00015589597823836507,
+      "max": 0.0030037315459189077
+    },
+    "surface_decode_wall_s": 0.11411361700083944,
+    "canonical_registered3d_transport_error_m": {
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "harmonic_transport_error_m": {
+      "mean": 6.828639079671517e-05,
+      "p95": 0.00015589651229674928,
+      "max": 0.003003711113706231
+    },
+    "exact_lbs_inverse_position_error_m": {
+      "mean": 4.547140081891203e-08,
+      "p95": 1.1069857570523463e-07,
+      "max": 1.521828565183987e-07
+    },
+    "common_se3_transport_error_m": {
+      "mean": 7.675500521977177e-08,
+      "p95": 1.5713161375435397e-07,
+      "max": 2.0175572826582842e-07
+    },
+    "common_se3_inverse_position_error_m": {
+      "mean": 7.85971790722783e-08,
+      "p95": 1.4904591877261503e-07,
+      "max": 2.094381256542183e-07
+    },
+    "wrong_body_address_0_6rad_displacement_m": {
+      "mean": 0.04342764048487879,
+      "p95": 0.06594578176736832,
+      "max": 0.11800277233123779
+    },
+    "harmonic_node_query_error_by_coordinate": [
+      0.0,
+      0.0,
+      0.8818690180778503
+    ],
+    "harmonic_node_query_wall_s": 12.01083944200218,
+    "production_skin_runtime_depth_contract": {
+      "skin_sample_indices": [
+        0,
+        2118,
+        4237,
+        6356,
+        8475,
+        10594,
+        12713,
+        14832,
+        16951,
+        19070,
+        21189,
+        23308,
+        25427,
+        27546,
+        29665,
+        31784
+      ],
+      "runtime_xi": [
+        [
+          0.2908882200717926,
+          0.05000000074505806,
+          0.17749859392642975
+        ],
+        [
+          0.0342029333114624,
+          0.08646785467863083,
+          0.035621482878923416
+        ],
+        [
+          0.9640679955482483,
+          0.2538207471370697,
+          0.3747682571411133
+        ],
+        [
+          6.19985818862915,
+          0.48663467168807983,
+          0.8022627234458923
+        ],
+        [
+          4.5850138664245605,
+          0.13432562351226807,
+          0.07213211804628372
+        ],
+        [
+          4.246967792510986,
+          0.05000000074505806,
+          0.2024976760149002
+        ],
+        [
+          4.905519008636475,
+          0.17987686395645142,
+          0.043979961425065994
+        ],
+        [
+          0.331886351108551,
+          0.4909895658493042,
+          0.8129672408103943
+        ],
+        [
+          6.05476713180542,
+          0.872049868106842,
+          0.9415358901023865
+        ],
+        [
+          6.030369758605957,
+          0.9325317740440369,
+          0.9543755054473877
+        ],
+        [
+          1.803506851196289,
+          0.15366196632385254,
+          0.16630248725414276
+        ],
+        [
+          3.911066770553589,
+          0.40201109647750854,
+          0.7278906106948853
+        ],
+        [
+          0.004064531996846199,
+          0.7099119424819946,
+          0.8768121004104614
+        ],
+        [
+          5.844040870666504,
+          0.07206471264362335,
+          0.03952796384692192
+        ],
+        [
+          5.815093040466309,
+          0.2747291624546051,
+          0.47257423400878906
+        ],
+        [
+          1.5126186609268188,
+          0.9700000286102295,
+          0.9091261625289917
+        ]
+      ],
+      "expected_skin_d": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "independent_distance_ratio_using_actual_skin": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "corrected_adapter_xi": [
+        [
+          0.2908882200717926,
+          0.05000000074505806,
+          0.0
+        ],
+        [
+          0.0342029333114624,
+          0.08646785467863083,
+          0.0
+        ],
+        [
+          0.9640679955482483,
+          0.2538207471370697,
+          0.0
+        ],
+        [
+          6.19985818862915,
+          0.48663467168807983,
+          0.0
+        ],
+        [
+          4.5850138664245605,
+          0.13432562351226807,
+          0.0
+        ],
+        [
+          4.246967792510986,
+          0.05000000074505806,
+          0.0
+        ],
+        [
+          4.905519008636475,
+          0.17987686395645142,
+          0.0
+        ],
+        [
+          0.331886351108551,
+          0.4909895658493042,
+          0.0
+        ],
+        [
+          6.05476713180542,
+          0.872049868106842,
+          0.0
+        ],
+        [
+          6.030369758605957,
+          0.9325317740440369,
+          0.0
+        ],
+        [
+          1.803506851196289,
+          0.15366196632385254,
+          0.0
+        ],
+        [
+          3.911066770553589,
+          0.40201109647750854,
+          0.0
+        ],
+        [
+          0.004064531996846199,
+          0.7099119424819946,
+          0.0
+        ],
+        [
+          5.844040870666504,
+          0.07206471264362335,
+          0.0
+        ],
+        [
+          5.815093040466309,
+          0.2747291624546051,
+          0.0
+        ],
+        [
+          1.5126186609268188,
+          0.9700000286102295,
+          0.0
+        ]
+      ],
+      "corrected_adapter_skin_d_max": 0.0,
+      "corrected_adapter_h_theta_unchanged_max": 0.0,
+      "corrected_adapter_depth_common_se3_max": 1.887379141862766e-15,
+      "correction_scope": "Only fixes skin-geometry binding for existing analytic distance-ratio depth. Baked layered d is a different field; no full runtime-vs-baked depth equivalence claimed.",
+      "runtime_abs_d_max": 0.9543755054473877,
+      "runtime_abs_d_mean": 0.47561705112457275,
+      "distance_actual_skin_to_assumed_skin_m": [
+        0.0266084611451013,
+        0.0036047235240110327,
+        0.047667440472057045,
+        0.22606450582971424,
+        0.007191910062528241,
+        0.028897423237015177,
+        0.004035702521874402,
+        0.22587490346486228,
+        0.5207850145796749,
+        0.5700219066892295,
+        0.018854333187213156,
+        0.16032364972387542,
+        0.3945184294084103,
+        0.0038144411715440927,
+        0.06490370324756044,
+        0.622290356088099
+      ],
+      "source_contract": "atlas.query_atlas_coordinates constructs arange(skin_count) indices; harmonic.interpolate_volume_field recomputes distance ratio d from those presumed skin nodes instead of interpolating baked harmonic_d."
+    },
+    "production_curve_step_m": {
+      "mean": 0.007376832975947027,
+      "p95": 0.010499771591275929,
+      "max": 0.01109480019658804
+    },
+    "limitation": "Canonical registered3D baseline is algebraically exact under known matching attachments; harmonic does not outperform this baseline. No nonrigid inference or patient registration was learned/tested.",
+    "total_wall_s": 12.805565400998603
+  },
+  "servo": {
+    "common_target": "KMP scheduled fixed world vessel reused verbatim by both controllers; lateral/depth perturbations applied once in fixed world before execution.",
+    "legal_prior_knees": [
+      0,
+      30
+    ],
+    "test_knee": 60,
+    "rows": [
+      {
+        "id": "kmp_nominal_gain0",
+        "method": "kmp",
+        "scenario": "nominal",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.9047619047619048,
+        "u_abs_mm": {
+          "mean": 16.99232642863686,
+          "p95": 25.50883899480689,
+          "max": 29.635043073077576
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8626189171573513,
+        "translation_step_m": {
+          "mean": 0.005908348747653091,
+          "p95": 0.009786221370474205,
+          "max": 0.010799485486881037
+        },
+        "rotation_step_rad": {
+          "mean": 0.0576443259092755,
+          "p95": 0.13063742846361923,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.68080706299952,
+        "nonvisible_motion_length_m": 0.0874093609525432,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_nominal_gain1",
+        "method": "kmp",
+        "scenario": "nominal",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 1.0,
+        "u_abs_mm": {
+          "mean": 1.5151199743251553,
+          "p95": 4.21065132869134,
+          "max": 15.00000000000003
+        },
+        "first_synthetic_centered_time_s": 0.2,
+        "path_length_m": 0.8877734447641941,
+        "translation_step_m": {
+          "mean": 0.006080640032631466,
+          "p95": 0.010368911784767289,
+          "max": 0.011907717771387822
+        },
+        "rotation_step_rad": {
+          "mean": 0.05546833700465115,
+          "p95": 0.1290368694603718,
+          "max": 0.16046382618348803
+        },
+        "wall_s": 0.7159850230018492,
+        "nonvisible_motion_length_m": 0.0,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_mismatch_lateral_plus10mm_gain0",
+        "method": "kmp",
+        "scenario": "mismatch_lateral_plus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.4489795918367347,
+        "u_abs_mm": {
+          "mean": 26.946698741506022,
+          "p95": 35.434224172180556,
+          "max": 39.60732791075397
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8626189171573513,
+        "translation_step_m": {
+          "mean": 0.005908348747653091,
+          "p95": 0.009786221370474205,
+          "max": 0.010799485486881037
+        },
+        "rotation_step_rad": {
+          "mean": 0.0576443259092755,
+          "p95": 0.13063742846361923,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.6627344710032048,
+        "nonvisible_motion_length_m": 0.5544016572913316,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_mismatch_lateral_plus10mm_gain1",
+        "method": "kmp",
+        "scenario": "mismatch_lateral_plus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.9931972789115646,
+        "u_abs_mm": {
+          "mean": 2.2501383775649555,
+          "p95": 6.445049107029896,
+          "max": 25.00000000000008
+        },
+        "first_synthetic_centered_time_s": 0.4,
+        "path_length_m": 0.8861718262001417,
+        "translation_step_m": {
+          "mean": 0.006069670042466724,
+          "p95": 0.010586407630148387,
+          "max": 0.013644932527239164
+        },
+        "rotation_step_rad": {
+          "mean": 0.05673368614195398,
+          "p95": 0.12982316807657596,
+          "max": 0.16567409662221388
+        },
+        "wall_s": 0.6942444070009515,
+        "nonvisible_motion_length_m": 0.011790003992356867,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_mismatch_lateral_minus10mm_gain0",
+        "method": "kmp",
+        "scenario": "mismatch_lateral_minus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 1.0,
+        "u_abs_mm": {
+          "mean": 7.078439340401693,
+          "p95": 15.510698108135417,
+          "max": 19.662758235401164
+        },
+        "first_synthetic_centered_time_s": 8.4,
+        "path_length_m": 0.8626189171573513,
+        "translation_step_m": {
+          "mean": 0.005908348747653091,
+          "p95": 0.009786221370474205,
+          "max": 0.010799485486881037
+        },
+        "rotation_step_rad": {
+          "mean": 0.0576443259092755,
+          "p95": 0.13063742846361923,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.6980914020023192,
+        "nonvisible_motion_length_m": 0.0,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_mismatch_lateral_minus10mm_gain1",
+        "method": "kmp",
+        "scenario": "mismatch_lateral_minus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 1.0,
+        "u_abs_mm": {
+          "mean": 1.1969696963071117,
+          "p95": 3.5636845117167817,
+          "max": 5.292125950400129
+        },
+        "first_synthetic_centered_time_s": 0.1,
+        "path_length_m": 0.8782381598850459,
+        "translation_step_m": {
+          "mean": 0.006015329862226342,
+          "p95": 0.010053621478111998,
+          "max": 0.01109653890977163
+        },
+        "rotation_step_rad": {
+          "mean": 0.055468451424984216,
+          "p95": 0.12904078656040652,
+          "max": 0.16046382618348803
+        },
+        "wall_s": 0.6917326660004619,
+        "nonvisible_motion_length_m": 0.0,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_not_detected_depth_plus120mm_gain0",
+        "method": "kmp",
+        "scenario": "not_detected_depth_plus120mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 17.402189376957637,
+          "p95": 37.34346659798129,
+          "max": 61.057175999212284
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8626189171573513,
+        "translation_step_m": {
+          "mean": 0.005908348747653091,
+          "p95": 0.009786221370474205,
+          "max": 0.010799485486881037
+        },
+        "rotation_step_rad": {
+          "mean": 0.0576443259092755,
+          "p95": 0.13063742846361923,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.6523393019997457,
+        "nonvisible_motion_length_m": 0.8626189171573513,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_not_detected_depth_plus120mm_gain1",
+        "method": "kmp",
+        "scenario": "not_detected_depth_plus120mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 18.899244488956583,
+          "p95": 69.81099282290013,
+          "max": 115.16481944725014
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 1.0131724159464839,
+        "translation_step_m": {
+          "mean": 0.006939537095523862,
+          "p95": 0.01081969069272629,
+          "max": 0.012194846505544778
+        },
+        "rotation_step_rad": {
+          "mean": 0.05674911044114299,
+          "p95": 0.13059494598291088,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.695452659001603,
+        "nonvisible_motion_length_m": 1.0131724159464839,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0",
+        "method": "kmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_plus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 25.68081683041614,
+          "p95": 41.23342123953766,
+          "max": 61.72276806368512
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8626189171573513,
+        "translation_step_m": {
+          "mean": 0.005908348747653091,
+          "p95": 0.009786221370474205,
+          "max": 0.010799485486881037
+        },
+        "rotation_step_rad": {
+          "mean": 0.0576443259092755,
+          "p95": 0.13063742846361923,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.6576527840006747,
+        "nonvisible_motion_length_m": 0.8626189171573513,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1",
+        "method": "kmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_plus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 24.737130041806413,
+          "p95": 109.84799096544009,
+          "max": 144.97461694518017
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.9999829160184193,
+        "translation_step_m": {
+          "mean": 0.00684919805492068,
+          "p95": 0.011979449293191221,
+          "max": 0.013560692447552116
+        },
+        "rotation_step_rad": {
+          "mean": 0.4132329372998844,
+          "p95": 3.1170694728566786,
+          "max": 3.1408869230429204
+        },
+        "wall_s": 0.6669950559989957,
+        "nonvisible_motion_length_m": 0.9999829160184193,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0",
+        "method": "kmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_minus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 9.896499019168397,
+          "p95": 41.21704073144853,
+          "max": 60.64075605576425
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8626189171573513,
+        "translation_step_m": {
+          "mean": 0.005908348747653091,
+          "p95": 0.009786221370474205,
+          "max": 0.010799485486881037
+        },
+        "rotation_step_rad": {
+          "mean": 0.0576443259092755,
+          "p95": 0.13063742846361923,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.666954133001127,
+        "nonvisible_motion_length_m": 0.8626189171573513,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1",
+        "method": "kmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_minus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 15.497531479577956,
+          "p95": 49.87050168778442,
+          "max": 123.17368678018228
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 1.0524996716875514,
+        "translation_step_m": {
+          "mean": 0.00720890186087364,
+          "p95": 0.010608911533195271,
+          "max": 0.011614096406692297
+        },
+        "rotation_step_rad": {
+          "mean": 0.05674911044114299,
+          "p95": 0.13059494598291088,
+          "max": 0.13073883205358192
+        },
+        "wall_s": 0.7211728579968621,
+        "nonvisible_motion_length_m": 1.0524996716875514,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "kmp_nominal_ruckig",
+        "method": "kmp",
+        "scenario": "nominal",
+        "gain": 1.0,
+        "use_module_c": true,
+        "steps": 147,
+        "visible_fraction": 0.027210884353741496,
+        "u_abs_mm": {
+          "mean": 29.7109279446436,
+          "p95": 58.93116553212394,
+          "max": 67.85027889649086
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.3410905071229436,
+        "translation_step_m": {
+          "mean": 0.002336236350157148,
+          "p95": 0.007029069711672528,
+          "max": 0.01605325084843916
+        },
+        "rotation_step_rad": {
+          "mean": 0.05861490447027409,
+          "p95": 0.12000000000000005,
+          "max": 0.12000000000000013
+        },
+        "wall_s": 0.7084914019978896,
+        "nonvisible_motion_length_m": 0.3310456613601492,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_nominal_gain0",
+        "method": "dmp",
+        "scenario": "nominal",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.9047619047619048,
+        "u_abs_mm": {
+          "mean": 16.697255467286613,
+          "p95": 27.04075004343493,
+          "max": 29.602068453007917
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8548034195660512,
+        "translation_step_m": {
+          "mean": 0.005854817942233227,
+          "p95": 0.009612251756415956,
+          "max": 0.011260126439909103
+        },
+        "rotation_step_rad": {
+          "mean": 0.06215608174983387,
+          "p95": 0.130537439158159,
+          "max": 0.13073896530818005
+        },
+        "wall_s": 0.6782624620027491,
+        "nonvisible_motion_length_m": 0.07188232782439731,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_nominal_gain1",
+        "method": "dmp",
+        "scenario": "nominal",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 1.0,
+        "u_abs_mm": {
+          "mean": 1.677213209368841,
+          "p95": 4.603600261400564,
+          "max": 14.832220944428144
+        },
+        "first_synthetic_centered_time_s": 0.2,
+        "path_length_m": 0.8995467948049807,
+        "translation_step_m": {
+          "mean": 0.006161279416472471,
+          "p95": 0.010445552582752147,
+          "max": 0.01221166764565388
+        },
+        "rotation_step_rad": {
+          "mean": 0.05994785663086637,
+          "p95": 0.12952386589135167,
+          "max": 0.18335613773908305
+        },
+        "wall_s": 0.6882453619982698,
+        "nonvisible_motion_length_m": 0.0,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_mismatch_lateral_plus10mm_gain0",
+        "method": "dmp",
+        "scenario": "mismatch_lateral_plus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.5102040816326531,
+        "u_abs_mm": {
+          "mean": 26.631779081091704,
+          "p95": 36.97567036210329,
+          "max": 39.58555880016372
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8548034195660512,
+        "translation_step_m": {
+          "mean": 0.005854817942233227,
+          "p95": 0.009612251756415956,
+          "max": 0.011260126439909103
+        },
+        "rotation_step_rad": {
+          "mean": 0.06215608174983387,
+          "p95": 0.130537439158159,
+          "max": 0.13073896530818005
+        },
+        "wall_s": 0.6984890700005053,
+        "nonvisible_motion_length_m": 0.4621855450964341,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_mismatch_lateral_plus10mm_gain1",
+        "method": "dmp",
+        "scenario": "mismatch_lateral_plus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.9931972789115646,
+        "u_abs_mm": {
+          "mean": 2.2760481918607525,
+          "p95": 5.611890602502768,
+          "max": 24.83222094442815
+        },
+        "first_synthetic_centered_time_s": 0.4,
+        "path_length_m": 0.8980597989946107,
+        "translation_step_m": {
+          "mean": 0.0061510945136617175,
+          "p95": 0.010894775316852625,
+          "max": 0.012642496583809927
+        },
+        "rotation_step_rad": {
+          "mean": 0.060180338549360925,
+          "p95": 0.12952644577845024,
+          "max": 0.18335613773908305
+        },
+        "wall_s": 0.6944942609989084,
+        "nonvisible_motion_length_m": 0.004244809870473679,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_mismatch_lateral_minus10mm_gain0",
+        "method": "dmp",
+        "scenario": "mismatch_lateral_minus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.9931972789115646,
+        "u_abs_mm": {
+          "mean": 6.848473972225539,
+          "p95": 17.178826006399344,
+          "max": 21.254805965340463
+        },
+        "first_synthetic_centered_time_s": 0.5,
+        "path_length_m": 0.8548034195660512,
+        "translation_step_m": {
+          "mean": 0.005854817942233227,
+          "p95": 0.009612251756415956,
+          "max": 0.011260126439909103
+        },
+        "rotation_step_rad": {
+          "mean": 0.06215608174983387,
+          "p95": 0.130537439158159,
+          "max": 0.13073896530818005
+        },
+        "wall_s": 0.6845292280013382,
+        "nonvisible_motion_length_m": 0.0,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_mismatch_lateral_minus10mm_gain1",
+        "method": "dmp",
+        "scenario": "mismatch_lateral_minus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 1.0,
+        "u_abs_mm": {
+          "mean": 1.4833029669452646,
+          "p95": 4.724213821499525,
+          "max": 6.144707400917701
+        },
+        "first_synthetic_centered_time_s": 0.1,
+        "path_length_m": 0.8938265700670398,
+        "translation_step_m": {
+          "mean": 0.006122099794979725,
+          "p95": 0.009997992244444549,
+          "max": 0.012271630002241022
+        },
+        "rotation_step_rad": {
+          "mean": 0.0599560590800818,
+          "p95": 0.12950335315129627,
+          "max": 0.18335613773908305
+        },
+        "wall_s": 0.7199546030024067,
+        "nonvisible_motion_length_m": 0.0,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_not_detected_depth_plus120mm_gain0",
+        "method": "dmp",
+        "scenario": "not_detected_depth_plus120mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 18.444765510987615,
+          "p95": 45.85481512820542,
+          "max": 58.49093341891809
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8548034195660512,
+        "translation_step_m": {
+          "mean": 0.005854817942233227,
+          "p95": 0.009612251756415956,
+          "max": 0.011260126439909103
+        },
+        "rotation_step_rad": {
+          "mean": 0.06215608174983387,
+          "p95": 0.130537439158159,
+          "max": 0.13073896530818005
+        },
+        "wall_s": 0.6539367090008454,
+        "nonvisible_motion_length_m": 0.8548034195660512,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_not_detected_depth_plus120mm_gain1",
+        "method": "dmp",
+        "scenario": "not_detected_depth_plus120mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 9.318957794816535,
+          "p95": 37.762260452603165,
+          "max": 64.04509286034195
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 1.0059122919236814,
+        "translation_step_m": {
+          "mean": 0.006889810218655352,
+          "p95": 0.011571161847788574,
+          "max": 0.012644380907009445
+        },
+        "rotation_step_rad": {
+          "mean": 0.061260609384709334,
+          "p95": 0.13049504245052113,
+          "max": 0.13073880794812034
+        },
+        "wall_s": 0.692954900998302,
+        "nonvisible_motion_length_m": 1.0059122919236814,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0",
+        "method": "dmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_plus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 26.289511948711368,
+          "p95": 49.67616139124039,
+          "max": 67.96740970407907
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8548034195660512,
+        "translation_step_m": {
+          "mean": 0.005854817942233227,
+          "p95": 0.009612251756415956,
+          "max": 0.011260126439909103
+        },
+        "rotation_step_rad": {
+          "mean": 0.06215608174983387,
+          "p95": 0.130537439158159,
+          "max": 0.13073896530818005
+        },
+        "wall_s": 0.6550688250026724,
+        "nonvisible_motion_length_m": 0.8548034195660512,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1",
+        "method": "dmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_plus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.19727891156462585,
+        "u_abs_mm": {
+          "mean": 17.389070770811678,
+          "p95": 55.92637665067693,
+          "max": 147.82897077331367
+        },
+        "first_synthetic_centered_time_s": 12.700000000000001,
+        "path_length_m": 0.9403644374742749,
+        "translation_step_m": {
+          "mean": 0.006440852311467636,
+          "p95": 0.012259921574342846,
+          "max": 0.01277214586312347
+        },
+        "rotation_step_rad": {
+          "mean": 0.16737106293502002,
+          "p95": 0.1306454673264003,
+          "max": 3.139368475436478
+        },
+        "wall_s": 0.6799014349999197,
+        "nonvisible_motion_length_m": 0.874075702062738,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0",
+        "method": "dmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_minus10mm",
+        "gain": 0.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 11.269433301731475,
+          "p95": 45.77857678833236,
+          "max": 58.198455474129354
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.8548034195660512,
+        "translation_step_m": {
+          "mean": 0.005854817942233227,
+          "p95": 0.009612251756415956,
+          "max": 0.011260126439909103
+        },
+        "rotation_step_rad": {
+          "mean": 0.06215608174983387,
+          "p95": 0.130537439158159,
+          "max": 0.13073896530818005
+        },
+        "wall_s": 0.6765707490012574,
+        "nonvisible_motion_length_m": 0.8548034195660512,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1",
+        "method": "dmp",
+        "scenario": "not_detected_depth_plus120mm_lateral_minus10mm",
+        "gain": 1.0,
+        "use_module_c": false,
+        "steps": 147,
+        "visible_fraction": 0.0,
+        "u_abs_mm": {
+          "mean": 10.795579968691904,
+          "p95": 37.058530289453785,
+          "max": 55.57649436758657
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 1.0415593876769258,
+        "translation_step_m": {
+          "mean": 0.0071339684087460675,
+          "p95": 0.011092455260362904,
+          "max": 0.011881744264228071
+        },
+        "rotation_step_rad": {
+          "mean": 0.061260609384709334,
+          "p95": 0.13049504245052113,
+          "max": 0.13073880794812034
+        },
+        "wall_s": 0.671080295000138,
+        "nonvisible_motion_length_m": 1.0415593876769258,
+        "last_phase": 0.9941815999161058
+      },
+      {
+        "id": "dmp_nominal_ruckig",
+        "method": "dmp",
+        "scenario": "nominal",
+        "gain": 1.0,
+        "use_module_c": true,
+        "steps": 147,
+        "visible_fraction": 0.027210884353741496,
+        "u_abs_mm": {
+          "mean": 31.61383943024024,
+          "p95": 58.523557867814695,
+          "max": 64.58356104671688
+        },
+        "first_synthetic_centered_time_s": null,
+        "path_length_m": 0.2619247081261343,
+        "translation_step_m": {
+          "mean": 0.001794004850179002,
+          "p95": 0.004607289969492269,
+          "max": 0.013814709360029384
+        },
+        "rotation_step_rad": {
+          "mean": 0.06358885786234945,
+          "p95": 0.12000000000000004,
+          "max": 0.12000000000000008
+        },
+        "wall_s": 0.6872518640011549,
+        "nonvisible_motion_length_m": 0.2511530946183721,
+        "last_phase": 0.9941815999161058
+      }
+    ],
+    "missing_observation_counterfactual": {
+      "kmp": {
+        "same_world_gain1_vs_gain0_position_difference_m": {
+          "mean": 0.03257020087340619,
+          "p95": 0.07207794402791097,
+          "max": 0.0837063155979865
+        },
+        "two_hidden_offsets_visible_counts": [
+          0,
+          0
+        ],
+        "same_public_missing_history_gain0_hidden_world_path_difference_m": {
+          "mean": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "inference": "Nominal motion while missing is allowed. Hidden-world path comparisons concern only the common missing prefix before either detects; stock additionally consumes simulator geometric image_u even when invisible. This violates a missing-only sensor contract, not the internal simulator observation contract.",
+        "identical_missing_prefix_steps": 147,
+        "identical_missing_prefix_gain1_path_difference_m": {
+          "mean": 0.04231497944334244,
+          "p95": 0.07682423298499916,
+          "max": 0.08439205432035443
+        },
+        "gain1_hidden_world_path_difference_m": {
+          "mean": 0.04231497944334244,
+          "p95": 0.07682423298499916,
+          "max": 0.08439205432035443
+        }
+      },
+      "dmp": {
+        "same_world_gain1_vs_gain0_position_difference_m": {
+          "mean": 0.014761390518838615,
+          "p95": 0.02323628252435441,
+          "max": 0.029922984677094283
+        },
+        "two_hidden_offsets_visible_counts": [
+          29,
+          0
+        ],
+        "same_public_missing_history_gain0_hidden_world_path_difference_m": {
+          "mean": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        },
+        "inference": "Nominal motion while missing is allowed. Hidden-world path comparisons concern only the common missing prefix before either detects; stock additionally consumes simulator geometric image_u even when invisible. This violates a missing-only sensor contract, not the internal simulator observation contract.",
+        "identical_missing_prefix_steps": 90,
+        "identical_missing_prefix_gain1_path_difference_m": {
+          "mean": 0.0425803062383109,
+          "p95": 0.13996587966630789,
+          "max": 0.16235731073971887
+        },
+        "gain1_hidden_world_path_difference_m": {
+          "mean": 0.13898271092261644,
+          "p95": 0.3581178259678932,
+          "max": 0.3977330184407199
+        }
+      }
+    },
+    "full_honest_loop_se3": {
+      "position_max_m": 6.866350197783356e-16,
+      "rotation_max": 2.0261570199409107e-15,
+      "image_u_max_m": 6.639654104301229e-16,
+      "wall_s": 0.7213685730021098
+    },
+    "primary_production": {
+      "stock": {
+        "error": "NameError(\"name 'use_scheduled_vessel' is not defined\")",
+        "wall_s": 0.4926454479973472
+      },
+      "harness_global_alias_repair": {
+        "steps": 300,
+        "visible_fraction": 0.9866666666666667,
+        "u_abs_mm": {
+          "mean": 13.750892652646954,
+          "p95": 22.841740289152465,
+          "max": 27.223105110572167
+        },
+        "first_synthetic_centered_time_s": 14.0,
+        "path_length_m": 0.9321465859019686,
+        "translation_step_m": {
+          "mean": 0.0031175471100400288,
+          "p95": 0.005026541370656588,
+          "max": 0.006094771975132501
+        },
+        "rotation_step_rad": {
+          "mean": 0.032330834899230346,
+          "p95": 0.11999999999999997,
+          "max": 0.12000000000000025
+        },
+        "wall_s": 4.468312814999081,
+        "nonvisible_motion_length_m": 0.009627743434277622,
+        "last_phase": 1.0,
+        "change": "Set module global use_scheduled_vessel to scheduled_observation_truth_enabled(cfg[closed_loop_servo]); no source file modified."
+      },
+      "source": "DMP_playground.run_trajectory_extraction_demo.run_closed_loop_servo_on_bent + SurfaceScanDMPController",
+      "privileged_inputs": "Exact bent anatomy/vessel points and tangents, bent replay roll/rho, VesselOracle; not a blind first-image baseline."
+    },
+    "known_source_behavior": "Lateral correction uses image_u even when visible=False; reconstruction ingestion alone is visibility-gated. Negative visibility tests diagnose this behavior, not acquisition success.",
+    "scope": "Synthetic probe-plane geometry and surrogate contact only. No real US, robot, force feedback, target identity detector, stop/confirmation, or dIRD inside these servo runs.",
+    "total_wall_s": 32.09708878699894
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "schema": "native_exit_inventory_v1",
+  "audit_scope": "Read-only JSON/log extraction from saved native studies; no controller replay, robot, or network.",
+  "source_roots": {
+    "continuing": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111",
+    "adaptive": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111",
+    "native_witness": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_executable_skills_20261111/NATIVE_WITNESS.json"
+  },
+  "checkpoint_counts": {
+    "total": 2258,
+    "executed_pass": 2159,
+    "no_checked_route_no_witness": 99,
+    "other_checkpoint_outcomes": 0,
+    "by_study": {
+      "ab_continuing_rollout_20261111": {"executed_pass": 1807, "no_checked_route_no_witness": 92},
+      "ab_adaptive_stopping_20261111": {"executed_pass": 352, "no_checked_route_no_witness": 7}
+    },
+    "by_fixture": {
+      "fixture_00_constrained": {"executed_pass": 1330, "no_checked_route_no_witness": 75},
+      "fixture_01_constrained": {"executed_pass": 825, "no_checked_route_no_witness": 24},
+      "fixture_00_open": {"executed_pass": 4, "no_checked_route_no_witness": 0}
+    },
+    "by_action": {
+      "fork_minus__single_dwell_0.15": {"executed_pass": 146, "no_checked_route_no_witness": 7},
+      "fork_minus__single_dwell_0.3": {"executed_pass": 142, "no_checked_route_no_witness": 10},
+      "fork_minus__single_dwell_0.6": {"executed_pass": 95, "no_checked_route_no_witness": 5},
+      "fork_plus__single_dwell_0.15": {"executed_pass": 139, "no_checked_route_no_witness": 12},
+      "fork_plus__single_dwell_0.3": {"executed_pass": 152, "no_checked_route_no_witness": 9},
+      "fork_plus__single_dwell_0.6": {"executed_pass": 96, "no_checked_route_no_witness": 11},
+      "left": {"executed_pass": 421, "no_checked_route_no_witness": 0},
+      "right": {"executed_pass": 360, "no_checked_route_no_witness": 0},
+      "side_left__single_dwell_0.15": {"executed_pass": 1, "no_checked_route_no_witness": 12},
+      "side_left__single_dwell_0.3": {"executed_pass": 1, "no_checked_route_no_witness": 14},
+      "side_left__single_dwell_0.6": {"executed_pass": 194, "no_checked_route_no_witness": 19},
+      "side_right__single_dwell_0.15": {"executed_pass": 83, "no_checked_route_no_witness": 0},
+      "side_right__single_dwell_0.3": {"executed_pass": 43, "no_checked_route_no_witness": 0},
+      "side_right__single_dwell_0.6": {"executed_pass": 286, "no_checked_route_no_witness": 0}
+    }
+  },
+  "route_counts": {
+    "direct_pass": 1949,
+    "retreat_fork_pass": 169,
+    "round_tip_pass": 41,
+    "routed_pass_total": 210,
+    "no_witness_without_candidate": 99,
+    "terminal_left_pass": {"direct": 389, "retreat_fork": 32, "round_tip": 0},
+    "terminal_right_pass": {"direct": 331, "retreat_fork": 13, "round_tip": 16},
+    "fixture_action_pairs": {"both_direct_and_return": 9, "direct_only": 21, "return_only": 0},
+    "prescribed_terminal_scan_pairs_left_right": {"both_direct_and_return": 4, "direct_only": 2, "direct_pass": 720, "returned_pass": 61, "return_only": 0}
+  },
+  "same_fixture_start_action": {
+    "group_definition": "fixture + input_fingerprint (complete saved state identity) + action_id",
+    "unique_groups": 452,
+    "all_pass_groups": 377,
+    "all_no_witness_groups": 75,
+    "mixed_groups": 0,
+    "interpretation": "No exact saved fixture/start/action group has contradictory pass and no-witness checkpoint outcomes; this does not establish global impossibility."
+  },
+  "direct_vs_returned_same_action": {
+    "comparison_count": 9,
+    "meaning": "Nine fixture/action pairs have both direct and returned-route pass evidence from different exact saved probe histories; route availability is compared, not cherry-picked outcomes.",
+    "pairs": [
+      {"fixture": "fixture_00_constrained", "action": "left", "direct_pass": 197, "retreat_fork_pass": 12, "round_tip_pass": 0},
+      {"fixture": "fixture_00_constrained", "action": "right", "direct_pass": 171, "retreat_fork_pass": 1, "round_tip_pass": 3},
+      {"fixture": "fixture_00_constrained", "action": "side_left__single_dwell_0.6", "direct_pass": 58, "retreat_fork_pass": 70, "round_tip_pass": 0},
+      {"fixture": "fixture_00_constrained", "action": "side_right__single_dwell_0.15", "direct_pass": 60, "retreat_fork_pass": 0, "round_tip_pass": 9},
+      {"fixture": "fixture_00_constrained", "action": "side_right__single_dwell_0.3", "direct_pass": 25, "retreat_fork_pass": 9, "round_tip_pass": 0},
+      {"fixture": "fixture_00_constrained", "action": "side_right__single_dwell_0.6", "direct_pass": 187, "retreat_fork_pass": 7, "round_tip_pass": 16},
+      {"fixture": "fixture_01_constrained", "action": "left", "direct_pass": 191, "retreat_fork_pass": 20, "round_tip_pass": 0},
+      {"fixture": "fixture_01_constrained", "action": "right", "direct_pass": 159, "retreat_fork_pass": 12, "round_tip_pass": 13},
+      {"fixture": "fixture_01_constrained", "action": "side_left__single_dwell_0.6", "direct_pass": 28, "retreat_fork_pass": 38, "round_tip_pass": 0}
+    ]
+  },
+  "representative_checkpoint_paths": {
+    "direct_pass_native_witness_transition_0": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/239763b4090bb8fcb7b196c2.json",
+      "fixture": "fixture_00_constrained",
+      "input_key": [],
+      "action": "side_right__single_dwell_0.6",
+      "candidate": "direct",
+      "route": "side_right__single_dwell_0.6__direct",
+      "outcome": "executed pass"
+    },
+    "returned_retreat_fork_pass": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/88970f9a004bb9349c063239.json",
+      "fixture": "fixture_00_constrained",
+      "input_key": ["side_right__single_dwell_0.6", "side_right__single_dwell_0.6"],
+      "action": "left",
+      "candidate": "retreat_fork",
+      "route": "side_right__single_dwell_0.6__side_right__single_dwell_0.6__left__retreat_fork",
+      "outcome": "executed pass"
+    },
+    "returned_round_tip_pass": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_01_constrained/dev/fixture_01_constrained/native_shared/planning/checkpoints/bd7f86bee46892635be04967.json",
+      "fixture": "fixture_01_constrained",
+      "input_key": ["side_right__single_dwell_0.6", "side_left__single_dwell_0.6"],
+      "action": "right",
+      "candidate": "round_tip",
+      "route": "side_right__single_dwell_0.6__side_left__single_dwell_0.6__right__round_tip",
+      "outcome": "executed pass"
+    },
+    "no_witness_after_four_exact_probes": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_00_constrained/dev/fixture_00_constrained/native_shared/planning/checkpoints/acbc475b5405d0156af7c8f0.json",
+      "fixture": "fixture_00_constrained",
+      "input_key": ["side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_right__single_dwell_0.6"],
+      "action": "side_left__single_dwell_0.6",
+      "candidate": null,
+      "route": null,
+      "result_reason": "no_checked_route",
+      "output_state_valid": false,
+      "output_native_keys": ["q", "qdot", "acceleration", "snapshot"]
+    }
+  },
+  "full_state_keys": {
+    "checkpoint_state": ["key", "elapsed_s", "pose", "valid", "native"],
+    "native": ["q", "qdot", "acceleration", "snapshot"],
+    "snapshot_schema": "ultrapoc_qp_complete_history_v2",
+    "no_witness_state_rule": "The no_checked_route row has route={} and output_state.valid=false but retains output_state.native q/qdot/acceleration/snapshot; it is not a missing-state reset."
+  },
+  "native_witness_summary": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_executable_skills_20261111/NATIVE_WITNESS.json",
+    "status": "passed",
+    "scope": "one recorded fixture/case; two selected native transitions; no multi-case rollout",
+    "transition_count": 2,
+    "transition_routes": ["side_right__single_dwell_0.6__direct", "side_right__single_dwell_0.6__side_right__single_dwell_0.6__direct"],
+    "continuity": "key, elapsed, pose, q, qdot, acceleration and complete snapshot all match; reported max differences are zero",
+    "fresh_replay": {"backend": "native", "segments": 2, "whole_segment_pass": 2, "exit_state_valid": 2, "checks": "52 passed / 0 failed"},
+    "downstream_proposals": {"count": 28, "per_exact_exit": 14, "status": "predicted_unknown", "native_qp_checked": false, "route_set_kind": "public_measured_frame_geometry_plus_baked_dird_prediction"},
+    "provenance": {"live_robot_connection": false, "external_network": false, "complete_exit_contract": "q, qdot, acceleration, snapshot, pose"}
+  },
+  "first_four_public_boundary_flag": {
+    "fixture_00_case_0001": {
+      "status": "physical_native_rejection_after_four_valid_probe_exits",
+      "action_prefix": ["side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_right__single_dwell_0.6"],
+      "next_action": "side_left__single_dwell_0.6",
+      "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_00_constrained/dev/fixture_00_constrained/native_shared/planning/checkpoints/acbc475b5405d0156af7c8f0.json",
+      "audit": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/NATIVE_PILOT_AUDIT.txt",
+      "classification": "both legal candidates fail native 2-mm position tracking; not a reconstruction exception"
+    },
+    "fixture_01_case_0001": {
+      "status": "no_analogous_first_four_physical_rejection_found",
+      "observed_prefix": ["side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_left__single_dwell_0.6"],
+      "next_action": "left",
+      "representative_pass_checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_01_constrained/dev/fixture_01_constrained/native_shared/planning/checkpoints/bd7f86bee46892635be04967.json",
+      "qualification": "This is an inventory flag for the saved A_task records, not a complete chronological cohort proof."
+    }
+  },
+  "same_action_no_witness_vs_pass": [
+    {
+      "fixture": "fixture_00_constrained",
+      "action": "side_left__single_dwell_0.6",
+      "no_witness": {
+        "input_key": ["side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_right__single_dwell_0.6", "side_right__single_dwell_0.6"],
+        "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_00_constrained/dev/fixture_00_constrained/native_shared/planning/checkpoints/acbc475b5405d0156af7c8f0.json",
+        "reason": "no_checked_route"
+      },
+      "pass_from_different_exact_exit": {
+        "input_key": ["side_right__single_dwell_0.6"],
+        "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/48a8a882c9420830c8054626.json",
+        "route": "side_right__single_dwell_0.6__side_left__single_dwell_0.6__retreat_fork",
+        "reason": "executed; route.valid=true; all steps tracking/native gates pass"
+      },
+      "interpretation": "Same requested action has a saved no-witness at one complete state and a saved returned-route pass at another; this is state-dependent route evidence, not an exact-state contradiction or a global impossibility claim."
+    }
+  ],
+  "failed_checks_and_throws": {
+    "mechanical_tracking_failure": {
+      "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/NATIVE_PILOT_AUDIT.txt",
+      "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/study_v3/A_task_dwell_30/fixture_00_constrained/dev/fixture_00_constrained/native_shared/planning/checkpoints/acbc475b5405d0156af7c8f0.json",
+      "classification": "both candidate routes fail native 2-mm position tracking; not geometry, wall/collision, pause, native-failure, or replay",
+      "round_tip": {"same_tick_position_error_m": 0.003993224, "same_tick_rotation_error_rad": 0.006494228, "geometry_gap_m": 0.000553052, "native_failure_count": 0, "exit_state_valid": true},
+      "retreat_fork": {"same_tick_position_error_m": 0.002210762, "same_tick_rotation_error_rad": 0.002572224, "geometry_gap_m": 0.000654213, "native_failure_count": 0, "exit_state_valid": true}
+    },
+    "log_only_not_checkpoint_outcomes": {
+      "reconstruction_mismatch_throws": 8,
+      "keyboard_interrupt_computation_logs": 5,
+      "total_logs_with_these_signatures": 13,
+      "reconstruction_examples": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0000_0003/case0001_guard16.log",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0000_0003/case0001_guard32.log"
+      ],
+      "classification": "controller-history replay exceptions/censoring diagnostics; excluded from pass/no-witness checkpoint counts and not called physical task failures"
+    }
+  },
+  "scanner": {
+    "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_native_exit_effect_20261111/scan_inventory.py",
+    "command": "python scan_inventory.py",
+    "purpose": "Recompute these counts cheaply from saved JSON/logs; never performs native replay."
+  }
+}

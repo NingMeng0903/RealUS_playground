@@ -1,0 +1,6 @@
+# These specific Step 3 records are cited by HANDOFF.md; not runtime log directories.
+!step3_recovery/*.log
+!step3_recovery/baseline_source.tar.gz
+!step3_blind_v6/*.log
+!step3_blind_audit/manifest_fix/*.log
+!step3r_dev/*.log

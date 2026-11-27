@@ -1,0 +1,106 @@
+{
+  "seed": 201568239,
+  "trace_scope": "reference positions and sampled kinematics; no controller or physical time",
+  "arms": {
+    "rule": {
+      "segments": 38,
+      "reproduction_error_mm": 2.288783399261119e-13,
+      "max_join_position_gap_mm": 0.0,
+      "world_logged": {
+        "tested_joins": 37,
+        "joins_over_90_deg": 17,
+        "joins_over_120_deg": 15,
+        "median_join_deg": 66.34406908811401,
+        "max_join_deg": 178.53911132308818,
+        "interior_angles_over_90_deg": 4,
+        "interior_max_deg": 131.12528402975698
+      },
+      "world_dense": {
+        "tested_joins": 37,
+        "joins_over_90_deg": 20,
+        "joins_over_120_deg": 19,
+        "median_join_deg": 127.09628986670195,
+        "max_join_deg": 179.95767018293057,
+        "interior_angles_over_90_deg": 4,
+        "interior_max_deg": 158.21650491214098
+      },
+      "fixed_15_deg_dense": {
+        "tested_joins": 33,
+        "joins_over_90_deg": 20,
+        "joins_over_120_deg": 11,
+        "median_join_deg": 105.11949274414566,
+        "max_join_deg": 177.01039428715697,
+        "interior_angles_over_90_deg": 4,
+        "interior_max_deg": 156.3117630772397
+      },
+      "body_phase_tangent": {
+        "joins_over_120_deg": 19,
+        "max_change_mm_per_phase": 52.19781160323879
+      },
+      "material_longitudinal_direction_changes": 12,
+      "longest_station_jump": {
+        "acquisition": 8,
+        "from_station": 17,
+        "to_station": 0,
+        "atlas_arclength_mm": 256.60285116753056
+      },
+      "checked_joint_interpolation": {
+        "passing_samples": 114,
+        "joint_samples": 114,
+        "same_phase_max_mm": 120.53880643154675,
+        "distance_to_curve_p95_mm": 71.61005976340451,
+        "distance_to_curve_max_mm": 113.76789732836251
+      }
+    },
+    "rl": {
+      "segments": 40,
+      "reproduction_error_mm": 4.449557262054371e-13,
+      "max_join_position_gap_mm": 0.0,
+      "world_logged": {
+        "tested_joins": 39,
+        "joins_over_90_deg": 23,
+        "joins_over_120_deg": 17,
+        "median_join_deg": 110.11258409125428,
+        "max_join_deg": 180.0,
+        "interior_angles_over_90_deg": 0,
+        "interior_max_deg": 74.30499978669322
+      },
+      "world_dense": {
+        "tested_joins": 39,
+        "joins_over_90_deg": 21,
+        "joins_over_120_deg": 21,
+        "median_join_deg": 137.48867414525125,
+        "max_join_deg": 180.0,
+        "interior_angles_over_90_deg": 1,
+        "interior_max_deg": 164.25785045161226
+      },
+      "fixed_15_deg_dense": {
+        "tested_joins": 26,
+        "joins_over_90_deg": 12,
+        "joins_over_120_deg": 8,
+        "median_join_deg": 88.22690834839037,
+        "max_join_deg": 174.67794531259173,
+        "interior_angles_over_90_deg": 0,
+        "interior_max_deg": 29.94087659478932
+      },
+      "body_phase_tangent": {
+        "joins_over_120_deg": 20,
+        "max_change_mm_per_phase": 52.051068508558345
+      },
+      "material_longitudinal_direction_changes": 8,
+      "longest_station_jump": {
+        "acquisition": 9,
+        "from_station": 17,
+        "to_station": 0,
+        "atlas_arclength_mm": 256.60285116753056
+      },
+      "checked_joint_interpolation": {
+        "passing_samples": 120,
+        "joint_samples": 120,
+        "same_phase_max_mm": 119.27680055698394,
+        "distance_to_curve_p95_mm": 38.05405193463424,
+        "distance_to_curve_max_mm": 114.74714233995519
+      }
+    }
+  }
+}

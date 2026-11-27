@@ -1,0 +1,27 @@
+{
+  "verified_layouts": 352,
+  "verified_v6_layouts_excluded": 336,
+  "layouts_by_stage": {
+    "confirmation": 128,
+    "evidence_dev": 56,
+    "mechanism_test": 48,
+    "student_wave0": 40,
+    "student_wave1": 40,
+    "student_test": 40
+  },
+  "student_training_episodes": 80,
+  "student_test_layouts": 40,
+  "teacher_search_complete_continuations": 1680,
+  "observation_complete_probe_continuations": 334,
+  "confirmation_complete_scoring_executions": 1053,
+  "mechanism_complete_scoring_executions": 516,
+  "student_test_complete_scoring_executions": 360,
+  "independent_layout_bootstrap_recomputed": true,
+  "all_pairs_legal": true,
+  "protocol_sha256": {
+    "confirmation": "06dc20e576d63e6e0f29f94f158370f66779b56733a9c4aa60d94be908f4da9d",
+    "observation": "ff752fad54991f319acaa48a2b57c3b0a21c1fad876b31a1276a6718bc8dd68d",
+    "mechanism": "1b3995162219d9bdced966ee510afb8ca4c44f5b18dc2157af5cb7e2541a79ab"
+  },
+  "paired_compact_sha256": "42aaa941ca6403b6e95f71c9e3d88a9edfbb994c9d116e5acf9f5f21fefe0a5f"
+}

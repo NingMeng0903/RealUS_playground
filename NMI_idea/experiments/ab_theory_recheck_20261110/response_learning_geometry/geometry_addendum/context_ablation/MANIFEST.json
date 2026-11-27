@@ -1,0 +1,17 @@
+{
+  "files_sha256": {
+    "PROTOCOL.txt": "5815ff1a90ad8cfd7a3faf062175c3645de631736f04dc821b3e74b6c7ee6d6b",
+    "RAW_RESULTS.npz": "3f45c0519a9348041ef8d9347f3a2449f69af1cd3ff3723c30d5b97d580493ca",
+    "REPORT.txt": "11532d22dbbda31ad9f26c52a684830eeb9e03b6909014af09e421ece0393d49",
+    "RESULTS.json": "c21273bdeb54f403f95c18efcf0988eee2638d0ac22aa593c2b8703ed539ceb8",
+    "run_ablation.py": "eeece846739d4651cd76fb425ffa3ef6b4cb6f492fbe7e18106e3624d23f0e0d",
+    "test_ablation.py": "c3124b3ad4a6bb0248d95dcc4b6440328f31520bbd5768bdf13fdc7482c3d5e1"
+  },
+  "python": "3.10.20",
+  "torch": "2.12.0+cu126",
+  "weights_sha256": {
+    "constant_basis_ls_n2048_seed101.pt": "e81bc7d3c7c755538697d8265c31c857a7fd4cedc25e51ee8795d02bd1d37f9a",
+    "typed_full_context_source_snapshot.pt": "4e0e73107fb2e4b1c891b57fcaa88035f303a0c9ee138242b5c028e4032270d1",
+    "typed_no_context_n2048_seed101.pt": "ef3b870526349bb7ef1a933953f3ad9dfeddf126605b9e55ce30003470ac54d6"
+  }
+}

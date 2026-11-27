@@ -1,0 +1,3934 @@
+{
+  "scope": "Fixed single-label topological station surrogate, not clinical classification; no Blender, reader characteristics, or fitted results.",
+  "opportunity_unit": "One scheduled station tape with one immutable requested tag and a single station prediction; not an echo, frame, or successful-capture subset.",
+  "window_policy": "Raw same-source Gate 2 role co-presence within the thigh; proximal S1 >= -560 mm, graph-vertex +/-15 mm for S2\u2013S4, S5 <= -825 mm. Overlap is retained.",
+  "mixture": "Equal probability for each supported (source, tag) pair in the declared protocol; uniform true start height over its window rows. Optional train results use the same balanced-pair law, not an IID conformal cohort.",
+  "assumptions": [
+    "Oracle cell Z is (source, exact sampled start height). The tag affects only sampling Z.",
+    "Conditional on Z, the public tape law is independent of the tag: acquisition nuisance, anatomy draw and acoustic noise are drawn from the same law with independent seed streams, and controls do not use the tag.",
+    "The oracle information is sufficient for tag inference under this conditional independence. It is not available to the deployed reader."
+  ],
+  "derivation": {
+    "joint_mass": "p(z,y)=1/(number of supported source/tag pairs * number of rows in that pair) at supported heights; zero otherwise.",
+    "accuracy": "Exact oracle population accuracy is sum_z max_y p(z,y); it need not equal the accuracy of a reader or class-balanced recall.",
+    "classwise_f1": "For each y, rank cells by p(y|z). At a given prediction mass Q, the highest-posterior cells maximize TP. Since 2*TP/(p(y)+Q) is linear-fractional within any partially selected cell, a sorted prefix attains the one-vs-rest optimum.",
+    "macro_f1": "Averaging classwise optima is an upper bound, not necessarily an achievable score: their positive subsets may overlap and fail to define a single-label prediction rule."
+  },
+  "finite_sample_note": "These are population bounds under the uniform-height and conditional-independence model. Realized finite balanced tapes can have different cell counts and empirical F1 can exceed a population bound by sampling variation. No held tape or empirical reader metric was used.",
+  "protocols": {
+    "LOAO_OPEN3D": {
+      "train_source_ids": [
+        "bodyparts3d_right",
+        "bodyparts3d_left_mirrored",
+        "medseg_right"
+      ],
+      "test_source_ids": [
+        "open3dmodel_right"
+      ],
+      "evaluation": {
+        "station_classes_in_mass_vector_order": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S3_ART_BIF",
+          "S4_VEN_BIF",
+          "S5_POPLITEAL"
+        ],
+        "balanced_source_station_pairs": 5,
+        "window_rows_mm_by_source_and_tag": {
+          "open3dmodel_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0
+            ],
+            "S3_ART_BIF": [
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0
+            ],
+            "S4_VEN_BIF": [
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0
+            ],
+            "S5_POPLITEAL": [
+              -875.0,
+              -870.0,
+              -865.0,
+              -860.0,
+              -855.0,
+              -850.0,
+              -845.0,
+              -840.0,
+              -835.0,
+              -830.0,
+              -825.0
+            ]
+          }
+        },
+        "cells": [
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -875.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -870.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -865.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -860.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -855.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -850.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -845.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -840.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -835.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -830.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -825.0,
+            "p_cell": 0.01818181818181818,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.01818181818181818
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.011764705882352941,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.011764705882352941,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.011764705882352941,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.011764705882352941,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.061764705882352944,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.05,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.061764705882352944,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.05,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.061764705882352944,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.05,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.061764705882352944,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.05,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.011764705882352941,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.011764705882352941,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.09509803921568627,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.03333333333333333,
+              0.05,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.09509803921568627,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.03333333333333333,
+              0.05,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.09509803921568627,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.03333333333333333,
+              0.05,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.09509803921568627,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.03333333333333333,
+              0.05,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.045098039215686274,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.03333333333333333,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.045098039215686274,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.03333333333333333,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.011764705882352941,
+            "p_cell_and_tag": [
+              0.011764705882352941,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "oracle_accuracy": 0.7490196078431373,
+        "ambiguous_cell_mass": 0.7176470588235293,
+        "macro_f1_upper_bound": 0.7527501185395922,
+        "per_class": {
+          "S1_CFV_CFA": {
+            "tag_population_mass": 0.20000000000000007,
+            "f1_upper_bound": 0.5833333333333333,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 0.4117647058823528,
+            "predicted_positive_mass_at_optimum": 0.08235294117647059,
+            "true_positive_mass_at_optimum": 0.08235294117647059,
+            "positive_prefix_cells": 7
+          },
+          "S2_SFJ_MICKEY": {
+            "tag_population_mass": 0.19999999999999998,
+            "f1_upper_bound": 0.5964912280701754,
+            "precision_at_f1_optimum": 0.425,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.47058823529411764,
+            "true_positive_mass_at_optimum": 0.19999999999999998,
+            "positive_prefix_cells": 6
+          },
+          "S3_ART_BIF": {
+            "tag_population_mass": 0.2,
+            "f1_upper_bound": 0.6891891891891893,
+            "precision_at_f1_optimum": 0.5257731958762887,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.3803921568627451,
+            "true_positive_mass_at_optimum": 0.2,
+            "positive_prefix_cells": 4
+          },
+          "S4_VEN_BIF": {
+            "tag_population_mass": 0.2,
+            "f1_upper_bound": 0.8947368421052632,
+            "precision_at_f1_optimum": 0.8095238095238095,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.24705882352941178,
+            "true_positive_mass_at_optimum": 0.2,
+            "positive_prefix_cells": 4
+          },
+          "S5_POPLITEAL": {
+            "tag_population_mass": 0.20000000000000004,
+            "f1_upper_bound": 1.0,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.20000000000000004,
+            "true_positive_mass_at_optimum": 0.20000000000000004,
+            "positive_prefix_cells": 11
+          }
+        }
+      },
+      "optional_train_diagnostic_same_balanced_pair_law": {
+        "station_classes_in_mass_vector_order": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S3_ART_BIF",
+          "S4_VEN_BIF",
+          "S5_POPLITEAL"
+        ],
+        "balanced_source_station_pairs": 10,
+        "window_rows_mm_by_source_and_tag": {
+          "bodyparts3d_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0
+            ],
+            "S5_POPLITEAL": [
+              -875.0,
+              -870.0,
+              -865.0,
+              -860.0,
+              -855.0,
+              -850.0,
+              -845.0,
+              -840.0,
+              -835.0,
+              -830.0,
+              -825.0
+            ]
+          },
+          "bodyparts3d_left_mirrored": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0
+            ],
+            "S5_POPLITEAL": [
+              -875.0,
+              -870.0,
+              -865.0,
+              -860.0,
+              -855.0,
+              -850.0,
+              -845.0,
+              -840.0,
+              -835.0,
+              -830.0,
+              -825.0
+            ]
+          },
+          "medseg_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -530.0,
+              -525.0,
+              -520.0
+            ],
+            "S3_ART_BIF": [
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0
+            ],
+            "S4_VEN_BIF": [
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0
+            ]
+          }
+        },
+        "cells": [
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -875.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -870.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -865.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -860.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -855.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -850.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -845.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -840.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -835.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -830.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -825.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -560.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -555.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -550.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -545.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -540.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -535.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -530.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -525.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -520.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -515.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -510.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -505.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -500.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -495.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -490.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -485.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -480.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -875.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -870.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -865.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -860.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -855.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -850.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -845.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -840.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -835.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -830.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -825.0,
+            "p_cell": 0.00909090909090909,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.00909090909090909
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.025,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.030882352941176472,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.025,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.050882352941176476,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.02,
+              0.025,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.050882352941176476,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.02,
+              0.025,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.08421568627450982,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.03333333333333333,
+              0.02,
+              0.025,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.05921568627450981,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.03333333333333333,
+              0.02,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.05921568627450981,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.03333333333333333,
+              0.02,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.0058823529411764705,
+            "p_cell_and_tag": [
+              0.0058823529411764705,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "oracle_accuracy": 0.7926470588235295,
+        "ambiguous_cell_mass": 0.5823529411764706,
+        "macro_f1_upper_bound": 0.7573541286089818,
+        "per_class": {
+          "S1_CFV_CFA": {
+            "tag_population_mass": 0.30000000000000004,
+            "f1_upper_bound": 0.8409090909090913,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 0.7254901960784318,
+            "predicted_positive_mass_at_optimum": 0.21764705882352958,
+            "true_positive_mass_at_optimum": 0.21764705882352958,
+            "positive_prefix_cells": 37
+          },
+          "S2_SFJ_MICKEY": {
+            "tag_population_mass": 0.3,
+            "f1_upper_bound": 0.8014142604596346,
+            "precision_at_f1_optimum": 0.7296137339055794,
+            "recall_at_f1_optimum": 0.888888888888889,
+            "predicted_positive_mass_at_optimum": 0.36549019607843136,
+            "true_positive_mass_at_optimum": 0.26666666666666666,
+            "positive_prefix_cells": 10
+          },
+          "S3_ART_BIF": {
+            "tag_population_mass": 0.1,
+            "f1_upper_bound": 0.49969381506429883,
+            "precision_at_f1_optimum": 0.3633125556544969,
+            "recall_at_f1_optimum": 0.7999999999999999,
+            "predicted_positive_mass_at_optimum": 0.22019607843137257,
+            "true_positive_mass_at_optimum": 0.08,
+            "positive_prefix_cells": 4
+          },
+          "S4_VEN_BIF": {
+            "tag_population_mass": 0.1,
+            "f1_upper_bound": 0.6447534766118838,
+            "precision_at_f1_optimum": 0.565410199556541,
+            "recall_at_f1_optimum": 0.7500000000000001,
+            "predicted_positive_mass_at_optimum": 0.13264705882352942,
+            "true_positive_mass_at_optimum": 0.07500000000000001,
+            "positive_prefix_cells": 3
+          },
+          "S5_POPLITEAL": {
+            "tag_population_mass": 0.20000000000000004,
+            "f1_upper_bound": 1.0,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.20000000000000004,
+            "true_positive_mass_at_optimum": 0.20000000000000004,
+            "positive_prefix_cells": 22
+          }
+        }
+      }
+    },
+    "LOAO_BODYPARTS": {
+      "train_source_ids": [
+        "open3dmodel_right",
+        "medseg_right"
+      ],
+      "test_source_ids": [
+        "bodyparts3d_right",
+        "bodyparts3d_left_mirrored"
+      ],
+      "evaluation": {
+        "station_classes_in_mass_vector_order": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S5_POPLITEAL"
+        ],
+        "balanced_source_station_pairs": 6,
+        "window_rows_mm_by_source_and_tag": {
+          "bodyparts3d_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0
+            ],
+            "S5_POPLITEAL": [
+              -875.0,
+              -870.0,
+              -865.0,
+              -860.0,
+              -855.0,
+              -850.0,
+              -845.0,
+              -840.0,
+              -835.0,
+              -830.0,
+              -825.0
+            ]
+          },
+          "bodyparts3d_left_mirrored": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0
+            ],
+            "S5_POPLITEAL": [
+              -875.0,
+              -870.0,
+              -865.0,
+              -860.0,
+              -855.0,
+              -850.0,
+              -845.0,
+              -840.0,
+              -835.0,
+              -830.0,
+              -825.0
+            ]
+          }
+        },
+        "cells": [
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -875.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -870.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -865.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -860.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -855.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -850.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -845.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -840.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -835.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -830.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -825.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -560.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -555.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -550.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -545.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -540.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -535.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -530.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -525.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -520.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -515.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -510.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -505.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -500.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -495.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -490.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -485.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -480.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -875.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -870.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -865.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -860.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -855.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -850.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -845.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -840.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -835.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -830.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -825.0,
+            "p_cell": 0.015151515151515152,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.015151515151515152
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.051470588235294115,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.041666666666666664,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.00980392156862745,
+            "p_cell_and_tag": [
+              0.00980392156862745,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "oracle_accuracy": 0.9215686274509802,
+        "ambiguous_cell_mass": 0.4117647058823529,
+        "macro_f1_upper_bound": 0.9204678362573099,
+        "per_class": {
+          "S1_CFV_CFA": {
+            "tag_population_mass": 0.33333333333333337,
+            "f1_upper_bound": 0.8666666666666664,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 0.7647058823529407,
+            "predicted_positive_mass_at_optimum": 0.2549019607843136,
+            "true_positive_mass_at_optimum": 0.2549019607843136,
+            "positive_prefix_cells": 26
+          },
+          "S2_SFJ_MICKEY": {
+            "tag_population_mass": 0.3333333333333333,
+            "f1_upper_bound": 0.8947368421052633,
+            "precision_at_f1_optimum": 0.8095238095238096,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.41176470588235287,
+            "true_positive_mass_at_optimum": 0.3333333333333333,
+            "positive_prefix_cells": 8
+          },
+          "S5_POPLITEAL": {
+            "tag_population_mass": 0.33333333333333315,
+            "f1_upper_bound": 1.0,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.33333333333333315,
+            "true_positive_mass_at_optimum": 0.33333333333333315,
+            "positive_prefix_cells": 22
+          }
+        }
+      },
+      "optional_train_diagnostic_same_balanced_pair_law": {
+        "station_classes_in_mass_vector_order": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S3_ART_BIF",
+          "S4_VEN_BIF",
+          "S5_POPLITEAL"
+        ],
+        "balanced_source_station_pairs": 9,
+        "window_rows_mm_by_source_and_tag": {
+          "open3dmodel_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0
+            ],
+            "S3_ART_BIF": [
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0
+            ],
+            "S4_VEN_BIF": [
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0
+            ],
+            "S5_POPLITEAL": [
+              -875.0,
+              -870.0,
+              -865.0,
+              -860.0,
+              -855.0,
+              -850.0,
+              -845.0,
+              -840.0,
+              -835.0,
+              -830.0,
+              -825.0
+            ]
+          },
+          "medseg_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -530.0,
+              -525.0,
+              -520.0
+            ],
+            "S3_ART_BIF": [
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0
+            ],
+            "S4_VEN_BIF": [
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0
+            ]
+          }
+        },
+        "cells": [
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.034313725490196074,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.0565359477124183,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.022222222222222223,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.0565359477124183,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.022222222222222223,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.09357298474945533,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.037037037037037035,
+              0.022222222222222223,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.06579520697167755,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.037037037037037035,
+              0.022222222222222223,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.06579520697167755,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.037037037037037035,
+              0.022222222222222223,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -875.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -870.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -865.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -860.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -855.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -850.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -845.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -840.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -835.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -830.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -825.0,
+            "p_cell": 0.010101010101010102,
+            "p_cell_and_tag": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.010101010101010102
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.034313725490196074,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.034313725490196074,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.034313725490196074,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.034313725490196074,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.027777777777777776,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.0528322440087146,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.018518518518518517,
+              0.027777777777777776,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.0528322440087146,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.018518518518518517,
+              0.027777777777777776,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.0528322440087146,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.018518518518518517,
+              0.027777777777777776,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.0528322440087146,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.018518518518518517,
+              0.027777777777777776,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.02505446623093682,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.018518518518518517,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.02505446623093682,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.018518518518518517,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.006535947712418301,
+            "p_cell_and_tag": [
+              0.006535947712418301,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "oracle_accuracy": 0.6824618736383441,
+        "ambiguous_cell_mass": 0.7712418300653594,
+        "macro_f1_upper_bound": 0.7352712923700161,
+        "per_class": {
+          "S1_CFV_CFA": {
+            "tag_population_mass": 0.22222222222222232,
+            "f1_upper_bound": 0.6923076923076922,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 0.5294117647058822,
+            "predicted_positive_mass_at_optimum": 0.11764705882352944,
+            "true_positive_mass_at_optimum": 0.11764705882352944,
+            "positive_prefix_cells": 18
+          },
+          "S2_SFJ_MICKEY": {
+            "tag_population_mass": 0.2222222222222222,
+            "f1_upper_bound": 0.6270170585523281,
+            "precision_at_f1_optimum": 0.4566823371390194,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.48660130718954253,
+            "true_positive_mass_at_optimum": 0.2222222222222222,
+            "positive_prefix_cells": 9
+          },
+          "S3_ART_BIF": {
+            "tag_population_mass": 0.22222222222222227,
+            "f1_upper_bound": 0.5897847735303565,
+            "precision_at_f1_optimum": 0.43860487338748205,
+            "recall_at_f1_optimum": 0.8999999999999999,
+            "predicted_positive_mass_at_optimum": 0.4559912854030502,
+            "true_positive_mass_at_optimum": 0.2,
+            "positive_prefix_cells": 8
+          },
+          "S4_VEN_BIF": {
+            "tag_population_mass": 0.22222222222222227,
+            "f1_upper_bound": 0.7672469374597036,
+            "precision_at_f1_optimum": 0.6831228473019519,
+            "recall_at_f1_optimum": 0.875,
+            "predicted_positive_mass_at_optimum": 0.284640522875817,
+            "true_positive_mass_at_optimum": 0.19444444444444448,
+            "positive_prefix_cells": 7
+          },
+          "S5_POPLITEAL": {
+            "tag_population_mass": 0.1111111111111111,
+            "f1_upper_bound": 1.0,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.1111111111111111,
+            "true_positive_mass_at_optimum": 0.1111111111111111,
+            "positive_prefix_cells": 11
+          }
+        }
+      }
+    },
+    "FAMILY_HELD_OUT_ATLASES": {
+      "train_source_ids": [
+        "medseg_right"
+      ],
+      "test_source_ids": [
+        "bodyparts3d_right",
+        "bodyparts3d_left_mirrored",
+        "open3dmodel_right"
+      ],
+      "evaluation": {
+        "station_classes_in_mass_vector_order": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S3_ART_BIF",
+          "S4_VEN_BIF"
+        ],
+        "balanced_source_station_pairs": 8,
+        "window_rows_mm_by_source_and_tag": {
+          "bodyparts3d_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0
+            ]
+          },
+          "bodyparts3d_left_mirrored": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0
+            ]
+          },
+          "open3dmodel_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0
+            ],
+            "S3_ART_BIF": [
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0
+            ],
+            "S4_VEN_BIF": [
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0
+            ]
+          }
+        },
+        "cells": [
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -560.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -555.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -550.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -545.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -540.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -535.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -530.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -525.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -520.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -515.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -510.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -505.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -500.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -495.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -490.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -485.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_left_mirrored",
+            "h_start_mm": -480.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.03125,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "bodyparts3d_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.03125
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.03125
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.03125
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.03860294117647059,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.03125
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.05943627450980392,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.020833333333333332,
+              0.03125,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.05943627450980392,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.020833333333333332,
+              0.03125,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.05943627450980392,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.020833333333333332,
+              0.03125,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.05943627450980392,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.020833333333333332,
+              0.03125,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.02818627450980392,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.020833333333333332,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.02818627450980392,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.020833333333333332,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "open3dmodel_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.007352941176470588,
+            "p_cell_and_tag": [
+              0.007352941176470588,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "oracle_accuracy": 0.7843137254901962,
+        "ambiguous_cell_mass": 0.7573529411764706,
+        "macro_f1_upper_bound": 0.7894299468018536,
+        "per_class": {
+          "S1_CFV_CFA": {
+            "tag_population_mass": 0.37499999999999956,
+            "f1_upper_bound": 0.7857142857142864,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 0.6470588235294126,
+            "predicted_positive_mass_at_optimum": 0.24264705882352944,
+            "true_positive_mass_at_optimum": 0.24264705882352944,
+            "positive_prefix_cells": 33
+          },
+          "S2_SFJ_MICKEY": {
+            "tag_population_mass": 0.3749999999999999,
+            "f1_upper_bound": 0.7880794701986755,
+            "precision_at_f1_optimum": 0.7986577181208052,
+            "recall_at_f1_optimum": 0.7777777777777779,
+            "predicted_positive_mass_at_optimum": 0.3651960784313726,
+            "true_positive_mass_at_optimum": 0.29166666666666663,
+            "positive_prefix_cells": 10
+          },
+          "S3_ART_BIF": {
+            "tag_population_mass": 0.125,
+            "f1_upper_bound": 0.6891891891891893,
+            "precision_at_f1_optimum": 0.5257731958762887,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.23774509803921567,
+            "true_positive_mass_at_optimum": 0.125,
+            "positive_prefix_cells": 4
+          },
+          "S4_VEN_BIF": {
+            "tag_population_mass": 0.125,
+            "f1_upper_bound": 0.8947368421052632,
+            "precision_at_f1_optimum": 0.8095238095238095,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.15441176470588236,
+            "true_positive_mass_at_optimum": 0.125,
+            "positive_prefix_cells": 4
+          }
+        }
+      },
+      "optional_train_diagnostic_same_balanced_pair_law": {
+        "station_classes_in_mass_vector_order": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S3_ART_BIF",
+          "S4_VEN_BIF"
+        ],
+        "balanced_source_station_pairs": 4,
+        "window_rows_mm_by_source_and_tag": {
+          "medseg_right": {
+            "S1_CFV_CFA": [
+              -560.0,
+              -555.0,
+              -550.0,
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0,
+              -515.0,
+              -510.0,
+              -505.0,
+              -500.0,
+              -495.0,
+              -490.0,
+              -485.0,
+              -480.0
+            ],
+            "S2_SFJ_MICKEY": [
+              -530.0,
+              -525.0,
+              -520.0
+            ],
+            "S3_ART_BIF": [
+              -540.0,
+              -535.0,
+              -530.0,
+              -525.0,
+              -520.0
+            ],
+            "S4_VEN_BIF": [
+              -545.0,
+              -540.0,
+              -535.0,
+              -530.0
+            ]
+          }
+        },
+        "cells": [
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -560.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -555.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -550.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -545.0,
+            "p_cell": 0.07720588235294118,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0625
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -540.0,
+            "p_cell": 0.12720588235294117,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.05,
+              0.0625
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -535.0,
+            "p_cell": 0.12720588235294117,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.05,
+              0.0625
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -530.0,
+            "p_cell": 0.2105392156862745,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.08333333333333333,
+              0.05,
+              0.0625
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -525.0,
+            "p_cell": 0.1480392156862745,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.08333333333333333,
+              0.05,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -520.0,
+            "p_cell": 0.1480392156862745,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.08333333333333333,
+              0.05,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -515.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -510.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -505.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -500.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -495.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -490.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -485.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "source_id": "medseg_right",
+            "h_start_mm": -480.0,
+            "p_cell": 0.014705882352941176,
+            "p_cell_and_tag": [
+              0.014705882352941176,
+              0.0,
+              0.0,
+              0.0
+            ]
+          }
+        ],
+        "oracle_accuracy": 0.5992647058823528,
+        "ambiguous_cell_mass": 0.8382352941176471,
+        "macro_f1_upper_bound": 0.6477493350667619,
+        "per_class": {
+          "S1_CFV_CFA": {
+            "tag_population_mass": 0.25,
+            "f1_upper_bound": 0.7857142857142858,
+            "precision_at_f1_optimum": 1.0,
+            "recall_at_f1_optimum": 0.6470588235294118,
+            "predicted_positive_mass_at_optimum": 0.16176470588235295,
+            "true_positive_mass_at_optimum": 0.16176470588235295,
+            "positive_prefix_cells": 11
+          },
+          "S2_SFJ_MICKEY": {
+            "tag_population_mass": 0.25,
+            "f1_upper_bound": 0.6608357628765792,
+            "precision_at_f1_optimum": 0.49346879535558785,
+            "recall_at_f1_optimum": 1.0,
+            "predicted_positive_mass_at_optimum": 0.5066176470588235,
+            "true_positive_mass_at_optimum": 0.25,
+            "positive_prefix_cells": 3
+          },
+          "S3_ART_BIF": {
+            "tag_population_mass": 0.25,
+            "f1_upper_bound": 0.49969381506429883,
+            "precision_at_f1_optimum": 0.3633125556544969,
+            "recall_at_f1_optimum": 0.8,
+            "predicted_positive_mass_at_optimum": 0.5504901960784314,
+            "true_positive_mass_at_optimum": 0.2,
+            "positive_prefix_cells": 4
+          },
+          "S4_VEN_BIF": {
+            "tag_population_mass": 0.25,
+            "f1_upper_bound": 0.6447534766118838,
+            "precision_at_f1_optimum": 0.565410199556541,
+            "recall_at_f1_optimum": 0.75,
+            "predicted_positive_mass_at_optimum": 0.3316176470588235,
+            "true_positive_mass_at_optimum": 0.1875,
+            "positive_prefix_cells": 3
+          }
+        }
+      }
+    }
+  }
+}

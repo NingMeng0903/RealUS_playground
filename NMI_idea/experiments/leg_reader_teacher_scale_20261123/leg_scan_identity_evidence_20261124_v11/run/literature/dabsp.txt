@@ -1,0 +1,1915 @@
+Article
+                                                                                                      The International Journal of
+                                                                                                      Robotics Research
+A unified framework for data association                                                              1–29
+                                                                                                      © The Author(s) 2018
+aware robust belief space planning and                                                                Reprints and permissions:
+                                                                                                      sagepub.co.uk/journalsPermissions.nav
+
+perception                                                                                            DOI: 10.1177/0278364918759606
+                                                                                                      journals.sagepub.com/home/ijr
+
+
+
+
+Shashank Pathak           , Antony Thomas, and Vadim Indelman
+
+Abstract
+We develop a belief space planning approach that advances the state of the art by incorporating reasoning about data asso-
+ciation within planning, while considering additional sources of uncertainty. Existing belief space planning approaches
+typically assume that data association is given and perfect, an assumption that can be harder to justify during opera-
+tion in the presence of localization uncertainty, or in ambiguous and perceptually aliased environments. By contrast, our
+data association aware belief space planning (DA-BSP) approach explicitly reasons about data association within belief
+evolution owing to candidate actions, and as such can better accommodate these challenging real-world scenarios. In
+particular, we show that, owing to perceptual aliasing, a posterior belief can become a mixture of probability distribu-
+tion functions and design cost functions, which measure the expected level of ambiguity and posterior uncertainty given
+candidate action. Furthermore, we also investigate more challenging situations, such as when prior belief is multimodal
+and when data association aware planning is performed over several look-ahead steps. Our framework models the belief
+as a Gaussian mixture model. Another unique aspect of this approach is that the number of components of this Gaussian
+mixture model can increase as well as decrease, thereby reflecting reality more accurately. Using these and standard costs
+(e.g. control penalty, distance to goal) within the objective function yields a general framework that reliably represents
+action impact and, in particular, is capable of active disambiguation. Our approach is thus applicable to both robust
+perception in a passive setting with data given a priori and in an active setting, such as in autonomous navigation in
+perceptually aliased environments. We demonstrate key aspects of DA-BSP in a theoretical example, in a Gazebo-based
+realistic simulation, and also on the real robotic platform using a Pioneer robot in an office environment.
+
+Keywords
+Localization, mobile and distributed SLAM, mapping, autonomous agents, cognitive robotics, AI reasoning methods
+
+
+1. Introduction                                                 one aims to determine an optimal control policy as a func-
+                                                                tion of belief evolution over variables of interest, which are
+Belief space planning and decision making under uncer-
+                                                                application-dependent.
+tainty are fundamental problems in robotics and artificial
+                                                                   However, state-of-the-art belief space planning
+intelligence, with applications including autonomous navi-
+                                                                approaches typically assume data association to be
+gation, object grasping and manipulation, active simultane-
+                                                                given and perfect (see Figure 1b), i.e. the robot is assumed
+ous localization and mapping (SLAM), and robotic surgery.
+                                                                to correctly perceive the environment to be observed by its
+In the presence of uncertainty, such as uncertainty in robot
+                                                                sensors given a candidate action. Yet, the world is often
+motion and sensing, the true state of variables of inter-
+                                                                full of ambiguity, which, together with other sources of
+est (e.g. robot poses), is unknown and can only be repre-
+                                                                uncertainty, make perception a challenging task. As an
+sented by a probability distribution of possible states given
+                                                                example, one might consider matching images from two
+available data.
+                                                                different but similar-in-appearance places, or attempting
+   Planning and decision making should therefore be per-
+formed over that distribution of possible states, the belief    Department of Aerospace Engineering, Technion - Israel Institute of Tech-
+space, that can be inferred using probabilistic approaches      nology, Haifa, Israel
+based on incoming sensor observations and prior knowl-
+                                                                Corresponding author:
+edge. The corresponding problem is an instantiation of a        Shashank Pathak, Department of Aerospace Engineering, Technion - Israel
+partially observable Markov decision problem (POMDP)            Institute of Technology, Haifa 32000, Israel.
+(Kaelbling et al., 1998), where, given an objective function,   Email: shashank@computer.org
+2                                                                           The International Journal of Robotics Research 00(0)
+
+
+                                                                       disambiguation by determining appropriate actions, e.g.
+                                                                       future viewpoints, for increasing confidence in a certain
+                                                                       data association hypothesis.
+
+
+
+                                                                       1.1. Related work
+                                                                       Calculating optimal solutions to POMDP is computation-
+                                                                       ally intractable (PSPACE complete) (Papadimitriou and
+                                                                       Tsitsiklis, 1987) for all but the smallest problems. The
+Fig. 1. (a) Generative graphical model. While standard belief          research community has thus been extensively investigating
+space planning approaches typically assume that data associa-          approximate approaches to reduce computational complex-
+tion is given and perfect, we incorporate data association aspects     ity and facilitate their application to real-world problems.
+within belief space planning and thus enable reasoning about           These approaches can be roughly segmented into point-
+ambiguity (e.g. perceptual aliasing) at a decision-making level. (b)   based value iteration methods (Kurniawati et al., 2008;
+Schematic representation of pose, scene, and observation spaces.       Pineau et al., 2006), simulation-based (Stachniss et al.,
+Scenes A1 and A3 , when viewed from perspective x and x0 , respec-     2005) and sampling-based approaches (Agha-Mohammadi
+tively, produce the same nominal observation ẑ, giving rise to        et al., 2014; Bry and Roy, 2011; Prentice and Roy, 2009),
+perceptual aliasing.                                                   and direct trajectory optimization (Indelman et al., 2015;
+                                                                       Patil et al., 2014; Van den Berg et al., 2012) methods. In
+                                                                       all cases, finding the (locally) optimal actions involves the
+to recognize an object that is similar in appearance,                  evaluation of a given objective function while consider-
+from the current viewpoint, to another object. Both cases              ing future observations to be acquired as a result of each
+are examples of ambiguous situations, where naïve and                  candidate action.
+straightforward approaches are likely to yield incorrect                  However, an underlying typical assumption in these
+results, i.e. mistakenly considering the two places to be              approaches is that data association for these future obser-
+the same place, and incorrectly associating the observed               vations is known and perfect. For example, it is typically
+object.                                                                assumed that the robot can be localized by making obser-
+   Considering data association to be solved and perfect               vations of known landmarks or beacons (see, e.g. Agha-
+within belief space planning can thus lead, in the pres-               Mohammadi et al. (2014) and Prentice and Roy (2009)),
+ence of ambiguity, to incorrect posterior beliefs and, as a            while assuming that each future measurement is correctly
+result, to sub-optimal actions that do not properly consider           associated with an appropriate landmark. Although such an
+perceptual aliasing aspects. More advanced approaches are              assumption is reasonable in certain scenarios, it becomes
+therefore required to enable reliable operation in ambiguous           unrealistic when considering perceptually aliased environ-
+conditions, approaches often referred to as (active) robust            ments (two scenes that look alike) and localization uncer-
+perception. These approaches typically involve probabilis-             tainty, as we do in this study.
+tic data association and hypothesis tracking, given available             While belief space planning approaches typically assume
+data. Thus, for the object detection example, each hypothe-            the environment to be accurately known (e.g. a given
+sis may represent a candidate object from a given database             map), recent works, including those of Chaves et al. (2014,
+to which the current observation (e.g. image or point-cloud)           2015), Indelman et al. (2015), Kim and Eustice (2014),
+is successfully registered. Similarly, one might reason prob-          and Walls et al. (2015), relax this assumption and model
+abilistically regarding perceptual aliasing, as in the first           the uncertainty of the environment mapped thus far within
+example, which would also involve probabilistic data asso-             the belief. The corresponding framework is thus tightly
+ciation. Yet, existing robust perception approaches focus on           related to active SLAM, with the well-known trade-off
+the passive case, where robot actions are externally deter-            between exploration and exploitation. Recent work (Chaves
+mined and given, while the closely related approaches for              et al., 2015; Indelman et al., 2015; Kim and Eustice, 2014;
+active object detection and classification consider the robot          Walls et al., 2015) in this branch focused, in particu-
+to be perfectly localized.                                             lar, on probabilistically modeling what future observations
+   In this work, we develop a general data association aware           would be obtained given a candidate action. However, these
+belief space planning (DA-BSP) framework capable of bet-               approaches consider each such future observation to be
+ter handling complexities arising in real-world, possibly              correctly associated with an appropriate scene, and hence,
+perceptually aliased, scenarios. To this end, we rigorously            assume data association to be given and perfect.
+incorporate reasoning about data association within belief                In the last few years, the SLAM research community has
+space planning, while also considering other sources of                investigated approaches to be resilient to false data asso-
+uncertainty (motion, sensing, and environment). In partic-             ciation (outliers) overlooked by front-end algorithms (e.g.
+ular, we show that our framework can be used for active                image matching); see, e.g. Carlone et al. (2014), Indelman
+Pathak et al.                                                                                                                       3
+
+
+et al. (2014b, 2016), Olson and Agarwal (2013), and Sun-              our belief may both increase and decrease, thereby mod-
+derhauf and Protzel (2012). However these approaches, also            eling the perceptually aliased environment more faith-
+known as robust graph optimization approaches, are devel-             fully. Additionally, the framework does not require a
+oped only for the passive problem setting, i.e. robot actions         fully disambiguating unique observation.
+are given and externally determined. By contrast, we con-        2.   We extend DA-BSP by considering prior belief as a
+sider a complimentary active framework and incorporate                Gaussian mixture model, as well as by considering
+data association aspects within belief space planning.                planning for several look-ahead steps.
+   Our approach is also tightly related to recent work on        3.   We show how under helpful assumptions this general
+active hypothesis disambiguation in the context of object             approach degenerates to known belief space planning
+detection and classification (Atanasov et al., 2014; Lauri et         approaches.
+al., 2015; Patten et al., 2016; Sankaran et al., 2015; Wong      4.   We present a complexity analysis of such an algorithm
+et al., 2015). Given hypotheses regarding object class and            discrete state settings and comment on its correctness.
+pose, these approaches aim to find a sequence future view-       5.   Finally, we analyze key aspects arising as a result of
+points that will lead to disambiguation, i.e. identifying the         explicitly considering data association aspects within
+correct hypothesis. However, these approaches assume that             belief space planning in a simplified toy example, as
+the sensor is perfectly localized and thus the corresponding          well as in extensive experiments with a realistic syn-
+belief is only about the considered hypotheses. Also, during          thetic simulation and in a real robotics scenario using a
+such data associations, a null hypothesis may be consid-              Pioneer robot.
+ered, where the scene or the object is assumed to be novel
+and undetected in the previous instances. See, e.g. Fourie
+et al. (2016), Indelman et al. (2016), and Pfingsthorn and       1.3. Organization
+Birk (2016). In this work, however, we assume that the set       The rest of this paper is organized as follows. We formu-
+of scenes are known a priori, even though their locations        late the considered problem in Section 2 and then provide
+might be uncertain. In a slightly different context, there are   concept overview in Section 3. Thereafter, we consider a
+approaches to perform data-driven disambiguation, such as        simpler case of myopic data association aware planning in
+in multihypothesis tracking. Our approach, however, could        Section 4. Later, in Section 5, we generalize the planning to
+be considered a more general one, where both passive and         consider a Gaussian mixture model prior and subsequently
+active robust perception occur within a unified framework.       to the non-myopic setting. Then, Section 6 demonstrates
+   Probably the closest work to our approach is that of          key aspects in realistic simulations as well as a real-world
+Agarwal et al. (2015), who also consider hypotheses due          scenario with a Pioneer robot platform. Section 7 concludes
+to ambiguous data association and develop a belief space         the discussion and suggests potential directions for future
+planning approach for active disambiguation. However, in         research.
+their work, Agarwal et al. (2015) only consider ambigu-
+ous data association within the prior belief, modeling it
+as a mixture of Gaussians, and assume that there indeed          2. Notation and problem formulation
+exists an action that can yield complete disambiguation.
+                                                                 Consider a robot, uncertain about its pose, operating in a
+By contrast, our framework is more general, since we addi-
+                                                                 partially known or premapped environment. The robot takes
+tionally consider ambiguous data association within future
+                                                                 observations of different scenes or objects in the environ-
+belief (owing to future observations) about given candidate
+                                                                 ment and uses these observations to infer random variables
+actions and do not assume that there is necessarily a fully
+                                                                 of interest that are application-dependent. Thus, in local-
+disambiguating action. Consequently, in our approach, the
+                                                                 ization, these observations can be used to better estimate
+number of modes may decrease or increase as is suitable for
+                                                                 the robot pose, while in search and rescue missions, one is
+the given environment; ambiguity would persist wherever
+                                                                 looking for survivors in a certain region.
+full disambiguation is not possible.
+                                                                    A schematic equivalent to this is shown in Figure 1. As
+                                                                 can be seen, it involves three spaces: pose space, scene
+                                                                 space, and observation space. The pose space involves all
+1.2. Contributions                                               the possible perspectives a robot can take with respect to a
+                                                                 given world model and in the context of the task in hand.
+This paper is an extension of the preliminary work pre-             We shall denote a particular pose at any time step k
+sented in Pathak et al. (2017), where the relaxation of a        as xk , and the sequence of these poses from 0 to k as
+known data association was first considered, albeit in a               .
+                                                                 Xk = {x0 , . . . , xk }. By uncertainty in the robot’s pose, we
+myopic setting. Further contributions of this manuscript are     mean that the current pose of the robot, at any step k, is
+as follows:                                                      known only through an a-posteriori probability distribu-
+                                                                                                                                     .
+                                                                 tion function P( Xk |u0:k−1 , Z0:k ) , given all controls u0:k−1 =
+                                                                                                              .
+1. We develop a unified framework for DA-BSP in both             {u0 , . . . , uk−1 } and observations Z0:k = {Z0 , . . . , Zk } up to
+   active and passive contexts. Here, the components of          time k. For notational convenience, we define histories Hk
+4                                                                                   The International Journal of Robotics Research 00(0)
+
+
+     −
+and Hk+1 as                                                                   is being observed at each time i, i.e. data association is given
+          .                                  .                                and error-free. We will come back to this key point later.
+                                         −
+       Hk = {u0:k−1 , Z0:k } ,          Hk+1 = Hk ∪ {uk }               (1)      Given the posterior probability distribution (equation (4))
+                                                 .                            at the current time k, one can reason about the robot’s best
+and we rewrite the posterior at time k as b[Xk ] = P( Xk |Hk ).               future actions that would minimize (or maximize) a certain
+   By contrast, the scene space involves a discrete set of                    objective function. Such a function, for a single look-ahead
+objects (or a collection of objects)—called scenes and                        step, is given by
+denoted by the set {AN }—in the given world model. Scenes
+                                                                                                                     −
+can be detected through the robot’s sensors. We shall use                                 J ( uk ) = E {c( P( Xk+1 |Hk+1 , zk+1 ) )}           (5)
+                                                                                                    zk+1
+symbols Ai and Aj to denote such typical scenes. Note that
+even if the objects are identical, they are distinct in scene                 where the expectation is taken about the random variable
+space. This is important when we consider the cases where                     zk+1 with respect to the propagated belief P( Xk+1 |Hk+1    −
+                                                                                                                                             )
+the objects look similar from some perspectives. Finally,                     to consider all possible realizations of a future observation
+the observation space is the set of all possible observations                 zk+1 .
+that the robot is capable of obtaining when considering its                      For notational convenience, we will often represent the
+mission and sensory capabilities.                                                                                           −
+                                                                              posterior probability distribution P( Xk+1 |Hk+1 , zk+1 ) as the
+   We shall consider such an observation as the model                         belief b[Xk+1 ], i.e.
+         zk = h( xk , Ai ) +vk ,          vk ∼ N ( 0, 6v )              (2)                            .           −
+                                                                                              b[Xk+1 ] = P( Xk+1 |Hk+1 , zk+1 )                (6)
+
+and represent it probabilistically as P( zk |xk , Ai ). Here, we              Note that, according to equation (5), we need to calculate
+have assumed the same Gaussian noise for all observations,                    the posterior belief (equation (6)) for each possible value of
+irrespective of the scenes being observed. This is a rea-                     zk+1 .
+sonable assumption, since such noise would be a typical                          Similarly, we define the propagated joint belief as
+property of the robotic sensors employed. Also, h( xk , Ai )
+                                                                                  −     .           −
+is a noise-free observation, which we would refer to as a                      b[Xk+1 ] = P( Xk+1 |Hk+1 ) = P( Xk |Hk ) P( xk+1 |xk , uk ) (7)
+nominal observation ẑ.
+   For example, in the case of a camera, the function h could                 from which the marginal belief over the future pose xk+1
+be defined as a pinhole projection operator, thereby project-                 can be calculated as
+ing the object Ai onto the image plane, while in the case of                                             Z
+                                                                                                  −    .         −
+a range sensor, this function calculates the range between (a                                 b[xk+1 ] =     b[Xk+1 ]              (8)
+                                                                                                              ¬xk+1
+particular point on) the object and the robot actual location.
+   Note that the exposition thus far is equivalently valid in                 As earlier, if data association is assumed given and per-
+the case where the environment model is given but uncer-                      fect, as is commonly the case in belief space planning, then
+tain, and when this model is unknown a priori and instead                     one can consider, for each specific value of zk+1 , the cor-
+constructed online within a SLAM framework.                                   responding observed scene Ai , and express the posterior
+   We also consider a standard motion model with Gaussian                     (equation (6)) as
+noise
+                                                                                b[Xk+1 ] = ηP( Xk |Hk ) P( xk+1 |xk , uk ) P( zk+1 |xk+1 , Ai ) (9)
+        xi+1 = f ( xi , ui ) +wi ,        wi ∼ N ( 0, 6w )              (3)
+                                                                              which can be represented as b[Xk+1 ] = N ( X̂k+1 , 6k+1 ),
+where 6w is the process noise covariance, and denote this                     with appropriate mean X̂k+1 and covariance 6k+1 .
+model probabilistically by P( xi+1 |xi , ui ).                                   The objective function (equation (5)) can now be evalu-
+  Given a prior distribution P( x0 ) and motion and obser-                    ated, given a candidate action uk , by calculating the cost c( .)
+vation models, the joint posterior probability distribution                   for each zk+1 . Finally, the optimal action u?k is defined as
+function at the current time k can be written as
+                                                                                                     u?k = arg min J ( uk )                   (10)
+                          k
+                          Y                                                                                    uk
+    P( Xk |H) = P( x0 )         P( xi |xi−1 , ui−1 ) P( Zi |xi , Ai )   (4)
+                          i=1
+                                                                              Assuming data association to be given and perfect greatly
+                                                                              simplifies the above formulation. Yet, in practice, deter-
+This posterior probability distribution function is thus a                    mining data association reliably is often a non-trivial task
+multivariate Gaussian P( Xk |Hk ) = N ( X̂k , 6k ), with mean                 in itself, especially when operating in perceptually aliased
+X̂k and covariance 6k , that can be efficiently calculated                    environments. An incorrect data association (wrong scene
+via maximum a-posteriori inference, see e.g. Kaess et al.                     Ai in equation (9)) can lead to catastrophic results, see,
+(2012).                                                                       e.g. Indelman et al. (2014a,b, 2016). In this work, we relax
+   It is important to note that the underlying assumption in                  this restricting assumption and rigorously incorporate data
+factorization (equation (4)) is that it is known which object                 association aspects within belief space planning.
+Pathak et al.                                                                                                                     5
+
+
+
+
+Fig. 2. Example of perceptual aliasing when observing one of
+two identical rocking chairs. Each rocking chair creates a Gaus-
+sian belief component; the corresponding factor graphs are shown
+here.
+                                                                   Fig. 3. Relation of DA-BSP with the usual approaches within
+                                                                   belief space planning (BSP). Note that in DA-BSP both plan-
+3. Concept and approach overview (DA-BSP)                          ning and inference consider multimodal beliefs. Thus, DA-BSP
+Consider Figure 2, where an observation regarding a rock-          is capable of handling a general Gaussian mixture model dis-
+ing chair is made. Since the environment contains two iden-        tributions in both passive and active data association setups.
+tical rocking chairs, data association with either of these
+scenes cannot be deemed to be solved. Instead, we must
+consider every plausible data association and its corre-
+sponding component in the posterior belief. Note that what         to the posterior belief b[Xk+1 ] from equation (6), given this
+we will describe as a scene need not necessarily be a sin-         specific observation zk+1 .
+gle object; e.g., later on we shall consider a cubicle with a         Considering that the data association is solved and per-
+desk and a chair as a single scene. We shall now discuss           fect means we can correctly associate each possible mea-
+the overall approach by making the following observations,         surement zk+1 with the corresponding scene Ai that it
+which will be transformed into a rigorous mathematical             captures, as in equation (9).
+framework in the following sections.                                  Yet it is unknown from what future robot pose xk+1 the
+                                                                   actual observation zk+1 will be acquired, since the actual
+3.1. Data association while planning                               robot pose xk at time k is unknown and the control is
+                                                                   stochastic. Indeed, as a result of action uk , the robot’s actual
+Given some candidate action (or sequence of actions) and           (true) pose xk+1 can be anywhere within the propagated
+the belief at planning time k, we can reason about a future        belief b[x−k+1 ].
+observation zk+1 (e.g. an image) to be obtained once this             In typical cases, such as with navigation assisted through
+action is executed. This future observation is yet to be           GPS, this data association is trivially known, since the
+acquired, and therefore its actual value is unknown. For           scene coincides with the pose. However, in more complex
+this reason, all the possible values such an observation can       applications, such as perceptual robotics, the observations
+assume should be taken into account while evaluating the           could come from several different poses of viewing differ-
+objective function; hence, the expectation operator in equa-       ent scenes. In the belief space planning framework, such a
+tion (5). To see this, we write the expectation operator           data association is assumed to be solved. In other words, if
+explicitly, which transforms equation (5) to                       A represents the total space of scenes (or the real world)
+                         (a)
+                                     
+                                               (b)
+                                                                  from where all observations {z} are made and {AN } is the
+            .
+              Z   z      }|     {      z       }|         {        partitioning of this scene space, then belief space plan-
+                             −                  −          
+   J ( uk ) =     P( zk+1 | Hk+1 ) c P( Xk+1 |Hk+1 , zk+1 )      ning assumes that for each such observation z ∈ {z} the
+             zk+1
+                                                                   corresponding observed scene Ai ∈ A is known.
+                                                        (11)          In contrast, in this work, we do not assume that data asso-
+The two terms ( a) and ( b) in this equation have intuitive        ciation is solved, and instead reason about possible scenes
+meaning: for each considered value of zk+1 , ( a) represents       or objects that the future observation zk+1 could be gener-
+how likely it is to get such an observation when both the          ated from, see Figure 1. Clearly, if the environment has only
+history H and control uk are known, while ( b) corresponds         distinct scenes or objects, then for each specific value of
+6                                                                            The International Journal of Robotics Research 00(0)
+
+
+zk+1 , there will be only one scene Ai that can generate such          Also here, the robot pose at measurement acquisition time
+an observation according to the model (equation (2)). How-             is unknown—rather, we are trying to estimate it. To do so,
+ever, in the case of perceptually aliased environments, there          we must first associate the captured measurement z with the
+could also be several scenes (or objects) that are either com-         scene or object Ai that it describes, i.e. write the appropriate
+pletely identical, or have a similar visual appearance when            measurement likelihood term in the posterior probability
+observed from appropriate viewpoints that could equally                distribution (equation (4)).
+well explain the considered observation zk+1 . In such a                  A similar situation, however, also arises in our case: while
+case, there are several possible associations {Ai }; owing to          the probability of acquiring a specific observation zk+1 is
+localization uncertainty, determining which association is             represented by the term ( a) in equation (11), the posterior in
+the correct one is not trivial. As we show later, in these             the term ( b) is conditioned on this specific observation zk+1 .
+cases, the posterior belief b[Xk+1 ] (term ( b) in equation            As such, evaluating the posterior probability distribution
+(11)) becomes a Gaussian mixture with appropriate weights              given zk+1 involves inference, as if that observation were
+that we rigorously compute (See Fig. 3 for the comparison).            actually acquired. Thus, also here data association needs to
+   In the following sections, we formalize these aspects               be resolved or to be assumed given.
+probabilistically and develop an algorithm for data associa-              The DA-BSP framework can be used to calculate an opti-
+tion aware belief space planning, capable of determining the           mal control u?k . On execution of the control u?k , the robot
+best actions in perceptual aliased and distinct environments           takes an actual observation zk+1 , which, given the Gaussian
+without considering that data association is solved. First,            mixture model belief b[Xk ] (see equation (44)), can be used
+however, we formally define what we mean by perceptually               to calculate the posterior probability distribution at time
+aliasing.                                                              tk+1 . Interestingly, while within planning at time tk we con-
+                                                                       sidered all possible realizations {zk+1 } of the future obser-
+                                                                       vation zk+1 , in inference we get some specific observation
+3.1.1. Perceptual aliasing. Intuitively speaking, percep-
+                                                                       zk+1 . Consequently, the posterior probability distribution in
+tual aliasing occurs when an object different from the actual
+                                                                       inference is a specific instantiation of the different pos-
+one produces the same observation and thereby provides                                                               −
+                                                                       terior probability distributions P( Xk+1 |Hk+1    , zk+1 ) already
+an alias, in the sense of perception, to the true object. We
+                                                                       calculated within planning, see Section 3.1. Thus, similar
+shall now define two notions of perceptual aliasing that we
+                                                                       equations apply.
+consider: exact and probabilistic. Exact perceptual alias-
+                                                                          In particular, we first propagate the Gaussian mixture
+ing of scenes Ai and Aj is defined as ∃x, x0 , h( x, Ai ) =                                                                           −
+                                                                       model belief based on control u?k from b[Xk ] to b[Xk+1          ]
+h( x0 , Aj ), and will be denoted in this paper by {Ai , Aj }alias .
+                                                                       via equation (36) and then calculate the posterior Gaussian
+In other words, the same nominal (noise-free) observa-
+                                                                       mixture model b[Xk+1 ] conditioned on the obtained obser-
+tion ẑ can be generated by observing different scenes,
+                                                                       vation zk+1 via equation (38). Observe that exactly the same
+possibly from different viewpoints. Such a situation is
+                                                                       insights regarding full or partial disambiguation discussed
+depicted in Figure 1. A probabilistic perceptual aliasing
+                                                                       in Section 3.1 in the context of planning apply here as well.
+is a more general form of aliasing, and can be defined
+                                                                       This forms a closed loop between planning and inference;
+as ∃x, x0 , |P( z|Ai , x) −P( z|Aj , x0 ) | <  for some small
+                                                                       for example, an optimal action calculated by the former,
+threshold .
+                                                                       while considering the ambiguity cost cw , should indeed lead
+   If there is a unique feature in the environment that does
+                                                                       to disambiguation on execution in inference.
+not alias with any observation anywhere in the world and
+hence allows what we call full disambiguation, this would
+imply that eventually all multicomponent beliefs would be
+                                                                       4. Myopic data association aware belief space
+reduced to a single component belief. This can indeed be a
+very useful property. However, in some practical cases, such              planning
+a guarantee cannot be made. In DA-BSP, we do not assume                For the sake of simplicity, in this section we would assume
+that a fully disambiguating feature exists in the environ-             myopic planning i.e., with the planning horizon L = 1.
+ment. On the contrary, only partial disambiguation might               Recall that we need to calculate each of the two terms, ( a)
+be available. This hardens the planning problem but, as we             and ( b), in equation (11). For convenience, we specify the
+shall see in this work, DA-BSP successfully tackles it by              corresponding expressions again
+considering the data association (and its ambiguities) within
+the belief space planning framework.                                                      −                            −
+                                                                        ( a) : P( zk+1 | Hk+1 )       ( b) : P( Xk+1 |Hk+1 , zk+1 ) (12)
+
+3.2. Data association while perceiving                                 Before proceeding further, recall the conceptual difference
+By inference, we have a similar situation, with the key                between the two terms: term ( a) represents the likelihood
+difference that the observation z is given, i.e. it has been           of obtaining an observation zk+1 , while within term ( b), the
+acquired. Let us now consider this setting for a moment.               observation zk+1 is considered as given.
+Pathak et al.                                                                                                                             7
+
+
+                                     −
+4.1. Computing term ( a): P( zk+1 | Hk+1 )                               However, the actual value of wi (for each Ai ∈ {AN }) also
+                                                                      depends, in addition to the measurement likelihood, on the
+Applying total probability over non-overlapping {AN } and
+                                                                      aforementioned event likelihood and on the belief b[x−      k+1 ],
+marginalizing over all possible robot poses yields
+                                                                      with the latter weighting the probability of each considered
+                   XZ                            .X                   robot pose. This correctly captures the intuition that those
+            −                               −
+ P( zk+1 | Hk+1 )≡       P( zk+1 , x, Ai | Hk+1 )= wi (13)
+                           x
+                                                                      observations z with low-probability poses b[x−       k+1 = x ]
+                                                                                                                                    tr
+                       i                              i
+                                                                      will be unlikely to be actually acquired, leading to a low
+As seen from this equation, to calculate the likelihood of            value of wi with Ai = Atr . However, the likelihood term
+obtaining some observation zk+1 , we consider separately,             (equation (13)) could still increase in the case of percep-
+for each scene Ai ∈ {AN }, the likelihood that this obser-            tual aliasing, where the aliased scene Aj generates a similar
+vation was generated by scene Ai . This probability is cap-           observation to zk+1 from viewpoint x0 , with the latter being
+tured for each scene Ai by a corresponding weight wi ; these          more probable, i.e. high probability b[x−          0
+                                                                                                                 k+1 = x ].
+weights are then summed to get the actual likelihood of                  In practice, the integral in equation (20) can be cal-
+observation zk+1 . As will be seen, these weights naturally           culating efficiently if both the measurement likelihood
+account for perceptual aliasing aspects for each considered           P( zk+1 | Ai , x, H) and the predicted belief b[x−
+                                                                                                                       k+1 ] are Gaus-
+zk+1 .                                                                sians, since a product of Gaussians remains Gaussian. The
+   Proceeding with the derivation further, using the chain            integral can then be only calculated for the window where
+rule we get                                                           the event likelihood is non-zero, i.e P( Ai | x, H) > 0. In
+        XZ                                                            the absence of such assumptions, in general, the integral
+                                 −
+              P( zk+1 | x, Ai , Hk+1                −
+                                     ) P( Ai , x | Hk+1 ) (14)        in equation (20) should be computed numerically. Since in
+           i    x                                                     practical applications P( Ai | x, H) is sparse with respect to
+                                                                      x, this computational cost is not severe. For example, for
+However, since this integral could be over any arbitrary total        a robot navigating in a two-floor environment, even under
+distribution of x, we can use the propagated belief b[x−     k+1 ],   extreme uncertainty of pose, while reasoning for a scene
+see equation (8), to compute it as                                    such as a chair, we would only consider the viewpoints from
+ XZ                                                                   which the latter is observable, instead of the entire belief
+                          −             −
+        P( zk+1 |x, Ai , Hk+1 ) P( Ai |Hk+1 , x) b[x−
+                                                    k+1 = x] (15)     space.
+   i   x
+
+                                                                                                          −
+Thus                                                                  4.2. Computing term ( b): P( Xk+1 |Hk+1 , zk+1 )
+      Z
+    .                                                                                              −
+                        −
+  wi= P( zk+1 |x, Ai , Hk+1           −
+                            ) P( Ai |Hk+1 , x) b[x−                   The term ( b), P( Xk+1 |Hk+1     , zk+1 ), represents the poste-
+                                                  k+1 = x] (16)
+       x                                                              rior probability conditioned on observation zk+1 . This term
+                           −                                          can be similarly calculated, with a key difference: since
+Here, P( zk+1 | Ai , x, Hk+1 ) ≡ P( zk+1 | Ai , x) is the standard    the observation zk+1 is given, it must have been generated
+                                                       −
+measurement likelihood term, while P( Ai | Hk+1           , x) rep-   by one specific (but unknown) scene Ai according to the
+resents the event likelihood, which denotes the probabil-             measurement model (equation (2)). Hence, also here, we
+ity that scene Ai will be observed from viewpoint x. In               consider all possible such scenes and weight them accord-
+other words, this scenario-dependent term encodes from                ingly, with weights w̃i representing the probability that each
+what viewpoints each scene Ai is observable and could also            scene Ai will have generated the observation zk+1 . As will
+model occlusion and additional aspects. As such, this term            be seen next, in both terms ( a) and ( b), the same weights
+can be determined given a model of the environment and                are obtained; however, onlyP   in the latter case are the weights
+thus, in this work, we consider this term to be given.                to be normalized such that i w̃i = 1.
+   The weights wi (equation (16)) naturally capture the per-             Applying total probability over non-overlapping {AN }
+ceptual aliasing aspects discussed in Section 3.1.1: con-             and the chain rule, we get
+sider some observation zk+1 and the corresponding genera-
+tive model zk+1 = h( xtr , Atr ) +v with appropriate unknown
+                                                                         X
+                                                                                              −
+                                                                             P( Xk+1 , Ai | Hk+1 , zk+1 ) =
+true robot pose xtr and scene Atr ∈ {AN }. Clearly, the mea-              i
+                                        −
+surement likelihood P( zk+1 | x, Ai , Hk+1  ) will be high when            X
+                                                                                             −                           −
+evaluated for Ai = A and in the vicinity of xtr . Note that
+                         tr                                                       P( Xk+1 | Hk+1 , zk+1 , Ai ) ·P( Ai | Hk+1 , zk+1 )   (17)
+                                                                              i
+we will necessarily consider such a case, since according
+to equation (13) we separately consider each scene Ai in                 Here, the first term is the posterior belief, conditioned on
+{AN }, and, given Ai , we reason about all poses x in equation        observations and history, as well as a candidate scene Ai that
+(16). In the case of perceptual aliasing, however, there will         supposedly generated the observation zk+1 . We discuss how
+be other scenes, Aj 6= Atr , which could generate the same            this term can be calculated in Section 4.5.
+observation zk+1 from the appropriate robot pose x0 . Thus,              The second term, P( Ai | Hk , uk , zk+1 ), is merely the like-
+the corresponding measurement likelihood term to Aj will              lihood of Ai being actually the one that generated the obser-
+also be high in the vicinity of x0 .                                  vation zk+1 . As will be seen now, this term is actually the
+8                                                                                 The International Journal of Robotics Research 00(0)
+
+
+normalized weight wi from Section 4.1. Marginalizing over                   account the probability of the corresponding robot pose x,
+all robot poses and applying Bayes rule yields                              given the propagated belief, i.e. b[x− k+1 = x].
+                              Z                                                For practical purposes, one can thus only consider view-
+                −                            −
+       P( Ai | Hk+1 , zk+1 ) = P( Ai , x | Hk+1   , zk+1 )  (18)            points with non-negligible probability according to b[x−   k+1 ].
+              Z                 x                                           Moreover,
+                                                                                 P     it is possible  to threshold the weights in the mix-
+                                                                                            i+
+        = η P( zk+1 | Ai , x, Hk+1−
+                                    ) P( Ai , x | Hk+1−
+                                                          ) (19)            ture i w̃i b[Xk+1  ], instead of always considering all scenes
+                       x                                                    {AN }.
+                                  .            −
+                                                                               Having shown that incorporating data association within
+with a normalization constant η = P( zk+1 | Hk+1   ).                       belief space planning leads to equation (22), we now pro-
+  Like the derivation in Section 4.1, since this integral                   ceed with the exposition of our approach.
+could be over any arbitrary total distribution of x, we can
+use the propagated belief b[x−
+                             k+1 ], to compute it as
+                                                                            4.4. Simulating future observations {zk+1 } given
+                                                                                    −
+                    −
+    P( Ai | zk+1 , Hk+1 )=                                                       b[Xk+1 ]
+         Z
+                                    −                 −                     Calculating the objective function (equation (22)) for each
+     η           P( zk+1 | Ai , x, Hk+1 ) P( Ai | x, Hk+1 ) b[x−
+                                                               k+1 = x]
+             x                                                              candidate action uk involves considering all possible real-
+                                                                     (20)   izations of zk+1 . One approach to perform this, in prac-
+                                                                            tice, is to simulate future observations {zk+1 } given the
+As seen, the same expression is obtained as in equation                     propagated belief b[Xk+1−
+                                                                                                       ], scenes {AN }, and observation
+(16), except for the normalization constant η. Hence                        model (equation (2)). One can then evaluate equation (22)
+                                       −           .                        considering all observations in the set {zk+1 }.
+                       P( Ai | zk+1 , Hk+1 ) = ηwi = w̃i             (21)
+                                                                               We now briefly describe how this concept can be real-
+                                                                                                                                 −
+In practice, one can avoid calculation                                      ized. First, viewpoints {x} are sampled from b[Xk+1     ]. For
+                                  P of η, and instead                       each viewpoint x ∈ {x}, an observed scene Ai is determined
+normalize the weights wi such that i w̃i = 1.
+                                                                            according to event likelihood P( Ai | Hk , x). Together, x and
+                                                                            Ai are used to generate nominal ẑ = h( x, Ai ) and noise-
+4.3. Summary thus far                                                       corrupted observations {z} according to the observation
+To summarize the discussion thus far, we have shown that                    model (equation (2)): z = h( x, Ai ) +v. The set {zk+1 } is
+the objective function (equation (11)) can be rewritten as                  then the union of all such generated observations {z}. Note
+                Z          !                     !                          that while generating {zk+1 }, the true association is known
+                     X            X         i+                            (scene Ai ) but it is unknown to our algorithm, i.e. while
+     J ( uk ) =          wi · c       w̃i b Xk+1        (22)
+                           zk+1                                             evaluating equation (22).
+                                  i            i
+
+with weights wi and w̃i defined in equations (16) and (21),                 4.5. Computing     a mixture of posterior beliefs
+and the posterior given scene Ai , defined as                                    P         i+
+                                                                                    w̃
+                                                                                   i i b[X k+1 ]
+                        i+    .            −
+                     b[Xk+1 ] = P( Xk+1 | Hk+1 , zk+1 , Ai )         (23)   As seen from equation (22), reasoning about data associ-
+                                                                            ation aspects resulted in a mixture of   Pposteriori+probability
+Observe that, for each considered observation zk+1 , we get                 distributions within the cost c( .), i.e. i w̃i b[Xk+1 ], for each
+a mixture probability distribution function inside of the cost              possible observation zk+1 ∈ {zk+1 }. In this work, the set
+c( .), where each component represents the posterior proba-                 {zk+1 } is simulated as discussed in Section 4.4; however,
+bility distribution conditioned on the observation capturing                one could also consider treating future observation zk+1 as
+scene Ai , and weighted by w̃i . If there is no perceptual alias-           a random variable (Indelman et al., 2015; Platt et al., 2011;
+ing, there will be only one component with large weight w̃i ,               Van den Berg et al., 2012).
+that corresponds to the correct data association with scene                    In this section, we briefly describe how one can actually
+Ai , with all other weights being negligible. Conversely, in                calculate the corresponding posterior distributions, given
+the presence of perceptual aliasing, we expect to see numer-                some specific observation zk+1 ∈ {zk+1 }. For simplicity,
+ous non-negligible weights. In the extreme case, where all                  we consider the belief at planning time k as a Gaussian
+scenes (objects) are identical, we will get equal normalized                b[Xk ] = N ( X̂k , 6k ). However, our approach could also be
+weights w̃i for each Ai ∈ {AN }.                                            applied to more general cases (e.g. a mixture of Gaussians)
+    These insights also apply to the unnormalized weights                   with a certain price in terms of computational complex-
+wi that appear outside of the cost, from which the likeli-                  ity. Further investigation of these aspects is left to future
+hood of obtaining observation zk+1 is calculated. However,                  research.
+as already discussed in Section 4.1, this likelihood
+                                              P         is calcu-              Under this setting, each of the components b[Xk+1   i+
+                                                                                                                                       ] in the
+lated by summing over all such weights ( i wi ), with each                  mixture probability distribution function can be written as
+weight properly capturing the likelihood that a measure-
+                                                                                 i+
+ment zk+1 will be generated by scene Ai while taking into                     b[Xk+1 ] ∝ b[Xk ]P( xk+1 | xk , uk ) P( zk+1 | xk+1 , Ai )   (24)
+Pathak et al.                                                                                                                               9
+
+
+It is then not difficult to show that this belief is a Gaussian             whence Ai can be viewed is uncertain, not the class of the
+and to find its first two moments via maximum a-posteriori                  scene itself. Therefore, we can still harness the observation
+                                                                                                                            −
+inference                                                                   model to compute the term P( zk+1 | Ai , x, Hk+1    ). Further-
+                       i+           i      i
+                   b[Xk+1 ] = N ( X̂k+1 , 6k+1 )           (25)             more, under the maximum likelihood assumption, we know
+             i                       i
+                                                                            that this observation is distributed normally around the most
+with mean X̂k+1    and covariance 6k+1   .                                                        ml
+                                                                            likely observation ẑk+1  . Therefore the right-hand side of
+   Obviously, the mixture of posterior beliefs in the cost c( .)            the equation can be reduced to a single Gaussian. In other
+from equation (22) is now a mixture of Gaussians:                           words, the weights wi used in equations (16) and (20) can
+         X
+                      i+
+                             X
+                                           i     i                          be computed efficiently through analytical approach.
+              w̃i b[Xk+1 ]=     w̃i N ( X̂k+1 , 6k+1 )    (26)                 Similarly, if the propagated belief b[x−k+1 = x] is a mix-
+            i                         i
+                                                                            ture of Gaussians, we can see that the expression in the
+At this point, it is useful to recall that the correspond-                  left-hand side of equation (29) yields another mixture of
+ing mean and covariance of a general Gaussian mixture                       Gaussians, with the same number of modes. Here too, com-
+probability distribution function                                           putation could be performed analytically, by iterating over
+                                                                            each Gaussian component. Obviously, the ease of compu-
+                                    n
+                                    X                                       tation of wi is afforded not by the fact that Ai is uncertain,
+                      p( x) =             wj N ( x̂j , 6j )                 but by the fact that its uncertainty is of a specific structure
+                                    j=1
+                                                                            (namely, a Gaussian distribution).
+are given by (Bar-Shalom et al., 2004)
+                  n                              n
+                  X                              X                          4.7. Designing a specific cost function
+           x̂ =          wj x̂j ,         6=            wj 6j + 6̃   (27)
+                   j=1                            j=1                       The treatment so far has been noncommittal to the struc-
+                                                                            ture of the cost function c( .). Recalling equation (22), we
+           P
+with 6̃ = nj=1 wj ( x̂j − x̂) ( x̂j − x̂)T .                                see that the belief over which the cost function is defined is
+  Thus, in cases where a combination of the conditional                     multimodal in general. Standard cost functions in the lit-
+posterior probability distributions (equation (25)) makes                   erature typically include such terms as control usage cu ,
+sense, the overall combined belief can be collapsed to a                    distance to goal cG and uncertainty c6 , see e.g. Indelman et
+Gaussian distribution according to equation (27). As will                   al. (2015) or Van den Berg et al. (2012). In our case, how-
+be seen later, this could indeed be required for certain cost               ever, the specific form of the latter should be re-examined
+functions c( .).                                                            and an additional term quantifying ambiguity level can be
+                                                                            introduced. In this section, we thus briefly discuss these two
+                                                                            terms, starting with the cost over posterior uncertainty.
+4.6. Under uncertain scenes
+                                                                               Since, unlike usual belief space planning, the posterior
+So far we have assumed that scenes were known fairly well                   belief in our case P is multimodal and represented as a mix-
+i.e., Ai was known with little uncertainty. This might, how-                                                 i     i
+                                                                            ture of Gaussians i w̃i N ( X̂k+1   , 6k+1 ) (see equation (26)),
+ever, not be true in practice, for example when such scenes                 we could define several different cost structures, depend-
+arise out of a previous SLAM session. In such a scenario, it                ing on how we treat the different modes. Two particular
+is more appropriate to consider the uncertainty of Ai , again               examples involve taking the worst-case covariance among
+within the DA-BSP framework. This implies that equation                                        i
+                                                                            all covariances 6k+1    in the mixture, e.g. 6 = maxi {tr( 6i ) },
+(20) should incorporate the actual model of variation of Ai .               or collapsing the mixture into a single Gaussian N ( ., 6),
+More precisely                                                              according to equation (27). In both cases, we can define the
+                              −
+                                                                            cost due to uncertainty as c6 = trace( 6̂).
+                  P( Ai | x, Hk+1 ) = N ( x̂Ai , 6Ai )               (28)      The cost due to ambiguity, cw , should penalize such
+                                                                            ambiguities as those arising out of perceptual aliasing.
+where x̂Ai is the nominal position around which the scene Ai
+                                                                            Here, we note that the non-negligible weights wi in equa-
+is distributed while 6Ai is the covariance. Hence we have
+                                                                            tion (22) arise as a result of perceptual aliasing with respect
+                  −
+                                                                            to any scene Ai , whereas in the case of no aliasing, all but
+  P( Ai | zk+1 , Hk+1 )                                                     one of these weights are zero. In the most severe case of
+         Z
+                          −                                                 aliasing (all scenes or objects Ai are identical), all of these
+   = η P( zk+1 | Ai , x, Hk+1 ) N ( x̂Ai , 6Ai ) b[x−
+                                                    k+1 = x]
+           x                                                                weights are comparable with each other. Thus, we take the
+                                                                     (29)   Kullback–Leibler divergence KLu ( {w̃i }) of these weights
+                                                                            {w̃i } from a uniform distribution to penalize higher aliasing,
+   Now consider that the prior (and hence also propagated)                  and define
+belief is a Gaussian. We have already seen that the observa-
+                                          −
+tion likelihood (i.e., P( zk+1 | Ai , x, Hk+1 )) is a Gaussian too.                                        .          1
+                                                                                              cw ( {w̃i }) =
+Note that by uncertain Ai , we imply that the position from                                                    KLu ( {w̃i }) +
+10                                                                        The International Journal of Robotics Research 00(0)
+
+
+where  is a small number, included to avoid division by               Figure 4 demonstrates key aspects in our approach, con-
+zero in the case of extreme perceptual aliasing.                    sidering a single observation zk+1 each time. Our approach
+  The overall cost can then be defined as a combination             reasons about data association; hence, we consider that each
+                                                                    zk+1 could have been generated by one of the three objects;
+              .
+            c = Mu cu + MG cG + M6 c6 + Mw cw               (30)    each such association would fetch us a conditional poste-
+                                                                                       i+
+                                                                    rior belief b[Xk+1     ], as denoted by small ellipses. Finally, we
+with user-defined weights Mu , MG , M6 , and Mw .                   compute the total cost according to Algorithm 2.
+                                                                       Figure 4(e) to (h) denotes the situation when the true pose
+4.8. Formal algorithm for DA-BSP                                    xtr is close to the center and observes A2 , while in Figure
+                                                                    4(i) to (l) the true pose is at the left side and observes A1 .
+We now have all the ingredients to present the overall              Different degrees of aliasing are considered. Both weights
+framework of data association aware belief space planning,          wi and w̃i are shown in the inset histograms. Note that the
+DA-BSP for brevity. It is summarized in Algorithm 1 and             unnormalized weight wi is greater when the object is at the
+briefly described next.                                             center, because the overall likelihood of the observation is
+   Given belief b[Xk ] and candidate action uk , we first prop-     greater. Also, with no aliasing, for any scene Aj other than
+                                −
+agate the belief to get b[Xk+1     ] and then simulate future       the true one, the normalized weight wj is small, irrespec-
+observations {zk+1 } (line 2), as described in Section 4.4. The     tive of where xtr is. In other words, weights are also related
+algorithm then calculates the contribution of each observa-         to how likely the objects are to be the causes behind an
+tion zk+1 ∈ {zk+1 } to the objective function (22). In par-         observation; in the case of no aliasing, this can be negli-
+ticular, in lines 8 and 11 we calculate the weights wi and          gibly small. This is crucial, since it implies that DA-BSP,
+the posterior beliefs b[Xk+1i+ ] for each Ai ∈ {AN }, respec-       in practical applications with infrequent aliasing, would not
+tively, according to Sections 4.1 and 4.5. Then, after weight       require any significant additional computational effort with
+normalization in line 13, we evaluate the cost c( .) (line
+                                                         P14)       respect to usual belief space planning.
+and use the accumulated unnormalized weights ws ≡ i wi                 Figure 4(f) to (h) depicts {A1 , A2 }alias , {A1 , A3 }alias , and
+to update the value of the objective function J with the            {A1 , A2 , A3 }alias . When {A1 , A3 }alias , the weights wi are sim-
+weighted cost for measurement zk+1 (line 15).                       ilar, and indeed our cost cw of weights (in equation (30)) is
+   Later on, in Section 5.7, we comment more precisely              high. For similar uncertainty in pose, this cost would remain
+on both the computational complexity of DA-BSP and                  constant. Hence, in the presence of identical objects placed
+its correctness when viewed from the perspective of data            similarly within the current belief, optimization of general
+association.                                                        cost function would be guided toward active localization.
+                                                                    Conversely, if one object j lies closer to the current nominal
+                                                                    pose, it will have slightly higher wj . If {A1 , A2 , A3 }alias , i.e.
+4.9. An abstract example for DA-BSP
+                                                                    all objects are identical, the weights wi are simply an indi-
+Consider the problem of robotic manipulation of objects in          cation of the prior distribution. This is reasonable since, in
+the kitchen. For simplicity, let us abstract it to a simpler        such a case, considering different data association does not
+domain of three objects, |{AN }| = 3. We consider a single          yield any new information.
+step control at time step k, from a given belief b[Xk ], as well
+                                −
+as that of one step ahead b[Xk+1   ], and assume the following
+motion and observation models f and h                               5. Non-myopic data association aware multi-
+                                 (                                   modal belief space planning
+                    1 0              [0, 1]T if u = up
+      f ( x, u) =            ·x+d                          ,        This section would generalize the DA-BSP that was devel-
+                    0 1              [1, 0]T if u = right
+                                                                  oped in Section 4. We will start by considering a prior dis-
+                              1 0                                   tribution that is non-Gaussian. In particular, we will assume
+     h( x, Ai ) = hi ( x) =         ·( x − xi ) +si          (31)
+                              0 1                                   our prior distribution to be a mixture of Gaussians and then
+                                                                    follow a similar approach to compute the belief update and
+where the observations, as well as the metric shift si , are        perform myopic planning, as done earlier. Once this is done
+in an object-centric frame, with xi representing the location       and we have an approach that takes in a Gaussian mix-
+of Ai . Intuitively, si is a simple mechanism to model per-         ture model belief and updates to another Gaussian mixture
+ceptual aliasing between objects; e.g., for identical objects,      model belief, we will present the most general DA-BSP in a
+each Ai would have si that compensates for xi in such a way         non-myopic setting of several look-ahead steps of planning.
+that it results in the same observation h. The first row (pan-
+els a to d) of Figure 4 illustrates the process of simulating
+future observations {zk+1 } for uk = up, considering unique
+and perceptually aliased scenes (Figure 4(c) and (d)). In par-
+                                                                    5.1. Prior belief as a mixture of Gaussians
+ticular, a sampled pose xtr used to generate an observation         Let us assume that the prior belief is a Gaussian mixture
+zk+1 ∈ {zk+1 } is shown in 4(b).                                    model. In other words, our belief at time k is a linear
+Pathak et al.                                                                                                                             11
+
+
+Algorithm 1 Myopic data association aware belief space planning.
+Input: Current belief b[Xk ] at step k, history Hk , action uk , scenes {AN }, event likelihood P( Ai | Hk , x) for each Ai ∈ {AN }
+         −
+ 1: b[Xk+1 ] ← b[Xk ]P( xk+1 | xk , uk )
+                                         −
+ 2: {zk+1 } ← SimulateObservations(b[Xk+1 ], {AN })
+ 3: J ← 0
+ 4: for ∀zk+1 ∈ {zk+1 } do
+ 5:     ws ← 0
+ 6:     for i ∈ [1 . . . |A|] do
+ 7:           F compute weight, equation (16)
+                                                      −              −
+ 8:           wi ← CalcWeights(zk+1 , P( Ai | Hk+1        , x) , b[Xk+1 ])
+ 9:           ws ← ws + wi
+10:           F Calculate posterior belief given Ai , Section 4.5
+                  i+                              −
+11:           b[Xk+1 ] ← UpdateBelief(b[Xk+1          ], zk+1 , Ai )
+12:     end for
+13:     {w̃i } ← NormalizeWeights({wi })
+                                       i+
+14:     c ← CalcCost({w̃i }, {b[Xk+1       ]})                                                                              F Section 4.7
+15:     J ← J + ws · c
+16: end for
+17: return J
+
+
+
+
+                                                           .
+Fig. 4. (a) Black samples {xk } are drawn from b[Xk ] = N ( [0, 0]T , 6k ), from which, given control uk , samples {xx+1 } are computed,
+colored according to different scenes Ai being observed, and used to generate observations {zk+1 }. (b) Event likelihood, P( Ai |x, H) ∀i.
+Three vertical stripes represent locations from which each scene Ai is observable; histogram represents distribution of {xk+1 }, which
+                    −
+corresponds to b[Xk+1   ]. (c,d) distributions of {zk+1 } without aliasing and when {A1 , A3 }alias . (e)–(h) DA-BSP for a single observation
+                                     −
+zk+1 . Red-dotted ellipse denotes b[Xk+1 ], while the true pose that generated zk+1 is shown by an inverted triangle. Smaller ellipses are
+                          i+
+the posterior beliefs b[Xk+1 ]. Top row xtr is near center, observing A2 ; bottom row xtr is on the left, observing A1 . Columns represent
+different perceptual aliasing cases. Weights wi and w̃i , corresponding to each scene Ai are shown in the inset bar graphs.
+12                                                                                      The International Journal of Robotics Research 00(0)
+
+
+Algorithm 2 Non-myopic data association aware belief space planning.
+Input: Current Gaussian mixture model belief b[Xk ] at step k, history Hk , action uk , scenes {AN }, event likelihood
+   P( Ai | Hk , x) for each Ai ∈ {AN }
+            −
+ 1: b[Xk+1 ] ← b[Xk ]P( xk+1 | xk , uk )                                                                                              F equation (8)
+                                         −
+ 2: {zk+1 } ← SimulateObservations(b[Xk+1 ], {AN })
+ 3: J ← 0
+ 4: for ∀zk+1 ∈ {zk+1 } do
+ 5:     ws ← 0
+ 6:     for i ∈ [1 . . . |A|] do
+ 7:         F compute weight, equation (16)
+                                                       −               −
+ 8:         wik+1 ← CalcWeights(zk+1 , P( Ai | Hk+1       , x) , b[Xk+1   ])
+ 9:         ws ← ws + wi
+10:         for ∀j ∈ [1, . . . , Mk ] do
+                                          ij
+11:             F compute weight w̃k+1 for each Gaussian mixture model component, equation (37)
+                   ij                                      −               j−
+12:             w̃k+1 ← CalcWeights(zk+1 , P( Ai | Hk+1         , x) , b[Xk+1 ])
+                  ij         j ij
+13:             ξk+1 ← ξk w̃k+1                                                                                                      F equation (39)
+                                                j−
+14:             F Calculate posterior of b[Xk+1 ], given Ai , Section 5.2
+                      ij+                            j−
+15:             b[Xk+1 ] ← UpdateBelief(b[Xk+1 ], zk+1 , Ai )
+16:         end for
+17:     end for
+                                             ij
+18:     Prune components with weights ξk+1 below a threshold
+                          +
+19:     Construct b[Xk+1     ] from the remaining Mk+1 components via equation (38)
+                                  +
+20:     c ← CalcCost(b[Xk+1            ])                                                                                              F Section 4.7
+21:     J ← J + ws · c
+22: end for
+23: return J
+
+
+
+combination of Mk ∈ N Gaussians, i.e.,                                               Since the propagated belief (see equation (33)), from
+                                            Mk                                     which b[x−
+                                                                                            k+1 ] is calculated, is also a Gaussian mixture
+               .                                                                   model, we can replace b[x−
+                                     X
+        b[Xk ] = P( Xk |Hk− , zk ) =   ξk,i N ( X̂k,i , 6k,i )            (32)                               k+1 = x] with
+                                            i=1
+                                                                                                              Mk
+                                                                                                              X
+   Since our motion model (see equation (3)) is still a Gaus-                                 b[x−                   ξk+1, j b[x−
+                                                                                                 k+1 = x] =                     k+1, j = x]     (34)
+sian, the propagated belief is also a Gaussian mixture model                                                   j=1
+with Mk components. More precisely
+       −    .           −                                                          However, the actual value of wi (for each Ai ∈ {AN })
+  b[Xk+1  ] = P( Xk+1 |Hk+1 ) = P( Xk |Hk ) P( xk+1 |xk , uk )
+                                                                                   depends, in addition to the measurement likelihood and
+                                            Mk
+                                            X
+                                                             −        −
+                                                                                   event likelihood, on the Gaussian mixture model belief
+                                        =         ξk,i N ( X̂k+1,i , 6k,i ) (33)   b[x−k+1 ], with the latter weighting the probability of each
+                                            i=1                                    considered robot pose x. This correctly captures the intu-
+   Once the observation zk+1 is obtained, for each of the Mk                       ition that those observations z with low-probability poses
+components, we can consider all the aliased scenes {AN }.                          b[x−           tr
+                                                                                       k+1 = x ] will be unlikely to be actually acquired,
+The derivation is very similar to the lines of the discus-                         leading to low values of wi with Ai = Atr . Since b[x−     k+1 ]
+sion in Section 4, with additional parameters introduced.                          is a Gaussian mixture model with Mk components, the
+For ease of disposition, let us reproduce the steps, such as                       low-probability pose xtr corresponds to low probabilities
+                                                                                        j−
+equation (15), which we get after applying the chain rule                          b[xk+1 = xtr ] for each component j ∈ {1, . . . , Mk }. How-
+and subsequent marginalization over all x and Ai ∈ {AN }                           ever, the likelihood term (equation (13)) could still increase
+                                                                                   in the case of perceptual aliasing, where the aliased scene
+      {AN } Z
+      X
+                                      −             −                              Aj generates a similar observation to zk+1 from viewpoint
+                    P( zk+1 |x, Ai , Hk+1 ) P( Ai |Hk+1 , x) b[x−
+                                                                k+1 = x]
+            x                                                                      x0 with the latter being more probable, i.e. high probability
+        i
+                                                                                   b[x−        0
+                                                                                       k+1 = x ].
+Thus                                                                                  In practice, the integral in equation (16) can be calculated
+          Z
+        .                   −             −
+                                                                                   efficiently by considering each component of the Gaussian
+      wi= P( zk+1 |x, Ai , Hk+1 ) P( Ai |Hk+1 , x) b[x−
+                                                      k+1 = x]                     mixture model b[x−
+                x                                                                                       k+1 ] separately. Each such component is
+Pathak et al.                                                                                                                                           13
+
+
+a Gaussian that is multiplied by the measurement likelihood                     or, in short
+P( zk+1 | Ai , x, H), which is also a Gaussian; it is known that                                                   Mk+1
+a product of Gaussians remains a Gaussian. The integral can                                                        X
+                                                                                                                           r      r+
+                                                                                                   b[Xk+1 ] =             ξk+1 b[Xk+1 ]
+then only be calculated for the window where event likeli-
+                                                                                                                   r=1
+hood is non-zero, i.e. P( Ai | x, H) > 0. For general prob-
+ability distributions, the integral in equation (16) should                     where
+be computed numerically. Since, in practical applications,                         r   . ij      j ij                        r+    .     j+
+                                                                                  ξk+1 = ξk+1 ≡ ξk w̃k+1 ,                b[Xk+1 ] = b[Xk+1 |Ai ] (39)
+P( Ai | x, H) is sparse with respect to x, this computational
+cost is not severe.                                                             As seen, we get a new Gaussian mixture model with Mk+1
+                                          −
+   Similarly for term ( b), P( Xk+1 |Hk+1     , zk+1 ), applying                components, where each component r ∈ [1, Mk+1 ], with
+total probability over non-overlapping {AN } as well as all                     appropriate mapping to indices ( i, j) from equation (36), is
+                                                                                                          r
+the components of the propagated belief, we get                                 represented by weight ξk+1   and posterior conditional belief
+                                                                                    r+
+               −
+                                                                                b[Xk+1 ]. The latter can be evaluated as the Gaussian
+     P( Xk+1 |Hk+1 , zk+1 )
+                                                                                                  r+               j−
+                       Mk |AN |
+                       X  X                                                                    b[Xk+1 ] ∝ b[Xk+1 ]P( zk+1 | xk+1 , Ai )
+                                                          −
+                   =              P( Xk+1 , Ai , γ = j | Hk+1 , zk+1 )   (35)                                    r
+                                                                                                         = N ( X̂k+1    r
+                                                                                                                     , 6k+1 )                          (40)
+                       j=1 i=1
+                                                                                                 r                   r
+Proceeding as before, we split the term inside the summa-                       where the mean X̂k+1 and covariance 6k+1 can be efficiently
+tion using the chain rule as follows                                            recovered via maximum a-posteriori inference.
+                             −
+     P( Xk+1 , Ai , γ = j | Hk+1 , zk+1 )                                       5.2. Non-myopic DA-BSP
+                                 −
+                 = P( Xk+1 | Hk+1    , zk+1 , Ai , γ = j)
+                                                               −
+                                                                                It is easy to see that once the prior, as well as the poste-
+                                            · P( Ai , γ = j | Hk+1 , zk+1 )     rior, belief is represented as a mixture of Gaussians, we can
+  The first term is the posterior obtained with the scene Ai                    extend the DA-BSP to a non-myopic setting. Informally, for
+                                                                                planning over a horizon of L steps, starting with a mul-
+while considering the jth propagated belief component; we
+                j+                                                              timodal prior and a control sequence u0:L−1 , the planning
+denote this b[Xk+1 |Ai ].                                                       would involve reasoning about the plausible data associa-
+  For the second term, we again apply the chain rule, to                        tions at each intermediate l ∈ [1, L − 1] step. To make it
+obtain                                                                          more concrete, consider a non-myopic cost function as
+                      −
+     P( Ai , γ = j | Hk+1 , zk+1 )                                                J ( uk:k+L−1 )
+                              −                         −
+        = P( Ai | γ = j, Hk+1     , zk+1 ) ·P( γ = j | Hk+1 , zk+1 )                                         (a)
+                                                                                                                           
+                                                                                                                                     (b)
+                                                                                                                                                  
+                                                                                       Z           L z
+                                                                                                   X          }|     { z            }|         {
+                        −                                   j                                                     −                    −
+    Here, P( γ = j | Hk+1   , zk+1 ) is equal to ξk , which is the                 =                   P( zk+l | Hk+l      P( Xk+l |Hk+l , zk+l )
+                                                                                                                      ) cl                       
+                                                                                        zk+1:k+L l=1
+weight of the jth component of the prior belief. For the
+first term, we marginalize over all x to obtain the weights                                                                                            (41)
+  ij
+w̃k+1 . This is identical to marginalization done in the previ-
+ous Section 4 (see equation (20)), with the only difference                     where the expectation over future observations is written
+that here all x considered are from the jth component of the                    explicitly, accounting for all possible realizations of these
+belief                                                                          unknown observations. Although dropped to reduce clutter,
+                                                                                                −
+                                                                                the history Hk+l    includes future observations zk+1:k+l−1 up
+     b[Xk+1 ]                                                                   to the lth look-ahead step.
+           Mk |AN |
+           X  X                                                                    Like the myopic case in Section 4, the two terms ( a)
+                         j         −                            j+              and ( b) in equation (41) have intuitive meaning: for each
+      =                ξk P( Ai | Hk+1 , zk+1 , γ = j) b[Xk+1 |Ai ]      (36)
+           j=1 i=1                                                              considered value of zk+l , term ( a) represents how likely is
+                                                                                it to get such an observation, while term ( b) corresponds
+      ij                                                                        to the posterior belief, given this specific zk+l . However,
+   w̃k+1
+      Z                                                                         the difference in a non-myopic case is that both terms are
+ .                     −            −                   j−                      conditioned on the history Hk+l   −
+                                                                                                                      , which is a function of
+ = η0 P(zk+1 |Ai , x, Hk+1) P( Ai |Hk+1 , γ = j, x) b[xk+1= x]
+           x                                                                    zk+1:k+l−1 ; hence, this reasoning is valid for all possible
+                                                                         (37)   realizations of zk+1:k+l−1 and the corresponding posterior
+               0          −
+  with η = 1/P( zk+1 | Hk+1   ). Note that for each compo-                      beliefs P( Xk+l−1 |Hk+l−1 ).
+       P ij                                                                        It is not difficult to show that the posterior belief at each
+nent j, i w̃k+1 = 1. Finally, we can rewrite equation (36)
+                                                                                step k is actually the Gaussian mixture model
+as
+                                    Mk+1                                                                                Mk+l−1
+                                     X                                                                                   X        j          j+
+           −                                                                                  −
+ P( Xk+1 |Hk+1 , zk+1 ) =              r
+                                      ξk+1 P( Xk+1 |Hk+1 , γ = r) (38)             P( Xk+l | Hk+l , zk+l , Ai ) =                ξk+l−1 b[Xk+l |Ai ]   (42)
+                                     r=1                                                                                 j=1
+14                                                                                 The International Journal of Robotics Research 00(0)
+
+
+            j+      .           −
+where b[Xk+l |Ai ] = P( Xk+l |Hk+l  , γ = j, Ai , zk+l ) is the pos-
+terior belief of the jth Gaussian mixture model component
+                              −
+of the propagated belief b[Xk+l  ].
+                                            −
+   Plugging equation (42) into P( Xk+l |Hk+l    , zk+l ) ≡ b[Xk+l ]
+from equation (9) yields
+
+     b[Xk+l ]
+             |AN | Mk+l−1
+             X      X                                                         Fig. 5. Gaussian mixture model posterior b[Xk+1 ] given zk+1
+                              j              −              j+
+       =                     ξk+l−1 P( Ai | Hk+l , zk+l ) b[Xk+l |Ai ] (43)   ∈ {zk+1 }. The prior has two equiprobable components while the
+             i=1       j=1                                                    posterior has different weights for the two components.
+                                  j−
+Accounting for b[xk+l ] for each   R considered         jth compo-
+                   −                                 −
+nent as P( Ai | Hk+l   , zk+l ) = x P( Ai , x | Hk+l     , zk+l ), and        uk , we first propagate the belief to get b[Xk+1−
+                                                                                                                                 ] and then
+applying Bayes’ rule yields                                                   simulate future observations {zk+1 } (line 2), as described
+          Z                                                                   in Section 4.4. The algorithm then calculates the contri-
+    ij . 0                   −            −            j−
+  w̃k+l= η P(zk+l |Ai , x, Hk+l ) P( Ai |Hk+l , x) b[xk+l= x] (44)            bution of each observation zk+1 ∈ {zk+1 } to the objective
+                   x
+                                                                              function (equation (22)). In particular, in lines 8 and 9, we
+                         −
+         0
+with η = 1/P( zk+l | Hk+l  ). Note that for each component                    calculate the weights wik+1 that are used in evaluating the
+  P ij                                                                        likelihood ws of obtaining observation zk+1 . In lines 10 to
+j, i w̃k+l = 1. Finally, we can rewrite equation (36) as
+                                                                              16, we compute the posterior belief: this involves updat-
+                                  Mk+l                                                                                                  j−
+                                  X                                           ing each jth component from the propagated belief b[Xk+1 ]
+                                    r
+                b[Xk+l ] =         ξk+l P(Xk+l |Hk+l , γ = r)                 with observation zk+1 , considering each of the possible
+                                   r=1                                        scenes Ai . After pruning (line 18), this yields a posterior
+                                  Mk+l                                        Gaussian mixture model with Mk+1 components. We then
+                                  X
+                                          r      r+
+                             =           ξk+l b[Xk+l ]                (45)    evaluate the cost c( .) (line 20) and use ws to update the
+                                   r=1                                        value of the objective function J with the weighted cost for
+          r      .    ij          j        ij             r+     .            measurement zk+1 (line 21).
+where ξk+l      = ξk+l ≡ ξk+l−1 w̃k+l and b[Xk+l             ] =
+                                                                                 One can observe that, according to equation (43), each
+P(Xk+l |Hk+l , γ = r). As seen, we get a new Gaussian mix-
+                                                                              of the Mk components from the belief at a previous time is
+ture model with Mk+l components, where each component
+                                                                              split into |AN | new components with appropriate weights.
+r ∈ [1, Mk+l ], with appropriate mapping to indices ( i, j)
+                                                      r                       This would imply an explosion in the number of compo-
+from equation (36), is represented by weight ξk+l        and pos-
+                              r+                                              nents, making the proposed framework hardly applicable.
+terior conditional belief b[Xk+l ]. The latter can be evaluated
+                       r+           r         r                r
+                                                                              However, in practice, the majority of the weights will be
+as the Gaussian b[Xk+l    ] = N ( X̂k+l , 6k+l  ), with mean X̂k+l            negligible, and can therefore be pruned, while the remain-
+                   r
+and covariance 6k+l .                                                         ing number of components is denoted by Mk+1 in equa-
+   The associated cost of the overall posterior distribution                  tion (38). Depending on the scenario and the degree of
+of this L-step planning can then be compared with that of                     perceptual aliasing, this can correspond to full or partial
+similar posterior distributions of other control sequences,                   disambiguation (see Figure 5).
+enabling us to choose an optimal single step action. After
+the action is taken and a real observation is obtained, the
+inference over this observation allows us to update the pos-                  5.4. Effect of reducing a mixture of belief
+terior distribution, which then serves as a prior distribution
+for next-L-step planning. However, a naïve implementation                     We have seen that DA-BSP, on account of considering all
+of such a planning would likely suffer from the usual curses                  the possible data association, suffers from exponential blow
+of dimensionality and history. Luckily, DA-BSP provides                       up in a number of components. Using the discrete case as
+a principled way to strike a balance between the require-                     an example, it is easy to show that this—under a reason-
+ment for an efficient solution and not losing the correct data                able assumption that scene space is much smaller than state
+association in a challenging aliased environment.                             space—does not deteriorate the complexity of the underly-
+                                                                              ing problem. Moreover, it is important to notice that each
+                                                                              such association is accompanied with the weights, which
+5.3. Overall algorithm                                                        reflect the significance of such a data association. In par-
+We now have all the ingredients to present the overall                        ticular, if a scene is quite unique, it is unlikely to be aliased
+framework of data association aware belief space plan-                        with any other; consequently, only the posterior conditioned
+ning, calling it DA-BSP for brevity. It is summarized in                      on this correct association would have significant weight.
+Algorithm 2 and briefly described next.                                       A simple threshold-based pruning is then sufficient to dis-
+   We shall, in general, refer to Section 5.2 now. Given a                    card insignificant modes, as shall also be evident from our
+Gaussian mixture model belief b[Xk ] and candidate action                     extensive experiment in this regard later on.
+Pathak et al.                                                                                                                  15
+
+
+                                                                   planning, this cannot be guaranteed unless we assume an
+                                                                   existence of a unique observation in the future. At best,
+                                                                   there would be partial disambiguation, i.e. some compo-
+                                                                   nents of the posterior belief vanish due to less aliased
+                                                                   observations. On the contrary, in the cases where a full dis-
+                                                                   ambiguation does not occur within the planning horizon,
+                                                                   DA-BSP would maintain all the components with appropri-
+                                                                   ate weights. This not only allows for partial disambiguation
+Fig. 6. When pose uncertainty is not taken into account, overly    in such a planning scenario, where only the aliased compo-
+confident and wrong inference can be made. Here, in the absence    nents remain in the posterior belief, but can also eventually
+of uncertainty and because L2 > L1 , an observation from the       result in a full disambiguation. Hence, DA-BSP captures
+ground truth (shown C) is likely to be solely attributed to an     the reality of a perceptually aliased environment quite well.
+incorrect component 2.
+                                                                   5.6. Degenerate cases of DA-BSP
+   One can notice that the objective of curtailing the com-        Two prominent reasons for considering data association
+plexity of data structure through some pruning heuristics is       aware belief space planning are, firstly, that it accurately
+not a novel approach. Even in the context of data associa-         reflects the reality where, owing to pose uncertainty, the
+tion, it occurs in slightly different form when the problem        observation may no longer be associated with that from the
+is posed as a multihypothesis tracking. Roughly speaking,          nominal pose and, secondly, that it is a generalization of the
+in such a scenario, planning is through explicit instantiation     usual belief space planning. To elucidate the latter, we shall
+of the trajectory of control and pruning decision is often         consider three degenerate cases of data association aware
+based on the information-theoretic value a particular branch       belief space planning: without pose uncertainty, with data
+is expected to hold. Thus, multihypothesis tracking can han-       association solved and without perceptual aliasing.
+dle the passive case of belief space planning where disam-
+biguation is sought only in the inference step and not in the      5.6.1. Without pose uncertainty. Consider that for all prac-
+planning. By contrast, DA-BSP argues for data association          tical purposes, the pose is known with certainty; hence, the
+within the belief space planning framework and can thus            belief is a Dirac pulse around the nominal x̂k . Since the
+utilize weights that are shaped by the actual future associ-       scene space could still be uncertain, the belief space plan-
+ations. Nevertheless, we can harness similar approaches to         ning should consider all possible scenes being observed.
+curtailing the empirical complexity of DA-BSP, classifying         However, in this case, the integral in equation (37) reduces
+them as local or global and pruning or merging. When the           to a single term. In a more realistic case of small variance in
+decision about how to reduce a given mode in DA-BSP is             the pose, considering only the most likely data association
+based on the overall likelihood of associations considered         may still lead to a reasonable performance. This is simi-
+from the initial position, we call it global, while in the local   lar to many passive inference based approaches, where the
+approach, only local information of the conditional poste-         most likely component is often sufficient to account for the
+rior is sufficient to decide on it being reduced via merging       overall posterior.
+or pruning. As is evident from the name, pruning is the               Note that when significant pose uncertainty exists, yet
+process of dropping a component in a conditional posterior         is not assumed to do so, wrong and catastrophic infer-
+distribution and re-normalizing the other weights, whereas         ence could be made. This is seen in Figure 6, where it
+merging is the process of combining two components to              is wrongly inferred with certainty that the robot is in a
+form a single component, which is an optimal (in some              vertically aligned pathway corresponding to component 2,
+heuristic sense) representation of the both. Both pruning          whereas the ground truth is that the robot is in a horizontally
+and merging can be recursive processes.                            aligned pathway corresponding to component 1.
+
+
+5.5. Full vs. partial disambiguation                               5.6.2. With data association solved. In this case, the scene
+In the context of selecting an appropriate horizon for plan-       that is captured from perspective xk+1 when observation
+ning, we can note that in most of the real-world examples,         zk+1 is obtained is known. More precisely
+the greater the horizon, the greater the likelihood of having                                              
+                                                                                                             1 j=t
+a unique observation that results in disambiguation between                     ∃t, P( zk+1 |xk+1 , Aj ) =
+                                                                                                             0 j 6= t
+several or all components of the belief. However, in general,
+DA-BSP does not require a complete or full disambiguation             This implies that the summation over all {AN } is reduced
+for its correctness. Recall from Section 3.1 that by full dis-     to a single At , known a priori for each observation zk+1 .
+ambiguation we mean that the posterior belief eventually           Therefore, with data association solved, the framework
+has only a single component. For a usual forward L-step            degenerates to the usual belief space planning.
+16                                                                       The International Journal of Robotics Research 00(0)
+
+
+5.6.3. Without perceptual aliasing. In the absence of per-
+ceptual aliasing, while considering the observation zk+1 , we
+are guaranteed to have only a single pose and scene pair
+( xk+1 , Aj ) that generated it. This implies that if the obser-
+vation zk+1 were given, the posterior beliefs would be all
+zero, except for the one corresponding to Aj . However, since
+while planning at step k, the observation zk+1 is an unknown
+random variable, we would still need to consider all possible
+events {AN } that generated it.                                    Fig. 7. Explicit representation of underlying POMDP as a belief
+                                                                   Markov decision problem. Each circle represents a Gaussian com-
+5.7. On complexity and correctness of non-                         ponent of the belief; rectangles denote actions u. Note that, owing
+     myopic DA-BSP                                                 to uncertain data association, more such Gaussian nodes may be
+                                                                   created, as shown in the cloud here. In contrast, under unam-
+In this section, we are interested in answering two ques-          biguous data association, such as that shown with bold-and-filled
+tions: first, how much more computational effort would be          arrows, efficient planning can be performed by collapsing all the
+required to consider uncertain data association in the con-        Gaussian beliefs into a single Gaussian. See Section 5.7 for the
+text of belief space planning and, second, would such an           analysis in case of discrete state space.
+approach always guarantee a correct association—in other
+words, will it guarantee that the component corresponding
+to the ground truth association will be recovered whenever            Since, at any time step k, the actual underlying state is
+possible. For the former, we need to analyze the compu-            unknown, the system should reason about probability dis-
+tational complexity of DA-BSP, which, in general, would            tribution over all states. The belief of being in state x is
+depend on size of the state space. Thus, we shall con-             represented as b( x). After each observation, this belief is
+sider only the discrete state space where such a complexity        updated as
+can be derived. We first note that belief space planning                                     O( x0 , u, z) X
+can be framed as a POMDP. In a general infinite horizon                      bu,z ( x0 ) =                ·  T( x, u, x0 ) b( x)               (46)
+                                                                                             P( z|u, b) x∈S
+case, the POMDP is undecidable (Madani et al., 1999),
+whereas for a finite horizon polynomial in |S|, it is known to
+                                                                   which implies
+be PSPACE complete (Papadimitriou and Tsitsiklis, 1987).
+                                                                                                              X
+Since DA-BSP seeks to solve a harder problem than the                         bu,z ( x0 ) ∝ O( x0 , u, z) ·          T( x, u, x0 ) b( x)       (47)
+usual belief space planning, i.e. to perform belief space                                                     x∈S
+planning under uncertain data association, it is natural that
+DA-BSP incorporates all scalability issues involved in solv-         Note that in the notation introduced in this paper, this can
+ing any POMDP. In this section, we seek to make it more            be written as:
+explicit by considering a discrete state POMDP.
+   As is usually done, let the POMDP be represented by the           b[Xk+1 |zk+1 , uk ]
+                                                                                                         Z
+tuple hS, A, , T, O, r, b0 i and, furthermore, let the index i              ∝ P( zk+1 |xk+1 , uk ) ·             P( xk+1 |xk , uk ) P( xk )   (48)
+represent the time-epoch at which decisions regarding con-                                                   xk
+trol actions are executed. Let L be the horizon of the prob-
+lem, i.e. i ∈ { j|1 ≤ j ≤ L, j ∈ N}. The tuple symbols                Visualizing equation (47) as a system of equations in
+are:                                                               |S| variables (denoted by b( x)), we can see that each such
+                                                                   update requires O( |S|2 ) computational effort, where O
+• S. The set of unobservable states into which the system          stands for big-O notation.
+  can possible transit; ∀i, xi ∈ S;                                   When data association is not solved, such a belief update
+• A. The set of all admissible control actions that the            must be made against each possible data association (see
+  system can perform; ∀i, ui ∈ A;                                  Figure 7), hence
+• . The set of all possible observations that can be
+  obtained; ∀i, zi ∈ ;                                              b[Xk+1 |Ai , zk+1 , uk ]
+• T. The transition function denoting the probability of                                                 Z
+  transiting from state x to state x0 under action u; T :                ∝ P( zk+1 |Ai , xk+1 , uk ) ·            P( xk+1 |xk , uk ) P( xk )   (49)
+                                                                                                             xk
+  S × A × S 7→ R[0,1] ;
+• O. The observation function denoting the probability of             Consequently, the data-aware belief update would require
+  observation z under action u; O : S × A ×  7→ R[0,1] ;          O( ( |S||E|)2 ) computational effort, where E is the set of all
+• r. The reward function for calculating the reward in each        events {AN }. Assuming a finite horizon of size L, the over-
+  state x and action u; T : S × A 7→ R\{−∞, ∞};                    all complexity of the problem is O( ( |O||A|)L ( |S||E|)2 ).
+• b0 . The initial belief; the probability distribution over       Finally, we also note that, in practical applications, |E| 
+  whole state space S.                                             |S|.
+Pathak et al.                                                                                                                       17
+
+
+   To reason about the correctness of DA-BSP; i.e. when-
+ever there is a single disambiguating data association, the
+algorithm will recognize it and associate the observation
+correctly, we first define pruned and unpruned DA-BSP.
+Recall that DA-BSP adjusts the subsequent weights of the
+components based on the likelihood of the observation
+and of it being explained by the considered association.            Fig. 8. Overall infrastructure of implementation of DA-BSP.
+An unpruned DA-BSP considers all such associations, no              Note that thanks to the middleware block of ROS, the algorithm is
+matter how small the weights are (provided they are non-            independent of whether it is applied to a real setup or a simulated
+zero), while pruned DA-BSP has some reasonable thresh-              one.
+old, below which all of the weights are pruned away. It is
+easy to see the correctness of unpruned DA-BSP. Consider
+                                                                    RGB camera. Here, we use non-myopic planning. Finally, to
+that, at step k ∈ [1, ∞), a full disambiguation occurs; then,
+                                                                    consider arbitrary levels of ambiguities, we create a simu-
+by definition, the belief at k − 1, i.e. b[Xk−1 ], will also con-
+                                                                    lated world model (in Gazebo) of two nearly identical office
+tain the component corresponding to the ground truth. The
+                                                                    floors with various lookalike cubicles. In these simulations,
+subsequent computation of DA-BSP would yield weights
+                                                                    the Pioneer robot is fitted with a laser scanner. Thus, scenes
+that are all strictly zero, except the one corresponding to
+                                                                    in this setup are implicit features of the world and may be
+this ground truth. However, in the case of pruned DA-BSP,
+                                                                    a combination of several objects. In particular, each cubicle
+this might not necessarily be true, as the ground truth com-
+                                                                    with walls and a chair would typically form a part of a scan
+ponent might be pruned away in b[Xk−1 ], possibly even
+                                                                    that is treated as a single scene.
+leading to a catastrophic bad data association in the last
+step k. Note that this requires either the weight of the cor-
+rect component to be too low or the pruning threshold to            6.1. Implementation of data association aware
+be too high. The former usually does not hold if we assume               belief space planning
+that, at the start, the multimodal belief contains the correct
+                                                                    Effective and realistic implementation of DA-BSP requires
+component as well. The latter can be avoided by judicious
+                                                                    two separate threads of development. To be efficient, it is
+choice of pruning threshold. As shown in the experiments,
+                                                                    crucial that the algorithmic as well as the real-time cost
+DA-BSP is not sensitive to the choice of this threshold.
+                                                                    of incorporating the data association within belief space
+                                                                    planning remains as low as possible. We ensured this by rep-
+                                                                    resenting each component of the Gaussian mixture model
+6. Experiments                                                      as a factor graph, so that state-of-the-art tool GT-SAM
+In this section, we present an extensive analysis of the pro-       could be harnessed for a time-efficient inference. Con-
+posed approach. Throughout this section, we will assume             versely, to be realistic enough, we implemented it using
+that the set of action trajectories, from which the robot has       a real robotic platform, Pioneer. Here, a propriety ROS
+to plan its future actions, is given a priori. DA-BSP is a gen-     Robotics Toolbox was used, which enabled our implemen-
+eral framework, which does not rely on any specific form of         tation to work seamlessly for both a simulated world and
+these trajectories. Typically, the nature of these actions is       a real-world scenario. To simulate a complex world with
+domain-specific, as we shall see in various setups analyzed         arbitrary levels of ambiguity, we chose Gazebo, since it fits
+in this section. How these actions are actually generated is        nicely with both the robotic platform and the ROS infras-
+outside of the scope of this work.                                  tructure. These two streams of development are shown in
+   This section is organized into five different parts. First,      Figure 8. The DA-BSP algorithm itself was implemented in
+we describe the relevant software and hardware infras-              object-oriented MATLAB with the aim of striking a balance
+tructure that was set up for experimenting with DA-BSP.             between rapid prototyping and obtaining a generalizable
+Second, we mention some metrics that could be devised               implementation that can be easily ported to such languages
+to evaluate the usefulness of considering data association          as C++.1
+within belief space planning. Since most state-of-the-art
+approaches assume the data association as given and per-            6.2. Metrics for evaluating DA-BSP and com-
+fect, such metrics are essential to evaluate DA-BSP. Third,
+we look into the abstract example introduced in Section 4.9,
+                                                                         pared approaches
+under the simplistic assumption of myopic planning, i.e.,           Evaluation of DA-BSP is linked to the notion of data asso-
+the planning horizon is one step. As we shall see, this allows      ciation, which is typically assumed to be solved in belief
+us to understand conceptual differences that arise when data        space planning. As mentioned before, accounting for data
+association is considered, even in this fairly simple exam-         association within belief space planning does not come
+ple. Fourth, the case for explicit scenes is considered using       free. Conversely, assuming such an association randomly is
+AprilTags (Olson, 2011), in a perceptually aliased corri-           bound to fail. For a very simple case of myopic planning, we
+dor environment with a Pioneer platform fitted with an              compute the error in the posterior distribution as the metric
+18                                                                      The International Journal of Robotics Research 00(0)
+
+
+distance between the ground truth and the mean of the clos-        data associations being made out of many trials. This is
+est component. Suppose that the Gaussian mixture model             measured by the metric ξca , where the value 1 would indi-
+belief has N components with weights wi , means µi and             cate that, in all random trials, the component corresponding
+covariances 6i for i = [1, N]. Now, if x is the ground truth       to the correct data association had weight 1 in the belief,
+position, then error δ is defined as                               i.e. the belief had a single component, corresponding to the
+                                                                   correct association. This could happen, for example, when
+                     δ = min k x − µi k                    (50)    the belief is unimodal, owing to lack of ambiguity in the
+                           i
+                                                                   vicinity.
+Such an error for a usual belief space planning approach              These metrics are summarized in Table 1.
+shall be denoted δBSP . Note that since usual belief space
+planning has a single component, δBSP is the distance
+between the mean of this component and the ground truth.           6.3. An abstract example for DA-BSP
+Similarly, δDA stands for the error in DA-BSP. To capture
+                                                                   Referring to the abstract example mentioned in Section 4.9,
+the probabilistic aspect of the problem, these metrics are
+                                                                   we present in Table 2 a numerical analysis of the cost com-
+averaged over several random trials.
+                                                                   putation (see equation (30)) of these configurations, as well
+   Later, to evaluate the data association aware approach, we
+                                                                   as a metric {δBSP , δDA } quantifying the estimation error,
+keep track of how many components the belief has and how
+                                                                   defined over incorrect (with respect to ground truth) associ-
+many times it can make a correct association. We define
+                                                                   ations through N = 100 random samples of various modes.
+m̃ as an average number of components over all random
+                                                                   Note that DA-BSP is independent of the cost function con-
+runs, i.e. for R random runs where Nr is the number of
+                                                                   sidered while planning. Here, we consider three different
+components for run r
+                                                                   costs. We refer the reader to Section 4.7 for details. The
+                              PR
+                                     Nr                            worst cost is the trace of the maximal covariance among
+                        m̃ = r=1                         (51)      all components while maximum weight considers the com-
+                                  R
+                                                                   ponent with the greatest weight while computing the trace.
+ Recall from Section 5.7 that, as long as the component            In this case, both these result in the identical values of the
+corresponding to the ground truth is present in the belief,        cost. As mentioned before, KLu is the Kullback–Leibler
+we define the belief to be correct (from the data associa-         divergence of the weights of the components of the belief
+tion point of view). We denote this by Boolean symbol data         compared with the uniform distribution. Under no aliasing,
+association. Note that, in the case of no pruning, DA-BSP          i.e. {8}alias , the number of components denoted by modes
+is guaranteed to be correct; hence, the data association is        does not increase.
+set as true. This is also true if the pruning is not detrimental      Now, consider the action u1 . Since it may lead to three
+to the correct component and association. ξca measures the         scenes that are perceptually aliased, DA-BSP may have
+weight of the correct component in the belief, i.e. if, out of     three components, whereas the usual belief space planning
+N components, the component c corresponds to the correct           approaches are bound to commit to a single data associ-
+data association, then                                             ation. Thus, as would be expected, this leads to a smaller
+                                                                   error in the case of DA-BSP; e.g. when A1 and A2 alias
+                           ξca = ωc                        (52)    ({A1 , A2 }alias ), δBSP is almost 6 × δDA . Recall from equation
+If the correct component is lost, the corresponding value          (31) that, unlike action u1 , action u2 leads to fully unam-
+of ξca will be 0. Time taken by DA-BSP in any epoch is             biguous observations around the most likely values (see
+directly related to the number of the components in the            Figure 4) and, consequently, δBSP ' δDA . Thus, we can
+belief. We keep track of this through the metric m̃.               conclude that not only would DA-BSP lead to smaller esti-
+   Since usual belief space planning considers data associa-       mation error when there is a perceptual aliasing but also
+tion to be given and perfect, DA-BSP cannot be compared            that DA-BSP degenerates to usual belief space planning
+directly against the state-of-the-art approaches. To evaluate      approaches when helpful assumptions could be made (such
+DA-BSP, we compare it against the approach where, with             as in the case of no perceptual aliasing).
+some probability 1 − , the true association is known and
+made by the planning while, in all other cases, a random           6.4. Real-world application with explicit
+choice from incorrect associations is made. This approach
+implies that the belief is always unimodal and is there-
+                                                                        scenes—octagonal corridor
+fore named BSP-uni. Similarly, in another approach, we             To elucidate the crucial properties of non-myopic DA-BSP,
+assume that the correct association with the scene is made         we consider a real-world experiment, as shown in Figure 9
+with probability 1−. However, all components of the prop-         with a single Pioneer robot. The robot resides in an octag-
+agated belief are considered for such an association. This         onal corridor with ample instances of ambiguous scenes.
+approach implies that a multimodal prior distribution also         The abstracted schema of the world is shown in the cen-
+remains multimodal after inference. It is named BSP-mul            ter, while the surrounding figures are the third-person view
+here. In both of these variants, we are interested in correct      of the environment. The state space X ∈ R3 consists of
+Pathak et al.                                                                                                                    19
+
+
+Table 1. Metrics used in the experiments.
+
+Metric                      Description
+
+δBSP                        Distance between ground truth and closest component under usual belief space planning
+δDA                         Distance between ground truth and closest component under data association aware belief space planning
+Data association            Boolean flag, which is set true if the ground truth component is within the belief
+                           Probability of incorrect data association
+ξca                         Weighted probability of correct data association
+m̃                          Number of components in the belief
+
+Table 2. Evaluating different cost functions for various configurations (see Figure 4).
+
+Configuration                  Cost          Maximum weight            KLu           Mode        Estimation error           U
+                               Worst                                                             δBSP          δDA          u1 /u2
+
+{8}alias                       0.0977        0.0977                    0.3496        1.1000      0.1851        0.1717       u1
+                               0.1009        0.1009                    na            1.0000      0.3461        0.3999       u2
+{A1 , A2 , A3 }alias           0.0508        0.0508                    0.5072        3.0000      1.1654        0.4772       u1
+                               0.1009        0.1009                    na            1.0000      0.3832        0.3990       u2
+{A1 , A2 }alias                0.0833        0.0833                    0.3757        1.5500      1.2197        0.2114       u1
+                               0.1009        0.1009                    na            1.0000      0.3912        0.3992       u2
+{A1 , A3 }alias                0.0849        0.0849                    0.3649        1.4000      1.0552        0.4197       u1
+                               0.1009        0.1009                    na            1.0000      0.4101        0.3940       u2
+na: not applicable.
+
+
+2D coordinates, as shown, as well as the orientation of the           by enacting one optimal control action and the consequent
+robot. Here, the actual floor is shown via a laser scan. The          inference, shall together be called an epoch. Note that
+map of the environment is given in terms of AprilTags and             this simple representation of the world is very general.
+their corresponding ids. This enables us to simulate arbi-            Indeed, real-world complications—such as the state space
+trary levels of perceptual aliasing by AprilTags with iden-           being of higher dimension, different levels of ambiguities
+tical tag ids. In particular, we have tags with ids 1 and 2           between the scenes, and planning problems of longer time
+depicted in blue ‘+’ and red ‘*’ markers, respectively. Note          scales—can all be easily incorporated into it.
+that the laser scanned map is depicted here for representa-              Since we model the visual observation via AprilTags,
+tion purposes only. It is neither exact nor is it provided to         owing to sensory limitations (such as out-of-view or far-
+the robot while planning. Because of this, some tag posi-             from-center tags), a reliable observation might not be avail-
+tions might appear non-aligned to the laser map. Initially,           able at each motion step. One such instance is depicted
+the belief of the robot is a multimodal distribution, repre-          in Figure 10. In such conditions, no data association can
+sented by a Gaussian mixture model with four components               be made (as there is no measurement) and consequently,
+having equal weights and shown by the ellipses in Fig-                DA-BSP behaves exactly like the usual belief space plan-
+ure 9. Typically, the tag detection is decided through the            ning, albeit with a prior distribution that could have many
+centrality of the tag in the image observed by the camera.            components.
+Figure 10 shows the case where the off–center tag is not                 The purpose of Figure 12 is to illustrate the evolution
+detected.                                                             of belief in the DA-BSP framework. The prior distribution
+   The objective of the robot is to both localize itself and          is a multimodal belief with four components. When only
+to reach a specific elevator; all elevators are denoted O.            the motion model is incorporated, the propagated belief
+Initially, the planner is provided with a set T of control tra-       still has four components but each has higher uncertainty.
+jectories; see Figure 11 for some of the trajectories consid-         Finally, when a perceptually aliased observation is made,
+ered. Consequently, depending on the planning algorithm               DA-BSP adjusts the weights of the components of the
+used (DA-BSP, BSP-uni, or BSP-mul), as well as the                    posterior distribution where, after a simple pruning, only
+planning horizon L, the cost of each trajectory τ ∈ T is              three components remain. This reduction is because there
+evaluated and the optimal (with respect to this cost) tra-            is slight asymmetry at the ends of the corridors. However,
+jectory is chosen. Note that these trajectories are different         when ambiguous data association occurs, DA-BSP consid-
+in length and, owing to the specific nature of the problem,           ers all possible associations and weighs each new compo-
+the robot will also witness different levels of perceptual            nent of the posterior distribution according to equation (44).
+aliasing while following them. Later on, in further exper-            Figure 12 shows one such instance.
+iments, the results would be shown for an arbitrarily chosen             The result of running DA-BSP on this setup is shown
+trajectory, viz. trajectory 1. The L-step planning, followed          in Table 3. As can been seen, the computational cost of
+20                                                                         The International Journal of Robotics Research 00(0)
+
+
+
+
+Fig. 9. Real-world experimental setup (best viewed in color). The images show the actual third-person view at different locations of the
+robot, while the two-dimensional figure shows the semantic knowledge of the environment that the robot possesses. Its current belief is
+a four-modal Gaussian mixture model with mean position depicted by xinit . The ground truth robot position is indicated by C, while
+two sets of aliasing scenes with tag ids 1 and 2 are shown with blue + and red * respectively; arrows indicate orientation (not motion).
+The actual scenario is depicted through the laser scan of the environment shown in green. This map is for representative purposes only
+and is not available to the robot. The zoomed-in picture of an AprilTag is also shown.
+
+
+
+
+Fig. 10. (a) AprilTag is detected, indicated by green patch at center. This provides the transformation matrix between the pose of
+the robot and the landmark pose. Note that a far-away AprilTag, though visible in this frame, is considered undetected, since the
+non-centrality of the tag makes the observation highly untrustworthy. (b) No AprilTag lies within the field of view of the camera.
+
+
+DA-BSP planning depends on the number of components                  disambiguation occurs for inference only (m̃ = 1). Note
+maintained in the posterior distribution, i.e. by m̃. m̃ indi-       that DA-BSP considers robust active and passive inference
+cates the level of disambiguation with the belief while ξca          in a single framework. Hence, whether it is reasoning about
+shows how well the correct data association is accounted             future observations while planning (the left part of the table)
+for. For example, at epoch 20, both planning and inference           or inferring based on a given observation (the right part of
+have high values of ξca (0.73 and 1.00, respectively) but full       the table), the DA-BSP algorithm remains the same.
+Pathak et al.                                                                                                                          21
+
+
+
+
+Fig. 11. Some of the trajectories considered by the robot (best viewed in color). The starting position is marked with a filled ellipse.
+The door on the right, the stairs, and the elevators, are shown by , 4, and A, respectively, and also marked by the text, where relevant.
+
+
+
+
+Fig. 12. Evolution of belief at epoch E = 3 under DA-BSP. Here, tags are represented by shapes {∗, +, , 4, O}, while the ground
+truth robot position is indicated by C. (a) The prior belief is multimodal with four distinct modes, as shown by the colored ellipses. (b)
+After incorporating the motion model, the propagated belief is similarly a multimodal distribution. (c) When observation is accounted
+for and inference is performed, the posterior belief is as shown. Note that some of the earlier components of the prior might vanish (e.g.
+here, the slight asymmetry around the corner causes one component to vanish). Also new components in the posterior may emerge (not
+the case here). Here, L = 3.
+
+
+   DA-BSP incorporates planning and inference seamlessly              4 only two components remain. Later on (such as epoch 18),
+under one framework, called an epoch earlier. The overall             many more components arise, as the AprilTags are more
+planning is performed as a model predictive control com-              densely distributed on the inner walls of the initial corri-
+posed of several such steps. Figure 13 shows some of the              dors. In contrast with this, BSP-uni and BSP-mul may
+epochs in DA-BSP, along with other approaches such as                 result in catastrophically bad inference; one such instance
+BSP-uni and BSP-mul. Here, the trajectory under evalu-                of each is depicted in Figure 13.
+ation has 24 actions. At the start, the belief has four modes            Once the planning is performed under DA-BSP, the sub-
+with equal weights. DA-BSP results in these components                sequent posterior distribution at the end of each epoch
+being differently weighted in the next epoch, while at epoch          might have more or even fewer components than before.
+22                                                                         The International Journal of Robotics Research 00(0)
+
+
+Table 3. Performing DA-BSP on a real corridor environment
+shown in Figure 9, with planning horizon L = 4. The times in
+seconds spent in planning and in inference are denoted t, while m̃
+stands for average modes; refer to Section 6.4.
+
+Algorithm    Epoch    Planning               Inference
+                      t (s)    ξca    m̃     t (s) ξca     m̃
+
+DA-BSP        1       21.81    0.09   6.00   0.84   0.22    4.00
+              4        5.19    0.28   2.50   0.84   0.31    3.00
+              8        8.66    –      1.00   0.80   1.00    1.00
+             12       19.90    –      6.67   2.48   0.35    5.00
+             16        3.50    0.16   2.00   0.14   –      10.00
+             20         4.51   0.73   3.80   0.31   1.00    1.00
+
+The former occurs when the presence of identical close tags
+causes perceptual aliasing, while the latter is the result of
+unlikely components being pruned away naturally, in the
+light of new observations. This is evident in Figure 13(d),
+where at epoch 8, the belief distribution is reduced to a sin-
+gle component and hence the correct corridor is determined
+but later on, by epoch 18, the belief distribution again has
+as many as eight components, arising from close identical
+AprilTags.
+   Consider Table 4, where we evaluate DA-BSP as well
+as other comparable alternatives, such as BSP-uni and
+BSP-mul, described previously. The metrics used here
+(such as ξca and data association) were already described
+in detail in Section 6.2. The values are averaged over five
+random runs, where data association is set true only when
+the correct data association is accounted for in all of the ran-
+dom runs. When no plausible data association can be made,
+we represent these metrics as ‘–’. This can happen either
+because there is no AprilTag in the vicinity of the robot
+and hence no observation could be made (such as in epoch
+E = 8) or when the inference in the previous planning is
+too far way from the ground truth to make any plausible
+data association (such as several epochs in BSP-uni with             Fig. 13. (a–c) Evolution of inferred belief as decision epoch pro-
+L = 3). It could be argued that, in the presence of severe           gresses with L = 3; epochs depicted are {4, 18, 24}. The trajectory
+perceptual aliasing, both BSP-uni and BSP-mul are ill-               of actions is Trajectory 1 from Figure 11. These depict evolu-
+equipped approaches for planning, as incorrect data associ-          tion of inferred belief, for different planning algorithms, DA-BSP,
+ation would imply almost certain catastrophic inference. To          BSP-uni, and BSP-mul, respectively. Gaussian mixture model
+remedy this, we consider first the case where correct data           components and associated weights are shown in different col-
+association is provided to BSP-uni and BSP-mul with                  ors. Ground truth robot position is indicated by C. For clarity, the
+a high probability of 90% i.e., randomization is  = 0.1.            detected scenes are shown in different colors. For BSP-mul and
+Later on, in Table 5, we see how BSP-uni deteriorates (ξca           BSP-uni, this particular instance of planning leads to catastroph-
+decreases) with increasing randomization, .                         ically bad data association. (d) Evolution of Gaussian mixture
+   Naturally, DA-BSP, when compared with BSP-uni and                 model component weights during these epochs. Note that the num-
+BSP-mul, trades computation efficiency with such correct-            ber of components increases and decreases and eventually goes to
+ness of data association. On the one hand, DA-BSP always             1. Here, the planning horizon is L = 3.
+has a component corresponding to correct data associa-
+tion (seen from the Boolean flag data association), while
+on the other hand, it is significantly slower than BSP-uni           even reduce this burden. On the contrary, if the world
+and BSP-mul, especially for non-myopic planning with                 is replete with perceptually aliased scenes, computational
+larger horizons (seen from the time taken, denoted t).               effort would increase significantly. Fortunately, owing to
+However, exponential blow up of computational complex-               parsimonious data association (grounded in the fact that
+ity as the planning horizon increases is an issue not spe-           the actual world is not replete with exact similarities) the
+cific to DA-BSP. Unfortunately, DA-BSP cannot solve or               additional cost of DA-BSP may not be significantly greater;
+Pathak et al.                                                                                                                               23
+
+
+Table 4. Comparing DA-BSP against BSP-uni and BSP-mul in several steps of planning and inference, with L = 1 and L = 3. The
+times in seconds spent in planning and in inference is denoted by t, while average modes are shown by m̃. Values shown here are for an
+average of five random runs. Here, data association signifies correct data association in all of the random runs, as defined in Section 6.2.
+Results for BSP-uni and BSP-mul were obtained for  = 0.1, i.e. correct data association was provided to BSP-uni and BSP-mul
+with a high probability of 90%. Performance of these approaches deteriorates for increasing randomization, ; see Table 5.
+
+Algorithm    Epoch L = 1                                    L=3                                         Inference
+                   t (s) ξca        m̃     Data association t(s)        ξca     m̃     Data association t (s) ξca        m̃     Data association
+
+DA-BSP        1       2.60   0.11   4.00   X                   95.57    0.08    5.95   X                   0.80   0.22   4.00   X
+              2       1.21   0.29   2.00   X                    5.75    0.13    1.37   X                   0.05   –      4.00   –
+              4       1.00   0.35   2.00   X                    4.29    –       1.00   –                   0.61   0.50   2.00   X
+              8       0.11   –      1.00   –                    0.35    –       1.00   –                   0.02   –      1.00   –
+             12       3.90   0.11   4.80   X                  191.48    0.08    6.79   X                   1.16   0.28   4.20   X
+             16       2.62   0.12   3.03   X                    3.58    –       3.02   –                   0.60   0.11   4.60   X
+             19       3.14   0.09   2.60   X                   82.16    0.04    6.10   X                   0.94   0.14   6.60   X
+
+                      t (s) ξca            Data association t (s)       ξca            Data association t (s) ξca               Data association
+
+BSP-uni       1       0.43   0.90          ×                  2.19      –              –                   0.20   1.00          X
+              2       0.15   –             –                  1.43      0.86           ×                   0.03   –             –
+              4       0.25   1.00          X                  4.51      0.98           ×                   0.17   1.00          X
+              8       0.15   –             –                  1.10      –              –                   0.05   –             –
+             12       0.26   1.00          X                  3.90      –              –                   0.17   1.00          X
+             16       0.16   –             –                  1.11      –              –                   0.08   –             –
+             19       0.30   1.00          X                  1.24      –              –                   0.17   –             –
+
+                      t (s) ξca            Data association    t (s)          ξca      Data association t (s) ξca               Data association
+
+BSP-mul       1       2.74   0.15          ×                  34.33     0.18           ×                   0.86   0.80          ×
+              2       2.01   0.27          ×                  20.84     0.40           ×                   0.03   –             –
+              4       1.66   0.23          ×                   4.14     –              –                   0.77   0.20          ×
+              8       0.77   –             –                   1.54     –              –                   0.18   –             –
+             12       0.80   0.80          ×                   1.52     –              –                   0.81   0.20          ×
+             16       2.33   0.27          ×                  14.39     –              –                   0.33   –             –
+             19       1.70   0.63          ×                  38.33     0.82           ×                   0.48   –             –
+
+Table 5. Evaluating non-myopic BSP-uni in several steps of planning and inference, under different randomizations of  =
+{0.25, 0.5, 0.75, 1.0}. Recall that  is the probability with which BSP-uni chooses a random association out of all plausible asso-
+ciations. The times in seconds spent in planning is denoted t, while the average correct association is denoted ξca . Values shown here
+are for an average of five random runs while standard deviation is depicted within parentheses.
+
+Algorithm     Epoch      = 0.25                        = 0.50                         = 0.75                       = 1.00
+                        t (s)            ξca           t (s)           ξca             t (s)         ξca             t (s)           ξca
+
+BSP-uni        1        1.14 (0.23)      0.78 (0.43)   1.08 (0.33)     0.90 (0.14)     1.14 (0.30)   0.96 (0.06)     1.17 (0.34)     0.92 (0.08)
+               6        0.13 (0.08)      – (–)         0.38 (0.33)     – (–)           0.20 (0.10)   – (–)           0.23 (0.25)     – (–)
+              12        1.17 (0.61)      0.76 (0.43)   1.30 (0.47)     0.59 (0.54)     0.97 (0.60)   0.54 (0.50)     1.02 (0.63)     0.36 (0.50)
+              18        1.23 (0.60)      1.00 (0.00)   1.04 (0.74)     0.52 (0.49)     0.60 (0.58)   0.37 (0.51)     0.46 (0.23)     0.20 (0.45)
+
+
+
+e.g. BSP-mul has similar magnitude of time taken to                      which may be better explained by an aliasing scene than by
+DA-BSP.                                                                  the ground truth, in at least some of the random runs.
+   DA-BSP accounts for all plausible data association and                   Another notable aspect is how often the belief incor-
+hence might have many components in the belief (recall                   porates the component corresponding to the correct data
+that the number of components is denoted m̃). We depict in               association. In the case of all of these algorithms, data asso-
+Table 4 epochs where ξca might be low for DA-BSP, such                   ciation and ξca quantify this aspect. Under highly uncertain
+as in epoch E = 19. Note that, even here, the correct asso-              data association, BSP-uni and BSP-mul would always
+ciation is being accounted for by DA-BSP. The low value                  come up with catastrophically bad inference. Recall that the
+of ξca might arise from the exact nature of the observation,             results for BSP-uni and BSP-mul are shown in Table 4
+24                                                                   The International Journal of Robotics Research 00(0)
+
+
+for  = 0.1. Note that for BSP-uni under myopic plan-
+ning (L = 1) correct association is often found and, corre-
+spondingly, ξca = 1. However, with a non-myopic planning
+horizon (L = 3), this decreases and data association is
+never set as true. This also means that ξca for BSP-uni
+is higher in inference than in the planning in general. On
+the contrary, BSP-mul never has data association set to
+true because in at least one of the random runs, it asso-
+ciates to the wrong scene. Consequently ξca is always less
+than 1. These are highly suitable settings for BSP-uni and
+BSP-mul, since the randomization is low ( = 0.1). Table
+5 shows an analysis for BSP-uni when the randomization
+                                                                Fig. 14. Evolution of belief as decision epoch progresses dur-
+is higher.
+                                                                ing DA-BSP planning. The average number of components in the
+   Table 5 depicts the performance of BSP-uni under dif-
+                                                                belief mixtures is depicted in the plot.
+ferent randomizations of  with planning horizon L = 2.
+As can be expected, the data association performance of
+BSP-uni deteriorates gradually with increasing , while
+                                                                two-floor office room environment. This domain also illus-
+the computational effort remains the same. For example, for
+                                                                trates the generality of DA-BSP, since it allows for a differ-
+epoch 12, the metric ξca decreases from 0.76 for  = 0.25
+                                                                ent representation for the scenes, as against the AprilTags
+to 0.36 for  = 1. Note that, under mild randomization
+                                                                considered before. The robot is fitted with realistic sensors
+with  = 0.25, BSP-uni was successful in obtaining cor-
+                                                                enabling laser scans and odometry estimation. Apart from
+rect association in all five random runs, hence ξca = 1.
+                                                                the implementation mentioned in Section 6.1, we use the
+Also, to have sufficiently high ξca at all epochs, the under-
+                                                                iterative closest point algorithm for laser scan matching.
+lying algorithm should always guess the data association
+                                                                This implies that the scenes against which DA-BSP con-
+correctly. This illustrates the importance of DA-BSP in
+                                                                siders the data association are reasoned implicitly through
+realistic scenarios, where this cannot be assumed.
+                                                                laser scans. In other words, a laser scan of an office cubi-
+   Table 6 shows the effect of the pruning parameter on
+                                                                cle with chair and desk is considered as a single scene.
+DA-BSP. As can be seen, DA-BSP is insensitive to such a
+                                                                Based on sufficiently high iterative closest point match-
+pruning parameter σ . Even at a very high pruning thresh-
+                                                                ing, this scene aliases with the laser scan from another
+old, DA-BSP may result in sufficiently decent planning,
+                                                                similar-looking cubicle.
+whereas a threshold of σprune = 5% was sufficient to obtain
+                                                                   The scenario is as shown in Figure 15(a). Unless stated
+planning similar to the case of unpruned DA-BSP, which
+                                                                otherwise, we will use natural numbers to denote specific
+was simulated by using σprune = 10−10 . This is because
+                                                                places in this scenario as it is depicted and notation x → y
+realistic scenarios typically do not have persistent ambigu-
+                                                                to show a path from x toward y. The two floors are identi-
+ity at each step of navigation; hence, the weights of many
+                                                                cal except that floor 2 has an additional printer p1 (Figure
+components decrease naturally to afford an easy approach
+                                                                15(a)). Additionally, each floor has significant perceptual
+of pruning. Thus, at first, it might appear that DA-BSP is
+                                                                aliasing within itself, owing to identical cubicles and self-
+hopelessly expensive in terms of computational efforts and
+                                                                similar corridors. However, at the ends of the corridors,
+non-trivial pruning techniques might be required to make
+                                                                there could be a disambiguating feature present, such as a
+it applicable in any realistic scenario. However, quite the
+                                                                vending machine and sofa at one end and a printer at the
+contrary is true.
+                                                                other. The goal for the robot is to reach cabin c1 (Figure
+   Another unique aspect of DA-BSP is that the weights of
+                                                                15(a)) and to disambiguate between the floors. Initially, the
+the components are adjusted as is suitable after consider-
+                                                                robot wakes up to find itself in either of the places 1 or 6
+ing all future observations in both myopic and non-myopic
+                                                                (facing places 2 or 7, respectively). Hence, its initial belief
+settings. Based on the configuration of the environment, a
+                                                                is modeled as a four-component Gaussian mixture model
+longer planning horizon may enable quicker disambigua-
+                                                                (two for each floor), whereas the ground truth is at position
+tion and consequently reduced Kullback–Leibler cost. In
+                                                                1, i.e., the robot actually is at 1. Throughout this section,
+Figure 14, we see how the number of components, as well
+                                                                we use green and yellow to denote the ground truth and the
+as this cost, varies across different epochs of DA-BSP and
+                                                                aliasing, respectively.
+also under various planning horizons.
+                                                                   Consider that the robot starts at 1 (Figure 15(a)); thus
+                                                                the initial belief has a mean at this position. A forward
+                                                                action to 2 can be used to propagate the initial belief.
+6.5. Highly-aliased simulated office scenario                   The subsequent prior and the propagated (means at 1 and
+To demonstrate our concept in a more challenging scenario       2, respectively) covariances are shown in Figure 16(a).
+under a high level of perceptual aliasing, we considered a      The area of the ellipses equals the actual 2σ covariance.
+Gazebo-based simulation of a Pioneer robot in an aliased        The laser scan obtained for the belief update is shown in
+Pathak et al.                                                                                                                                     25
+
+
+Table 6. Evaluating DA-BSP in several steps of planning with horizon L = 2, under different pruning thresholds of σ =
+{0.2, 0.05, 10−10 }. The time in seconds spent in planning is denoted t, while ξca and m̃ show weight of correct association and averaged
+number of modes, respectively. Values shown here are for an average of five random runs, while standard deviation is depicted within
+parentheses. Note that a5% threshold is sufficient in this case to perform equivalently with almost unpruned DA-BSP with σ = 10−10 .
+Algorithm   Epoch   σ = 0.20                                   σ = 0.05                                    σ = 10−10
+                    t (s)          ξca           m̃            t (s)           ξca           m̃            t (s)            ξca           m̃
+
+DA-BSP       1      14.88 (6.80)   0.11 (0.10)   2.60 (0.89)   16.02 (7.74)    0.12 (0.08)   4.70 (2.22)    14.27 (8.79)    0.15 (0.09)    4.40 (2.19)
+             2       5.21 (4.78)   0.50 (0.34)   1.75 (0.75)    5.26 (4.87)    0.50 (0.34)   1.85 (0.93)     7.60 (5.74)    0.21 (0.10)    2.50 (0.68)
+             6       0.37 (0.20)   0.20 (0.45)   1.00 (0.00)    0.38 (0.19)    0.20 (0.45)   1.00 (0.00)     0.50 (0.17)    0.60 (0.55)    1.00 (0.00)
+            13      13.39 (4.02)   0.29 (0.23)   2.13 (0.51)   52.49 (41.63)   0.17 (0.13)   6.86 (1.58)   114.35 (71.18)   0.10 (0.09)   13.91 (6.80)
+            16       2.43 (4.49)   0.18 (0.26)   1.70 (0.45)    8.58 (9.72)    0.34 (0.20)   3.18 (2.03)     9.49 (8.34)    0.12 (0.06)    3.37 (1.87)
+
+
+
+
+                                                                           Fig. 16. Prior belief is propagated according to the motion model.
+                                                                           Within the subsequent propagated belief, perceptually aliased
+                                                                           laser scans are observed. Here, 2σ covariance is depicted with
+                                                                           each ellipse.
+
+
+
+
+                                                                           Fig. 17. (a) Evolution of weights of the components of the
+                                                                           belief when following the shortest path versus that following the
+                                                                           DA-BSP path. (b) Laser scans at ground truth and aliased position
+                                                                           (green and yellow respectively).
+
+
+
+                                                                           within our planning-inference framework (DA-BSP) gives
+                                                                           rise to two components in the posterior belief, each of which
+                                                                           are weighted according to the corresponding likelihood for
+Fig. 15. (a) Two-floor aliased office environment in a Gazebo sim-
+                                                                           the respective scans to be obtained. See Figure 16(b).
+ulator: p1 and p2 denote printers, while 1 and 6 are the mean
+                                                                              Starting from positions 1 or 6, there are many possi-
+positions in each floor for the initial four-component Gaussian
+                                                                           ble paths to reach the goal (cabin c1 (Figure 15(a)). We
+mixture model belief. (b–h) Mean positions (modes) of robot for
+                                                                           would like to show two such paths. The shortest path is
+each step of the DA-BSP path. Green denotes ground truth; yellow
+                                                                           6 → 14 → 16 → 12 (Figure 15(a)). However, it leads to
+indicates the aliasing position.
+                                                                           an increase in the number of modes; on reaching the goal,
+                                                                           the robot is uncertain of the floor it is in. As seen previ-
+                                                                           ously (e.g., Figure 16), the modes increase, owing to the
+Figure 17(b), where the green scan denotes the actual scan                 highly aliasing environment. Now consider a longer path,
+obtained. Note that from a different view point a similar                  1 → 2 → 3 → 4 → 5 → 13 → 12 → 15 (Figure 15(a)).
+scan is obtained (shown in yellow). This is due to the alias-              Let us call this the DA-BSP path. While following 1 → 2
+ing nature of the environment; considering this aliasing scan              and 2 → 3, owing to the aliased cubicles, the number of
+26                                                                    The International Journal of Robotics Research 00(0)
+
+
+components increases from four to eight. See Figure 15(a)
+to (c) for the corresponding mean positions of the robot.
+Intrafloor disambiguation occurs along the paths 3 → 4 and
+8 → 9. This is because of unique features present, viz. the
+sofa and the printer, for these respective paths. Similarly,
+along 4 → 5, the components are reduced to two (in Fig-
+ure 15(e)) and then increase again to four along the paths
+5 → 13 and 13 → 12 (in Figures Figure 15(f) and (g),
+respectively). Full disambiguation ,resulting in a unimodal
+belief, occurs at 15, owing to the presence of the unique
+printer, p1 (Figure 15(a)). Figure 17 depicts the evolution of
+weights along both paths.
+   In Figure 18, we see how the different components of
+the belief and the respective weights evolve when following
+the DA-BSP path. When planning with horizon L = 2, the
+components increase in number and retain similar weights
+(E = 2), while subsequent discrimination (E = 3) and
+reduction within the components (e.g. E = 5) leads eventu-
+ally to full disambiguation (E = 8). Figure 18(b) shows the
+cardinality of components in the Gaussian mixture model
+during planning with different horizons viz., L = {1, 3, 5}.
+It can be seen that the graph gets steeper with increasing L.
+For a specific path and depending on the configuration of
+the environment, a longer planning horizon might help us
+disambiguate faster, as can be seen from Figure 18(b). Note
+that full disambiguation occurs at E = 8 for myopic plan-
+ning (L = 1). Thus, for L = 5, which can project five steps
+in the future, such as disambiguation occurs from E = 4
+onwards. L = 3 lies somewhere in between where the full
+disambiguation occurs, from E = 6 onwards.
+   Table 7 compares DA-BSP with BSP-uni at different
+epochs of planning and inferences for planning horizons of
+                                                                 Fig. 18. (a) Evolution of weights of the components in the Gaus-
+L = {2, 4}. Here, the DA-BSP path is considered. Recall
+                                                                 sian mixture model after inference for L = 2. (b) Average number
+that ξca stands for the weight of the component correspond-
+                                                                 of components in belief mixtures for different planning horizons.
+ing to the ground truth. For example, for E = 2, DA-BSP
+inference results in eight modes arising from seven other
+observations that alias the ground truth. Subsequently, ξca =
+                                                                 be given and perfect. However, such an assumption is less
+0.12. In the case of BSP-uni, the metric ξca measures
+                                                                 appropriate in the presence of localization uncertainty while
+how many times the correct association was made. Thus,
+                                                                 operating in ambiguous environments, where two scenes
+the table shows that for all random runs there are instances
+                                                                 could be similar in appearance when observed from appro-
+where BSP-uni fails, owing to catastrophically bad data
+                                                                 priate viewpoints. In contrast with such state of the art,
+association. For example, at E = 7, where ξca = 0, the
+                                                                 here we developed a DA-BSP approach that relaxes the data
+robot always infers itself to be at a wrong place.
+                                                                 association assumption. In the context of a passive approach
+   Table 8 shows how BSP-uni copes with uncertain data
+                                                                 with the observations provided, the DA-BSP results in more
+association. As expected, for a randomization value of  =
+                                                                 robust inference. Conversely, in the context of an active
+0.3, the overall correctness of the association is very low;
+                                                                 approach, where planning needs to consider all possible
+e.g., at the epoch E = 7, ξca = 0.2, meaning that wrong
+                                                                 future observations, this provides better action selection,
+and possibly catastrophic inference will be made with 80%
+                                                                 such that catastrophically bad inferences and (if possible)
+probability.
+                                                                 actions leading to ambiguities are avoided. DA-BSP con-
+                                                                 siders data association in a principled rigorous way with
+7. Conclusions and future work                                   belief space planning. It is a more faithful representation
+                                                                 of an aliased environment, since the number of components
+7.1. Conclusions                                                 can increase as well as decrease. Although this increases
+We presented a unified framework for robust perception in        the computational burden of planning, it is both necessary
+planning as well as inference. State-of-the-art belief space     for ambiguous environments and still practically applicable,
+planning approaches typically consider data association to       as shown through numerous experiments in both a realistic
+Pathak et al.                                                                                                                                 27
+
+
+Table 7. Evaluating DA-BSP in several steps of planning and inference, for L = 2 and L = 4. The times in seconds spent in planning
+and in inference are denoted t, while m̃ denotes average modes. ξca measures the level of aliasing, whereas data association is a binary
+variable denoting correct or wrong association.
+
+Algorithm             Epoch             L=2                                   L=4                                      Inference
+                                        t (s)              (ξca ,m̃)          t (s)              (ξca ,m̃)             t (s)             (ξca ,m̃)
+
+DA-BSP                2                 293.45             (0.13,8)           733.67             (0.49,2)              29.40             (0.12,8)
+                      3                 262.37             (0.25,4)           557.57             (0.25,4)              26.80             (0.12,8)
+                      5                  10.05             (0.25,4)           115.95             (1,1)                  2.40             (0.26,4)
+                      7                   2.47             (1,1)                2.57             (1,1)                  1.46             (1,1)
+
+                                        t(s)               η                  t (s)              η                     t (s)             η
+BSP-uni               2                 7.04               1                  18.96              1                     4.17              1
+                      3                 1.23               1                    2.20             0                     0.77              0
+                      5                 1.04               0                    1.90             0                     0.56              1
+                      7                 0.47               0                    0.50             0                     0.46              0
+
+
+
+Gazebo simulation and real experiments with the Pioneer                  Table 8. BSP-uni in five different runs. BSP-uni can be seen
+robot platform. Moreover, DA-BSP degenerates to usual                    as a very drastic pruning, where data association may or may not
+approaches in the presence of helpful assumptions, such as               be correct. Randomization is  = 0.3. This is seen from the ξca
+under very small localization uncertainty and under lack of              values (for five random runs). Standard deviations are given within
+perceptual ambiguities in the environment. In other words,               the parentheses.
+DA-BSP is a rigorous holistic approach to consider data                  Algorithm         Epoch             Inference t (s)       ξca
+association in the context of belief space planning.
+                                                                         BSP-uni           2                 4.10 (0.42)           0.60 (0.54)
+                                                                                           3                 0.80 (0.12)           0.60 (0.54)
+7.2. Future work                                                                           5                 0.53 (0.14)           0.80 (0.44)
+                                                                                           7                 0.42 (0.09)           0.20 (0.44)
+When DA-BSP is applied in the context of non-myopic
+planning, parametric solutions, such as incorporating all
+the associations explicitly, suffer from a scalability prob-             ORCID iD
+lem, owing to exponential blow up of the components of
+                                                                         Shashank Patha        http://orcid.org/0000-0002-2888-6750
+the beliefs. It was argued in Section 5.4 that components
+in DA-BSP arise out of data association ambiguities, where
+the observations that are not aliased drastically get increas-           Notes
+ingly smaller weights. As shown in the experiments, a short              1. The opensource code will be provided.
+planning horizon is therefore often sufficient to collapse a
+highly multimodal belief into one with a very small num-
+                                                                         References
+ber of components. It is interesting to note that this very
+same reasoning could also be harnessed to represent the                  Agarwal S, Tamjidi A, and Chakravorty S (2015) Motion plan-
+resulting multimodal belief in a non-parametric fashion,                   ning in non-Gaussian belief spaces for mobile robots. arXiv
+such as through a Gibbs sampling approach, or a more effi-                 arXiv:1511.04634.
+                                                                         Agha-Mohammadi AA, Chakravorty S, and Amato NM (2014)
+cient approximate method, harnessing Dirichlet processes.
+                                                                           FIRM: Sampling-based feedback motion planning under
+It was shown recently by Fourie et al. (2016), albeit in                   motion uncertainty and imperfect measurements. International
+a passive setting, that such a non-parametric representa-                  Journal of Robotics Research 33(2): 268–304.
+tion can tackle realistic data association issues in the con-            Atanasov N, Sankaran B, Ny J, et al. (2014) Nonmyopic view
+text of SLAM. Thus, comparison of the proposed DA-BSP                      planning for active object classification and pose estimation.
+with those passive non-parametric approaches is a lucrative                IEEE Transactions on Robotics 30: 1078–1090.
+research direction, while another worthy pursuit is to obtain            Bar-Shalom Y, Li XR, and Kirubarajan T (2004) Estimation with
+a non-parametric version of the proposed DA-BSP.                           applications to tracking and navigation: Theory algorithms
+                                                                           and software. New York, NY: John Wiley & Sons.
+                                                                         Bry A and Roy N (2011) Rapidly-exploring random belief trees
+Funding                                                                    for motion planning under uncertainty. In: IEEE international
+                                                                           conference on robotics and automation (ICRA), Shanghai,
+The author(s) disclosed receipt of the following financial sup-            China, 9–13 May 2011, pp. 723–730. Piscataway, NJ: IEEE.
+port for the research, authorship, and/or publication of this article:   Carlone L, Censi A, and Dellaert F (2014) Selecting good mea-
+This work was supported by the Technion Autonomous Systems                 surements via `1 relaxation: A convex approach for robust
+Program and the Israel Science Foundation.                                 estimation over graphs. In: IEEE/RSJ international conference
+28                                                                          The International Journal of Robotics Research 00(0)
+
+
+   on intelligent robots and systems (IROS), Chicago, IL, 14–18           proceedings of the sixteenth national conference on Arti-
+   September 2014, pp. 2667–2674. Piscataway, NJ: IEEE.                   ficial intelligence and the eleventh innovative applications
+Chaves SM, Kim A, and Eustice RM (2014) Opportunis-                       of artificial intelligence conference innovative applications
+   tic sampling-based planning for active visual SLAM. In:                of artificial intelligence, Orlando, FL, 18–22 July 1999,
+   IEEE/RSJ international conference on intelligent robots and            pp. 541–548. Menlo Park, CA: American Association for
+   systems (IROS), Chicago, IL, 14–18 September 2014, pp.                 Artificial Intelligence.
+   3073–3080. Piscataway, NJ: IEEE.                                    Olson E (2011) AprilTag: A robust and flexible visual fiducial sys-
+Chaves SM, Walls JM, Galceran E, et al. (2015) Risk aver-                 tem. In: Proceedings of the IEEE international conference on
+   sion in belief-space planning under measurement acquisition            robotics and automation (ICRA), Shanghai, China, 9–13 May
+   uncertainty. In: IEEE/RSJ international conference on intel-           2011, pp. 3400–3407. Piscataway, NJ: IEEE.
+   ligent robots and systems (IROS), Hamburg, Germany, 28              Olson E and Agarwal P (2013) Inference on networks of mixtures
+   September–2 October 2015, pp. 2079–2086. Piscataway, NJ:               for robust robot mapping. International Journal of Robotics
+   IEEE.                                                                  Research 32(7): 826–840.
+Fourie D, Leonard J, and Kaess M (2016) A nonparametric belief         Papadimitriou C and Tsitsiklis J (1987) The complexity
+   solution to the Bayes tree. In: IEEE/RSJ international confer-         of Markov decision processes. Mathematics of Operations
+   ence on intelligent robots and systems (IROS), Daejeon, South          Research 12(3): 441–450.
+   Korea, 9–14 October 2016, pp. 2189–2196. Piscataway, NJ:            Pathak S, Thomas A, and Indelman V (2017) Nonmyopic data
+   IEEE.                                                                  association aware belief space planning for robust active per-
+Indelman V, Carlone L, and Dellaert F (2015) Planning in the              ception. In: IEEE international conference on robotics and
+   continuous domain: A generalized belief space approach for             automation (ICRA), Singapore, 29 May–3 June 2017, pp.
+   autonomous navigation in unknown environments. Interna-                4487–4494. Piscataway, NJ: IEEE.
+   tional Journal of Robotics Research 34(7): 849–882.                 Patil S, Kahn G, Laskey M, et al. (2014) Scaling up Gaussian
+Indelman V, Michael N, and Dellaert F (2014a) Incremental dis-            belief space planning through covariance-free trajectory opti-
+   tributed robust inference from arbitrary robot poses via EM and        mization and automatic differentiation. In: Akin H, Amato
+   model selection. In: RSS workshop on distributed control and           N, Isler V, et al. (eds.) Algorithmic Foundations of Robotics
+   estimation for robotic vehicle networks, Berkeley, CA, 12 July         XI. (Springer Tracts in Advanced Robotics, vol 107). Cham:
+   2014. Non-archived workshop proceedings.                               Springer, pp. 515–533.
+Indelman V, Nelson E, Dong J, et al. (2016) Incremental dis-           Patten T, Zillich M, Fitch R, et al. (2016) Viewpoint evaluation
+   tributed inference from arbitrary poses and unknown data               for online 3-D active object classification. IEEE Robotics and
+   association: Using collaborating robots to establish a com-            Automation Letters 1(1): 73–81.
+   mon reference. IEEE Control Systems Magazine (CSM) 36(2):           Pfingsthorn M and Birk A (2016) Generalized graph SLAM:
+   41–74.                                                                 Solving local and global ambiguities through multimodal
+Indelman V, Nelson E, Michael N, et al. (2014b) Multi-robot pose          and hyperedge constraints. International Journal of Robotics
+   graph localization and data association from unknown initial           Research 35(6): 601–630.
+   relative poses via expectation maximization. In: IEEE interna-      Pineau J, Gordon GJ, and Thrun S (2006) Anytime point-based
+   tional conference on robotics and automation (ICRA), Hong              approximations for large POMDPS. Journal of Artificial Intel-
+   Kong, China, 31 May–7 June 2014, pp. 593–600. Piscataway,              ligence Research 27: 335–380.
+   NJ: IEEE.                                                           Platt R, Kaelbling L, Lozano-Perez T, et al. (2011) Efficient
+Kaelbling LP, Littman ML, and Cassandra AR (1998) Planning                planning in non-Gaussian belief spaces and its application to
+   and acting in partially observable stochastic domains. Artificial      robot grasping. In: Christensen H and Khatib O (eds.) Robotics
+   Intelligence 101(1): 99–134.                                           Research. (Springer Tracts in Advanced Robotics, vol. 100).
+Kaess M, Johannsson H, Roberts R, et al. (2012) iSAM2: Incre-             Cham: Springer, pp. 253–269.
+   mental smoothing and mapping using the Bayes tree. Interna-         Prentice S and Roy N (2009) The belief roadmap: Efficient plan-
+   tional Journal of Robotics Research 31: 217–236.                       ning in belief space by factoring the covariance. International
+Kim A and Eustice RM (2014) Active visual SLAM for robotic                Journal of Robotics Research 28(11–12): 1448–1465.
+   area coverage: Theory and experiment. International Journal         Sankaran B, Bohg J, Ratliff N, et al. (2015) Policy learn-
+   of Robotics Research 34(4–5): 457–475.                                 ing with hypothesis based local action selection. arXiv
+Kurniawati H, Hsu D, and Lee WS (2008) SARSOP: Efficient                  arXiv:1503.06375.
+   point-based POMDP planning by approximating optimally               Stachniss C, Grisetti G, and Burgard W (2005) Information gain-
+   reachable belief spaces. In: Robotics: Science and systems IV          based exploration using Rao-Blackwellized particle filters. In:
+   (eds. O Brock, J Trinkle and F Ramos), 25–28 June 2008,                Robotics: Science and systems (RSS), Cambridge, MA, 8–11
+   Zurich, Switzerland. Cambridge, MA, MIT Press.                         Jun 2005, pp. 65–72. Cambridge, MA: MIT Press.
+Lauri M, Atanasov NA, Pappas G, et al. (2015) Active object            Sunderhauf N and Protzel P (2012) Towards a robust back-end
+   recognition via Monte Carlo tree search. In: Workshop on               for pose graph SLAM. In: IEEE International conference on
+   beyond geometric constraints at the international conference           robotics and automation (ICRA), Saint Paul, MN, 14–18 May
+   on robotics and automation (ICRA), Seattle, WA, 26–30 May              2012, pp. 1254–1261. Piscataway, NJ: IEEE.
+   2015. Piscataway, NJ: IEEE.                                         Van den Berg J, Patil S, and Alterovitz R (2012) Motion planning
+Madani O, Hanks S, and Condon A (1999) On the undecid-                    under uncertainty using iterative local optimization in belief
+   ability of probabilistic planning and infinite-horizon partially       space. International Journal of Robotics Research 31(11):
+   observable Markov decision problems. In: AAAI ’99/IAAI ’99             1263–1278.
+Pathak et al.                                                                                                                  29
+
+
+Walls JM, Chaves SM, Galceran E, et al. (2015) Belief space        Wong L, Kaelbling L, and Lozano-Pérez T (2015) Data associa-
+  planning for underwater cooperative localization. In: IEEE/RSJ     tion for semantic world modeling from partial views. Interna-
+  international conference on intelligent robots and systems         tional Journal of Robotics Research 34(7): 1064–1082.
+  (IROS), Hamburg, Germany, 28 September–2 October 2015,
+  pp. 2264–2271. Piscataway, NJ: IEEE.
+

@@ -1,0 +1,35 @@
+{
+  "reader_fit": {
+    "layouts": 256,
+    "pairs": 256,
+    "pairs_by_region": {
+      "5": 84,
+      "6": 43,
+      "4": 129
+    },
+    "relative_layouts": 30,
+    "acoustic_layouts": 64
+  },
+  "reader_cal": {
+    "layouts": 48,
+    "pairs": 48,
+    "pairs_by_region": {
+      "5": 17,
+      "6": 6,
+      "4": 25
+    },
+    "relative_layouts": 0,
+    "acoustic_layouts": 0
+  },
+  "reader_dev": {
+    "layouts": 72,
+    "pairs": 71,
+    "pairs_by_region": {
+      "5": 30,
+      "6": 11,
+      "4": 30
+    },
+    "relative_layouts": 0,
+    "acoustic_layouts": 0
+  }
+}

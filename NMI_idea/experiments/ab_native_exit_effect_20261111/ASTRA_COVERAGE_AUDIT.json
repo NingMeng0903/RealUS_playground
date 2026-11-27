@@ -1,0 +1,227 @@
+{
+  "tasks": [
+    {
+      "fixture": 0,
+      "mode": "constrained",
+      "target": "left",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "geometric_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "native_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "greedy_s": 5.300000000000001,
+      "geometric_s": 5.300000000000001,
+      "native_s": 5.300000000000001,
+      "native_minus_greedy_s": 0.0,
+      "native_equals_geometric": true,
+      "result_sha256": "be860dad200d68d0e4f3f32b00fec86ee30e62d7d48e944c67759915f0aed827"
+    },
+    {
+      "fixture": 0,
+      "mode": "constrained",
+      "target": "right",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "right"
+      ],
+      "geometric_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "native_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "greedy_s": 5.8149999999999995,
+      "geometric_s": 5.395,
+      "native_s": 5.395,
+      "native_minus_greedy_s": -0.41999999999999993,
+      "native_equals_geometric": true,
+      "result_sha256": "6139a7d26562217375241d18193f9c54866fe7f7d51951e4cbc2d89db520a0b8"
+    },
+    {
+      "fixture": 1,
+      "mode": "constrained",
+      "target": "left",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "geometric_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "native_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "greedy_s": 5.395,
+      "geometric_s": 5.395,
+      "native_s": 5.395,
+      "native_minus_greedy_s": 0.0,
+      "native_equals_geometric": true,
+      "result_sha256": "141c0e26c6843d55f409c79bf71cd8c7e2798183795eb2aa84aa7c44a87cd667"
+    },
+    {
+      "fixture": 1,
+      "mode": "constrained",
+      "target": "right",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "right"
+      ],
+      "geometric_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "native_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "greedy_s": 5.74,
+      "geometric_s": 5.300000000000001,
+      "native_s": 5.300000000000001,
+      "native_minus_greedy_s": -0.4399999999999995,
+      "native_equals_geometric": true,
+      "result_sha256": "bf5783fb9f38a6ac050dc83d5657b5f2a86200116ad08584642f7e82875b2c35"
+    },
+    {
+      "fixture": 0,
+      "mode": "open",
+      "target": "left",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "geometric_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "native_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "greedy_s": 5.300000000000001,
+      "geometric_s": 5.300000000000001,
+      "native_s": 5.300000000000001,
+      "native_minus_greedy_s": 0.0,
+      "native_equals_geometric": true,
+      "result_sha256": "e48d770ade3189a9c233843c63ab026dda99f7c7c354506a023887f181ca991a"
+    },
+    {
+      "fixture": 0,
+      "mode": "open",
+      "target": "right",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "right"
+      ],
+      "geometric_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "native_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "greedy_s": 5.8149999999999995,
+      "geometric_s": 5.395,
+      "native_s": 5.395,
+      "native_minus_greedy_s": -0.41999999999999993,
+      "native_equals_geometric": true,
+      "result_sha256": "aa7c4e555f6faf01264abbacd6b6bb50829f80fbdf8cf62565fa6d231158589e"
+    },
+    {
+      "fixture": 1,
+      "mode": "open",
+      "target": "left",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "geometric_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "native_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "left"
+      ],
+      "greedy_s": 5.395,
+      "geometric_s": 5.395,
+      "native_s": 5.395,
+      "native_minus_greedy_s": 0.0,
+      "native_equals_geometric": true,
+      "result_sha256": "257bcdae7aa8e761c6cd77820f0247f9e67efc972d05725819ef1b38a5551941"
+    },
+    {
+      "fixture": 1,
+      "mode": "open",
+      "target": "right",
+      "all_six_complete": true,
+      "greedy_order": [
+        "fork_minus__single_dwell_0.3",
+        "fork_plus__single_dwell_0.3",
+        "right"
+      ],
+      "geometric_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "native_order": [
+        "fork_plus__single_dwell_0.3",
+        "fork_minus__single_dwell_0.3",
+        "right"
+      ],
+      "greedy_s": 5.74,
+      "geometric_s": 5.300000000000001,
+      "native_s": 5.300000000000001,
+      "native_minus_greedy_s": -0.4399999999999995,
+      "native_equals_geometric": true,
+      "result_sha256": "a45ff412616a9f0848df6cbf82e963cd7fbfaebdd91386a901713da4b8e64a72"
+    }
+  ],
+  "native_links_checked": 104,
+  "native_segments_checked": 104,
+  "max_omitted_entry_to_first_sample_m": 2.237721102301763e-06,
+  "failures": [],
+  "passed": true,
+  "source_sha256": "4196a78fb53debc7367820c85a41e9ae3ad9f550bca4ea3501d08281f9836c8b",
+  "scope": "deterministic prescribed-pose motion and dwell; no image quality, patients or learned prediction"
+}

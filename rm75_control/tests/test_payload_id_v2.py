@@ -22,6 +22,7 @@ from rm75_control.force.compensation.v2.fit_staged import (
     fit_delay_on_lines,
     fit_inertia_moments,
     fit_static_windows,
+    force_outlier_windows,
     inertia_moment_residual,
 )
 from rm75_control.force.compensation.v2.fourier import FourierSpec, axis_twist_L, full_trajectory_closure, period_net_displacement
@@ -223,6 +224,28 @@ def test_static_fit_recovers_mhb():
     assert abs(fit.mass_kg - mass) < 0.05
     assert np.linalg.norm(fit.h_L - h) < 0.02
     assert not fit.drift_enabled
+
+
+def test_snagged_pose_is_dropped_before_the_refit():
+    poses = build_default_set(n_train=12, n_holdout=3)
+    mass, h = 0.56, np.array([0.003, 0.013, 0.029])
+    bias = np.array([0.8, -7.0, -0.4, -0.15, 0.02, 0.10])
+    windows = []
+    for i, g in enumerate(poses.train_g):
+        y = np.concatenate([gravity_force_link7(mass, g, bias[:3]), np.cross(g, h) + bias[3:]])
+        windows.append(StaticWindow(g, y, t_s=float(i), is_train=True, block_id=i // 4, name=f"p{i}"))
+    snag = windows[3].wrench_L + np.array([0.0, 0.2, 3.6, 0.0, 0.0, 0.0])
+    windows[3] = StaticWindow(
+        windows[3].g_L, snag, t_s=3.0, is_train=True, block_id=0, name="WY+45",
+    )
+    Sigma = np.diag([0.02, 0.02, 0.02, 0.004, 0.004, 0.004]) ** 2
+    first = fit_static_windows(windows, Sigma=Sigma)
+    rejected = force_outlier_windows(windows, first, limit_n=1.5)
+    assert [window.name for window, _error in rejected] == ["WY+45"]
+    kept = [window for window in windows if window.name != "WY+45"]
+    refit = fit_static_windows(kept, Sigma=Sigma)
+    assert abs(refit.mass_kg - mass) < 0.02
+    assert np.linalg.norm(refit.bias0 - bias) < 0.15
 
 
 def test_geodesic_quintic_boundary():

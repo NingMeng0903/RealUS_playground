@@ -1,0 +1,91 @@
+POSTHOC ORACLE INPUT-CONTRACT CORRECTION
+=========================================
+Date: 2026-11-10
+
+Status and exclusion
+--------------------
+This is a posthoc correction of the *public hypothesis representation* used
+by the already completed truth-leaked oracle diagnostic.  The original
+``run_20261110`` directory and its RESULTS.json remain immutable and are not
+re-run or overwritten.  The corrected run is a separate diagnostic output
+named ``run_corrected_parameterization_20261110``.  Both runs carry the
+uppercase ``ORACLE_LEAKED_TRUTH`` marker and are excluded from the legal
+finite-prior A/B experiment and every formal summary.
+
+Reason for correction
+---------------------
+The shifted private GT is deliberately built with ``modes[:,1] += .4`` to
+encode the +0.10 physical slope shift.  ``template_candidates`` requires
+the discrete public mode label ``modes[:,1]`` to be exactly -1 or +1.  Passing
+the shifted ``-.6/+1.4`` labels directly to the oracle planner therefore
+emptied the matching template family.  This is an input-contract error in
+the oracle hypothesis, not a physical change to the shifted GT.
+
+Frozen worlds and physical-equivalence reparameterization
+----------------------------------------------------------
+Regenerate exactly the same private worlds as the sealed legal and original
+oracle runs: ``sample_worlds(seed=720380, n=8, split='test')`` for ``iid``
+and the existing copied shifted worlds (registration y +0.008 m and
+``modes[:,1] += .4``).  Verify the private GT digests against the sealed legal
+RESULTS before any episode.  The private GT passed to rendering/audit is
+always this original shifted object; it is never replaced by the corrected
+hypothesis.
+
+Only the planner particle for a shifted case is reparameterized.  For each
+source, let ``m_s`` be the shifted slope label and ``m_c = sign(m_s)``.  Set
+``delta = m_s - m_c``, restore ``modes[:,1] = m_c``, and add
+``delta * .25 * CONTROL_X`` to that source's five ``y_controls``.  Keep
+registration, all other modes, z controls, depths and nuisances unchanged,
+then rebuild with ``env._world``.  Because ``_points`` uses
+``modes[:,1] * .25 * X`` and the added controls are exactly linear in X, the
+canonical hypothesis and original shifted GT have the same source points.
+For iid cases the original world is already canonical and is used unchanged.
+
+Before any episode, assert for all 16 cases that:
+
+* private GT hashes match the sealed legal run (and the original oracle run
+  is still byte-hash unchanged);
+* source points agree to absolute tolerance 1e-14;
+* a fixed 9 x 9 x 7 pose grid gives elementwise-equivalent prediction
+  ``means`` (atol 1e-8, rtol 1e-10), ``p_source`` (atol 1e-12, rtol 0), and
+  the remaining deterministic prediction fields; maximum absolute residuals
+  are saved;
+* canonical public hypothesis labels are exactly +/-1 and
+  ``template_candidates`` is nonempty at the episode seed pose.
+
+The tolerances only absorb floating point ordering in segment clipping; the
+source-point identity is checked at 1e-14 and all residuals are retained.
+
+Corrected episode contract
+--------------------------
+Run exactly the same 16 cases (8 iid + 8 shifted), method
+``A_continuous_servo`` only, context ``a0_identity``, fresh Robot per case,
+the unchanged ``run_episode``, public stop verifier, candidate family,
+sensor/model, six-action maximum, 60 s deadline, and exact renderer key
+``('continuous_mismatch', condition, object_index, 'a0_identity')``.  The
+only difference from the original oracle run is the equivalent canonical
+representation of the *sole leaked planner particle* in shifted cases.
+No candidate, acceptance, budget, sensor, model, seed, controller, or
+physical parameter is changed.  Native replay is not run.
+
+Interpretation boundary
+-----------------------
+This remains an ``ORACLE_LEAKED_TRUTH`` known-anatomy comparison, not a
+mathematical performance upper bound.  ``A_continuous_servo`` still uses its
+public-quality heuristic and finite candidate family and is not guaranteed to
+select a globally optimal imaging action.  A failure with known anatomy does
+not by itself prove that geometry is infeasible or that the six-action budget
+is causal; candidate and budget limitations remain possible.  The corrected
+run is descriptive only.  Report success, false public stop, RMT, actions,
+and audit/public outcomes by condition, and compare them with the original
+oracle and legal finite-prior A context without merging or tuning.
+
+Artifacts and provenance
+------------------------
+Write only under this ``oracle_diagnostic`` directory:
+``run_corrected_parameterization_20261110/RESULTS.json``, its
+``RESULTS.sha256``, ``REPORT.txt``, and the run log.  Save source hashes,
+legal/original-oracle result hashes, GT hashes, equivalence audit arrays,
+per-row outputs, exceptions/anomalies, and the uppercase
+``ORACLE_LEAKED_TRUTH=true`` marker.  All 16 rows are retained; any exception
+or numeric anomaly receives RMT=60 and is not dropped.

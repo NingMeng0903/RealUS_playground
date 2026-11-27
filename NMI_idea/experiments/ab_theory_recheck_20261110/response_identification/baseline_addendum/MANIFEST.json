@@ -1,0 +1,14 @@
+{
+  "files_sha256": {
+    "PROTOCOL.txt": "e2634ae97cf44b56033de38e1caad8af4ff824b0222631f4341759cb6adf8152",
+    "RAW_ADDENDUM.npz": "b81ef6f761490e6459fdaaa87f47c734b83016ddbab3d3b8727754d609d5a68e",
+    "REPORT.txt": "9be4cfb1a3be3e8d970d760e02d82078345357e9c008baca60d9edd2097a4ddd",
+    "RESULTS.json": "1aa55feeb8a23de87c43f4dd1682df58ae4f4e233ec13360ad2d62a891f66180",
+    "run_addendum.py": "deea30b0e85eafecea71c3eb51598be91c004e8c255f2078fbde016ea7afd00d",
+    "test_addendum.py": "4dbaabd2e5e7aadae0f27345ebec44d4598a1c113507cdf52c18fc6a6d6e19be"
+  },
+  "numpy": "2.2.6",
+  "original_directory": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_identification",
+  "original_manifest_hashes_verified": true,
+  "python": "3.10.20"
+}

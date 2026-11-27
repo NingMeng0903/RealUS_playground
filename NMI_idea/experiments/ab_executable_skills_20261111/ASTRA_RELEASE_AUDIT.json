@@ -1,0 +1,329 @@
+{
+  "source_hashes_verified": true,
+  "retained_records": 2688,
+  "released_records": 2688,
+  "checks": {
+    "events": 75970,
+    "release_gate_decisions": 14133,
+    "releases_scalar_checked": 284
+  },
+  "groups": {
+    "retained": {
+      "A_task/recoverable": {
+        "correct": 318,
+        "frames": 1503,
+        "returns": 36,
+        "retreats": 81,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "A_fixed_goal/recoverable": {
+        "correct": 318,
+        "frames": 1468,
+        "returns": 27,
+        "retreats": 77,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "B_actual/recoverable": {
+        "correct": 317,
+        "frames": 1341,
+        "returns": 28,
+        "retreats": 71,
+        "releases": 0,
+        "wrong_stop": 3
+      },
+      "B_nominal/recoverable": {
+        "correct": 317,
+        "frames": 1618,
+        "returns": 71,
+        "retreats": 128,
+        "releases": 0,
+        "wrong_stop": 3
+      },
+      "B_no_lookahead/recoverable": {
+        "correct": 318,
+        "frames": 1503,
+        "returns": 36,
+        "retreats": 81,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "B_MAP/recoverable": {
+        "correct": 317,
+        "frames": 1343,
+        "returns": 28,
+        "retreats": 71,
+        "releases": 0,
+        "wrong_stop": 3
+      },
+      "A_legacy/recoverable": {
+        "correct": 317,
+        "frames": 1373,
+        "returns": 14,
+        "retreats": 70,
+        "releases": 0,
+        "wrong_stop": 3
+      },
+      "A_task/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "A_fixed_goal/permanent": {
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 227,
+        "retreats": 291,
+        "releases": 0,
+        "wrong_stop": 1
+      },
+      "B_actual/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 250,
+        "retreats": 314,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "B_nominal/permanent": {
+        "unresolved": 60,
+        "frames": 3874,
+        "returns": 302,
+        "retreats": 366,
+        "releases": 0,
+        "wrong_stop": 4
+      },
+      "B_no_lookahead/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "B_MAP/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 244,
+        "retreats": 308,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "A_legacy/permanent": {
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 959,
+        "retreats": 1044,
+        "releases": 0,
+        "wrong_stop": 1
+      }
+    },
+    "released": {
+      "A_task/recoverable": {
+        "correct": 317,
+        "frames": 1447,
+        "returns": 48,
+        "retreats": 81,
+        "releases": 99,
+        "wrong_stop": 3
+      },
+      "A_fixed_goal/recoverable": {
+        "correct": 318,
+        "frames": 1476,
+        "returns": 27,
+        "retreats": 77,
+        "releases": 2,
+        "wrong_stop": 2
+      },
+      "B_actual/recoverable": {
+        "correct": 317,
+        "frames": 1348,
+        "returns": 29,
+        "retreats": 71,
+        "releases": 4,
+        "wrong_stop": 3
+      },
+      "B_nominal/recoverable": {
+        "correct": 316,
+        "frames": 1588,
+        "returns": 57,
+        "retreats": 92,
+        "releases": 74,
+        "wrong_stop": 4
+      },
+      "B_no_lookahead/recoverable": {
+        "correct": 317,
+        "frames": 1447,
+        "returns": 48,
+        "retreats": 81,
+        "releases": 99,
+        "wrong_stop": 3
+      },
+      "B_MAP/recoverable": {
+        "correct": 317,
+        "frames": 1350,
+        "returns": 29,
+        "retreats": 71,
+        "releases": 4,
+        "wrong_stop": 3
+      },
+      "A_legacy/recoverable": {
+        "correct": 317,
+        "frames": 1373,
+        "returns": 14,
+        "retreats": 70,
+        "releases": 0,
+        "wrong_stop": 3
+      },
+      "A_task/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "releases": 1,
+        "wrong_stop": 2
+      },
+      "A_fixed_goal/permanent": {
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 227,
+        "retreats": 291,
+        "releases": 0,
+        "wrong_stop": 1
+      },
+      "B_actual/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 250,
+        "retreats": 314,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "B_nominal/permanent": {
+        "unresolved": 60,
+        "frames": 3874,
+        "returns": 302,
+        "retreats": 366,
+        "releases": 0,
+        "wrong_stop": 4
+      },
+      "B_no_lookahead/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "releases": 1,
+        "wrong_stop": 2
+      },
+      "B_MAP/permanent": {
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 244,
+        "retreats": 308,
+        "releases": 0,
+        "wrong_stop": 2
+      },
+      "A_legacy/permanent": {
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 959,
+        "retreats": 1044,
+        "releases": 0,
+        "wrong_stop": 1
+      }
+    }
+  },
+  "release_minus_retained_recoverable": {
+    "A_task": {
+      "n": 320,
+      "outcomes": {
+        "('correct', 'correct')": 317,
+        "('wrong_stop', 'wrong_stop')": 2,
+        "('wrong_stop', 'correct')": 1
+      },
+      "delta_frames": -56,
+      "delta_returns": 12,
+      "common_correct_n": 317,
+      "common_correct_delta_frames": -50,
+      "common_correct_delta_returns": 13
+    },
+    "A_fixed_goal": {
+      "n": 320,
+      "outcomes": {
+        "('correct', 'correct')": 318,
+        "('wrong_stop', 'wrong_stop')": 2
+      },
+      "delta_frames": 8,
+      "delta_returns": 0,
+      "common_correct_n": 318,
+      "common_correct_delta_frames": 8,
+      "common_correct_delta_returns": 0
+    },
+    "B_actual": {
+      "n": 320,
+      "outcomes": {
+        "('correct', 'correct')": 317,
+        "('wrong_stop', 'wrong_stop')": 3
+      },
+      "delta_frames": 7,
+      "delta_returns": 1,
+      "common_correct_n": 317,
+      "common_correct_delta_frames": 7,
+      "common_correct_delta_returns": 1
+    },
+    "B_nominal": {
+      "n": 320,
+      "outcomes": {
+        "('correct', 'correct')": 316,
+        "('wrong_stop', 'wrong_stop')": 3,
+        "('wrong_stop', 'correct')": 1
+      },
+      "delta_frames": -30,
+      "delta_returns": -14,
+      "common_correct_n": 316,
+      "common_correct_delta_frames": -28,
+      "common_correct_delta_returns": -14
+    },
+    "B_no_lookahead": {
+      "n": 320,
+      "outcomes": {
+        "('correct', 'correct')": 317,
+        "('wrong_stop', 'wrong_stop')": 2,
+        "('wrong_stop', 'correct')": 1
+      },
+      "delta_frames": -56,
+      "delta_returns": 12,
+      "common_correct_n": 317,
+      "common_correct_delta_frames": -50,
+      "common_correct_delta_returns": 13
+    },
+    "B_MAP": {
+      "n": 320,
+      "outcomes": {
+        "('correct', 'correct')": 317,
+        "('wrong_stop', 'wrong_stop')": 3
+      },
+      "delta_frames": 7,
+      "delta_returns": 1,
+      "common_correct_n": 317,
+      "common_correct_delta_frames": 7,
+      "common_correct_delta_returns": 1
+    },
+    "A_legacy": {
+      "n": 320,
+      "outcomes": {
+        "('correct', 'correct')": 317,
+        "('wrong_stop', 'wrong_stop')": 3
+      },
+      "delta_frames": 0,
+      "delta_returns": 0,
+      "common_correct_n": 317,
+      "common_correct_delta_frames": 0,
+      "common_correct_delta_returns": 0
+    }
+  }
+}

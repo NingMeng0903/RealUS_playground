@@ -1,0 +1,328 @@
+{
+  "backend": "native",
+  "created_utc": "2026-11-11T13:25:44.174799+00:00",
+  "finished_utc": "2026-11-11T14:03:35.953301+00:00",
+  "guards": {
+    "guard_kind": "fixed_common_action_count_only",
+    "max_actions": 6,
+    "max_diagnostic_decisions": 2,
+    "max_terminal_attempts": 2
+  },
+  "hardware": false,
+  "invalid_transition_count": 0,
+  "layout_indexes": [
+    0,
+    1
+  ],
+  "layout_summaries": [
+    {
+      "dird_queries": 42,
+      "invalid_transition_count": 0,
+      "layout": "fixture_00_constrained",
+      "linkage_failures": 0,
+      "linkage_pass": true,
+      "native_route_attempts": 58,
+      "transition_count": 42,
+      "valid_transition_count": 42
+    },
+    {
+      "dird_queries": 42,
+      "invalid_transition_count": 0,
+      "layout": "fixture_01_constrained",
+      "linkage_failures": 0,
+      "linkage_pass": true,
+      "native_route_attempts": 56,
+      "transition_count": 42,
+      "valid_transition_count": 42
+    }
+  ],
+  "linkage_pass": true,
+  "no_deadline": true,
+  "probe_contract": {
+    "deadline": null,
+    "diagnostic_decisions_max": 2,
+    "evaluation_only_inputs": [
+      "true-surface ProbeAction",
+      "private anatomy/quality"
+    ],
+    "named_probes": [
+      "side_left",
+      "side_right",
+      "fork_minus",
+      "fork_plus",
+      "fork_plus_shift3"
+    ],
+    "public_planning_inputs": [
+      "measured ProbeAction",
+      "measured-frame exit pose"
+    ],
+    "repeat_allowed": true,
+    "repeat_semantics": "independent_new_acquisition_at_new_public_history_key",
+    "terminal_attempts_max": 2
+  },
+  "run_root": "native_outputs/native_catalog_catalog_20261111T132542Z_126619",
+  "schema": "native_paired_action_catalog_v1",
+  "sequence_contract": [
+    [
+      "fork_plus_shift3"
+    ],
+    [
+      "fork_plus_shift3",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "left",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "left",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "right",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "right",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_left"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_left",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_left",
+      "left",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_left",
+      "left",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_left",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_left",
+      "right",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_left",
+      "right",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_right"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_right",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_right",
+      "left",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_right",
+      "left",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_right",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_right",
+      "right",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "side_right",
+      "right",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_minus"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_minus",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_minus",
+      "left",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_minus",
+      "left",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_minus",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_minus",
+      "right",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_minus",
+      "right",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus",
+      "left",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus",
+      "left",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus",
+      "right",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus",
+      "right",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus_shift3"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus_shift3",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus_shift3",
+      "left",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus_shift3",
+      "left",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus_shift3",
+      "right"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus_shift3",
+      "right",
+      "left"
+    ],
+    [
+      "fork_plus_shift3",
+      "fork_plus_shift3",
+      "right",
+      "right"
+    ]
+  ],
+  "sequence_count_per_layout": 42,
+  "shard": "fork_plus_shift3",
+  "source_manifest": {
+    "import_policy": "corrected sibling only; no adaptive_stopping source imports",
+    "modules": {
+      "ASSOCIATION_CORRECTION.txt": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111/ASSOCIATION_CORRECTION.txt",
+        "sha256": "68773d385725c99f091236dee1dcbc75675dc07bdec72cda103a7be1e3da5307"
+      },
+      "IMPLEMENTATION_FREEZE.txt": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111/IMPLEMENTATION_FREEZE.txt",
+        "sha256": "df29489b22d14aa96625c2185b20b8305a96785dc33635c14fd6f3fa7387a54d"
+      },
+      "PROTOCOL.txt": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111/PROTOCOL.txt",
+        "sha256": "da00e977b0b7b829cb39cb662bad2cca44056f62fcf708fc1e8c6a31eaf803e1"
+      },
+      "acoustics": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111/acoustics.py",
+        "sha256": "c246cfe812af9fa3552efc385b1b20d767baaf59c60fa15f246d297f13e07ac9"
+      },
+      "fixture": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111/fixture.py",
+        "sha256": "0f6691f63f8cf66b0a1ffdcc8a0523e4b5b13d9427cff64e34e8adea59e93ca7"
+      },
+      "planning": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111/planning.py",
+        "sha256": "226e360d7410d4ce21031fa8f649e4ca474da16a8d3ff9595db0142e49b348f6"
+      },
+      "robot_motion": {
+        "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111/robot_motion.py",
+        "sha256": "ca173c6c859deec61cb6acaee10405660aa4fbd022328fac8b7913887847a420"
+      }
+    },
+    "reviewed_root": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_closed_loop_reviewed_20261111"
+  },
+  "stage": "catalog",
+  "status": "complete",
+  "valid_transition_count": 84,
+  "wall_seconds_total": 2271.7776441759997
+}

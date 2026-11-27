@@ -1,0 +1,367 @@
+{
+  "verdict": "\u901a\u8fc7\u6240\u58f0\u660e shaft ROI\u3001\u56fa\u5b9a LBS \u6a21\u578b\u548c7\u4e2a\u79bb\u6563\u59ff\u6001\u7684\u72ec\u7acb\u6570\u503c\u95e8\uff1b\u4e0d\u7b49\u4e8e\u6574\u817f/\u4efb\u610f\u59ff\u6001/\u7269\u7406\u8d85\u58f0\u9a8c\u8bc1",
+  "domain_h": [
+    0.14,
+    0.94
+  ],
+  "coordinate_domain": "shaft_roi",
+  "inference_scope": [
+    "\u539f\u751f\u4ea7Loop\u76ae\u80a4\u672c\u4fa7\u7b5b\u9009\u540e\u7684shaft\u5b50\u57df",
+    "\u89d2\u5ea60/15/30/45/60/75/90\u5ea6\u540c\u4e00\u56fa\u5b9aSMPL-X\u6743\u91cd",
+    "\u6570\u503cmesh/\u6750\u6599chart\u68c0\u9a8c\uff1b\u975e\u771f\u5b9e\u63a5\u89e6\u6216B-mode"
+  ],
+  "sides": {
+    "left": {
+      "asset_sha256": "3b078b5c3b80c2cefcb5d70117c2fb6e542418c3654da5f1339625c65e0d695d",
+      "physical_raw_overlap": 0,
+      "canonical_volume": {
+        "tet_count": 322056,
+        "positive_count": 322056,
+        "negative_count": 0,
+        "degenerate_count": 0,
+        "modal_orientation": 1,
+        "opposite_modal_orientation_count": 0,
+        "determinant_min_max": [
+          2.1002103578658662e-09,
+          8.632401668313877e-07
+        ],
+        "signed_volume_sum_m3": 0.00767370704148784,
+        "absolute_volume_sum_m3": 0.00767370704148784,
+        "corner_scaled_jacobian": {
+          "definition": "oriented det / max corner product of three edge lengths; regular tet=1/sqrt(2)",
+          "min": 0.0023338852196668914,
+          "quantiles": [
+            0.0023338852196668914,
+            0.0024215555052453986,
+            0.0028949428865947483,
+            0.006246171400327942,
+            0.09950781790822338,
+            0.2630358372615853,
+            0.3285944575331172
+          ],
+          "nonpositive": 0,
+          "diagnostic_le_1e_6": 0,
+          "diagnostic_le_1e_3": 0,
+          "diagnostic_le_1e_2": 18187
+        },
+        "opposite_orientation_mean_h_bins": {},
+        "float32_roundtrip": {
+          "max_node_displacement_m": 0.0,
+          "sign_flip_relative_stored_count": 0,
+          "degenerate_count": 0,
+          "modal_opposite_count": 0
+        }
+      },
+      "physical_pose": {
+        "0": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.9997541249573543,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.002333712921105678
+        },
+        "15": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.8958625754318615,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0023314086083545678
+        },
+        "30": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.7653443071421353,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0023179741094372873
+        },
+        "45": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.6173408176561014,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022924955921117328
+        },
+        "60": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.46193828039918033,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022401169750782346
+        },
+        "75": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.309045570599959,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.002184226146961728
+        },
+        "90": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.16833361543311276,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0021154089118170186
+        }
+      },
+      "material_overlap": 0,
+      "material_periodic_overlap": 0,
+      "full_boundary_self_intersections": 0,
+      "full_boundary_topology": {
+        "vertices": 62208,
+        "faces": 33696,
+        "boundary_edges": 0,
+        "boundary_components": 0,
+        "boundary_component_vertices": [],
+        "boundary_degrees_not_two": 0,
+        "nonmanifold_edges": 0,
+        "inconsistent_interior_winding": 0,
+        "unused_vertices": 45360,
+        "watertight": true,
+        "boundary_vertex_ids": []
+      },
+      "surface_binding": {
+        "count": 7776,
+        "maximum_vertex_barycentric_error_m": 5.970951123496134e-08,
+        "mean_error_m": 1.975638115725233e-08,
+        "source_bary_min": 7.605291365938917e-06,
+        "source_bary_rowsum_max_error": 2.220446049250313e-16,
+        "outer_face_centroids_to_actual_source_triangles": {
+          "count": 15336,
+          "mean_m": 2.9910404877187007e-05,
+          "p95_m": 6.985167516967128e-05,
+          "max_m": 0.00024037678401529736
+        },
+        "limit": "all vertices/centroids checked; not certified complete surface Hausdorff bound"
+      },
+      "weight_lineage": {
+        "original_production_stencil_sha256": "f8f2cf1e50a16cf8d4fa50974fce91e5c228ba5cdec7a6eef7a65dff35c9384a",
+        "canonical_weights_sha256": "492eda4d279dac9ee5833fb46a20ee7841f58e124556cb61757984e9bd27fc0d",
+        "max_source_owned_weight_difference": 0.0,
+        "max_outer_barycentric_weight_difference": 1.7248378980649903e-07
+      },
+      "volume_weight_rule": {
+        "max_difference_from_frozen_radial_convex_combination": 5.892344889790735e-08,
+        "core_ring_mean_difference": 2.384185791015625e-07,
+        "all_volume_row_sum_max_error": 1.1920928955078125e-07,
+        "all_volume_min": 0.0
+      },
+      "inverse_roundtrip": {
+        "sample_count": 1024,
+        "seed": 41109,
+        "reference_points_supplied": false,
+        "max_position_error_m": 5.919772086177749e-08,
+        "p95_position_error_m": 4.691197915080453e-08,
+        "mean_position_error_m": 1.932685255422503e-08,
+        "max_coordinate_error": [
+          2.9802322387695312e-06,
+          5.960464477539063e-08,
+          1.7881393432617188e-07
+        ],
+        "wall_seconds": 0.846581696998328
+      },
+      "inverse_seam": {
+        "angles": [
+          -6.283185307179586,
+          0.0,
+          6.283185307179586,
+          12.566370614359172
+        ],
+        "max_position_difference_m": 9.313225746154785e-09,
+        "points": [
+          [
+            0.07161688804626465,
+            -0.8735770583152771,
+            -0.029067331925034523
+          ],
+          [
+            0.07161688059568405,
+            -0.8735770583152771,
+            -0.02906733565032482
+          ],
+          [
+            0.07161688059568405,
+            -0.8735770583152771,
+            -0.02906734123826027
+          ],
+          [
+            0.07161688059568405,
+            -0.8735770583152771,
+            -0.029067344963550568
+          ]
+        ]
+      },
+      "outside_inverse_all_rejected": true,
+      "outside_forward_all_rejected": true,
+      "executed_volume_refine_source_sha256": "ea07c2ab8fe5f691675176ff75a4dc49deb00f142c9560b2c85c3f8c4a0519e7"
+    },
+    "right": {
+      "asset_sha256": "ba052b1056cf1fe9218996aacf8fecae925018cefcbbc4e527ce794435b2d12d",
+      "physical_raw_overlap": 0,
+      "canonical_volume": {
+        "tet_count": 322056,
+        "positive_count": 322056,
+        "negative_count": 0,
+        "degenerate_count": 0,
+        "modal_orientation": 1,
+        "opposite_modal_orientation_count": 0,
+        "determinant_min_max": [
+          2.0669163047810057e-09,
+          7.530214262956217e-07
+        ],
+        "signed_volume_sum_m3": 0.007428054679919222,
+        "absolute_volume_sum_m3": 0.007428054679919222,
+        "corner_scaled_jacobian": {
+          "definition": "oriented det / max corner product of three edge lengths; regular tet=1/sqrt(2)",
+          "min": 0.002256058250428473,
+          "quantiles": [
+            0.002256058250428473,
+            0.002338647360860985,
+            0.0027895333798779397,
+            0.006216140623364044,
+            0.09876412766783954,
+            0.2619329283268807,
+            0.3170584224812949
+          ],
+          "nonpositive": 0,
+          "diagnostic_le_1e_6": 0,
+          "diagnostic_le_1e_3": 0,
+          "diagnostic_le_1e_2": 18458
+        },
+        "opposite_orientation_mean_h_bins": {},
+        "float32_roundtrip": {
+          "max_node_displacement_m": 0.0,
+          "sign_flip_relative_stored_count": 0,
+          "degenerate_count": 0,
+          "modal_opposite_count": 0
+        }
+      },
+      "physical_pose": {
+        "0": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.9996879013494567,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022560578750675086
+        },
+        "15": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.9010570513417279,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022576523812861756
+        },
+        "30": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.7753484120352454,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022576165759932527
+        },
+        "45": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.6314381608476258,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022559535917656645
+        },
+        "60": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.4791335343685535,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022527840759513653
+        },
+        "75": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.3278962197752878,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022483345364678192
+        },
+        "90": {
+          "relative_inversion_count": 0,
+          "minimum_relative_volume": 0.1871692982612159,
+          "positive_volume_overlaps": 0,
+          "minimum_corner_scaled_jacobian": 0.0022429237052989663
+        }
+      },
+      "material_overlap": 0,
+      "material_periodic_overlap": 0,
+      "full_boundary_self_intersections": 0,
+      "full_boundary_topology": {
+        "vertices": 62208,
+        "faces": 33696,
+        "boundary_edges": 0,
+        "boundary_components": 0,
+        "boundary_component_vertices": [],
+        "boundary_degrees_not_two": 0,
+        "nonmanifold_edges": 0,
+        "inconsistent_interior_winding": 0,
+        "unused_vertices": 45360,
+        "watertight": true,
+        "boundary_vertex_ids": []
+      },
+      "surface_binding": {
+        "count": 7776,
+        "maximum_vertex_barycentric_error_m": 5.987064882157727e-08,
+        "mean_error_m": 2.0029209851268162e-08,
+        "source_bary_min": 3.3127449055668702e-06,
+        "source_bary_rowsum_max_error": 2.220446049250313e-16,
+        "outer_face_centroids_to_actual_source_triangles": {
+          "count": 15336,
+          "mean_m": 2.9570051569705635e-05,
+          "p95_m": 7.162154850944775e-05,
+          "max_m": 0.00014169299732025862
+        },
+        "limit": "all vertices/centroids checked; not certified complete surface Hausdorff bound"
+      },
+      "weight_lineage": {
+        "original_production_stencil_sha256": "9503a9db4094bd172dd32baa0f8a7c8fe4afa374308f821a81d6c521d7829663",
+        "canonical_weights_sha256": "492eda4d279dac9ee5833fb46a20ee7841f58e124556cb61757984e9bd27fc0d",
+        "max_source_owned_weight_difference": 0.0,
+        "max_outer_barycentric_weight_difference": 1.2210332478446162e-07
+      },
+      "volume_weight_rule": {
+        "max_difference_from_frozen_radial_convex_combination": 5.7561057031918494e-08,
+        "core_ring_mean_difference": 3.5762786865234375e-07,
+        "all_volume_row_sum_max_error": 1.1920928955078125e-07,
+        "all_volume_min": 0.0
+      },
+      "inverse_roundtrip": {
+        "sample_count": 1024,
+        "seed": 41109,
+        "reference_points_supplied": false,
+        "max_position_error_m": 5.958775439429283e-08,
+        "p95_position_error_m": 4.725116100290949e-08,
+        "mean_position_error_m": 1.9374211866569534e-08,
+        "max_coordinate_error": [
+          2.86102294921875e-06,
+          2.9802322387695312e-08,
+          2.682209014892578e-07
+        ],
+        "wall_seconds": 0.8351094659992668
+      },
+      "inverse_seam": {
+        "angles": [
+          -6.283185307179586,
+          0.0,
+          6.283185307179586,
+          12.566370614359172
+        ],
+        "max_position_difference_m": 6.032785648812933e-08,
+        "points": [
+          [
+            -0.07352671027183533,
+            -0.8832560181617737,
+            -0.030680086463689804
+          ],
+          [
+            -0.07352671027183533,
+            -0.8832560181617737,
+            -0.030680082738399506
+          ],
+          [
+            -0.07352671027183533,
+            -0.8832560181617737,
+            -0.030680077150464058
+          ],
+          [
+            -0.07352671027183533,
+            -0.8832560777664185,
+            -0.03068007342517376
+          ]
+        ]
+      },
+      "outside_inverse_all_rejected": true,
+      "outside_forward_all_rejected": true,
+      "executed_volume_refine_source_sha256": "ea07c2ab8fe5f691675176ff75a4dc49deb00f142c9560b2c85c3f8c4a0519e7"
+    }
+  }
+}

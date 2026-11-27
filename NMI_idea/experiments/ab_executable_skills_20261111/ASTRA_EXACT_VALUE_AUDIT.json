@@ -1,0 +1,13 @@
+{
+  "independent_scalar_programs": 160,
+  "max_absolute_C_W_N_error": 2.6645352591003757e-15,
+  "selection": "first 160 unique arm/fixture/entry/first-action/response-map signatures in frozen episode ordering",
+  "all_supported_arms": [
+    "A_fixed_goal",
+    "A_task",
+    "B_MAP",
+    "B_actual",
+    "B_no_lookahead",
+    "B_nominal"
+  ]
+}

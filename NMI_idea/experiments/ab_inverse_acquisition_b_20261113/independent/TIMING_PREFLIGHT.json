@@ -1,0 +1,123 @@
+{
+  "durations_s": [
+    0.75,
+    1.5,
+    2.25
+  ],
+  "model_atoms": 256,
+  "tasks": {
+    "daughter": {
+      "anchor_support": 99,
+      "first_target_views": [
+        {
+          "view": 3,
+          "checked_direct_from_start": true,
+          "expected_signed_claim_utility": [
+            0.1570581356683406,
+            0.10584707799978202,
+            0.1329741523712937
+          ],
+          "best_timing_public_mass": [
+            0.904122906905524,
+            0.0031010993372186726,
+            0.09277599375725698
+          ],
+          "public_conditioned_minus_fixed": 0.001509764521026774
+        },
+        {
+          "view": 7,
+          "checked_direct_from_start": false,
+          "expected_signed_claim_utility": [
+            0.16613843514870993,
+            0.09729258150586294,
+            0.1393395169626412
+          ],
+          "best_timing_public_mass": [
+            0.946897579712642,
+            0.001331254040638032,
+            0.05177116624671956
+          ],
+          "public_conditioned_minus_fixed": 0.0015604912213794953
+        },
+        {
+          "view": 8,
+          "checked_direct_from_start": false,
+          "expected_signed_claim_utility": [
+            0.09154808470423777,
+            0.0460182156943425,
+            0.06295196918667494
+          ],
+          "best_timing_public_mass": [
+            0.740010371934794,
+            0.05967006049328603,
+            0.20031956757191963
+          ],
+          "public_conditioned_minus_fixed": 0.0028024777465879974
+        }
+      ]
+    },
+    "trunk": {
+      "anchor_support": 99,
+      "first_target_views": [
+        {
+          "view": 3,
+          "checked_direct_from_start": true,
+          "expected_signed_claim_utility": [
+            0.6302361800824626,
+            0.5322997827260793,
+            0.577924072096314
+          ],
+          "best_timing_public_mass": [
+            0.8525137890973977,
+            0.0008094177835871122,
+            0.14667679311901483
+          ],
+          "public_conditioned_minus_fixed": 0.002379579166306045
+        },
+        {
+          "view": 7,
+          "checked_direct_from_start": false,
+          "expected_signed_claim_utility": [
+            0.6297612384782479,
+            0.5322797912750741,
+            0.5779495573671872
+          ],
+          "best_timing_public_mass": [
+            0.8799348494620475,
+            0.0008826357942220493,
+            0.11918251474373003
+          ],
+          "public_conditioned_minus_fixed": 0.002587556050749007
+        },
+        {
+          "view": 8,
+          "checked_direct_from_start": false,
+          "expected_signed_claim_utility": [
+            0.6313691285976192,
+            0.5346981459881991,
+            0.579206177539292
+          ],
+          "best_timing_public_mass": [
+            0.8909672816943555,
+            7.1450114130125445e-06,
+            0.10902557329423128
+          ],
+          "public_conditioned_minus_fixed": 0.002441607247444466
+        }
+      ]
+    }
+  },
+  "speed_screen": {
+    "paths": 168,
+    "passed_by_duration": [
+      168,
+      168,
+      168
+    ],
+    "max_rate_fraction_by_duration": [
+      0.7646776150447288,
+      0.3823388075223644,
+      0.25489253834824294
+    ]
+  }
+}

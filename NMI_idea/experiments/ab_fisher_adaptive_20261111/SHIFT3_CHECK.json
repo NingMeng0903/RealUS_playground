@@ -1,0 +1,567 @@
+{
+  "run_root": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_fisher_adaptive_20261111/native_outputs/native_catalog_stage1_20261111T132130Z_125130",
+  "layouts": {
+    "fixture_00_constrained": {
+      "START|capture=fork_minus": {
+        "valid": true,
+        "seconds": 1.225,
+        "actual_exit_local": [
+          0.006000152466956313,
+          -0.0030004964317623317,
+          -0.07503675511185275
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__direct",
+            "valid": true,
+            "duration_s": 1.225,
+            "ticks": 245,
+            "max_position_mm": 0.7071396296439898,
+            "max_rotation_deg": 0.057662358295911625,
+            "max_synthetic_gap_mm": 0.7595522635824412,
+            "min_self_clearance_mm": 39.478490192706644,
+            "dird_mean": 6.488496227107761
+          }
+        ],
+        "selected_route": "fork_minus__direct",
+        "fisher": {
+          "p_target": 0.7505097249211653,
+          "p_false": 0.02494902750788347,
+          "p_missing": 0.22454124757095123,
+          "kappa": 1221.3160723289814,
+          "s": -0.7503675511185274,
+          "nominal_model_mean": 0.39867362528605116,
+          "sensor_sd": 0.024748737341529166
+        }
+      },
+      "START|capture=fork_plus_shift3": {
+        "valid": true,
+        "seconds": 1.225,
+        "actual_exit_local": [
+          -0.006000711696912519,
+          -4.436509818068481e-06,
+          0.0750372431452869
+        ],
+        "attempts": [
+          {
+            "route": "fork_plus_shift3__direct",
+            "valid": true,
+            "duration_s": 1.225,
+            "ticks": 245,
+            "max_position_mm": 0.29004582745936186,
+            "max_rotation_deg": 0.03278173161846504,
+            "max_synthetic_gap_mm": 0.7337145398712424,
+            "min_self_clearance_mm": 39.427700132009846,
+            "dird_mean": 6.414587103185954
+          }
+        ],
+        "selected_route": "fork_plus_shift3__direct",
+        "fisher": {
+          "p_target": 0.7121265243347157,
+          "p_false": 0.028787347566528433,
+          "p_missing": 0.25908612809875586,
+          "kappa": 1157.9538294654487,
+          "s": 0.7503724314528689,
+          "nominal_model_mean": 0.3952438742472649,
+          "sensor_sd": 0.024748737341529166
+        }
+      },
+      "fork_minus>fork_plus_shift3|capture=left": {
+        "valid": true,
+        "seconds": 2.385,
+        "actual_exit_local": [
+          -0.01558395681690722,
+          0.01778944147357989,
+          0.10000226604272311
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus_shift3__left__direct",
+            "valid": true,
+            "duration_s": 2.385,
+            "ticks": 477,
+            "max_position_mm": 0.12807809498758105,
+            "max_rotation_deg": 0.007449583723800027,
+            "max_synthetic_gap_mm": 0.1523844081915201,
+            "min_self_clearance_mm": 39.24757160417539,
+            "dird_mean": 6.065958259949525
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus_shift3__left__direct"
+      },
+      "fork_minus>fork_plus_shift3|capture=right": {
+        "valid": true,
+        "seconds": 4.215,
+        "actual_exit_local": [
+          0.015584710231988158,
+          0.019394556743297542,
+          -0.10000881213574357
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus_shift3__right__round_tip",
+            "valid": false,
+            "duration_s": 3.715,
+            "ticks": 743,
+            "max_position_mm": 2.894524366456009,
+            "max_rotation_deg": 0.23612246049038516,
+            "max_synthetic_gap_mm": 0.3770805791830482,
+            "min_self_clearance_mm": 39.37097759664372,
+            "dird_mean": 6.27062275728349
+          },
+          {
+            "route": "fork_minus__fork_plus_shift3__right__retreat_fork",
+            "valid": true,
+            "duration_s": 4.215,
+            "ticks": 843,
+            "max_position_mm": 0.9570543082705241,
+            "max_rotation_deg": 0.07840958235706796,
+            "max_synthetic_gap_mm": 0.25125588087004275,
+            "min_self_clearance_mm": 39.39187287746186,
+            "dird_mean": 6.329083294056919
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus_shift3__right__retreat_fork"
+      },
+      "fork_minus>fork_plus|capture=left": {
+        "valid": true,
+        "seconds": 2.5500000000000007,
+        "actual_exit_local": [
+          -0.015583961852593812,
+          0.017789409621031812,
+          0.10000191973720189
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus__left__direct",
+            "valid": true,
+            "duration_s": 2.5500000000000007,
+            "ticks": 510,
+            "max_position_mm": 0.058698494828780895,
+            "max_rotation_deg": 0.00476579717714192,
+            "max_synthetic_gap_mm": 0.15234249028128866,
+            "min_self_clearance_mm": 39.23594213597038,
+            "dird_mean": 6.041879693516013
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus__left__direct"
+      },
+      "fork_minus>fork_plus|capture=right": {
+        "valid": true,
+        "seconds": 3.0649999999999995,
+        "actual_exit_local": [
+          0.015583921901809844,
+          0.01938976870065767,
+          -0.10000735555361558
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus__right__direct",
+            "valid": true,
+            "duration_s": 3.0649999999999995,
+            "ticks": 613,
+            "max_position_mm": 0.02261650647299313,
+            "max_rotation_deg": 0.021115865763610814,
+            "max_synthetic_gap_mm": 0.251266377327897,
+            "min_self_clearance_mm": 39.35943445990131,
+            "dird_mean": 6.31573532269634
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus__right__direct"
+      },
+      "fork_minus|capture=fork_plus": {
+        "valid": true,
+        "seconds": 1.525,
+        "actual_exit_local": [
+          -0.005999785318253587,
+          -0.00299968559473983,
+          0.07520751442527099
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus__direct",
+            "valid": true,
+            "duration_s": 1.525,
+            "ticks": 305,
+            "max_position_mm": 1.22097994350864,
+            "max_rotation_deg": 0.09339641765948316,
+            "max_synthetic_gap_mm": 0.5405660458634324,
+            "min_self_clearance_mm": 39.79795483658669,
+            "dird_mean": 6.319191542977346
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus__direct",
+        "fisher": {
+          "p_target": 0.31234966838788375,
+          "p_false": 0.06876503316121163,
+          "p_missing": 0.6188852984509047,
+          "kappa": 499.0426491066969,
+          "s": 0.7520751442527098,
+          "nominal_model_mean": 0.369421144518397,
+          "sensor_sd": 0.024748737341529166,
+          "pair_slope_info": 799.7284661034097
+        }
+      },
+      "fork_minus|capture=fork_plus_shift3": {
+        "valid": true,
+        "seconds": 1.525,
+        "actual_exit_local": [
+          -0.005999753315052628,
+          2.257193701579369e-07,
+          0.07498141607162553
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus_shift3__direct",
+            "valid": true,
+            "duration_s": 1.525,
+            "ticks": 305,
+            "max_position_mm": 1.4542526203724093,
+            "max_rotation_deg": 0.13656392867624315,
+            "max_synthetic_gap_mm": 0.3687350249427226,
+            "min_self_clearance_mm": 39.79795483658669,
+            "dird_mean": 6.301631377367407
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus_shift3__direct",
+        "fisher": {
+          "p_target": 0.7129023151153442,
+          "p_false": 0.028709768488465584,
+          "p_missing": 0.25838791639619024,
+          "kappa": 1159.2365598562487,
+          "s": 0.7498141607162553,
+          "nominal_model_mean": 0.39532995950770167,
+          "sensor_sd": 0.024748737341529166,
+          "pair_slope_info": 1338.4744568513518
+        }
+      },
+      "fork_plus_shift3|capture=left": {
+        "valid": true,
+        "seconds": 2.3850000000000002,
+        "actual_exit_local": [
+          -0.01558392610057157,
+          0.017789633927667255,
+          0.10000258063852403
+        ],
+        "attempts": [
+          {
+            "route": "fork_plus_shift3__left__direct",
+            "valid": true,
+            "duration_s": 2.3850000000000002,
+            "ticks": 477,
+            "max_position_mm": 0.04054407823523574,
+            "max_rotation_deg": 0.005097042466079703,
+            "max_synthetic_gap_mm": 0.15236949239949601,
+            "min_self_clearance_mm": 39.23281271547203,
+            "dird_mean": 6.311880950666965
+          }
+        ],
+        "selected_route": "fork_plus_shift3__left__direct"
+      },
+      "fork_plus_shift3|capture=right": {
+        "valid": true,
+        "seconds": 3.72,
+        "actual_exit_local": [
+          0.015584104557942504,
+          0.019389290055775544,
+          -0.10000025876581944
+        ],
+        "attempts": [
+          {
+            "route": "fork_plus_shift3__right__round_tip",
+            "valid": true,
+            "duration_s": 3.72,
+            "ticks": 744,
+            "max_position_mm": 1.5244344284556108,
+            "max_rotation_deg": 0.1449759491813047,
+            "max_synthetic_gap_mm": 0.33819240635613484,
+            "min_self_clearance_mm": 39.33185758032616,
+            "dird_mean": 6.4488864304993205
+          },
+          {
+            "route": "fork_plus_shift3__right__retreat_fork",
+            "valid": true,
+            "duration_s": 4.215,
+            "ticks": 843,
+            "max_position_mm": 0.04798744031917021,
+            "max_rotation_deg": 0.028737998044764495,
+            "max_synthetic_gap_mm": 0.25126262110427,
+            "min_self_clearance_mm": 39.363734588350766,
+            "dird_mean": 6.480628529328798
+          }
+        ],
+        "selected_route": "fork_plus_shift3__right__round_tip"
+      }
+    },
+    "fixture_01_constrained": {
+      "START|capture=fork_minus": {
+        "valid": true,
+        "seconds": 1.225,
+        "actual_exit_local": [
+          0.006000152466956313,
+          -0.0030004964317623317,
+          -0.07503675511185275
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__direct",
+            "valid": true,
+            "duration_s": 1.225,
+            "ticks": 245,
+            "max_position_mm": 0.7071396296439898,
+            "max_rotation_deg": 0.057662358295911625,
+            "max_synthetic_gap_mm": 0.7595522635824412,
+            "min_self_clearance_mm": 39.478490192706644,
+            "dird_mean": 6.488496227107761
+          }
+        ],
+        "selected_route": "fork_minus__direct",
+        "fisher": {
+          "p_target": 0.7505097249211653,
+          "p_false": 0.02494902750788347,
+          "p_missing": 0.22454124757095123,
+          "kappa": 1221.3160723289814,
+          "s": -0.7503675511185274,
+          "nominal_model_mean": 0.39867362528605116,
+          "sensor_sd": 0.024748737341529166
+        }
+      },
+      "START|capture=fork_plus_shift3": {
+        "valid": true,
+        "seconds": 1.225,
+        "actual_exit_local": [
+          -0.006000711696912519,
+          -4.436509818068481e-06,
+          0.0750372431452869
+        ],
+        "attempts": [
+          {
+            "route": "fork_plus_shift3__direct",
+            "valid": true,
+            "duration_s": 1.225,
+            "ticks": 245,
+            "max_position_mm": 0.29004582745936186,
+            "max_rotation_deg": 0.03278173161846504,
+            "max_synthetic_gap_mm": 0.7337145398712424,
+            "min_self_clearance_mm": 39.427700132009846,
+            "dird_mean": 6.414587103185954
+          }
+        ],
+        "selected_route": "fork_plus_shift3__direct",
+        "fisher": {
+          "p_target": 0.7121265243347157,
+          "p_false": 0.028787347566528433,
+          "p_missing": 0.25908612809875586,
+          "kappa": 1157.9538294654487,
+          "s": 0.7503724314528689,
+          "nominal_model_mean": 0.3952438742472649,
+          "sensor_sd": 0.024748737341529166
+        }
+      },
+      "fork_minus>fork_plus_shift3|capture=left": {
+        "valid": true,
+        "seconds": 2.4749999999999996,
+        "actual_exit_local": [
+          -0.015583962920818562,
+          0.019389410942623087,
+          0.10000019178512991
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus_shift3__left__direct",
+            "valid": true,
+            "duration_s": 2.4749999999999996,
+            "ticks": 495,
+            "max_position_mm": 0.4699881798932002,
+            "max_rotation_deg": 0.02626891602768378,
+            "max_synthetic_gap_mm": 0.17083580770438328,
+            "min_self_clearance_mm": 39.24089369779266,
+            "dird_mean": 6.053549733366384
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus_shift3__left__direct"
+      },
+      "fork_minus>fork_plus_shift3|capture=right": {
+        "valid": true,
+        "seconds": 2.87,
+        "actual_exit_local": [
+          0.015584829427264201,
+          0.01779490428262078,
+          -0.1000091428043438
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus_shift3__right__direct",
+            "valid": true,
+            "duration_s": 2.87,
+            "ticks": 574,
+            "max_position_mm": 0.2681007611553427,
+            "max_rotation_deg": 0.023636001580520465,
+            "max_synthetic_gap_mm": 0.23359852369182724,
+            "min_self_clearance_mm": 39.34578226522486,
+            "dird_mean": 6.335309148225512
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus_shift3__right__direct"
+      },
+      "fork_minus>fork_plus|capture=left": {
+        "valid": true,
+        "seconds": 2.6449999999999996,
+        "actual_exit_local": [
+          -0.015583963944432693,
+          0.019389401486073213,
+          0.10000113816796048
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus__left__direct",
+            "valid": true,
+            "duration_s": 2.6449999999999996,
+            "ticks": 529,
+            "max_position_mm": 0.06695663669299946,
+            "max_rotation_deg": 0.004984617293577622,
+            "max_synthetic_gap_mm": 0.17077307086034862,
+            "min_self_clearance_mm": 39.22929275435228,
+            "dird_mean": 6.029042077165344
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus__left__direct"
+      },
+      "fork_minus>fork_plus|capture=right": {
+        "valid": true,
+        "seconds": 2.99,
+        "actual_exit_local": [
+          0.015584558524509969,
+          0.01779364397844927,
+          -0.10000771795709971
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus__right__direct",
+            "valid": true,
+            "duration_s": 2.99,
+            "ticks": 598,
+            "max_position_mm": 0.02323984917569016,
+            "max_rotation_deg": 0.021902218332961472,
+            "max_synthetic_gap_mm": 0.2328172530979521,
+            "min_self_clearance_mm": 39.35727203375827,
+            "dird_mean": 6.322332443285393
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus__right__direct"
+      },
+      "fork_minus|capture=fork_plus": {
+        "valid": true,
+        "seconds": 1.525,
+        "actual_exit_local": [
+          -0.005999785318253587,
+          -0.00299968559473983,
+          0.07520751442527099
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus__direct",
+            "valid": true,
+            "duration_s": 1.525,
+            "ticks": 305,
+            "max_position_mm": 1.22097994350864,
+            "max_rotation_deg": 0.09339641765948316,
+            "max_synthetic_gap_mm": 0.5405660458634324,
+            "min_self_clearance_mm": 39.79795483658669,
+            "dird_mean": 6.319191542977346
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus__direct",
+        "fisher": {
+          "p_target": 0.31234966838788375,
+          "p_false": 0.06876503316121163,
+          "p_missing": 0.6188852984509047,
+          "kappa": 499.0426491066969,
+          "s": 0.7520751442527098,
+          "nominal_model_mean": 0.369421144518397,
+          "sensor_sd": 0.024748737341529166,
+          "pair_slope_info": 799.7284661034097
+        }
+      },
+      "fork_minus|capture=fork_plus_shift3": {
+        "valid": true,
+        "seconds": 1.525,
+        "actual_exit_local": [
+          -0.005999753315052628,
+          2.257193701579369e-07,
+          0.07498141607162553
+        ],
+        "attempts": [
+          {
+            "route": "fork_minus__fork_plus_shift3__direct",
+            "valid": true,
+            "duration_s": 1.525,
+            "ticks": 305,
+            "max_position_mm": 1.4542526203724093,
+            "max_rotation_deg": 0.13656392867624315,
+            "max_synthetic_gap_mm": 0.3687350249427226,
+            "min_self_clearance_mm": 39.79795483658669,
+            "dird_mean": 6.301631377367407
+          }
+        ],
+        "selected_route": "fork_minus__fork_plus_shift3__direct",
+        "fisher": {
+          "p_target": 0.7129023151153442,
+          "p_false": 0.028709768488465584,
+          "p_missing": 0.25838791639619024,
+          "kappa": 1159.2365598562487,
+          "s": 0.7498141607162553,
+          "nominal_model_mean": 0.39532995950770167,
+          "sensor_sd": 0.024748737341529166,
+          "pair_slope_info": 1338.4744568513518
+        }
+      },
+      "fork_plus_shift3|capture=left": {
+        "valid": true,
+        "seconds": 2.475,
+        "actual_exit_local": [
+          -0.015583925353419363,
+          0.019389638710202946,
+          0.10000235453788
+        ],
+        "attempts": [
+          {
+            "route": "fork_plus_shift3__left__direct",
+            "valid": true,
+            "duration_s": 2.475,
+            "ticks": 495,
+            "max_position_mm": 0.027504946096901173,
+            "max_rotation_deg": 0.004500453206903788,
+            "max_synthetic_gap_mm": 0.17081924491766967,
+            "min_self_clearance_mm": 39.230189236947865,
+            "dird_mean": 6.302561414518812
+          }
+        ],
+        "selected_route": "fork_plus_shift3__left__direct"
+      },
+      "fork_plus_shift3|capture=right": {
+        "valid": true,
+        "seconds": 2.8700000000000006,
+        "actual_exit_local": [
+          0.01558486233273069,
+          0.01779511828998659,
+          -0.10001229601848327
+        ],
+        "attempts": [
+          {
+            "route": "fork_plus_shift3__right__direct",
+            "valid": true,
+            "duration_s": 2.8700000000000006,
+            "ticks": 574,
+            "max_position_mm": 0.21778141809816598,
+            "max_rotation_deg": 0.02915940191720403,
+            "max_synthetic_gap_mm": 0.2326692865397166,
+            "min_self_clearance_mm": 39.26024451828664,
+            "dird_mean": 6.474249356621961
+          }
+        ],
+        "selected_route": "fork_plus_shift3__right__direct"
+      }
+    }
+  }
+}

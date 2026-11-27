@@ -1,0 +1,27 @@
+{
+  "experiment": "leg_scan_reader_feedback_values_20261124_v8",
+  "base": "2f2c704eb0085f78e638d41cd2467c436713b695",
+  "seed": 2026112408,
+  "used_features": [
+    "base_weight",
+    "embedding_cosine",
+    "separation_mm",
+    "axial_delta",
+    "angle_delta",
+    "min_quality",
+    "min_physical_probability",
+    "max_artifact_probability"
+  ],
+  "identity_disagreement_used": false,
+  "v6_is_test_only": true,
+  "calibration_operation_sampling": "uniform_over_all_retrieved_pairs",
+  "calibration_operation_cap": 1400000,
+  "primary_no_identity_fields": [
+    "role_overlap",
+    "target_probability_disagreement"
+  ],
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "v5_source_sha256": "a29e23b68602de1be999c3b731ba97d317e0aecfc37d3e949fdee144f766036e",
+  "source_sha256": "dbf0bcc70acf73abb7703f205aeb02e473620a47cde267dd6810674d424732d4",
+  "local_full_protocol_sha256": "eb00b6e220811ffa79976214c1f674fb7c0587c4dac7a57736d2cfdef2938352"
+}

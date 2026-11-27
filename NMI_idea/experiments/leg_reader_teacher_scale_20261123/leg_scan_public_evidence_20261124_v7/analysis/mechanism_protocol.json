@@ -1,0 +1,81 @@
+{
+  "base_commit": "60a77233b60686cfeed377757503c1fa95f8ff6f",
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "models": {
+    "observation": "5510e29848ecfd36521deeccd16678e71ddaa8115fa49d5c22f9823eee22000c",
+    "bridge": "6ed9af55dea7d468a13136ac8086d2f375287c306a5519728b3d4ab61596e1a9"
+  },
+  "cohorts": {
+    "confirmation": [
+      32,
+      96
+    ],
+    "evidence_dev": [
+      16,
+      40
+    ],
+    "mechanism_test": [
+      12,
+      36
+    ],
+    "student_wave0": [
+      12,
+      28
+    ],
+    "student_wave1": [
+      12,
+      28
+    ],
+    "student_test": [
+      12,
+      28
+    ]
+  },
+  "seeds": {
+    "confirmation": 2107240000000000,
+    "evidence_dev": 2107240010000000,
+    "mechanism_test": 2107240020000000,
+    "student_wave0": 2107240030000000,
+    "student_wave1": 2107240040000000,
+    "student_test": 2107240050000000
+  },
+  "arms": [
+    "mpc",
+    "pinned_v6",
+    "goal_edges_off",
+    "goal_edges_on",
+    "goal_stop"
+  ],
+  "action_programs": [
+    "reference",
+    "mpc",
+    "observe",
+    "equal_hold"
+  ],
+  "same_gate": "strict lower >0 and wrong upper <= .10",
+  "loss_scope": "paired outcome differences after actual student moves twice from shared physical prefix",
+  "dird": false,
+  "search_offsets": [
+    81000000000000,
+    82000000000000,
+    83000000000000,
+    84000000000000,
+    85000000000000,
+    86000000000000
+  ],
+  "scoring_offsets": [
+    null,
+    71000000000000,
+    72000000000000
+  ],
+  "source_sha256": {
+    "study_v7.py": "e339162bd090714189be9e568dbcc59a361f569c25c0fe1e8f4e428491da97a9",
+    "motion_v7.py": "171e305a37dcb13b6dd56cc3d6a8ede8001c41e9413ed8bd1cbcd1b567f3e412",
+    "reader_v7.py": "ab3af76221d6a8700428d32f666eff49cf050fca9c7eec0db08998c743958a57",
+    "goal_v7.py": "1b140c6de18383a18a0a7fc52de752449e884fb3c961720ef237624801ca6239",
+    "observation_v7.py": "6e3a092d9de4fe8a65a2038ca26b8614ddd7aa5f2e50628a5e7725221429e61e",
+    "bridge_v7.py": "ba61f0cda2362b03d40314f4c1723da69ede6327b882d659792bae0ba24db09a",
+    "value_v7.py": "fc9b87f42f6f044908bd8bc933f9f6adbd2f673f6a31ff40bf59440d9f7e3359",
+    "cycles_v7.py": "9320d5f1b7d7e240673889bab87349499d66ebec09cd610e6584e6dfb0489981"
+  }
+}

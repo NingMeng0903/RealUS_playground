@@ -124,8 +124,14 @@ def test_high_q25_left_wedge_still_requests_echo_omega_without_parking_alpha():
         guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
                       now_s=t + .02, force_n=4., stick_speed_m_s=0.)
     assert guide.last_facts.get('echo_reason') == 'unilateral_missing_echo'
+    assert guide.omega_target == 0.
+    for t in np.arange(1.10, 1.45, .05):
+        obs = frame(t, echo)
+        object.__setattr__(obs, 'region_confidence', np.full(20, .99))
+        guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
+                      now_s=t + .02, force_n=4., stick_speed_m_s=0.)
     assert abs(guide.omega_target) > 0.
-    assert abs(guide.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
+    assert abs(guide.omega_target) <= config['pad']['static_committed_omega_rad_s'] + 1e-12
     assert guide.last_alpha > 0.9
     assert guide._hold_until_s is None
 
@@ -142,12 +148,71 @@ def test_moving_echo_keeps_full_omega_and_parked_echo_does_not_hold():
         object.__setattr__(obs, 'region_confidence', np.full(20, .99))
         guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
                       now_s=t + .02, force_n=4., stick_speed_m_s=.05)
-    assert abs(guide.omega_target) > config['pad']['static_visual_omega_rad_s']
+    assert abs(guide.omega_target) > .03
     assert guide._hold_until_s is not None
     guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
                   now_s=1.12, force_n=4., stick_speed_m_s=0.)
     assert abs(guide.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
     assert guide._hold_until_s is None
+
+
+def test_parked_thin_echo_stays_at_its_moment_when_regions_darken():
+    config, receiver, frame = setup()
+    guide = PadVisualGuide(config, TorqueTiltConfig(), receiver=receiver, progress=True)
+    tilt = TorqueTilt(TorqueTiltConfig())
+    echo = np.full(145, .5)
+    echo[:2] = .01
+    pose = np.zeros(6)
+    flat = np.full(20, .995)
+    def tick(t, quality):
+        obs = frame(t, echo)
+        object.__setattr__(obs, 'region_confidence', np.asarray(quality, dtype=float))
+        guide.preview(pose=pose, dt_s=.05, contact_present=True, tilt=tilt,
+                      now_s=t + .02, force_n=4., stick_speed_m_s=0.)
+    for t in (1.0, 1.05):
+        tick(t, flat)
+    assert guide.last_facts.get('echo_reason') == 'unilateral_missing_echo'
+    assert abs(guide.omega_target) < .02
+    dark = flat.copy()
+    dark[:4] = .70
+    for t in np.arange(1.20, 2.10, .05):
+        tick(t, dark)
+    # Absolute region darkness no longer promotes a two-column moment.
+    assert abs(guide.omega_target) < .02
+    assert guide._hold_until_s is None
+
+
+def test_contact_loss_follows_this_frame_not_an_absolute_quality():
+    config, receiver, frame = setup()
+    guide = PadVisualGuide(config, TorqueTiltConfig(), receiver=receiver, progress=True)
+    tilt = TorqueTilt(TorqueTiltConfig())
+    pose = np.zeros(6)
+    echo = np.full(145, .5)
+
+    def tick(t, quality):
+        obs = frame(t, echo)
+        object.__setattr__(obs, 'region_confidence', np.asarray(quality, dtype=float))
+        guide.preview(pose=pose, dt_s=.05, contact_present=True, tilt=tilt,
+                      now_s=t + .02, force_n=4., stick_speed_m_s=.05)
+        return abs(guide.omega_target)
+
+    tick(1.0, np.full(20, .78))
+    tick(1.05, np.full(20, .78))
+    even = abs(guide.omega_target)
+    mild = np.full(20, .90)
+    mild[:10] = .82
+    for t in (1.2, 1.25):
+        tick(t, mild)
+    mild_omega = abs(guide.omega_target)
+    hole = np.full(20, .95)
+    hole[:10] = .40
+    for t in (1.4, 1.45):
+        tick(t, hole)
+    hole_omega = abs(guide.omega_target)
+    assert even < .02
+    assert mild_omega < .5 * config['pad']['max_visual_omega_rad_s']
+    assert hole_omega > mild_omega
+    assert hole_omega > .10
 
 
 def test_parked_stable_wedge_raises_omega_after_commit_but_flips_stay_capped():
@@ -163,7 +228,7 @@ def test_parked_stable_wedge_raises_omega_after_commit_but_flips_stay_capped():
         object.__setattr__(obs, 'region_confidence', np.full(20, .99))
         guide.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
                       now_s=t + .02, force_n=4., stick_speed_m_s=speed)
-    for t in np.arange(1.0, 1.40, .05):
+    for t in np.arange(1.0, 1.12, .05):
         tick(t, left)
     assert abs(guide.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
     for t in np.arange(1.40, 1.95, .05):
@@ -178,7 +243,7 @@ def test_parked_stable_wedge_raises_omega_after_commit_but_flips_stay_capped():
         flipper.preview(pose=pose, dt_s=.005, contact_present=True, tilt=tilt,
                         now_s=t + .02, force_n=4., stick_speed_m_s=0.)
     for i, t in enumerate(np.arange(2.0, 3.6, .05)):
-        flip_tick(t, left if (i // 6) % 2 == 0 else right)
+        flip_tick(t, left if (i // 2) % 2 == 0 else right)
     assert abs(flipper.omega_target) <= config['pad']['static_visual_omega_rad_s'] + 1e-12
     assert flipper._hold_until_s is None
 
@@ -314,9 +379,9 @@ def test_loader_keeps_visual_hold_and_pad_force_band():
     assert config['qp']['alpha_min'] == config['qp']['pad_alpha_min'] == pytest.approx(.12)
     assert config['pad']['max_visual_omega_rad_s'] == pytest.approx(.16)
     assert config['pad']['static_stick_m_s'] == pytest.approx(.01)
-    assert config['pad']['static_visual_omega_rad_s'] == pytest.approx(.04)
-    assert config['pad']['static_commit_s'] == pytest.approx(.80)
-    assert config['pad']['static_committed_omega_rad_s'] == pytest.approx(.12)
+    assert config['pad']['static_visual_omega_rad_s'] == pytest.approx(0.)
+    assert config['pad']['static_commit_s'] == pytest.approx(.20)
+    assert config['pad']['static_committed_omega_rad_s'] == pytest.approx(.16)
     assert config['pad']['relative_spread_floor'] == pytest.approx(.12)
     assert config['pad']['evidence']['echo_moment_cubic_knee'] == pytest.approx(.25)
     assert config['pad']['evidence']['echo_moment_compress'] == pytest.approx(0.)

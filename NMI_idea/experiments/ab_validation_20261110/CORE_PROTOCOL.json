@@ -1,0 +1,33 @@
+{
+  "version": "2026-11-10-before-core-performance-runs",
+  "scope": "Offline mechanism experiments plus real production motion/capability integration; no physical ultrasound claim",
+  "existing_module_checks": "Exploratory compatibility audits; results may already have been inspected. Core comparisons below are frozen before their first performance run.",
+  "random_seeds": {"train": 41101, "validation": 41102, "test": 41103, "bootstrap": 41104},
+  "A": {
+    "train_worlds": 256,
+    "validation_worlds": 64,
+    "test_worlds": 128,
+    "transitions_per_train_world": 12,
+    "primary_endpoint": "Paired held-out post-action squared local feature error, with actual action cost and calibration probes separately reported",
+    "conditions": ["analytic_exact_negative_control", "context_dependent_response_shift"],
+    "baselines": ["analytic_geometry", "canonical_learned_residual", "online_local_jacobian_calibration", "oracle_response_reference"],
+    "transfer_claim": "Unseen independently seeded synthetic contexts/worlds only; no human or unseen-organ transport claim",
+    "rotation_checks": "Common passive SE3 transformations, and explicit distinction from moving patient relative to robot",
+    "support_criterion": "Learned response reduces held-out true selected-action error with paired bootstrap 95% interval excluding zero; negative-control advantage must not be manufactured"
+  },
+  "B": {
+    "contexts": "Three deterministic public robot placement contexts around the preexisting nominal robot pose, selected geometrically before outcome inspection. Log exact transforms.",
+    "beliefs_per_context": 24,
+    "hypotheses": "Finite 3-5 location/identity hypotheses with broad support, including multimodal and source-prior-shift cases",
+    "horizon_observations": 2,
+    "action_budget": "Same actual primitive candidate graph and same finite observation budget for all methods",
+    "primary_endpoint": "Exact expected sum of movement, observation and terminal task loss in the declared finite synthetic sensor model",
+    "secondary_endpoints": ["wrong_target_acceptance_probability", "movement_distance", "observation_count", "planner_wall_time", "actual_capability_query_calls", "exact_check_failures"],
+    "baselines": ["A_full_belief_greedy", "A_same_horizon_open_loop", "entropy_information", "B_observation_contingent", "B_without_capability", "B_collapsed_belief", "full_history_exact_enumeration"],
+    "capability": "Real imported dIRD and real primitive paths must affect costs/feasibility. Keep actual exit robot state or explicitly label any reduced graph restriction.",
+    "support_criterion": "B agrees with exact finite reference to numerical tolerance and improves over matched full-belief open-loop in at least one prespecified condition; aggregate paired effect and zero/negative cases all reported",
+    "algorithmic_novelty_limit": "Agreement with full-history exact enumeration establishes correctness, not superiority over general POMDP planning"
+  },
+  "statistics": {"paired_bootstrap_replicates": 2000, "unit": "independent synthetic world for A; enumerated public scenario for B, not frames", "interval": 0.95, "primary_tuning": "Only training/validation data; no test-seed replacement"},
+  "inference_limits": ["Small deterministic B context set is mechanism evidence, not a population estimate", "Synthetic response generator can establish identifiability and implementation only, not real tissue transfer", "dIRD score alone is never exact path safety", "No physical robot or ultrasound sensor is driven"]
+}

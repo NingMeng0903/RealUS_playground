@@ -1,0 +1,66 @@
+{
+  "created_utc": "2026-11-11T12:29:08.722663+00:00",
+  "status": "v4 development; no results",
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111",
+  "reason": "Continuing recovery and computationally bounded baseline-policy rollout; old bounded pilot preserved, test remains unused.",
+  "files": [
+    {
+      "name": "acoustics.py",
+      "sha256": "c246cfe812af9fa3552efc385b1b20d767baaf59c60fa15f246d297f13e07ac9"
+    },
+    {
+      "name": "belief_model.py",
+      "sha256": "8a90a61b6783736a9bb69f6497e1deab540b57f53c2b3207ac36cc156ddd1396"
+    },
+    {
+      "name": "train_calibrate.py",
+      "sha256": "95968c25a11a95c2a2c7eca5d18d6e8a8bda39e09fdb2d178abd8b8459de20ad"
+    },
+    {
+      "name": "fixture.py",
+      "sha256": "559353c7b2a21317337baacaa54742bffe0acb658cf577c87c064b141f7af787"
+    },
+    {
+      "name": "robot_motion.py",
+      "sha256": "e14393104c76b4bf96512062d35c14a83c1a962458e3a402565a0bcee0fa6994"
+    },
+    {
+      "name": "native_adapter.py",
+      "sha256": "740cd538e660615e7a814aca657581ec42819940000721be2d46d1ae1f63de0b"
+    },
+    {
+      "name": "adaptive_planning.py",
+      "sha256": "5c4e1781b48af507efd30279219ebf61641886a9d40c258dda746ddd10f3acfc"
+    },
+    {
+      "name": "run_adaptive.py",
+      "sha256": "20a8a20664ed864ff775ce2bdc61a0f4da4957d8474e15c73b8f9af58e5051ce"
+    },
+    {
+      "name": "summarize_adaptive.py",
+      "sha256": "fd043fc40e6ba4c9c1aabc4d24876959e50eae9b38ab83a46f0834a661201032"
+    },
+    {
+      "name": "test_belief_model.py",
+      "sha256": "2c23d05b695d1fe80a4e3c5ca8da25d4c113d5d6a33e7d5b3a45c05ff55e6c22"
+    },
+    {
+      "name": "test_adaptive_planning.py",
+      "sha256": "154d2a0d62555cee45a269f04e02af1d18931560b2b387c6b3da200e02c978a0"
+    },
+    {
+      "name": "test_native_adapter.py",
+      "sha256": "c511a9a52a149691a22c84e10287685125145c5d4f9aeb0f251156e3703e0a50"
+    },
+    {
+      "name": "test_summary.py",
+      "sha256": "9652bad50bc626a2dd15657c16453a1caca698cb1b305a570072f09fc3768b8e"
+    },
+    {
+      "name": "verify_model_replay.py",
+      "sha256": "5ee91a77e367622dd71d695137d6b420159645824fcb6c52583c077928b0d953"
+    }
+  ],
+  "trained_model_reused": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/models/v3/MODEL.json",
+  "new_independent_training_claim": false
+}

@@ -1,0 +1,1159 @@
+                                         JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                           1
+
+
+
+
+                                          From Freehand Demonstrations to Autonomous Robotic Ultrasound:
+                                                                   An Anatomy-Anchored Learning Framework
+                                                             Yuan Bi∗ , Fangxu Han∗ , Ye Su, Yiping Zhou, Zhongliang Jiang and Nassir Navab
+
+
+
+                                            Abstract—Ultrasound imaging is highly operator-dependent,
+                                         motivating robotic systems that can reproduce expert scanning
+                                         skills consistently. However, these skills involve coordinated
+                                         interpretation of anatomical landmarks, ultrasound images, and
+                                         probe-tissue interactions that are difficult to encode in manually
+                                         designed control strategies. Imitation learning offers a promis-
+arXiv:2610.32525v1 [cs.RO] 23 Oct 2026
+
+
+
+
+                                         ing alternative, but its observation and action representations
+                                         should reflect the anatomically structured nature of scanning.
+                                         We propose an anatomy-anchored imitation-learning framework
+                                         that integrates anatomy-guided probe placement with learned
+                                         ultrasound navigation. The placement module identifies a task-
+                                         specific anatomical starting point from external visual obser-
+                                         vations and establishes an initial probe pose as the reference
+                                         frame for subsequent scanning. A flow-based policy combines
+                                         anchor-relative probe poses, ultrasound images, probe-mounted
+                                         camera observations, and contact forces to generate scanning
+                                         motions, while a termination head predicts task completion. This
+                                         formulation avoids continuous reliance on third-person vision
+                                         and reduces dependence on the robot-patient configuration. A
+                                         handheld acquisition platform enables multimodal demonstra-
+                                         tions to be collected during natural freehand scanning without
+                                         a robot. On 16 previously unseen participants, task success
+                                         rates reach 96%, 94%, 88%, and 94% for kidney, gallbladder,
+                                         and liver standard-plane acquisition and radial artery sweeping,
+                                         respectively. Compared with a fine-tuned π0 model, success on
+                                         the abdominal tasks improves by 10-42 percentage points, with
+                                         reduced time-to-target, peak contact force, and trajectory jerk.           Fig. 1. From freehand demonstrations to autonomous robotic ultrasound.
+                                         Ablation studies support the complementary contributions of                Top: Robot-dependent demonstration collection requires teleoperation and a
+                                         anatomical anchoring, egocentric vision, and force feedback.               dedicated robotic setup. Bottom: Our framework enables robot-free collec-
+                                         End-to-end trials with automatic probe placement achieve 90-               tion of expert scanning demonstrations and transfers the acquired skills to
+                                         100% success, and the policies transfer without retraining to a            autonomous robotic execution through anatomy-anchored imitation learning.
+                                         second robot with 83-100% success on the selected tasks. Code
+                                         and videos are available at https://anonymous.4open.science/r/
+                                         Anatomy anchored SFP-5B0E/
+                                                                                                                    quality and examination outcomes, limiting the standardization
+                                           Index Terms—Robotic ultrasound, imitation learning, medical              and accessibility of ultrasound imaging [2]. Robotic ultrasound
+                                         robotics.                                                                  offers a promising solution to these challenges by enabling
+                                                                                                                    precise, repeatable, and consistent probe manipulation [3].
+                                                                 I. I NTRODUCTION                                   Nevertheless, autonomous ultrasound scanning is difficult to
+                                                                                                                    achieve using manually designed control strategies alone.
+                                            Ultrasound is one of the most widely used medical imaging               Many scanning skills rely on subtle adjustments learned
+                                         modalities owing to its real-time imaging capability, non-                 through extensive clinical experience. Such expert behaviors
+                                         invasive nature, portability, and relatively low cost [1]. It              are often difficult to formulate explicitly as predefined trajec-
+                                         plays an important role in a broad range of diagnostic and                 tories or control laws [4]. Robot learning, and imitation learn-
+                                         interventional procedures. However, conventional ultrasound                ing in particular, therefore provides a promising framework
+                                         scanning remains highly operator-dependent. This dependence                for acquiring ultrasound scanning skills directly from expert
+                                         on individual skill can lead to considerable variability in image          demonstrations and transferring them to autonomous robotic
+                                           Manuscript received Month DD, YYYY; revised Month DD, YYYY.              systems.
+                                         (Corresponding author: Zhongliang Jiang.)                                     Imitation learning enables robots to acquire control poli-
+                                           ∗ These authors contributed equally to this work.
+                                                                                                                    cies directly from expert demonstrations by learning a map-
+                                           Yuan Bi, Fangxu Han, Ye Su, Yiping Zhou and Nassir Navab are with the
+                                         Chair for Computer Aided Medical Procedures (CAMP), Technical University   ping from sensory observations to robot actions [5]. Early
+                                         of Munich, Munich, Germany.                                                approaches commonly formulated this problem as behavior
+                                           Yuan Bi is with the Munich Center for Machine Learning (MCML),           cloning [6], in which a policy is trained to reproduce the
+                                         Munich, Germany.
+                                           Zhongliang Jiang is with the Department of Mechanical Engineering, The   actions demonstrated under corresponding observations. More
+                                         University of Hong Kong, Hong Kong SAR, China.                             recently, generative visuomotor policies have substantially
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                          2
+
+
+
+improved the ability to model complex and multimodal robot        learned probe navigation phase. During initialization, anatom-
+behaviors, such as Diffusion Policy [7] or Flow-based poli-       ical feature detection is used to place the probe at a scan-
+cies [8], [9]. In parallel, vision-language-action models have    specific starting pose. Once stable contact has been estab-
+incorporated pretrained vision-language representations and       lished, the learned policy takes over and performs local probe
+large-scale robot datasets to improve semantic reasoning and      navigation using four complementary modalities: ultrasound
+generalization across manipulation tasks [10], [11].              images, a probe-mounted wrist-camera view, contact force,
+   Despite these advances in policy architectures, most           and probe pose relative to an anatomical anchor. The ultra-
+imitation-learning frameworks are still designed around the       sound image provides direct information about the internal
+characteristics of general robotic manipulation. Their observa-   anatomy, while the wrist camera captures the local interaction
+tions commonly include one or more third-person or wrist-         between the probe and the scanning region, including probe
+mounted camera views together with robot states, such as          motion relative to the patient surface. Force measurements
+joint configurations or end-effector poses [12], while force or   characterize the contact condition, which strongly affects both
+tactile measurements may additionally be used for contact-rich    image quality and tissue deformation.
+tasks [13]. Such observations are well suited to manipulation,       Because ultrasound scanning is organized around anatom-
+where the identities, positions, and spatial arrangements of      ical structures and scan-specific starting locations, the global
+objects can vary substantially across demonstrations and de-      pose of the probe in the robot-base frame is of limited
+ployment environments. External vision provides the global        relevance to the underlying scanning skill. Although anatomy
+scene context required to interpret these variations, while       varies across patients, the relative organization of anatomi-
+robot states are often represented in a global or robot-base      cal structures is consistent, and clinical scans are typically
+coordinate frame to relate the end effector to the surrounding    initialized from identifiable landmarks or predefined body
+workspace [14].                                                   regions. We therefore use the initial probe pose, established
+   Imitation-learning methods for robotic ultrasound, however,    relative to a detected anatomical feature, as the reference frame
+adopt different observation configurations. Some retain the       for the subsequent scan. Expressing probe motion relative to
+multimodal design of general manipulation by combining            this anatomically anchored initial frame removes variations
+third-person and wrist-mounted camera views with ultrasound       caused by robot placement, patient positioning, and workspace
+images and robot states [15], whereas others rely primarily on    configuration while preserving information about local scan
+ultrasound images and probe pose [16]. Despite this diversity,    progression.
+the necessity and task-specific role of these modalities have        This probe-centric observation design also enables demon-
+not been systematically examined. This motivates us to revisit    strations to be collected independently of the robotic platform.
+the observation design for robotic ultrasound and identify the    We develop a dedicated handheld demonstration platform
+sensory inputs and pose representations that best reflect the     that synchronously records ultrasound images, wrist-camera
+structure of the scanning task.                                   views, probe pose, and contact force while an expert performs
+   Unlike general manipulation, robotic ultrasound is an          natural manual scanning. This eliminates the need to collect
+anatomy-conditioned and locally constrained interaction once      demonstrations by remotely controlling the robot or physically
+the probe has been initialized at the target anatomical region.   guiding its arm. As a result, demonstrations can be acquired
+At this stage, continuous third-person observations may pro-      more flexibly and efficiently without being constrained by
+vide limited additional information for probe navigation. They    robot availability, workspace limitations, or a specific robotic
+also introduce dependence on the workspace configuration.         embodiment.
+These setup-specific dependencies complicate demonstration           The contributions are summarized as follow:
+collection and can limit generalization across environments          • We propose an anatomy-anchored imitation-learning
+and robotic platforms. We therefore argue that external vision          framework for robotic ultrasound that separates scanning
+is better used for anatomical localization and initial probe            into anatomy-guided probe placement and learned navi-
+placement, rather than as a continuous observation during               gation. A Streaming Flow Policy generates probe motion
+scanning.                                                               relative to an anatomical anchor frame from ultrasound
+   However, removing third-person vision does not imply that            images, probe-mounted camera views, and contact force,
+ultrasound images alone provide a sufficient representation             while a dedicated termination head decides when the
+of the scanning process. Unlike conventional RGB videos,                target view has been reached.
+ultrasound images do not directly depict the motion of the           • We develop a handheld multimodal acquisition platform
+probe relative to the patient. Each frame represents a two-             that synchronously records ultrasound images, wrist-
+dimensional cross-section of three-dimensional anatomy, and             camera views, probe pose, and contact force during nat-
+out-of-plane probe motion cannot be reliably tracked based              ural freehand scanning. Together with the anchor-relative
+only on ultrasound images. Ultrasound feedback alone there-             formulation, it allows demonstrations to be collected
+fore provides an incomplete and potentially ambiguous repre-            without a robot and the learned policies to be deployed
+sentation of probe motion and spatial context.                          on different robotic platforms.
+   These observations motivate an anatomy-anchored egocen-           • We validate the framework on 16 previously unseen
+tric formulation for robot learning in ultrasound. We decom-            participants across kidney, gallbladder, and liver standard-
+pose autonomous ultrasound scanning into two phases: an                 plane acquisition and radial artery sweeping, achieving
+anatomy-guided, rule-based probe initialization phase and a             88-96% task success and outperforming a fine-tuned π0
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                              3
+
+
+
+
+Fig. 2. Overview of the proposed anatomy-anchored imitation-learning framework. A handheld acquisition platform records synchronized probe poses,
+contact forces, ultrasound images, and wrist-camera views during freehand demonstrations. These multimodal observations, together with an anchor-relative
+pose representation, enable learning scanning policies for autonomous robotic ultrasound.
+
+
+
+     model by 10-42 percentage points on the abdominal                           Recent work further targets tighter and faster sensorimotor
+     tasks. Ablations show the complementary roles of wrist-                  loops. Streaming Diffusion Policy reuses partially denoised
+     camera observation, force feedback, and anchor-relative                  action trajectories across control steps to accelerate diffusion-
+     poses, and additional experiments demonstrate end-to-end                 based inference [22]. Streaming Flow Policy goes further by
+     scanning with automatic probe placement and its ability                  treating the action trajectory itself as the flow trajectory, allow-
+     to transfer to a second robot without retraining.                        ing actions to be generated and executed incrementally rather
+                                                                              than waiting for an entire action chunk to be synthesized [8].
+                        II. R ELATED W ORK                                    This progression is particularly relevant to robotic ultrasound,
+                                                                              where effective imitation learning requires modeling tempo-
+A. Imitation Learning in General Domain
+                                                                              rally coordinated probe motions from multimodal sensory
+   Imitation learning has been widely used to acquire ma-                     observations while supporting fast and responsive closed-loop
+nipulation skills directly from expert demonstrations. Early                  execution.
+behavior cloning methods learned observation-to-action map-
+pings, while recurrent models such as LSTM-based BC-
+RNN incorporated observation history to capture temporal                      B. Handheld Demonstration Collection Platform
+dependencies and the non-Markovian nature of human demon-
+strations. Mandlekar et al. demonstrated the benefits of such                    Collecting demonstrations directly through robot teleop-
+history-dependent policies, particularly for long-horizon ma-                 eration can be time-consuming and restricts data acquisi-
+nipulation tasks [17]. With the rise of Transformers, Behavior                tion to environments where the robot is available. Recent
+Transformer introduced action discretization with residual                    work in robot manipulation has therefore explored portable
+prediction to model multimodal behaviors [18], while Action                   interfaces that decouple demonstration collection from the
+Chunking with Transformers predicts sequences of future                       physical robot, allowing humans to provide demonstrations
+actions to reduce the effective task horizon and mitigate com-                more naturally and in diverse environments. The Universal
+pounding errors [19]. More recently, MaIL explored Mamba-                     Manipulation Interface (UMI) introduced a handheld gripper
+based selective state-space models as an efficient alternative                equipped with onboard sensing to collect in-the-wild ma-
+to Transformer backbones, particularly under limited demon-                   nipulation demonstrations without requiring a robot during
+stration data [20].                                                           data acquisition [23]. Together with a relative-trajectory action
+   Beyond sequence-modeling architectures, generative poli-                   representation, demonstrations collected with UMI can be
+cies have substantially improved the modeling of multimodal                   transferred to different robot platforms. In parallel, DexCap
+robot behaviors. Diffusion Policy generates action sequences                  proposed a portable motion-capture system that records natural
+through iterative denoising, providing expressive multimodal                  human wrist and finger motions together with 3D observa-
+prediction and temporally consistent control, but at the cost                 tions, which are subsequently retargeted to dexterous robot
+of multiple inference steps [7]. Flow-based approaches aim to                 hands [24]. These approaches demonstrate two complemen-
+reduce this overhead: AdaFlow adaptively allocates integration                tary strategies for robot-free data collection: using a robot-
+steps according to action uncertainty [21], while FlowPolicy                  like handheld interface to reduce the embodiment gap, or
+uses consistency flow matching to enable single-step action                   directly capturing natural human motion and addressing this
+generation [9].                                                               gap through retargeting.
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                            4
+
+
+
+   Subsequent works have extended portable demonstration             collected in vivo kidney-scanning demonstrations through tele-
+interfaces with richer sensing and feedback. ManiWAV aug-            operation and conditioned an Action Chunking Transformer on
+mented a UMI-style handheld interface with contact audio,            the ultrasound image and current Cartesian end-effector pose.
+enabling the collection of synchronized audio-visual demon-          The policy predicts sparse task-space waypoints rather than
+strations for contact-rich manipulation [25]. ARCap instead          incremental motions to reduce long-horizon error accumula-
+addressed the feasibility of robot-free demonstrations by pro-       tion and support transfer across robot instances. However, the
+viding augmented-reality visualization and haptic warnings,          pose representation is not explicitly anchored to the patient
+guiding users to generate motions that respect the kinematic         anatomy. In contrast, J. Ma et al. [36] collected demonstrations
+and collision constraints of the target robot [26]. More recent      by hand-guiding the robot and expressed probe trajectories
+approaches have increasingly incorporated interaction sensing.       in an anatomical frame defined by the navel and nipple
+FreeTacMan introduced wearable visuo-tactile grippers for            locations, combined with a segmentation-derived ultrasound
+collecting visual, tactile, and motion information directly from     state to infer the next probe pose. This frame, however,
+human manipulation [27], while UMI-FT integrated six-axis            must be reconstructed from RGB-D observations whenever
+force/torque sensing into a handheld interface to acquire RGB,       the subject’s position or posture changes, and the method was
+depth, pose, and interaction wrench for learning compliant           validated only on an abdominal phantom. Our anchor frame
+manipulation policies [28]. Collectively, these works highlight      is instead defined by the probe-tip pose at initial contact with
+a shift from robot-dependent teleoperation toward portable,          a single landmark and is established once per episode without
+multimodal demonstration systems that can capture human              frame reconstruction, which enables freehand demonstration
+manipulation skills without requiring the target robot during        collection and evaluation on human participants.
+data collection.                                                        Beyond ultrasound and proprioception, multimodal ap-
+   This paradigm is particularly attractive for robotic ultra-       proaches have incorporated visual and force information to
+sound, where demonstrations can be acquired directly with            represent probe–patient interaction more comprehensively. Si
+the same physical instrument used during robotic execution.          et al. [37] collected demonstrations through teleoperation and
+Rather than constructing a surrogate end-effector or retargeting     fused ultrasound images, external RGB images, contact force,
+human hand motions to a robot gripper, a sonographer can ma-         and end-effector pose in the robot-base frame to predict de-
+nipulate an instrumented ultrasound probe while synchronized         sired probe poses and forces. Their later journal extension [38]
+ultrasound images, local visual observations, contact force,         incorporated trajectory optimization and compliant control and
+and probe motion are recorded. This substantially reduces the        expanded the evaluation from phantom experiments to hu-
+human-to-robot embodiment gap while retaining the flexibility        man scanning. UltraDP [39] instead collected demonstrations
+and scalability of robot-free demonstration collection.              through direct physical guidance, with sonographers manually
+                                                                     moving the robot by holding its flange during scanning. Its
+C. Robot Learning for Robotic Ultrasound                             diffusion policy uses ultrasound images, wrist-camera RGB-
+   Reinforcement learning has been explored for autonomous           D images, contact wrench, and probe pose in the robot-base
+ultrasound navigation [29]–[31], but its reliance on trial-and-      frame. Its ultrasound processing is tailored to carotid scanning,
+error training makes direct learning on patients impractical.        using a pretrained encoder and guidance module to detect and
+Training in simulated or simplified environments is therefore        center the artery, which may limit transfer to other anatomical
+common, yet the limited realism of ultrasound simulation cre-        targets.
+ates a substantial sim-to-real gap [32]. Imitation learning offers      Overall, previous advances provide promising foundations
+a more practical alternative by learning scanning strategies         for learning ultrasound scanning skills, but their application
+directly from expert demonstrations.                                 requires coordinated choices in policy learning, data collec-
+   Early movement-primitive methods focused mainly on re-            tion, and observation representation. Policies should generate
+producing demonstrated scanning patterns, with limited online        smooth, continuous probe trajectories while supporting timely
+action reasoning. Dall’Alba et al. [33] mapped the probe’s           updates from imaging and contact feedback. Portable acquisi-
+relative position along a predefined trajectory to a learned         tion interfaces can capture these complementary signals dur-
+compression-force profile, without ultrasound-image feedback.        ing natural freehand scanning, but many existing ultrasound-
+   Other approaches inferred probe actions directly from ultra-      learning systems still rely on robot teleoperation or physi-
+sound images, without including the robot pose in the policy         cal guidance of the robot arm for demonstration collection.
+input. Wang et al. [34] used two consecutive ultrasound frames       Meanwhile, observation designs range from ultrasound images
+to predict translational and rotational increments for standard-     alone to extensive multimodal inputs, offering different levels
+view acquisition, while contact force was handled separately         of information about anatomy, probe motion, and contact
+by an admittance controller. Similarly, UltraBot [16] mapped         conditions. Robot-base pose representations can introduce
+the current ultrasound image to one of several discrete 6-DoF        dependence on the workspace configuration, whereas anatom-
+probe motions or a stage-transition command. Although both           ical representations may require additional reconstruction and
+methods are image-only at inference time, their action labels        calibration. These considerations motivate an integrated frame-
+are still defined in the robot or scanner base coordinate system,    work that combines smooth, responsive trajectory generation,
+rather than in an anatomy-anchored frame.                            robot-independent multimodal demonstration collection, and
+   A further group of methods conditioned the policy on both         anatomically grounded observations that remain practical to
+ultrasound observations and robot pose. Z. Ma et al. [35]            acquire and use during both demonstration and deployment.
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                         5
+
+
+
+                             III. M ETHODS                                           This formulation also enables demonstrations to be collected
+                                                                                  using a portable freehand acquisition platform rather than
+    Imitation learning for robotic ultrasound should ultimately                   directly on a robotic system. By instrumenting a handheld
+aim to reproduce not only the probe trajectories demonstrated                     ultrasound probe with the required sensing modalities, ex-
+by human operators, but also the perceptual cues and spatial                      pert demonstrations can be recorded during natural freehand
+reasoning that underlie their scanning decisions. Experienced                     scanning without requiring a robot in the data-collection
+sonographers rarely begin a scan from an arbitrary probe                          loop. This substantially reduces the hardware requirements for
+pose. Instead, depending on the examination, they typically                       demonstration collection and makes it easier to acquire data
+place the probe at a recognizable anatomical landmark before                      across different anatomical targets, scanning environments,
+starting ultrasound-guided navigation. Such landmarks are                         and operators.
+usually surface-visible anatomical features that can be iden-                        To further promote smooth and temporally consistent probe
+tified directly from the patient’s external appearance, rather                    motion, we adopt a Streaming Flow Policy defined over
+than structures that must first be localized in the ultrasound                    the anatomy-anchored action space. In contrast to diffusion-
+image. The initial probe placement is therefore primarily                         based policies that iteratively generate action trajectories, the
+guided by visual observation of the patient surface. Once the                     flow-based formulation learns a continuous velocity field that
+probe is positioned at this anatomical starting point, the subse-                 transports actions toward the demonstrated motion distribution.
+quent scanning motion is performed relative to this reference.                    This formulation is particularly compatible with our anatomy-
+Although the choice of landmark varies across anatomical                          anchored representation, where probe motion is expressed
+regions and scanning protocols, it remains relatively consistent                  as continuous changes relative to a meaningful anatomical
+for acquiring the same standard plane.                                            reference. In the following, we first describe the handheld
+                                                                                  demonstration-acquisition platform, then present the anatomy-
+                                                                                  anchored imitation-learning formulation and Streaming Flow
+                                                                                  Policy for ultrasound navigation, and finally introduce the
+                                                                                  anatomy-guided probe placement module.
+
+
+                                                                                  A. Data Acquisition Platform
+                                                                                     The design of the Portable Ultrasound Demonstration Ac-
+                                                                                  quisition Platform is guided by three key principles: a)
+                                                                                  Freehand acquisition: The acquisition device should allow
+                                                                                  sonographers to perform scans naturally in a freehand manner,
+                                                                                  without being constrained by a robotic embodiment during
+                                                                                  demonstration collection. b) Sufficiency: The acquired mul-
+                                                                                  timodal data should capture the information necessary for
+Fig. 3. Separation of probe placement and ultrasound navigation. Rule-based
+placement uses external anatomical cues to establish the initial probe pose and   effectively learning ultrasound scanning behaviors, includ-
+anatomical anchor. The learned policy then performs local scanning relative       ing both the perceptual observations and interaction states
+to this anchor using multimodal feedback.                                         relevant to probe manipulation. c) Seamless transfer: The
+                                                                                  acquisition device should support straightforward integration
+   This observation naturally decomposes the overall scan-                        with different robotic embodiments, enabling the collected
+ning procedure into two stages: probe placement and                               demonstrations to be transferred to and executed on robotic
+ultrasound-guided navigation. The placement stage establishes                     systems with minimal adaptation.
+an anatomy-dependent starting pose from an externally ob-                            1) Sensors: Following these design principles, we devel-
+servable landmark, while the navigation stage searches for                        oped the portable acquisition device shown in Fig. 4. The
+the desired imaging plane relative to this anatomical anchor.                     platform records four synchronized information streams: the
+Accordingly, probe motion during navigation can be repre-                         ultrasound probe pose, applied force, wrist-camera view, and
+sented in an anatomy-anchored coordinate system rather than                       ultrasound images. The probe pose is tracked using an
+solely in the absolute robot-base frame. During this stage, the                   NDI optical tracking system, with a tracking marker rigidly
+ultrasound image provides the primary source of information                       mounted to the body of the acquisition device. A one-time
+for determining how the probe should move, while occasional                       calibration is performed to determine the rigid transformation
+visual observation of the local body surface provides comple-                     between the tracking marker and the ultrasound probe tip,
+mentary context about the probe and the surrounding scanning                      allowing the probe pose to be recovered throughout the scan.
+region. Meanwhile, contact force is continuously perceived                        The applied force is measured using a force sensor mounted
+through tactile feedback and used to regulate probe–patient                       between the handheld shell and the ultrasound probe holder.
+interaction. Motivated by these observations, we formulate                        The shell encloses the probe assembly and serves as the in-
+robotic ultrasound imitation learning around four complemen-                      terface through which the sonographer holds and manipulates
+tary sources of information: anatomy-anchored probe motion,                       the device, such that the force transmitted from the operator
+ultrasound images, a probe-mounted wrist-camera view, and                         to the scanning target is measured by the sensor. Importantly,
+contact force.                                                                    the same mechanical load path is preserved when the device is
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                     6
+
+
+
+                                                                              measurements during freehand demonstration acquisition.
+                                                                                 For the force-sensor calibration, the gravitational load
+                                                                              introduced by the ultrasound probe, probe holder, and other
+                                                                              components mounted below the force sensor is compensated.
+                                                                              By removing this intrinsic load from the sensor measurements,
+                                                                              the resulting force signal reflects the interaction force applied
+                                                                              by the operator to the scanning target rather than the weight
+                                                                              of the acquisition device itself.
+                                                                                 In addition to spatial and force calibration, the recorded
+                                                                              sensing streams are temporally synchronized. During acqui-
+                                                                              sition, ultrasound images, wrist-camera images, NDI marker
+                                                                              poses, and force measurements are published independently
+                                                                              through ROS and recorded into a single rosbag. Temporal
+                                                                              alignment is performed offline using the ultrasound stream as
+                                                                              the reference timeline. For each ultrasound frame, the nearest
+                                                                              measurement from each of the remaining modalities is selected
+                                                                              according to its timestamp within a predefined modality-
+                                                                              specific tolerance. Short interruptions in NDI tracking are han-
+                                                                              dled by interpolating the probe pose between the nearest valid
+                                                                              measurements preceding and following the missing interval.
+
+                                                                              B. Anatomy-anchored Streaming Flow Policy
+Fig. 4. Portable ultrasound demonstration acquisition platform. Assembled        We formulate imitation-based ultrasound navigation as
+(left) and exploded (right) views show the integrated sensing components,     learning a conditional velocity field in an anchor-relative
+handheld housing, probe holder, and robot mounting interface, supporting
+multimodal freehand demonstration collection and subsequent robotic deploy-
+                                                                              probe-pose space. At each policy update, a history of ul-
+ment.                                                                         trasound images, wrist-camera observations, anchor-relative
+                                                                              probe poses, and contact forces is used to condition a Stream-
+                                                                              ing Flow Policy (SFP) [8]. Given the currently measured
+attached to the robot end-effector, allowing the contact force to             probe pose, the policy network predicts its instantaneous
+be measured consistently during both demonstration collection                 velocity over normalized horizon-progress trajectory time. The
+and robotic execution. The wrist camera is positioned to                      predicted velocity field is integrated to obtain a sequence of
+observe the probe footprint together with its local surrounding               desired probe poses. During receding-horizon execution, only
+region on the patient surface, providing a probe-centric visual               the first part of the generated trajectory is executed before the
+observation of the probe-patient interaction and local probe                  policy is queried again with updated observations. In parallel,
+motion. An additional scene camera captures a broader view                    a separate termination head determines whether the target
+of the patient and the three-dimensional surface geometry to                  ultrasound view has been reached.
+support anatomical localization and initial probe placement.                     1) Anchor-Relative Navigation Formulation: Let FG de-
+Finally, the ultrasound probe is mounted using a dedicated                    note the global frame in which the probe pose is measured and
+probe holder, while the corresponding ultrasound images are                   let FPt denote the probe frame at time step t. The definition of
+acquired directly from the ultrasound system through a frame                  FG depends on the embodiment: it corresponds to the optical
+grabber.                                                                      tracker frame during freehand demonstration acquisition and
+   2) Calibration and Synchronization: Two calibration proce-                 to the robot-base frame during robotic execution.
+dures are performed before data acquisition: spatial calibration                 At the beginning of each navigation episode, the initial
+between the NDI tracking marker and the ultrasound probe,                     probe pose is used to define an episode-specific anchor
+and calibration of the force sensor.                                          frame FA . Its pose in the corresponding global frame is
+                                                                              G
+   For the marker-to-probe calibration, the acquisition de-                     TA := G TP0 . The anchor remains fixed throughout the
+vice is first rigidly mounted to the robot end-effector. A hand-              episode. Each subsequent probe pose     −1isG expressed relative
+eye calibration is then performed to obtain EE TM , which                     to this anchor as A TPt = G TA                 TPt . Because the
+represents the transformation from the NDI marker frame                       global frame is eliminated by this transformation, the resulting
+M to the robot end-effector frame EE. Since the geometric                     relative pose does not depend on whether the original probe
+relationship between the robot mounting interface and the                     trajectory was measured in the optical tracker frame or the
+ultrasound probe is fixed by the mechanical design, P TEE ,                   robot-base frame. This provides a common pose representation
+the transformation from the end-effector frame EE to the                      for freehand demonstrations and robotic roll-outs. Unlike the
+probe frame P , is obtained directly from the CAD model.                      relative-trajectory representation of UMI [23], which expresses
+The transformation from the NDI marker frame to the probe                     actions relative to the current end-effector pose, the anchor
+frame can then be computed as P TM = P TEE EE TM . Once                       remains fixed throughout the episode, so the anchor-relative
+calibrated, this fixed transformation allows the pose of the                  pose also encodes the progress of the scan with respect to the
+ultrasound probe to be recovered directly from the NDI marker                 anatomical starting point.
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                                       7
+
+
+
+
+Fig. 5. Anatomy-anchored formulation of ultrasound scanning. (a) Probe motion is modeled as a continuous velocity field in an anchor-relative pose space. (b)
+Landmark-guided probe placement establishes the initial anchor frame for subsequent ultrasound-guided navigation, illustrated for liver, gallbladder, left-kidney,
+and radial artery scanning.
+
+
+
+   We encode A TPt as a 9-dimensional state vector                                state as defined in Eq. (1), and f z the normal component of
+                                                                                  the probe-tissue contact force. During both training and robotic
+                           pA
+                                
+                 xA  =       t 
+                                   ∈ R9 ,                                  (1)    execution, the force measurements are synchronized with the
+                   t     ρ RA t                                                   corresponding ultrasound frames.
+   where pA       3                                    A
+            t ∈ R is the relative translation and ρ(Rt ) ∈ R
+                                                              6                      The four modalities provide complementary information for
+is the continuous 6D representation of the relative orienta-                      ultrasound navigation. The ultrasound images directly visual-
+tion [40].                                                                        ize the internal anatomy and provide the primary feedback
+   At a policy update performed at time step t, the correspond-                   for approaching the target view. The wrist-camera images
+ing demonstrated trajectory over a prediction horizon of H                        capture the local relationship between the probe and the patient
+steps is represented as                                                           surface. The anchor-relative probe states describe the spatial
+                                                                                  progression of the scan with respect to its initial anatomical
+                     ξ t = xA    A              A                                 reference. Finally, the contact force characterizes the current
+                                                   
+                            t , xt+1 , . . . , xt+H .                      (2)
+                                                                                  probe-tissue interaction and helps the policy account for
+   The first element of ξt corresponds to the current probe                       changes in surface deformation and acoustic contact.
+state, while the remaining elements describe its future evo-                         As shown in Fig. 6, the ultrasound images, wrist-camera
+lution relative to the fixed episode anchor. The policy does                      images, and anchor-relative probe states are first processed
+not directly regress these future poses. Instead, the anchor-                     by modality-specific encoders EUS , EW , and Epose , yielding
+relative poses define the state space in which the policy learns a                features zUS , zW , and zpose . These features are then fused and
+conditional velocity field. During inference, this velocity field                 aggregated by a shared Transformer encoder:
+is initialized from the current anchor-relative probe state and
+integrated to generate the future desired probe poses.                                            cbase = Etemporal ([zUS ; zW ; zpose ]) ,                   (4)
+   Fig. 5 illustrates the spatial and anatomical interpretation
+of this formulation. In Fig. 5(a), successive probe poses                            where [·; ·] denotes feature concatenation. The resulting
+are expressed relative to the fixed initial anchor, while the                     representation jointly captures anatomical appearance, local
+trajectory tangents describe their continuous evolution along                     surface context, and anchor-relative motion history.
+the scan. Fig. 5(b) shows how this anchor is established for                         The force history is processed through a separate force-
+                                                                                                                           z
+different anatomical targets: the initial probe pose is defined                   encoding branch, cforce = Eforce ft−K+1:t          The resulting
+at the inferior xiphoid tip for liver and gallbladder scanning,                   force feature is incorporated as a residual into the base mul-
+at the T12 surface landmark for left-kidney scanning, and at                      timodal representation: ctraj = cbase + cforce . The complete
+the wrist area for the radial artery scanning. Although the                       condition ctraj is used by the Streaming Flow Policy to predict
+subsequent scanning trajectories differ across tasks, each is                     the velocity field in the anchor-relative pose space. In contrast,
+represented relative to its anatomically defined starting pose.                   the termination head uses the force-independent representation
+   2) Multimodal Observation Encoding: At each policy up-                         cbase , as described in Sec. III-B4. This design allows contact
+date t, the model receives a synchronized history of K                            force to influence probe-motion generation without making the
+observations,                                                                     termination decision directly dependent on instantaneous force
+                                                                                  variations.
+                                                                                     3) Anchor-Relative Streaming Flow Learning: We employ
+       Ot = IUS         W          A          z
+           
+             t−K+1:t , It−K+1:t , xt−K+1:t , ft−K+1:t ,                    (3)
+                                                                                  Streaming Flow Policy (SFP) [8] to model the evolution of
+             US                                              W
+  where I     denotes the ultrasound image, I the image                           the probe state in the anchor-relative pose space. Before being
+acquired by the wrist camera, xA the anchor-relative probe                        processed by the flow model, the anchor-relative pose vectors
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                                     8
+
+
+
+
+Fig. 6. Architecture of the anchor-relative Streaming Flow Policy. Ultrasound images, wrist-camera images, and anchor-relative probe states are fused by a
+shared Transformer encoder into cbase , and a separate force branch adds the residual cforce to form the trajectory condition ctraj . Conditioned on ctraj , the
+velocity field vθ is integrated from the current pose xA
+                                                       t over τ ∈ [0, 1] and composed with the episode anchor
+                                                                                                                  G T to produce the probe-tip trajectory. A
+                                                                                                                      A
+termination head gψ predicts pstop from the stop-gradient copy sg(cbase ).
+
+
+
+are normalized using statistics computed from the training set.                     During inference, each flow rollout is initialized from the
+For conciseness, the notation below refers to these normalized                   currently measured anchor-relative probe state at τ = 0. The
+pose vectors.                                                                    velocity network is then evaluated sequentially at τi = i/H,
+   Let τ ∈ [0, 1] denote the local progress within an H-step                     for i = 0, . . . , H − 1, and its outputs are integrated to generate
+prediction horizon, where τ = 0 and τ = 1 correspond to the                      H future probe states. The multimodal condition ctraj remains
+beginning and end of the horizon, respectively. The variable τ                   fixed throughout one rollout. Only the first Hexec generated
+does not represent the elapsed time of the complete scanning                     states are executed, where Hexec denotes the execution-chunk
+episode. Conditioned on ctraj , the network parameterizes a                      length. The policy is subsequently queried again using updated
+time-dependent velocity field vθ that defines the evolution of                   observations and the latest measured probe state, and τ is reset
+the anchor-relative probe state:                                                 to zero for the new rollout.
+               dx(τ )                                                               4) Termination Prediction: In addition to generating the
+                      = vθ (x(τ ), τ | ctraj ) ∈ R9 .         (5)                probe trajectory, the policy predicts whether the target ultra-
+                 dτ
+                                                                                 sound view has been reached. This allows the duration of
+   Following SFP, we construct a stabilizing target velocity                     the navigation episode to adapt to the observed anatomical
+field around each demonstrated trajectory. At each training                      progress rather than being determined by a fixed trajectory
+iteration, an index j ∈ {0, . . . , H} is sampled uniformly from                 length.
+the demonstrated trajectory ξt as defined in Eq. (2), with the
+                                                                                    The termination branch uses the force-independent multi-
+associated trajectory progress τj = j/H. A perturbed state is
+                                                                                 modal representation cbase defined in Eq. (4). In particular, the
+then sampled around the corresponding demonstrated state:
+                                                                                 contact-force feature is excluded from this branch so that the
+                                                                                 stopping decision is based on the ultrasound appearance, wrist-
+                x
+                ej = ξt,j + σ0 ϵ,           ϵ ∼ N (0, I),                 (6)    camera context, and anchor-relative probe state rather than
+   where σ0 controls the magnitude of the perturbation. Given                    instantaneous variations in the contact force. The termination
+the demonstrated trajectory derivative ξ̇ t,j , the corresponding                head is implemented as a multilayer perceptron (MLP) that
+target velocity is                                                               takes the detached force-independent representation as input
+                                                                                 and outputs the probability that the target view has been
+                      vj∗ = ξ̇ t,j − k x
+                                                 
+                                       ej − ξ t,j ,                       (7)    reached:
+
+   where k denotes the stabilization gain. The first term
+advances the state along the demonstrated trajectory, while                                              pstop = gψ (sg (cbase )) ,                         (9)
+the second term directs perturbed states back toward the
+demonstration. The latter allows the policy to learn corrective                     where sg(·) denotes the stop-gradient operation and gψ
+behavior around the demonstrated probe trajectories rather                       denotes the MLP-based termination head.
+than only reproducing their nominal evolution.                                      Let ystop ∈ {0, 1} denote the termination label, with
+   The velocity network is trained by minimizing the discrep-                    ystop = 1 indicating that the target view has been reached.
+ancy between the predicted and target velocities in Eq. (7):                     Because termination samples occur less frequently than non-
+                      h                                i                         termination samples, we employ a positively weighted binary
+                                                     2
+         Ltraj = Ej,ϵ vθ (e  xj , τj | ctraj ) − vj∗ 2 .    (8)                  cross-entropy loss:
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                           9
+
+
+
+                                                                     the stopping state is latched, and the robot holds the currently
+                                                                     measured probe pose.
+  Lstop = −wpos ystop log pstop − (1 − ystop ) log (1 − pstop ) ,       Before being issued to the robot controller, the generated
+                                                            (10)     target poses are additionally constrained by predefined trans-
+   where wpos controls the contribution of positive termination      lational and rotational step limits and smoothed relative to the
+samples. The complete training objective combines Eq. (8)            previously commanded pose. These safeguards prevent abrupt
+and Eq. (10): L = Ltraj + λstop Lstop , where λstop balances         probe motions caused by isolated prediction errors during real-
+trajectory learning and termination prediction.                      time execution.
+   Although the trajectory and termination objectives are op-           6) Post-Scan Best-View Selection: For abdominal scanning
+timized jointly, applying the stop-gradient operation to cbase       tasks, we additionally perform automatic best-view selection
+prevents gradients of Lstop from propagating into the shared         after the scan has terminated. While the termination head
+multimodal encoder. Consequently, the termination loss up-           determines when to stop robotic scanning, this module retro-
+dates only the MLP-based termination head gψ , whereas the           spectively identifies the preferred view from the recorded ul-
+trajectory loss updates the shared multimodal encoder, the           trasound sequence. Post-scan selection allows candidate views
+force-encoding branch, and the velocity-field network.               acquired throughout the scan to be compared, rather than
+   5) Receding-Horizon Policy Execution: During robotic ex-          restricting the output to the image observed at termination.
+ecution, the anchor frame remains fixed at the probe-tip pose        The module is trained independently of the scanning policy
+established at the beginning of the navigation episode. At           and operates exclusively on ultrasound images.
+each policy update, the latest multimodal observation history is        Each frame is resized to 256 × 256 pixels and its intensity
+encoded once to obtain the trajectory condition ctraj . Starting     values are scaled to [0, 1]. A frozen pretrained EchoCare [41]
+from the currently measured anchor-relative probe state xA     t ,   Swin Transformer extracts hierarchical image features, which
+the velocity network is evaluated sequentially over the H-           are spatially pooled and concatenated before being passed to
+step prediction horizon. Using Euler integration of Eq. (5),         an organ-specific residual MLP. Separate heads are trained
+the predicted state at each step is updated as                       for the kidney, gallbladder, and liver, each producing a scalar
+                                                                     frame-ranking score. Training uses manually selected best-
+           bA        bA              bA
+                                                      
+           x t+i+1 = x t+i + ∆τ vθ x  t+i , τi | ctraj ,    (11)     view frames as supervision and combines a listwise cross-
+where x    bA       A                                                entropy loss with a pairwise ranking loss against high-scoring
+            t = xt , τi = i/H, and ∆τ = 1/H for i =
+0, . . . , H − 1. The trajectory condition remains fixed through-    competing frames from the same video. Temporally adjacent
+out one rollout, while the predicted probe state and horizon         frames are excluded from these comparisons to reduce penal-
+progress are updated at each integration step. Consequently,         ization of visually similar views.
+the observation encoder is evaluated once per rollout, whereas          For an ultrasound frame It , the organ-specific ranking score
+the velocity network is evaluated H times.                           is computed as
+   For robotic execution, each predicted anchor-relative pose                  st = ho (fEC (It )) ,    t⋆ = arg max st ,       (13)
+is composed with the fixed anchor pose to recover the corre-                                                    t∈C
+
+sponding absolute probe-tip target:                                  where fEC denotes the frozen EchoCare [41] encoder followed
+                    Gb
+                                                                     by feature pooling and concatenation, ho is the ranking head
+                      TPt+i = G TA A T
+                                     bP ,
+                                       t+i                   (12)    for organ o, and C contains the frame indices evaluated during
+                                                                     the coarse-to-fine search. The selected frame is It⋆ .
+where FG corresponds to the robot-base frame during robotic
+                                                                        At inference, a coarse-to-fine search is performed over
+roll-outs.
+                                                                     the recorded video: every eighth frame is initially scored,
+   Although the policy generates H future states, only the first
+                                                                     followed by frame-by-frame refinement within eight frames
+Hexec states are executed, where Hexec ≤ H is the execution-
+                                                                     of each of the three highest-scoring candidates. The highest-
+chunk length. These target poses are issued sequentially to
+                                                                     ranked frame among all evaluated candidates is exported at its
+the robot controller. Once the execution chunk has been
+                                                                     original resolution for subsequent physician assessment. Frame
+completed, the policy is queried again using the updated
+                                                                     selection requires no manual annotations at inference, and the
+multimodal observations and the latest measured probe state.
+                                                                     ranking score expresses relative preference within the video
+The local horizon progress τ is then reset to zero for the new
+                                                                     rather than calibrated clinical image quality.
+rollout. This receding-horizon procedure continuously incor-
+porates new ultrasound, visual, pose, and force feedback while
+preventing the robot from executing the complete predicted           C. Anatomy-Guided Placement Module
+trajectory open-loop.                                                   Before ultrasound navigation, a rule-based placement mod-
+   The termination probability pstop in Eq. (9) is evaluated at      ule positions the probe at a task-specific anatomical starting
+each policy update. A stop prediction is considered positive         point. The module identifies the relevant anatomical feature
+when pstop ≥ δstop , where δstop is a predefined probability         from an RGB-D observation of the participant, maps it onto
+threshold. To reduce sensitivity to isolated predictions, termi-     the measured body surface, and determines an initial probe
+nation is confirmed only when the threshold is exceeded for a        pose. This pose establishes contact with the patient and defines
+predefined number of consecutive policy updates. Once termi-         the anatomical anchor frame for the learned navigation policy.
+nation is confirmed, the remaining target poses are discarded,       No imitation learning is involved in this stage.
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                   10
+
+
+
+                                                                                  In both cases, the extracted anatomical point is mapped into
+                                                                               the aligned depth image and back-projected into 3-D. It is then
+                                                                               transformed into the robot base frame and associated with the
+                                                                               nearest valid point in the measured surface point cloud. In
+                                                                               this way, HSMR or MediaPipe Hands identifies the anatomical
+                                                                               location relevant to the task, while the RGB-D observation
+                                                                               determines its metric position in the robot workspace.
+                                                                                  2) Placement Pose Generation: The local surface normal is
+                                                                               estimated by principal component analysis of a neighborhood
+                                                                               Nk around the target surface point, as the eigenvector asso-
+                                                                               ciated with the smallest eigenvalue of its covariance matrix,
+                                                                               with its sign selected to point outward from the body [44].
+                                                                                  The probe axis is aligned with the surface normal to
+                                                                               approach the skin approximately perpendicularly, while the
+                                                                               rotation about this axis is assigned according to the scanning
+                                                                               task. The target point and probe orientation jointly define
+                                                                               the initial placement pose. After contact is established, the
+                                                                               resulting probe-tip pose is fixed as the anatomical anchor
+                                                                               frame, and control is transferred to the learned ultrasound-
+                                                                               navigation policy.
+
+                                                                                                    IV. E XPERIMENTS
+                                                                                  We evaluate the proposed framework through a series of
+                                                                               experiments with human participants. After describing the
+                                                                               hardware setup, data acquisition, and evaluation protocol
+                                                                               (Sec. IV-A-IV-C), we present four groups of experiments.
+                                                                               First, we compare the learned scanning policy with a fine-
+Fig. 7. Anatomical landmark localization for automatic probe placement.
+(a) The scene camera captures two overlapping views of the participant. (b)    tuned π0 model on previously unseen participants (Sec. IV-D).
+The views are stitched into a whole-body image. (c) HSMR reconstructs the      Second, we conduct ablation studies on the wrist-camera input,
+underlying skeleton to identify the target landmark, illustrated here by the   force input, and pose representation (Sec. IV-E). Third, we
+inferior xiphoid tip, which guides initial probe placement and subsequent
+anatomical anchor definition.                                                  validate the complete pipeline, combining automatic anatomy-
+                                                                               guided probe placement with learned navigation (Sec. IV-F).
+                                                                               Finally, we deploy the same policies on two different robots,
+   1) Anatomical Target Localization: For the abdominal                        a Franka Emika Panda and a KUKA LBR iiwa 7 R800, to
+tasks, the robot moves the scene camera to predefined obser-                   assess cross-embodiment transfer (Sec. IV-G).
+vation poses from which the subject’s body can be completely
+observed. When the body cannot be covered by a single image,                   A. Hardware Setup
+multiple overlapping RGB images are acquired and combined                         The hardware setup for the experiment is shown in Fig. 8.
+into a unified whole-body view, as shown in Fig. 7(a) and                      A Siemens ACUSON Juniper ultrasound system is used with a
+(b). A depth frame is also recorded together with the camera                   5C1 convex probe for liver, gallbladder, and kidney scanning
+intrinsics and the camera-to-robot transformation.                             and a 12L3 linear probe for radial artery scanning. The B-
+   Given the whole-body RGB image, HSMR [42] reconstructs                      mode ultrasound images are captured from the ultrasound
+a biomechanically constrained human model comprising the                       machine via a frame grabber (MAGEWELL) at a frequency of
+external body shape and its underlying skeletal structure, as                  30 Hz. A six-axis force/torque sensor (GAMMA, SI-32-2.5/SI-
+shown in Fig. 7(c). For each abdominal task, a predefined                      65-5, ATI) is mounted at the end of the ultrasound probe holder
+point-based anatomical feature is extracted from the recon-                    to measure contact forces during demonstration recording and
+structed skeleton. The target may correspond to the image                      provide force feedback for control during robotic rollouts. Two
+projection of a skeletal landmark or to a point defined relative               cameras (Intel RealSense D435) are used: one observes the
+to multiple landmarks, allowing the placement location to                      probe footprint to capture the interaction between the probe
+adapt to individual body proportions.                                          and the tissue surface, while the other captures a whole-
+   For radial artery sweeping, the target lies on the forearm,                 body view and the scanning region’s 3D surface geometry to
+where whole-body skeletal reconstruction is unnecessary. In-                   guide initial probe placement. During free-hand demonstration
+stead, an RGB-D image of the forearm is acquired from a                        recording, an optical tracking system (Polaris Vicra, NDI)
+predefined observation pose, and MediaPipe Hands [43] is                       records the movements of the probe. The acquisition platform
+applied to the RGB image to detect the hand landmarks. The                     can be mounted directly onto the end effector of a seven-
+detected wrist landmark is used as the target point for probe                  degree-of-freedom robotic manipulator (Franka Emika Panda,
+placement.                                                                     Franka GmbH or KUKA LBR iiwa 7 R800, KUKA, Germany)
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                    11
+
+
+
+                                                            TABLE I
+D EMONSTRATION COLLECTION ACROSS SCANNING TASKS . F OR ABDOMINAL TASKS , THE LONG AXIS OF THE PROBE FOOTPRINT IS INITIALLY ALIGNED
+    WITH THE CRANIOCAUDAL DIRECTION ; THE FOREARM TASK IS A CROSS - SECTIONAL SWEEP. VOLUNTEER COUNTS ARE REPORTED PER TASK .
+
+
+         Region        Task             Demos.      Volunteers     Starting condition       → Ending condition
+                       Kidney                 69              5    T12 surface landmark → Left kidney, longitudinal view
+         Abdomen       Gallbladder            60              5    Inferior xiphoid tip → Gallbladder, longitudinal view
+                       Liver                  82              5    Inferior xiphoid tip → Left portal vein with segmental branches
+         Forearm       Radial artery          83              2    Wrist                    → Bifurcation of radial and ulnar arteries
+
+
+
+                                                                             plane navigation task for liver, gallbladder, and kidney, and the
+                                                                             long-sweep task for radial artery scanning. Human-participant
+                                                                             data acquisition and real-robot evaluation were conducted
+                                                                             under institutional ethics approval.1
+                                                                                We collected 294 demonstrations across four scanning tasks,
+                                                                             comprising three standard-plane acquisition tasks and one
+                                                                             long-horizon sweep task. The standard-plane tasks target a
+                                                                             longitudinal view of the left kidney, a longitudinal view
+                                                                             of the gallbladder, and a view of the left portal vein with
+                                                                             its segmental branches, supporting the assessment of renal
+                                                                             morphology and abnormalities, gallbladder morphology and
+                                                                             abnormalities, and left-lobe anatomy and lesion localization,
+                                                                             respectively. In contrast, the radial artery task is a continuous
+                                                                             sweep that follows the artery in cross-section from the wrist to
+                                                                             the elbow, where the brachial artery bifurcates into the radial
+                                                                             and ulnar arteries. Each demonstration begins at a predefined
+                                                                             anatomical landmark and ends upon reaching the target plane
+                                                                             or completing the prescribed sweep. For the liver, gallbladder,
+                                                                             and kidney tasks, the long axis of the probe footprint is
+Fig. 8. Experimental setup for autonomous robotic ultrasound scanning.       initially aligned with the craniocaudal direction. For liver and
+A 7-DoF robot manipulates the ultrasound probe, with a wrist camera and
+force/torque sensor providing visual and contact feedback. The participant   gallbladder demonstrations, volunteers are instructed to take a
+holds an emergency-stop button throughout the procedure.                     deep breath and hold it during recording. Tab. I summarizes
+                                                                             the demonstration counts, volunteer numbers, and task-specific
+                                                                             starting and ending conditions.
+to execute the learned scanning policies. Robot control and                     All demonstrations are collected using the proposed ul-
+data acquisition are implemented using ROS. A workstation                    trasound data acquisition platform, which records ultrasound
+with Ubuntu 20.04 system equipped with an NVIDIA RTX                         images, wrist-camera images, force measurements, and tracked
+PRO 6000 Blackwell GPU handles system control and all                        probe poses. Recordings with tracking failures are excluded.
+model training. All the models are trained using the AdamW                   The remaining recordings are temporally trimmed based on the
+optimizer with a learning rate of 1 × 10−4 (cosine schedule                  ultrasound stream to retain valid imaging intervals, removing
+with a 500-step warm-up) and a batch size of 64 for 800                      the initial and final periods during which the probe establishes
+epochs.                                                                      or loses contact with the tissue surface. Each demonstration
+   Implementation details: The policy uses an observation                    is also manually annotated to identify the earliest frame at
+history of K = 3 and a prediction horizon of H = 16,                         which scanning can terminate, corresponding to successful
+of which the first Hexec = 8 predicted states are executed                   acquisition of the target standard plane or completion of the
+before the next policy update. During training, perturbations                prescribed sweep.
+are sampled with σ0 = 0.01 in the normalized pose space,
+and the stabilization gain is set to k = 1.0. The termination
+loss uses a positive weight of wpos = 5.0 and is weighted                    C. Evaluation Protocol
+by λstop = 0.5. At inference, termination is confirmed when                     We evaluate performance using six metrics:
+pstop ≥ δstop = 0.5. Target poses are sent to the Cartesian                     (1) task success rate, defined as the proportion of all
+impedance controller at 30 Hz.                                               attempted rollouts that complete the prescribed vascular scan
+                                                                             for the arm or acquire a qualifying target view for ab-
+                                                                             dominal organs. For radial artery scanning, success requires
+B. Data Acquisition
+                                                                             autonomous tracking of the target vessel over at least 95% of
+  We test our proposed system on four different ultrasound
+scanning tasks on healthy volunteers, including the standard                   1 Ethics Committee of the University, reference no. xxx/xx.
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                             12
+
+
+
+the prescribed scan extent. Task success is evaluated indepen-        probe is manually positioned at the initial scanning pose; the
+dently of autonomous stopping;                                        complete pipeline, including automatic placement, is evaluated
+   (2) ROI image quality. For the abdominal tasks, the                separately in Sec. IV-F. We evaluate on 16 previously unseen
+quality of the acquired target view is evaluated by physicians        participants of diverse ethnic backgrounds and genders, with
+using a five-point rating scale. The assessment considers (i)         heights ranging from 160 to 190 cm. The evaluation covers
+the visibility of task-relevant anatomical structures, (ii) the       four anatomical targets and two task types: target-view acqui-
+adequacy of the intended imaging plane, (iii) structural clarity      sition for abdominal organs (kidney, gallbladder, and liver) and
+and the presence of imaging artifacts, and (iv) overall clinical      vascular sweeping along the radial artery in the forearm. These
+interpretability. A score of 1 indicates an unusable image            tasks assess complementary capabilities, namely locating an
+in which the target anatomy cannot be reliably identified,            organ-specific standard view and continuously following a
+whereas a score of 5 indicates an excellent target view with          vascular structure. As a baseline, we fine-tune the π0 vision-
+clearly visualized anatomical landmarks, appropriate imaging          language-action (VLA) model [10] on the same demonstra-
+geometry, minimal artifacts, and high clinical interpretability.      tions described in Sec. IV-B. Each method is evaluated over
+The evaluation is performed independently by six physicians,          50 rollouts per task.
+including five senior physicians and one junior physician. For           Tab. II compares the proposed Anatomy-anchored SFP
+both methods, the rated frame of each rollout is selected             with fine-tuned π0 . Our method achieves higher task success
+from the recorded sequence by the same post-scan best-view            rates on all four tasks, reaching 96.0%, 94.0%, and 88.0%
+selection module (Sec. III-B6), and the physicians are blinded        for kidney, gallbladder, and liver scanning, respectively, and
+to the method that produced each sample. Each physician               94.0% for radial artery sweeping. Kidney scanning yields the
+evaluates the same set of 180 abdominal target-view samples,          highest success rate for both methods, whereas gallbladder and
+and the ratings are aggregated across raters for subsequent           liver scanning are more challenging, particularly for π0 . The
+analysis. For radial artery scanning, where image quality             largest improvement occurs in gallbladder scanning, where the
+must be maintained continuously along the scanning trajectory         success rate increases from 52.0% to 94.0%, followed by liver
+rather than at a single target view, scan quality is quantified by    scanning (58.0% to 88.0%) and radial artery sweeping (70.0%
+the vessel visibility ratio, defined as the proportion of evaluated   to 94.0%).
+frames in which the target vessel lumen and its boundaries are           Task success alone does not capture the diagnostic value of
+clearly identifiable.                                                 the acquired views. We therefore also examine the physician-
+   (3) autonomous stopping success rate, defined as the               rated ROI quality of the acquired target views. Our method
+proportion of task-successful rollouts in which the robot stops       achieves mean scores of 3.47, 3.97, and 3.78 for kidney,
+appropriately after task completion without manual interven-          gallbladder, and liver scanning, respectively, compared with
+tion;                                                                 2.78, 2.19, and 2.64 for π0 . Thus, the mean scores of our
+   (4) time-to-target, measured from rollout initiation to the        method exceed the scale midpoint of 3 for all three organs,
+first qualifying target view for abdominal tasks or completion        whereas those of π0 remain below it. The quality improvement
+of the prescribed scan for the arm;                                   is largest for gallbladder scanning (+1.78), followed by liver
+   (5) mean peak normal contact force, computed by first              (+1.14) and kidney (+0.69), mirroring the ordering of the
+taking the maximum magnitude of the probe-normal contact              success-rate gains. This indicates that the advantage of the
+force within each rollout and then averaging these peak values        proposed policy extends beyond reaching a qualifying view
+across all successful rollouts;                                       to the clarity and interpretability of the view itself. Notably,
+   (6) translational jerk RMS, computed for each rollout as           although π0 reaches the kidney target in 86.0% of rollouts,
+the root-mean-square(RMS) Euclidean norm of the third time            its kidney views are still rated lower, suggesting that reaching
+derivative of the measured probe-tip position.                        the vicinity of the target plane does not guarantee a well-
+   Task success rate is computed over all attempted rollouts.         oriented, artifact-free image. Kidney views also receive the
+Time-to-target, peak normal contact force, and autonomous             lowest scores among the standard view tasks for our method,
+stopping performance are evaluated only for successful roll-          which may reflect the restricted acoustic window near the
+outs to characterize execution performance conditional on task        posterior ribs, where rib shadowing can partially obscure the
+completion. This restriction accounts for differences in scan         renal outline (Fig. 10). In addition, our method yields smaller
+duration and coverage arising from incomplete or prematurely          standard deviations across all three tasks (1.00-1.09 versus
+terminated scans. The three continuous metrics are computed           1.22-1.39), indicating more consistent view quality across
+separately for each successful rollout and reported as mean           participants and raters. For radial artery sweeping, the vessel
+± standard deviation. Autonomous stopping success rate is             visibility ratio increases from 65.9% to 99.6%. Whereas π0
+calculated as the proportion of successful rollouts in which          loses clear delineation of the arterial lumen in roughly one-
+the robot stops appropriately after task completion without           third of the evaluated frames, our policy keeps the vessel cross-
+manual intervention; autonomous stopping is not required to           section visible almost continuously throughout the sweep.
+be identified as successful.                                             Beyond reaching the target, reliable task completion re-
+                                                                      quires the policy to recognize when to stop. Although π0
+D. Navigation Policy Evaluation                                       frequently reaches the target, particularly in kidney scanning, it
+   The quantitative experiments in this section evaluate the          stops appropriately without manual intervention in only 17.2-
+learned imitation learning scanning policy. In all trials, the        23.3% of its successful abdominal rollouts and 28.6% of its
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                                 13
+
+
+
+                                                                   TABLE II
+                  C OMPARISON OF THE PROPOSED PIPELINE WITH FINE - TUNED π0 ACROSS SCANNING TASKS ON UNSEEN PARTICIPANTS .
+
+                                                               Task success ROI quality Autonomous Time-to-target Peak force                    Jerk
+Region     Task            Method                   Rollouts      (%) ↑          ↑      stop (%) ↑     (s) ↓         (N)                      (m/s3 ) ↓
+
+                           Fine-tuned π0               50           86.0       2.78 ± 1.22        23.3         11.2 ± 4.0      7.2 ± 8.3    0.444 ± 0.228
+           Kidney
+                           Anatomy-anchored SFP        50           96.0       3.47 ± 1.09        97.9         5.7 ± 2.7       4.3 ± 2.0    0.292 ± 0.078
+Abdomen                    Fine-tuned π0               50           52.0       2.19 ± 1.28        19.2         18.1 ± 8.7      4.4 ± 2.1    0.376 ± 0.067
+           Gallbladder
+                           Anatomy-anchored SFP        50           94.0       3.97 ± 1.04        93.6         9.7 ± 5.5       3.3 ± 1.8    0.262 ± 0.047
+                           Fine-tuned π0               50           58.0       2.64 ± 1.39        17.2         12.8 ± 7.7      4.7 ± 2.2    0.420 ± 0.330
+           Liver
+                           Anatomy-anchored SFP        50           88.0       3.78 ± 1.00        95.5         9.5 ± 5.3       3.8 ± 2.0    0.217 ± 0.031
+
+                           Fine-tuned π0               50           70.0          65.9%           28.6         17.9 ± 3.7      2.9 ± 0.6    0.605 ± 0.082
+Forearm    Radial artery
+                           Anatomy-anchored SFP        50           94.0          99.6%          100.0         11.7 ± 3.0      4.4 ± 1.2    0.625 ± 0.063
+
+
+
+
+Fig. 9. Representative ultrasound images from human demonstrations (top) and autonomous robotic rollouts (bottom). From left to right: kidney, gallbladder,
+and liver standard views, followed by images sampled along the radial artery sweep. White circles indicate the radial artery cross-section.
+
+
+
+successful radial artery sweeps. In contrast, our method stops                 robotic acquisitions capture the same task-relevant anatomical
+autonomously in 93.6-97.9% of successful abdominal rollouts                    features as the demonstrations: the longitudinal profile of the
+and in all successful radial artery sweeps. These results                      left kidney, the longitudinal gallbladder lumen, the left portal
+support the use of a dedicated termination head that decides                   vein with its segmental branches, and the radial artery cross-
+completion from ultrasound appearance, wrist-camera context,                   section (white circles), which remains in view as the probe
+and anchor-relative progress rather than leaving termination                   advances along the forearm. Despite variations in anatomical
+implicit in the action stream.                                                 appearance and acoustic conditions, these examples qualita-
+   Our method also acquires targets more efficiently, reducing                 tively illustrate the policy’s ability to reach the task-relevant
+mean time-to-target by 26-49% across the abdominal tasks and                   views through autonomous probe navigation, while the quality
+by 35% for radial artery sweeping. On the abdominal tasks,                     of the acquired views is quantified by the physician ratings and
+these gains are accompanied by reductions of 19-40% in mean                    vessel visibility ratios in Tab. II.
+peak contact force and 30-48% in translational jerk, together                     Fig. 10 illustrates representative scanning sequences for
+with lower standard deviations in both metrics, indicating                     the four tasks, pairing ultrasound observations with schematic
+smoother and more consistent execution across trials. For                      probe poses. Starting from the task-specific anatomical anchor,
+radial artery sweeping, our method applies a higher mean                       the policy progressively adjusts the probe pose to acquire
+peak force (4.4 vs. 2.9 N) with comparable jerk (0.625 vs.                     the required anatomical information. For kidney scanning,
+0.605 m/s3 ).                                                                  the sequence progresses from the T12 anchor through rib-
+   Fig. 9 shows representative ultrasound images from man-                     shadowed views to the visualization of the kidney and the
+ual demonstrations and autonomous robotic rollouts. For the                    acquisition of its longitudinal view. Gallbladder and liver
+abdominal tasks, the rollout images are the frames chosen by                   scanning both begin at the inferior xiphoid tip, followed
+the post-scan best-view selection module (Sec. III-B6); for the                by task-specific navigation toward the right costal margin to
+radial artery task, images are sampled along the sweep. The                    obtain the longitudinal gallbladder view and the left portal
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                                       14
+
+
+
+
+Fig. 10. Representative autonomous rollouts of the Anatomy-anchored SFP on unseen participants for the four scanning tasks: left-kidney, gallbladder, and
+liver standard-plane acquisition (abdomen) and radial artery sweeping (forearm). Each row shows four snapshots of one rollout. Each snapshot pairs the
+ultrasound image (left) with a schematic of the corresponding probe pose on the body (right): anterior view for the gallbladder and liver, posterior view for
+the kidney, and palmar view of the right forearm for the radial artery. Each episode starts at the task-specific anatomical landmark, whose probe pose defines
+the anchor frame {A} (t = 0), and ends when the termination head predicts pstop ≥ δstop (t = T ). The time axis is schematic, and intermediate snapshots
+(t1 , t2 ) are not equally spaced across tasks. Start and end conditions follow Tab. I. GB: gallbladder; PV: portal vein; LPV: left portal vein; RA: radial artery;
+UA: ulnar artery.
+
+
+
+vein with its segmental branches, respectively. For radial artery                  obtained by composing each anchor-relative demonstration
+scanning, the probe advances proximally from the wrist toward                      with a set of feasible end-effector poses selected around
+the bifurcation of radial and ulnar artery while following the                     the task-specific starting region in the robot workspace. The
+arterial cross-section. These sequences illustrate both targeted                   variant therefore learns from the same demonstrated motions
+standard view acquisition and extended anatomical sweeping                         as the proposed model, expressed in absolute coordinates over
+within the proposed framework.                                                     a plausible range of starting poses. All variants are retrained
+                                                                                   on the same demonstrations as the proposed model, with
+E. Ablation Studies                                                                only the corresponding input modality removed or the pose
+   We conduct ablation studies to assess the contribution of                       representation changed.
+wrist-camera input, force input, and pose representation to                           To assess sensitivity to the scanning setup, rollouts are
+scanning performance. Two representative tasks are selected,                       performed under two configurations. In the Nominal config-
+one from each scanning category: kidney standard-plane nav-                        uration, the setup during robotic rollouts is aligned with that
+igation and radial artery sweeping. Three variants of the                          used during demonstration collection, whereas in the Rotated
+proposed Anatomy-anchored SFP are considered: w/o wrist                            configurations it is rotated by 45◦ for kidney navigation and
+camera, which removes wrist-camera observations; w/o force                         by 90◦ for radial artery sweeping. The configuration of each
+input, which removes force input; and Absolute pose, which                         evaluation is listed in Tab. III, and each variant is compared
+replaces the anchor-relative pose representation with absolute                     with the proposed model under the same configuration wher-
+poses in the robot-base frame. Because demonstrations are                          ever available.
+recorded in the optical tracker frame, the absolute robot-                            Removing wrist-camera observations reduces task success
+base trajectories used to train the Absolute pose variant are                      from 96.0% to 76.7% for kidney navigation and from 94.0%
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                            15
+
+
+
+                                                                TABLE III
+                  A BLATION STUDY OF WRIST- CAMERA INPUT, FORCE INPUT, AND POSE REPRESENTATION ON UNSEEN PARTICIPANTS .
+
+                                                                     Task success ROI quality Autonomous Time-to-target Peak force         Jerk
+Task          Variant                     Configuration Rollouts        (%) ↑         ↑       stop (%) ↑     (s) ↓         (N)           (m/s3 ) ↓
+
+              w/o wrist camera     Nominal                    30         76.7      2.79 ± 1.17     78.3       6.2 ± 2.1    5.3 ± 2.5   0.295 ± 0.087
+              w/o force input      Nominal                    30         86.7      3.07 ± 1.08     92.3       7.3 ± 3.4    5.8 ± 5.5   0.360 ± 0.307
+              Absolute pose        Nominal                    30         76.7      2.59 ± 1.29     73.9       7.0 ± 2.5    5.6 ± 2.8   0.372 ± 0.153
+Kidney
+              Absolute pose        Rotated 45◦                30         70.0      2.27 ± 1.16     71.4       6.9 ± 2.7    5.2 ± 2.9   0.443 ± 0.189
+              Anatomy-anchored SFP Nominal                    50         96.0      3.47 ± 1.09     97.9       5.7 ± 2.7    4.3 ± 2.0   0.292 ± 0.078
+              Anatomy-anchored SFP Rotated 45◦                30         93.3      3.54 ± 1.15     96.4       6.7 ± 2.7    4.8 ± 2.0   0.305 ± 0.197
+
+              w/o wrist camera     Rotated 90◦                20         65.0        90.5%          69.2      12.8 ± 2.9   4.3 ± 1.2   0.590 ± 0.093
+              w/o force input      Rotated 90◦                20         90.0        97.6%          94.4      12.7 ± 2.8   5.4 ± 1.0   0.619 ± 0.055
+Radial artery Absolute pose        Nominal                    20         75.0        79.1%          73.3      20.0 ± 3.5   3.9 ± 0.8   0.572 ± 0.072
+              Absolute pose        Rotated 90◦                10          0.0          –             –             –           –             –
+              Anatomy-anchored SFP Rotated 90◦                50         94.0        99.6%         100.0      11.7 ± 3.0   4.4 ± 1.2   0.625 ± 0.063
+
+
+
+                                                                                 for radial artery sweeping. Its most direct effect, however,
+                                                                                 appears in the contact behavior. Mean peak force increases
+                                                                                 from 4.3 ± 2.0 N to 5.8 ± 5.5 N for kidney navigation and
+                                                                                 from 4.4 ± 1.2 N to 5.4 ± 1.0 N for radial artery sweeping,
+                                                                                 with the much larger standard deviation for kidney navigation
+                                                                                 indicating occasional rollouts with substantially higher peak
+                                                                                 forces. The force profiles in Fig. 11 further illustrate this
+                                                                                 effect: without force input, the normal contact force rises
+                                                                                 sharply early in the scan and remains higher over much of
+                                                                                 it, whereas Anatomy-anchored SFP maintains a more uniform
+                                                                                 profile. Compared with the other ablations, the effect on image
+Fig. 11. Normal contact force over scan progress for Anatomy-anchored SFP        quality is more moderate. For kidney navigation, the mean
+and the w/o force input variant in (a) kidney navigation and (b) radial artery   ROI score decreases from 3.47 to 3.07, the smallest reduction
+sweeping. Lines show the mean and shaded regions the interquartile range         among the kidney variants, and remains above the scale
+across n rollouts.
+                                                                                 midpoint. For radial artery sweeping, the vessel visibility ratio
+                                                                                 remains nearly unchanged (99.6% versus 97.6%). Together,
+                                                                                 these results suggest that force input provides complementary
+to 65.0% for radial artery sweeping. Autonomous stopping                         information about probe-tissue interaction, helping the policy
+among successful rollouts also decreases from 97.9% to 78.3%                     regulate contact forces while maintaining effective navigation.
+and from 100% to 69.2%, respectively. The pronounced de-
+cline in stopping for radial artery sweeping is consistent with                     Unlike anchor-relative poses, which are defined with respect
+the loss of a direct visual cue: the wrist camera observes the                   to the initial probe pose and are thus in principle invariant to
+shape of the arm, helping the policy recognize the endpoint                      the setup, absolute poses shift with it. We therefore evaluate
+of the sweep. For kidney navigation, the local surface view                      the Absolute pose variant under both configurations. Even
+likely provides complementary information about the probe’s                      in the nominal configuration, it underperforms the proposed
+location relative to the surrounding anatomy, supporting spatial                 model: for kidney navigation, task success drops from 96.0%
+reasoning beyond ultrasound images and anchor-relative poses                     to 76.7% and the ROI score from 3.47 to 2.59, and for radial
+alone. This is also reflected in view quality: the mean ROI                      artery sweeping it reaches only 75.0% success and 79.1% ves-
+score decreases from 3.47 to 2.79, so without the wrist camera                   sel visibility, compared with 94.0% and 99.6% for Anatomy-
+the policy not only reaches qualifying views less often, but the                 anchored SFP even under rotation. Because participants differ
+views it acquires are also rated lower. For radial artery sweep-                 in position and body proportions, the absolute pose of the
+ing, the vessel visibility ratio decreases more moderately, from                 same target varies across episodes even in an aligned setup,
+99.6% to 90.5%. Relative to the drop in task success, this                       which likely hinders learning a consistent motion mapping.
+modest decrease suggests that ultrasound feedback remains                        Rotating the setup amplifies this effect: kidney success falls
+the primary cue for keeping the vessel in view, while the                        further to 70.0%, with the lowest ROI score among all kidney
+wrist camera mainly helps the policy follow sweep progress                       variants (2.27), and radial artery sweeping fails in all rollouts,
+and recognize its endpoint. Overall, these results indicate that                 likely because the 90◦ rotation redirects the learned long-range
+wrist-camera observations contribute both to local navigation                    sweep away from the vessel. In contrast, Anatomy-anchored
+and to recognition of task completion.                                           SFP is largely unaffected by the rotation, achieving 93.3%
+   Removing force input reduces task success from 96.0%                          success and an ROI score of 3.54 for kidney navigation and
+to 86.7% for kidney navigation and from 94.0% to 90.0%                           94.0% success for radial artery sweeping. These results indi-
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                       16
+
+
+
+cate that anchoring probe motion to the anatomical landmark                                       TABLE IV
+largely removes the dependence on the setup, allowing policies       E ND - TO - END PERFORMANCE OF THE COMPLETE SYSTEM ( PLACEMENT
+                                                                                    AND SCANNING ) ON UNSEEN PARTICIPANTS .
+learned from freehand demonstrations to transfer across robot-
+patient configurations.                                                                        Success    Total time   Peak force     Jerk
+                                                                    Task            Rollouts    (%) ↑        (s) ↓        (N)       (m/s3 ) ↓
+F. Full System Validation                                           Kidney            30        100.0    107.3 ± 14.6 10.2 ± 6.2 0.371 ± 0.023
+   To evaluate the complete pipeline, we integrate anatomy-         Gallbladder       30        93.3     116.2 ± 24.1 7.0 ± 3.5 0.361 ± 0.030
+guided probe placement with the learned navigation policy           Liver             30         90.0    116.3 ± 27.1 5.0 ± 1.4 0.356 ± 0.056
+                                                                    Radial artery     30        90.0      33.0 ± 4.3 8.2 ± 3.6 0.537 ± 0.054
+and conduct end-to-end trials on unseen participants. Unlike
+the scanning-only experiments with manual probe placement,
+these trials include external visual observation, anatomical
+reconstruction, automatic probe placement, and subsequent           the freehand demonstrations are executed without retraining
+ultrasound navigation.                                              or fine-tuning. Apart from the mechanical mounting and the
+   Tab. IV summarizes the results over 30 rollouts per task. The    corresponding end-effector-to-probe transformation, no adap-
+complete system achieves success rates of 100.0%, 93.3%, and        tation is required: the predicted anchor-relative poses are
+90.0% for kidney, gallbladder, and liver scanning, respectively,    composed with the anchor expressed in the KUKA robot-base
+and 90.0% for radial artery sweeping, compared with 96.0%,          frame, as in Eq. (12). As in Sec. IV-D, the probe is manually
+94.0%, 88.0%, and 94.0% in the scanning-only experiments            positioned at the initial scanning pose. We evaluate all four
+with manual placement. These comparable success rates sug-          tasks on five previously unseen participants, with 30 rollouts
+gest that automatic placement provides suitable initialization      per task, and summarize the results in Tab. V.
+for the learned navigation policies without an apparent reduc-
+tion in task success.
+   The peak contact force, however, increases in the complete
+pipeline for kidney scanning, from 4.3 ± 2.0 N with manual
+placement to 10.2 ± 6.2 N. This increase is associated with
+initial contact over the T12 spinous process during automatic
+placement. The limited compliance of the tissue overlying
+this bony prominence leads to a sharp rise in contact force,
+increasing both the mean and variability of the recorded peak
+force. For context, the mean peak force remains below the
+mean maximum forces of 17.4 N and 25.3 N reported for
+manual abdominal ultrasound examinations in normal- and
+higher-BMI participants, respectively [45]. A similar increase
+is observed for radial artery sweeping, from 4.4 ± 1.2 N to
+8.2 ± 3.6 N, which may likewise reflect initial contact at the
+wrist, where the radial artery lies superficially over the distal
+radius with little soft tissue to cushion the probe.
+   The total procedure times are 107.3 s, 116.2 s, and 116.3 s
+for kidney, gallbladder, and liver scanning, respectively. These
+durations exceed the scanning-only time-to-target because they
+also include the initialization stage, in which the robot moves     Fig. 12. Experimental setup for autonomous robotic ultrasound scanning using
+                                                                    KUKA iiwa7.
+to two observation poses to capture a complete view of
+the participant lying on the examination bed and the target
+                                                                       On the KUKA robot, the policies achieve task success
+landmark is localized. HSMR-based anatomical reconstruction
+                                                                    rates of 100.0%, 86.7%, and 93.3% for kidney, gallbladder,
+alone takes 26.4±2.2 s, 24.3±5.0 s, and 26.9±2.0 s for kidney,
+                                                                    and liver scanning, respectively, and 83.3% for radial artery
+gallbladder, and liver scanning, respectively, accounting for
+                                                                    sweeping, compared with 96.0%, 94.0%, 88.0%, and 94.0%
+roughly one-fifth to one-quarter of the total procedure time.
+                                                                    on the Franka robot. Averaged over all four tasks, success
+Radial artery sweeping requires a considerably shorter total
+                                                                    is thus comparable across the two platforms (90.8% versus
+time of 33.0 s, since the forearm is captured from a single
+                                                                    93.0%). Mean peak contact force remains in a similar range
+observation pose and wrist localization with MediaPipe Hands
+                                                                    (4.4-6.3 N versus 3.3-4.4 N). Execution on the KUKA robot
+requires no HSMR-based skeletal reconstruction.
+                                                                    is, however, slower: time-to-target increases most notably for
+                                                                    kidney (12.7 versus 5.7 s), gallbladder (18.2 versus 9.7 s), and
+G. Cross-Embodiment Validation                                      radial artery scanning (24.6 versus 11.7 s), and translational
+   To assess whether the learned policies transfer across robotic   jerk is higher for the abdominal tasks (0.345-0.478 versus
+embodiments, we deploy them on a second robot, a KUKA               0.217-0.292 m/s3 ), while remaining comparable for radial
+LBR iiwa 7 R800 (Fig. 12). The same acquisition platform            artery sweeping. Since the predicted target poses are executed
+is mounted on the KUKA flange, and the policies trained on          through each robot’s own low-level controller, these differ-
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                                17
+
+
+
+                            TABLE V                                          on a KUKA LBR iiwa 7 R800, the policies achieved 83.3-
+C ROSS - EMBODIMENT VALIDATION OF AUTONOMOUS SCANNING USING A                100% success across all four tasks, comparable to the results
+              KUKA ROBOT ON UNSEEN PARTICIPANTS .
+                                                                             on the Franka robot.
+                         Success Time-to-Target Peak force       Jerk          Building on these results, future work will extend the
+Task            Rollouts (%) ↑       (s) ↓         (N)         (m/s3 ) ↓     validation from healthy volunteers to patients with pathology.
+Kidney            30     100.0    12.7 ± 3.7    5.7 ± 2.8    0.431 ± 0.140
+                                                                             We further plan to integrate the anatomy-anchored policy as
+Gallbladder       30      86.7    18.2 ± 3.5    4.4 ± 2.0    0.345 ± 0.053   a navigation skill within an agentic framework, such as the
+Liver             30      93.3    10.5 ± 3.3    4.6 ± 2.5    0.478 ± 0.119   LLM-based robotic ultrasound agent of Bi et al. [44], enabling
+Radial artery     30      83.3    24.6 ± 5.1    6.3 ± 3.9    0.597 ± 0.115   guideline-level reasoning and direct patient interaction, such
+                                                                             as breath-hold instructions, toward a more interactive and
+                                                                             complete autonomous examination.
+ences mainly stem from the low-level control and dynamics
+of the two platforms rather than from the learned policy                                                   R EFERENCES
+itself. The lower success rate for radial artery sweeping is                  [1] Z. Jiang, S. E. Salcudean, and N. Navab, “Robotic ultrasound imag-
+attributable to the same cause, as its long continuous trajectory                 ing: State-of-the-art and future perspectives,” Medical image analysis,
+accumulates the effect of these controller differences over                       vol. 89, p. 102878, 2023.
+                                                                              [2] K. Li, Y. Xu, and M. Q.-H. Meng, “An overview of systems and
+more policy updates. Overall, these results show that policies                    techniques for autonomous robotic ultrasound acquisitions,” IEEE Trans-
+learned from freehand demonstrations can be transferred to a                      actions on Medical Robotics and Bionics, vol. 3, no. 2, pp. 510–524,
+different robotic platform without retraining while maintaining                   2021.
+                                                                              [3] Y. Bi, Z. Jiang, F. Duelmer, D. Huang, and N. Navab, “Machine learning
+high task success, supporting the embodiment independence of                      in robotic ultrasound imaging: Challenges and perspectives,” Annual
+the anchor-relative formulation.                                                  Review of Control, Robotics, and Autonomous Systems, vol. 7.
+                                                                              [4] Z. Jiang, Y. Bi, M. Zhou, Y. Hu, M. Burke, and N. Navab, “In-
+                                                                                  telligent robotic sonographer: Mutual information-based disentangled
+                            V. C ONCLUSION                                        reward learning from few demonstrations,” The International Journal
+                                                                                  of Robotics Research, vol. 43, no. 7, pp. 981–1002, 2024.
+   This work presented an anatomy-anchored imitation-                         [5] M. Zare, P. M. Kebria, A. Khosravi, and S. Nahavandi, “A survey of
+learning framework that transfers freehand ultrasound scan-                       imitation learning: Algorithms, recent developments, and challenges,”
+                                                                                  IEEE Transactions on Cybernetics, vol. 54, no. 12, pp. 7173–7186, 2024.
+ning skills to autonomous robotic execution. The framework                    [6] F. Torabi, G. Warnell, and P. Stone, “Behavioral cloning from observa-
+separates scanning into rule-based, anatomy-guided probe                          tion,” arXiv preprint arXiv:1805.01954, 2018.
+placement and learned ultrasound navigation. A Streaming                      [7] C. Chi, Z. Xu, S. Feng, E. Cousineau, Y. Du, B. Burchfiel, R. Tedrake,
+                                                                                  and S. Song, “Diffusion policy: Visuomotor policy learning via action
+Flow Policy generates probe motion relative to an anchor                          diffusion,” The International Journal of Robotics Research, vol. 44, no.
+frame defined at a task-specific anatomical landmark. The                         10-11, pp. 1684–1704, 2025.
+policy is conditioned on ultrasound images, wrist camera                      [8] S. Jiang, X. Fang, N. Roy, T. Lozano-Pérez, L. P. Kaelbling, and
+                                                                                  S. Ancha, “Streaming flow policy: Simplifying diffusion/flow-matching
+views, contact force, and anchor-relative probe poses, while                      policies by treating action trajectories as flow trajectories,” arXiv
+a dedicated termination head decides when the target view                         preprint arXiv:2505.21851, 2025.
+has been reached. Because probe motion is expressed relative                  [9] Q. Zhang, Z. Liu, H. Fan, G. Liu, B. Zeng, and S. Liu, “Flowpolicy:
+                                                                                  Enabling fast and robust 3d flow-based policy via consistency flow
+to this anchor rather than in a global frame, demonstrations                      matching for robot manipulation,” in Proceedings of the AAAI Confer-
+recorded with the handheld acquisition platform can be used                       ence on Artificial Intelligence, vol. 39, no. 14, 2025, pp. 14 754–14 762.
+directly for robotic execution, without teleoperation or kines-              [10] K. Black, N. Brown, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai,
+                                                                                  L. Groom, K. Hausman, B. Ichter et al., “π0 : A Vision-Language-
+thetic guidance.                                                                  Action Flow Model for General Robot Control,” arXiv preprint
+   On previously unseen participants, the proposed approach                       arXiv:2410.24164, 2024.
+achieved task success rates of 88-96% across kidney, gall-                   [11] Physical Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia,
+                                                                                  D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai et al., “π0.5 : A
+bladder, and liver standard-plane acquisition and radial artery                   Vision-Language-Action Model with Open-World Generalization,” arXiv
+sweeping. Compared with a fine-tuned π0 model, it improved                        preprint arXiv:2504.16054, 2025.
+task success by 10-42 percentage points on the abdominal                     [12] A. Khazatsky, K. Pertsch, S. Nair, A. Balakrishna, S. Dasari, S. Karam-
+                                                                                  cheti, S. Nasiriany, M. K. Srirama, L. Y. Chen, K. Ellis et al., “Droid:
+tasks and acquired views of higher physician-rated quality. It                    A large-scale in-the-wild robot manipulation dataset,” arXiv preprint
+also stopped autonomously in more than 93% of successful                          arXiv:2403.12945, 2024.
+rollouts, while reducing time-to-target, peak contact force,                 [13] Z. Zhang, H. Xu, Z. Yang, C. Yue, Z. Lin, H.-a. Gao, Z. Wang, and
+                                                                                  H. Zhao, “Ta-vla: Elucidating the design space of torque-aware vision-
+and trajectory jerk on the abdominal tasks. Ablation studies                      language-action models,” arXiv preprint arXiv:2509.07962, 2025.
+showed that anatomical anchoring, wrist-camera observation,                  [14] A. O’Neill, A. Rehman, A. Maddukuri, A. Gupta, A. Padalkar, A. Lee,
+and force feedback each contribute to performance. For kidney                     A. Pooley, A. Gupta, A. Mandlekar, A. Jain et al., “Open x-embodiment:
+                                                                                  Robotic learning datasets and rt-x models: Open x-embodiment collab-
+navigation, removing any one of them reduced view quality                         oration 0,” in 2024 IEEE International Conference on Robotics and
+to approximately the level of the baseline. When the setup                        Automation (ICRA). IEEE, 2024, pp. 6892–6903.
+was rotated relative to data collection, the anchor-relative                 [15] N. Nelson, J.-T. Chen, J. Haworth, X. Chen, L. Zbinden, D. Huang,
+                                                                                  A. E. Abdelaal, A. Arezzo, A. Acar, F. Alambeigi et al., “Open-h-
+representation kept performance largely unchanged, whereas                        embodiment: A large-scale dataset for enabling foundation models in
+an absolute-pose policy degraded or failed entirely. End-to-                      medical robotics,” arXiv preprint arXiv:2604.21017, 2026.
+end trials further showed that automatic placement provides                  [16] H. Jiang, A. Zhao, Q. Yang, X. Yan, T. Wang, Y. Wang, N. Jia,
+                                                                                  J. Wang, G. Wu, Y. Yue et al., “Towards expert-level autonomous carotid
+suitable initialization, with success rates comparable to those                   ultrasonography with large-scale learning-based robotic system,” Nature
+obtained with manual placement. Deployed without retraining                       Communications, vol. 16, no. 1, p. 7893, 2025.
+JOURNAL OF LATEX CLASS FILES, VOL. 14, NO. 8, AUGUST 2021                                                                                                  18
+
+
+
+[17] A. Mandlekar, D. Xu, J. Wong, S. Nasiriany, C. Wang, R. Kulkarni,           [38] W. Si, N. Wang, R. Harris, and C. Yang, “Deep multimodal imita-
+     L. Fei-Fei, S. Savarese, Y. Zhu, and R. Martı́n-Martı́n, “What matters           tion learning-based framework for robot-assisted medical examination,”
+     in learning from offline human demonstrations for robot manipulation,”           IEEE Transactions on Industrial Electronics, 2025.
+     arXiv preprint arXiv:2108.03298, 2021.                                      [39] R. Chen, X. Yan, K. Lv, G. Huang, Z. Li, and X. Li, “Ultradp: Gener-
+[18] N. M. Shafiullah, Z. Cui, A. A. Altanzaya, and L. Pinto, “Behavior               alizable carotid ultrasound scanning with force-aware diffusion policy,”
+     transformers: Cloning k modes with one stone,” Advances in neural                in 2025 IEEE/RSJ International Conference on Intelligent Robots and
+     information processing systems, vol. 35, pp. 22 955–22 968, 2022.                Systems (IROS). IEEE, 2025, pp. 20 074–20 080.
+[19] T. Z. Zhao, V. Kumar, S. Levine, and C. Finn, “Learning fine-               [40] Y. Zhou, C. Barnes, J. Lu, J. Yang, and H. Li, “On the continuity of
+     grained bimanual manipulation with low-cost hardware,” arXiv preprint            rotation representations in neural networks,” in 2019 IEEE/CVF Con-
+     arXiv:2304.13705, 2023.                                                          ference on Computer Vision and Pattern Recognition (CVPR). IEEE,
+[20] X. Jia, Q. Wang, A. Donat, B. Xing, G. Li, H. Zhou, O. Celik,                    2019, pp. 5738–5746.
+     D. Blessing, R. Lioutikov, and G. Neumann, “Mail: Improving imitation       [41] H. Zhang, Y. Wu, M. Zhao, Z. Chen, R. Li, F. Zhu, H. Zhao, X. Yuan,
+     learning with selective state space models,” in 8th Annual Conference            M. Yang, C. Qiu et al., “A fully open and generalizable foundation model
+     on Robot Learning, 2024.                                                         for ultrasound clinical applications,” arXiv preprint arXiv:2509.11752,
+[21] X. Hu, B. Liu, X. Liu, and Q. Liu, “Adaflow: Imitation learning with             2025.
+     variance-adaptive flow-based policies,” Advances in Neural Information      [42] Y. Xia, X. Zhou, E. Vouga, Q. Huang, and G. Pavlakos, “Reconstructing
+     Processing Systems, vol. 37, pp. 138 836–138 858, 2024.                          humans with a biomechanically accurate skeleton,” in 2025 IEEE/CVF
+                                                                                      Conference on Computer Vision and Pattern Recognition (CVPR).
+[22] S. H. Høeg, Y. Du, and O. Egeland, “Fast policy synthesis with variable
+                                                                                      IEEE, 2025, pp. 5355–5365.
+     noise diffusion models,” in 2025 IEEE International Conference on
+                                                                                 [43] F. Zhang, V. Bazarevsky, A. Vakunov, A. Tkachenka, G. Sung, C.-L.
+     Robotics and Automation (ICRA). IEEE, 2025, pp. 4821–4828.
+                                                                                      Chang, and M. Grundmann, “Mediapipe hands: On-device real-time
+[23] C. Chi, Z. Xu, C. Pan, E. Cousineau, B. Burchfiel, S. Feng, R. Tedrake,          hand tracking,” arXiv preprint arXiv:2006.10214, 2020.
+     and S. Song, “Universal manipulation interface: In-the-wild robot teach-    [44] Y. Bi, Y. Zhou, P. Liu, F. Li, Z. Jiang, and N. Navab, “From scanning
+     ing without in-the-wild robots,” arXiv preprint arXiv:2402.10329, 2024.          guidelines to action: a robotic ultrasound agent with llm-based reason-
+[24] C. Wang, H. Shi, W. Wang, R. Zhang, L. Fei-Fei, and C. K. Liu, “Dex-             ing,” in International Conference on Medical Image Computing and
+     cap: Scalable and portable mocap data collection system for dexterous            Computer-Assisted Intervention. Springer, 2026, pp. 210–220.
+     manipulation,” arXiv preprint arXiv:2403.07788, 2024.                       [45] M. Dhyani, S. C. Roll, M. W. Gilbertson, M. Orlowski, A. Anvari,
+[25] Z. Liu, C. Chi, E. Cousineau, N. Kuppuswamy, B. Burchfiel, and                   Q. Li, B. Anthony, and A. E. Samir, “A pilot study to precisely quantify
+     S. Song, “Maniwav: Learning robot manipulation from in-the-wild                  forces applied by sonographers while scanning: A step toward reducing
+     audio-visual data,” arXiv preprint arXiv:2406.19464, 2024.                       ergonomic injury,” Work, vol. 58, no. 2, pp. 241–247, 2017.
+[26] S. Chen, C. Wang, K. Nguyen, L. Fei-Fei, and C. K. Liu, “Arcap:
+     Collecting high-quality human demonstrations for robot learning with
+     augmented reality feedback,” in 2025 IEEE International Conference
+     on Robotics and Automation (ICRA). IEEE, 2025, pp. 8291–8298.
+[27] L. Wu, C. Yu, J. Ren, L. Chen, Y. Jiang, R. Huang, G. Gu, and H. Li,
+     “Freetacman: Robot-free visuo-tactile data collection system for contact-
+     rich manipulation,” arXiv preprint arXiv:2506.01941, 2025.
+[28] H. Choi, Y. Hou, C. Pan, S. Hong, A. Patel, X. Xu, M. R. Cutkosky,
+     and S. Song, “In-the-wild compliant manipulation with umi-ft,” arXiv
+     preprint arXiv:2601.09988, 2026.
+[29] H. Hase, M. F. Azampour, M. Tirindelli, M. Paschali, W. Simson,
+     E. Fatemizadeh, and N. Navab, “Ultrasound-guided robotic navigation
+     with deep reinforcement learning,” in 2020 IEEE/RSJ International
+     Conference on Intelligent Robots and Systems (IROS). IEEE, 2020,
+     pp. 5534–5541.
+[30] K. Li, J. Wang, Y. Xu, H. Qin, D. Liu, L. Liu, and M. Q.-H. Meng,
+     “Autonomous navigation of an ultrasound probe towards standard scan
+     planes with deep reinforcement learning,” in 2021 IEEE International
+     Conference on Robotics and Automation (ICRA). IEEE, 2021, pp.
+     8302–8308.
+[31] G. Ning, X. Zhang, and H. Liao, “Autonomic robotic ultrasound imaging
+     system based on reinforcement learning,” IEEE transactions on biomed-
+     ical engineering, vol. 68, no. 9, pp. 2787–2797, 2021.
+[32] Y. Bi, Z. Jiang, Y. Gao, T. Wendler, A. Karlas, and N. Navab, “Vesnet-
+     rl: Simulation-based reinforcement learning for real-world us probe
+     navigation,” IEEE Robotics and Automation Letters, vol. 7, no. 3, pp.
+     6638–6645, 2022.
+[33] D. Dall’Alba, L. Busellato, T. R. Savarimuthu, Z. Cheng, and I. Iturrate,
+     “Imitation learning of compression pattern in robotic-assisted ultrasound
+     examination using kernelized movement primitives,” IEEE Transactions
+     on Medical Robotics and Bionics, vol. 6, no. 4, pp. 1567–1580, 2024.
+[34] Z. Wang, H. Li, B. Zhao, F. Lv, B. Li, and Y. Hu, “Robotic standard
+     view acquisition in transthoracic echocardiography using skill imitation
+     learning method,” in 2024 IEEE International Conference on Robotics
+     and Biomimetics (ROBIO). IEEE, 2024, pp. 408–413.
+[35] Z. Ma, J. Xia, H. Gao, H. Zhu, and Y. Tang, “Hardware-agnostic imi-
+     tation learning method for autonomous ultrasound scanning addressing
+     physical deployment discrepancies,” Sensors, vol. 26, no. 9, p. 2804,
+     2026.
+[36] J. Ma, Y. Zhao, Z. Liu, Y. Shen, and J. Liu, “Autonomous robotic liver
+     ultrasound via vision-guided initialization and imitation learning,” IEEE
+     Transactions on Medical Robotics and Bionics, 2026.
+[37] W. Si, C. Guo, N. Wang, M. Yang, R. Harris, and C. Yang, “A
+     unified deep imitation learning and control framework for robot-assisted
+     sonography,” in 2023 IEEE International Conference on Development
+     and Learning (ICDL). IEEE, 2023, pp. 318–323.
+

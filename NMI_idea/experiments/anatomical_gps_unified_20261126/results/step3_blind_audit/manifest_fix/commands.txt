@@ -1,0 +1,2 @@
+E=NMI_idea/experiments/anatomical_gps_unified_20261126
+env -u AGPS_EVAL_HOLDOUT_ALLOWED PYTHONDONTWRITEBYTECODE=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH="$E:." OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python -m pytest -q -p no:cacheprovider "$E/tests/test_reader_evaluation.py"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture one synced UE multiview moment and run EasyMocap SMPL-X (male) fitting.
+"""Capture one synced multiview moment and run EasyMocap SMPL-X (male) fitting.
 
 Uses DWPose UCOCO-133 -> bodyhandface annotations (body + feet + hands + face),
 official EasyMocap ``mv1p`` triangulation + SMPL-X fitting, then overlays mesh on
@@ -22,12 +22,18 @@ from PIL import Image
 from common.project import project_paths
 from projects.genesis_ue_sync.multiview_realtime.config import MultiviewRealtimeConfig
 from projects.genesis_ue_sync.multiview_realtime.easymocap.delayed_smplx import (
+    easymocap_pelvis_world_m,
     easymocap_vertices_world,
     ensure_smplx_assets,
     pack_single_frame_dataset,
     run_mv1p_smplx_fit,
 )
 from projects.genesis_ue_sync.multiview_realtime.ingress.camera_stream import MultiviewCameraStream, SyncedMultiviewFrame
+from projects.genesis_ue_sync.multiview_realtime.ingress.camera_metadata import (
+    is_ue_source_profile,
+    normalize_frame_for_source,
+)
+from projects.genesis_ue_sync.multiview_realtime.ingress.undistort_burst import ensure_undistorted_burst
 from projects.genesis_ue_sync.tracking.calibration import CalibrationBundle, load_calibration_bundle, scale_intrinsics
 from projects.genesis_ue_sync.tracking.dwpose_easymocap_export import easymocap_person_record
 from projects.genesis_ue_sync.tracking.dwpose_onnx import DwposeOnnxConfig, DwposeOnnxDetector
@@ -170,6 +176,10 @@ def main() -> int:
             recv_timeout_ms=cfg.ingress.recv_timeout_ms,
             sync_tolerance_frames=cfg.ingress.sync_tolerance_frames,
             max_buffer_per_camera=cfg.ingress.max_buffer_per_camera,
+            source_profile=cfg.ingress.source_profile,
+            metadata_intrinsics=cfg.ingress.metadata_intrinsics,
+            sync_mode=cfg.ingress.sync_mode,
+            max_hardware_spread_ms=cfg.ingress.max_hardware_spread_ms,
         )
         cfg = MultiviewRealtimeConfig(
             calibration_path=cfg.calibration_path,
@@ -188,11 +198,25 @@ def main() -> int:
     output_dir = out_root / run_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logging.info("waiting for one synced 6-camera moment on %s", cfg.ingress.connect)
+    logging.info("waiting for one synced %d-camera moment on %s", len(cfg.camera_ids), cfg.ingress.connect)
     synced = _capture_one_synced(cfg, timeout_s=float(args.wait_timeout_s))
     logging.info("captured frame=%s cameras=%s", synced.frame_index, sorted(synced.views_rgb))
 
     calibration = load_calibration_bundle(project_paths(__file__).resolve_from_root(cfg.calibration_path))
+    source_profile = str(cfg.ingress.source_profile or "realsense").strip().lower()
+    metadata_report: dict[str, Any] = {"source_profile": source_profile, "cameras": {}}
+    if is_ue_source_profile(source_profile):
+        synced, calibration, metadata_report = normalize_frame_for_source(
+            synced,
+            calibration,
+            list(cfg.camera_ids),
+            source_profile=source_profile,
+        )
+    else:
+        # RealSense ingress is raw/distorted. Keep the physical path's
+        # hardware calibration, but satisfy EasyMocap's zero-distortion input
+        # contract before inference and dataset packing.
+        synced = ensure_undistorted_burst([synced], list(cfg.camera_ids))[0]
     dwpose_cfg = DwposeOnnxConfig.from_dict(dict(cfg.pose_backend.get("dwpose") or {}))
     detector = DwposeOnnxDetector(dwpose_cfg)
 
@@ -225,6 +249,9 @@ def main() -> int:
         "frame_index": int(synced.frame_index),
         "timestamp_ns": int(synced.timestamp_ns),
         "camera_ids": list(cfg.camera_ids),
+        "source_profile": source_profile,
+        "metadata_intrinsics": bool(cfg.ingress.metadata_intrinsics),
+        "metadata_report": metadata_report,
         "detect_elapsed_s": float(detect_s),
         "detection_meta": det_meta,
         "batch_meta": batch_meta,
@@ -257,6 +284,8 @@ def main() -> int:
     summary["smplx_result"] = str((easymocap_out / "smpl" / "000000.json").resolve())
 
     verts, faces = easymocap_vertices_world(body_model, params)
+    pelvis_world_m = easymocap_pelvis_world_m(body_model, params)
+    summary["pelvis_world_m"] = [float(v) for v in pelvis_world_m.tolist()]
     summary.update(
         _write_smplx_overlays(
             calibration=calibration,
@@ -277,6 +306,7 @@ def main() -> int:
         Th=np.asarray(params.get("Th"), dtype=np.float32),
         poses=np.asarray(params.get("poses"), dtype=np.float32),
         shapes=np.asarray(params.get("shapes"), dtype=np.float32),
+        pelvis_world_m=pelvis_world_m.astype(np.float32),
         vertices=verts.astype(np.float32),
     )
     logging.info("wrote SMPL-X overlays -> %s (detect=%.2fs fit=%.2fs)", output_dir, detect_s, fit_s)

@@ -1,0 +1,51 @@
+Continuing-rollout handoff (v4 development, 2026-11-11)
+=========================================================
+
+This directory is a development copy of the frozen v3 baseline.  N3 is not
+modified.  Use:
+
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python
+
+The v4 runner keeps the existing smoke/dev/test CLI while changing the
+administrative watchdog basis to all fresh acquisitions (probe and terminal).
+It is not a task deadline.  The intended administrative checkpoints are
+8, 16, and 32 fresh acquisitions; an unresolved checkpoint is
+watchdog/right-censored, not a permanent task failure.
+
+Continuing mechanics
+--------------------
+
+* A public false acceptance remains absorbing.
+* Two public terminal rejects end only the local two-attempt option score.
+  The actual native state, belief, public history/observations, and the
+  runner's private renderer mode remain live; the planner replans.
+* A selected checked candidate with no native witness does not move state or
+  count as a fresh acquisition.  Its `(actual_state_key, action_id)` is
+  blacklisted and logged as `native_no_witness`; other public candidates remain
+  eligible.  The blacklist and exact state are included in checkpoints.
+* Terminal prediction diagnostics are labelled
+  `local_two_attempt_option_score`; they are not mission-level success
+  probabilities.
+* `CONTINUATION.pkl` (first unresolved checkpoint) and
+  `CONTINUATION_<fresh_count>.pkl` (later checkpoints) retain state, belief,
+  history, blacklist, timing, counts, and private renderer visibility mode.
+  Resume with `--continue-checkpoint`; the runner advances to the next guard
+  in 8/16/32 unless an explicit larger guard is supplied.
+
+The v4 one-layer B rollout parameters are intentionally not implemented here
+until the short Astra refinement/tie contract is frozen.  The old B_H1/H2
+tree remains only as a baseline implementation and is not a v4 research
+claim.
+
+Verification
+------------
+
+With the required interpreter:
+
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+    /media/camp/EXT_DRIVE/envs/genesis/bin/python -m pytest -q \
+    test_adaptive_planning.py test_belief_model.py test_native_adapter.py
+
+Current local result: 25 passed, 2 skipped.  Tests cover continuing after two
+terminal rejects, exact checkpoint restore, selected no-witness blacklist and
+state preservation, and all-arm guard boundaries.

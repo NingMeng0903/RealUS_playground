@@ -1,0 +1,123 @@
+{
+  "asset": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_independent/ownership_right_skin.npz",
+  "asset_sha256": "c83db14a20b060875b25b98f64cdfb75030e0f1006e5b4c8128102bf1b6fa493",
+  "skin_vertex_displacement_max_m": 0.0,
+  "skin_face_count_preserved": 908,
+  "original_skin_bbox": [
+    [
+      -0.18386408686637878,
+      -1.2455449104309082,
+      -0.13110807538032532
+    ],
+    [
+      0.0011692099506035447,
+      -0.4607885181903839,
+      0.11541152000427246
+    ]
+  ],
+  "cap_projection": "SVD only as parameterization; all original boundary xyz untouched; constrained Delaunay no Steiner vertices",
+  "loops": [
+    {
+      "loop": 0,
+      "vertices": 35,
+      "svd_singular_values_m": [
+        0.5184169181349396,
+        0.40802339427790235,
+        0.07736387491708424
+      ],
+      "nonplanar_height_span_m": 0.050652094208410096,
+      "projected_polygon_valid": true,
+      "projected_polygon_reason": "Valid Geometry",
+      "original_boundary_ids": [
+        10,
+        11,
+        20,
+        27,
+        50,
+        51,
+        37,
+        28,
+        29,
+        36,
+        38,
+        39,
+        60,
+        84,
+        85,
+        442,
+        441,
+        444,
+        443,
+        439,
+        437,
+        361,
+        448,
+        367,
+        368,
+        410,
+        521,
+        411,
+        101,
+        365,
+        453,
+        455,
+        350,
+        49,
+        9
+      ],
+      "cap_faces": 33,
+      "projected_area_m2": 0.038370148361207286,
+      "triangle_area_sum_m2": 0.03837014836120728,
+      "relative_area_error": 1.8084094537728032e-16
+    },
+    {
+      "loop": 1,
+      "vertices": 17,
+      "svd_singular_values_m": [
+        0.16857251208834165,
+        0.08864919648206518,
+        0.01188990100864996
+      ],
+      "nonplanar_height_span_m": 0.013092822301223755,
+      "projected_polygon_valid": true,
+      "projected_polygon_reason": "Valid Geometry",
+      "original_boundary_ids": [
+        503,
+        505,
+        504,
+        515,
+        516,
+        514,
+        513,
+        512,
+        507,
+        506,
+        508,
+        511,
+        510,
+        509,
+        517,
+        502,
+        501
+      ],
+      "cap_faces": 15,
+      "projected_area_m2": 0.005246159777827357,
+      "triangle_area_sum_m2": 0.005246159777827356,
+      "relative_area_error": 1.6533269567089179e-16
+    }
+  ],
+  "combined_topology": {
+    "vertices": 480,
+    "faces": 956,
+    "boundary_edges": 0,
+    "boundary_components": 0,
+    "boundary_component_vertices": [],
+    "boundary_degrees_not_two": 0,
+    "nonmanifold_edges": 4,
+    "inconsistent_interior_winding": 0,
+    "unused_vertices": 0,
+    "watertight": false,
+    "boundary_vertex_ids": []
+  },
+  "all_loops_capped": true
+}

@@ -1,0 +1,54 @@
+{
+  "all_passed": true,
+  "manifest_local_count": 6,
+  "manifest_external_count": 20,
+  "hash_mismatches": [],
+  "rows": [
+    {
+      "side": "right",
+      "index": 0,
+      "tet_id": 149507,
+      "J_max_error": 0.0,
+      "F_max_error": 0.0,
+      "R_max_error": 5.551115123125783e-17,
+      "local_t": [
+        1.0000000000000002,
+        0.0,
+        -1.1102230246251565e-16
+      ],
+      "local_n": [
+        1.1102230246251565e-16,
+        6.938893903907228e-18,
+        -0.9999999999999998
+      ],
+      "checkpoint_prediction_max_error": 1.4901161193847656e-08,
+      "synthetic_truth_max_error": 2.261885984067291e-09,
+      "ordinary_tet_point_error": 1.3877787807814457e-17
+    },
+    {
+      "side": "left",
+      "index": 1,
+      "tet_id": 225080,
+      "J_max_error": 0.0,
+      "F_max_error": 0.0,
+      "R_max_error": 6.938893903907228e-18,
+      "local_t": [
+        1.0000000000000002,
+        0.0,
+        0.0
+      ],
+      "local_n": [
+        0.0,
+        -1.6263032587282567e-18,
+        -1.0000000000000002
+      ],
+      "checkpoint_prediction_max_error": 2.9802322387695312e-08,
+      "synthetic_truth_max_error": 3.468573511744566e-09,
+      "ordinary_tet_point_error": 2.7755575615628914e-17
+    }
+  ],
+  "scope": "Two cells at90deg, two actions each; unchanged frozen model; algebra/interface test only.",
+  "source_sha": "4e1e162aac922ecd370ec975c1033d51eac0659d24f6f48369fbf43347294459",
+  "result_sha": "ad1b4e7ac37c7d4ee890d7cf5c8a523ab1860c11b0367a5f463267335cb67f3f",
+  "manifest_sha": "99aac52177bde7a5c074adb682e02fcda2b7834f4099a48a137a2b60cd10a031"
+}

@@ -1,0 +1,372 @@
+{
+  "side": "left",
+  "asset_path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_left.npz",
+  "asset_sha256": "05a85088fdaa3d63d29789d77f8e95eae8358b33ddd24f04841fb108fa6ceb19",
+  "counts": {
+    "skin_vertices": 31480,
+    "skin_faces": 62464,
+    "baked_vertices": 186624,
+    "baked_tets": 1058184,
+    "baked_d0_nodes": 7776,
+    "baked_d1_nodes": 7776
+  },
+  "runtime_distance_ratio": {
+    "all_skin_vertices_abs_d": {
+      "count": 31480,
+      "min": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "p95": 0.0,
+      "max": 0.0
+    },
+    "skin_triangle_interiors_abs_d": {
+      "count": 256,
+      "min": 6.365714899647656e-11,
+      "mean": 6.068323061436025e-08,
+      "median": 4.085283578092458e-08,
+      "p95": 1.827121849373725e-07,
+      "max": 4.299060094581364e-07
+    },
+    "core_points_and_segments_abs_d_minus1": {
+      "count": 95,
+      "min": 0.0,
+      "mean": 5.897722746196546e-08,
+      "median": 0.0,
+      "p95": 1.3709068298339827e-07,
+      "max": 1.3709068298339844e-06
+    },
+    "original_16_skin_xi": [
+      [
+        2.268928050994873,
+        0.07591549307107925,
+        0.0
+      ],
+      [
+        2.223841667175293,
+        0.11882209777832031,
+        0.0
+      ],
+      [
+        4.4215006828308105,
+        0.07591549307107925,
+        0.0
+      ],
+      [
+        3.3936986923217773,
+        0.53579181432724,
+        0.0
+      ],
+      [
+        3.05767560005188,
+        0.28993529081344604,
+        0.0
+      ],
+      [
+        2.8525238037109375,
+        0.938051700592041,
+        0.0
+      ],
+      [
+        0.25525322556495667,
+        0.1465291827917099,
+        0.0
+      ],
+      [
+        1.9625961780548096,
+        0.5447342395782471,
+        0.0
+      ],
+      [
+        5.410520553588867,
+        0.12774647772312164,
+        0.0
+      ],
+      [
+        1.6676607131958008,
+        0.9571491479873657,
+        0.0
+      ],
+      [
+        3.8426971435546875,
+        0.2743561863899231,
+        0.0
+      ],
+      [
+        0.17867156863212585,
+        0.6021068692207336,
+        0.0
+      ],
+      [
+        0.4582146108150482,
+        0.08850409835577011,
+        0.0
+      ],
+      [
+        2.268928050994873,
+        0.9052112698554993,
+        0.0
+      ],
+      [
+        1.143333077430725,
+        0.31010422110557556,
+        0.0
+      ],
+      [
+        0.7354161739349365,
+        0.08498696237802505,
+        0.0
+      ]
+    ],
+    "independent_all_triangle_ratio_abs_error": {
+      "count": 16,
+      "min": 1.2475097552200332e-09,
+      "mean": 8.033925013824824e-08,
+      "median": 3.820313219590754e-08,
+      "p95": 2.676778523575535e-07,
+      "max": 3.4837885672101e-07
+    },
+    "common_rigid_motion_depth_abs_error": {
+      "count": 16,
+      "min": 7.450580596923828e-09,
+      "mean": 4.0323357097804546e-07,
+      "median": 1.816079020500183e-07,
+      "p95": 1.3909302651882172e-06,
+      "max": 1.4118850231170654e-06
+    },
+    "near_skin_offsets_m": [
+      0.0,
+      1e-06,
+      1e-05,
+      0.0001,
+      0.001,
+      0.005
+    ],
+    "near_skin_depth_mean": [
+      6.068322733199238e-08,
+      1.568537663843017e-05,
+      0.00015686682309024036,
+      0.0015653885202482343,
+      0.015580338425934315,
+      0.07806006073951721
+    ],
+    "near_skin_depth_max": [
+      4.299060094581364e-07,
+      3.696209751069546e-05,
+      0.0003681858361233026,
+      0.003683330025523901,
+      0.03683587536215782,
+      0.18423137068748474
+    ],
+    "near_skin_monotone_fraction": 0.98828125,
+    "ratio_vs_baked_at_96_nodes_abs_error": {
+      "count": 96,
+      "min": 0.0004050731658935547,
+      "mean": 0.08054629418378075,
+      "median": 0.04263508319854736,
+      "p95": 0.2885127291083336,
+      "max": 0.4228544533252716
+    }
+  },
+  "baked_native_tetrahedra": {
+    "sampled_node_count": 288,
+    "accepted_node_count": 288,
+    "ambiguous_node_count": 0,
+    "ambiguous_node_evidence": [],
+    "node_coordinate_abs_error_max": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "barycentric_sample_count": 256,
+    "unambiguous_sample_count": 255,
+    "ambiguous_sample_count": 1,
+    "baked_geometry_gate_passed": false,
+    "barycentric_unambiguous_coordinate_abs_error_max": [
+      3.273045332985447e-06,
+      1.5268331915452293e-07,
+      2.0787691044077405e-06
+    ],
+    "unassisted_32_point_precision_roundtrip_error_m": {
+      "count": 32,
+      "min": 9.54869199813751e-10,
+      "mean": 1.6426312371970933e-08,
+      "median": 1.49573605965563e-08,
+      "p95": 3.3401264693397e-08,
+      "max": 5.220004139724911e-08
+    },
+    "overlap_evidence": [
+      {
+        "default_distance_ratio_xi": [
+          1.355325698852539,
+          0.49087828397750854,
+          0.5526929497718811
+        ],
+        "independent_distance_ratio": 0.5526929513063844,
+        "sample_index": 70,
+        "original_tet_index": 497162,
+        "query_point_m": [
+          0.08341145515441895,
+          -0.8296301364898682,
+          -0.04654886946082115
+        ],
+        "message": "Ambiguous baked tetrahedral domain at input index 0: overlapping tets 497162 and 497812 assign different (theta,h,d) values (1.4115924747537965, 0.4885583058813098, 0.6786234245430668) and (1.4011589841491403, 0.4889906958981207, 0.6757816390485165). Repair/rebake the noninjective volume mesh before using this baked address.",
+        "independent_containing_tets": [
+          {
+            "tet_index": 497162,
+            "vertex_indices": [
+              86424,
+              86532,
+              89124,
+              89125
+            ],
+            "barycentric_weights": [
+              0.06418569150473075,
+              0.09055463663159129,
+              0.5817201325153414,
+              0.2635395393483367
+            ],
+            "xi": [
+              1.4115924747537965,
+              0.4885583058813098,
+              0.6786234245430668
+            ]
+          },
+          {
+            "tet_index": 497170,
+            "vertex_indices": [
+              86425,
+              89017,
+              89018,
+              89126
+            ],
+            "barycentric_weights": [
+              0.3808415078316737,
+              0.06252176809360546,
+              0.22592511911503566,
+              0.3307116049596852
+            ],
+            "xi": [
+              1.486825771615193,
+              0.48562854292422136,
+              0.6989231151864331
+            ]
+          },
+          {
+            "tet_index": 497171,
+            "vertex_indices": [
+              86425,
+              89018,
+              86426,
+              89126
+            ],
+            "barycentric_weights": [
+              0.3727016725800163,
+              0.30679048302839235,
+              0.019009974384856573,
+              0.3014978700067348
+            ],
+            "xi": [
+              1.490937729744353,
+              0.4854876903598351,
+              0.6998970318746371
+            ]
+          },
+          {
+            "tet_index": 497812,
+            "vertex_indices": [
+              86532,
+              89124,
+              89125,
+              89233
+            ],
+            "barycentric_weights": [
+              0.12137111215489926,
+              0.794443253651932,
+              0.06329000578716504,
+              0.020895628406003668
+            ],
+            "xi": [
+              1.4011589841491403,
+              0.4889906958981207,
+              0.6757816390485165
+            ]
+          },
+          {
+            "tet_index": 512707,
+            "vertex_indices": [
+              89123,
+              89232,
+              89231,
+              91824
+            ],
+            "barycentric_weights": [
+              0.5694751289009208,
+              0.24307015533196336,
+              0.16315572567143766,
+              0.02429899009567814
+            ],
+            "xi": [
+              1.3536376715895007,
+              0.49087825292061865,
+              0.6608797748445019
+            ]
+          }
+        ]
+      }
+    ],
+    "sampled_d0_boundary_abs_error": 0.0,
+    "sampled_d1_boundary_abs_error": 0.0,
+    "domain_checks": {
+      "actual_skin_16": "10 query points lie outside the baked tetrahedral depth domain (first input indices: [0, 1, 2, 4, 5, 6, 8, 10]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation.",
+      "core_polyline_48": "48 query points lie outside the baked tetrahedral depth domain (first input indices: [0, 1, 2, 3, 4, 5, 6, 7]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation.",
+      "far_outside": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+    },
+    "actual_skin_16_with_explicit_nearest_depth": [
+      0.0,
+      0.0,
+      0.0,
+      0.3047054708003998,
+      0.0,
+      0.0,
+      0.0,
+      0.21862845122814178,
+      0.0,
+      0.0039885565638542175,
+      0.0,
+      0.0,
+      0.06900781393051147,
+      0.0,
+      0.11334944516420364,
+      0.03809702768921852
+    ]
+  },
+  "distinct_boundaries": {
+    "baked_outer_nodes_to_actual_skin_geometric_union_m": {
+      "count": 7776,
+      "min": 1.7004571331788366e-07,
+      "mean": 0.010287540022829795,
+      "median": 0.007465610929381907,
+      "p95": 0.029066341281770117,
+      "max": 0.03901511668044279
+    },
+    "actual_skin_vertices_to_baked_zero_surface_m": {
+      "count": 31480,
+      "min": 2.1891827021420577e-07,
+      "mean": 0.009318543137827285,
+      "median": 0.0053878249114619435,
+      "p95": 0.028512195003069906,
+      "max": 0.047128993872493405
+    },
+    "isolated_skin_vertex_ids": [],
+    "isolated_vertex_distance_to_triangles_m": [],
+    "actual_skin_h_range": [
+      0.0,
+      1.0
+    ],
+    "baked_h_range": [
+      0.05000000074505806,
+      0.9700000286102295
+    ]
+  },
+  "wall_s": 38.055588010000065
+}

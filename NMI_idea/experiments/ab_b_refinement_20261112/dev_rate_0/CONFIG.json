@@ -1,0 +1,28 @@
+{
+  "out": "dev_rate_0",
+  "n": 2,
+  "start": 0,
+  "seed": 1211202619,
+  "cap": 80,
+  "path_cap": null,
+  "travel_weight": 1.4,
+  "predictive_z": 2.0,
+  "n_predictive": 8,
+  "n_first": 3,
+  "switch_margin": 0.006,
+  "arms": [
+    "locked",
+    "B",
+    "B_once",
+    "B_no_fisher"
+  ],
+  "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "source_sha256": {
+    "refine_rechecks.py": "3796aea29a839ce65753c98363620052430f1e608fbe76c453852a677bf0c4b9",
+    "evidence.py": "5598937775c752d528b1f7dfb4992c4add0585f3a01afacc03389a7b2802ac33",
+    "certification.py": "fc1a6698f5f600030c5bdd2444cfee3a145a37bc6d63220b250b3e45336264e5",
+    "dynamic_scan.py": "4fa62deb34c48b3b21ca3b2a2f6d920cbb44865cfbd4b7007a66ab6887c686db",
+    "stress_observation.py": "5588e1670b724032265719c7767d579f385bcade6afd6fc744c39e12e241fa61",
+    "predictive.py": "158965b3315d859ec6b4001414af410f7c61d928563cbb41973cd705f8a4af23"
+  }
+}

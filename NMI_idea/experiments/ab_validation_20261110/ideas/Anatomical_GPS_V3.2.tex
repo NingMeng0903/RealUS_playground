@@ -1,0 +1,644 @@
+% !TeX program = xelatex
+\documentclass[UTF8,11pt,a4paper,fontset=fandol]{ctexart}
+\usepackage[margin=23mm,headheight=16pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,bm,mathrsfs}
+\usepackage{graphicx,booktabs,tabularx,longtable,array,float}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xurl,hyperref,fancyhdr,enumitem,microtype}
+\hypersetup{hidelinks,pdftitle={Anatomical GPS V3: Task-Preserving Repair of Executable Memory}}
+\setlength{\emergencystretch}{3em}
+\setlength{\parskip}{.3em}
+\linespread{1.035}
+\setlist{nosep,leftmargin=2em}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\numberwithin{equation}{section}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{假设}
+\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\Retr}{Retr}
+\DeclareMathOperator{\Log}{Log}
+\DeclareMathOperator{\Exp}{Exp}
+\DeclareMathOperator{\Repair}{Repair}
+\newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\dd}{\mathrm d}
+\newcommand{\Id}{\mathrm I}
+\newcommand{\T}{^{\mathsf T}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\figfile}[2]{\IfFileExists{figures/#1.pdf}{\includegraphics[width=#2\linewidth]{figures/#1.pdf}}{\fbox{\parbox{.87\linewidth}{图文件 \texttt{\detokenize{#1.pdf}} 位于完整源码包。正文和证明可独立编译。}}}}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small Anatomical GPS\quad V3核心贡献精炼}
+\fancyhead[R]{\small 任务保持的可执行记忆修复}
+\fancyfoot[C]{\thepage}
+\begin{document}
+\title{Anatomical GPS V3的核心贡献精炼：\\按任务失配修复可执行记忆\\[2mm]\large Task-Preserving Repair of Anatomical Execution Memory}
+\author{NMI研究设计稿}
+\date{2026年10月7日}
+\maketitle
+\begin{abstract}
+本稿不改变V3的技术路线：解剖地址与任务语义分离保存，内部目标生成允许视角族，视角关系与机器人IK构成隐式提升，有限认证走廊及样条SQP/QP生成执行参考，GP和IRD分别提供目标信念与能力引导。本文只重新定位核心贡献：从“用成熟工具生成一次正确扫描”，收缩为“人体或目标估计改变后，如何维护一份仍可执行的任务记忆，而不重新求解全部扫描”。简单缓存、局部重规划、证书复用和参数化根追踪均有强先例，因此这些名称本身不能构成新颖性。我们提出将\emph{当前几何对旧任务实现的失配}作为更新尺度，利用解剖任务因子的精确抵消、分块隐式响应和有限分量修复界，区分直接保留、运输后复用与需要重新构建的单元。进一步给出依赖完整性条件下的选择性重验证正确性及计算成本分解，并专门处理调和场和GP的非局部影响、关节分支门点以及累计更新误差。文中给出本轮实际运行的解析／合成检查和与最近方法的对照。所有一般固定点、敏感性、图搜索和区间工具均明确归属已有理论；本文是可检验的专门研究构造，不是首创性证明或真实机器人安全认证。
+\end{abstract}
+\noindent\textbf{核心句：}保存的不是过去的一串成功位姿，而是同一解剖任务的可执行解码器，以及它在何种几何变化下仍然有效的条件。
+
+\begin{center}\fbox{\begin{minipage}{.93\linewidth}\small
+\textbf{与V3的关系。}V3原稿已有整盒唯一提升、走廊链、有限模型变化复用。本稿并不声称首次增加“复用”。新增重点是：\textbf{用任务相关的有限失配定位哪些证书真正受到影响，运输旧解码器，再只重建无法认证的部分。}源稿、外部文献与本次推导分别说明；未重新运行用户机器人仓库，未修改UltraPoC，未加入新的movement primitive或学习模块。
+\end{minipage}}\end{center}
+\clearpage
+\setcounter{tocdepth}{1}\tableofcontents
+\clearpage
+
+\section{结论先行：核心创新应该放在哪里}
+\subsection{从一次规划，转向一份任务记忆的维护}
+V3的主张是“解剖地址保持、任务关系重建、实现连续选择”\cite{v3}。这比把一组姿态直接warp到新人体准确，但容易被概括成“领域约束＋约束流形规划＋区间检查”。若仅把每个工具接起来，审稿人的这项批评仍然成立。
+
+本稿建议把主问题收缩为：
+\begin{quote}
+\textbf{人体几何或内部目标估计改变后，已有扫描知识中哪些仍然可执行，哪些只需有限修复，哪些必须重新规划？能否用有限计算给出这个区分，而不是每次重建全路径？}
+\end{quote}
+这与原PPT中的Anatomical GPS、信息存储和中断恢复意图一致\cite{ppt}，且不必把一般不确定控制、主动感知或新DMP理论都写进主贡献。
+
+\subsection{一个确定的中心，不再提出三个独立模块}
+核心研究对象是\textbf{任务保持的可执行记忆}；核心操作是\textbf{运输--验证--局部修复}。其逻辑是
+\begin{equation}
+\boxed{
+\mathscr M_0+\text{当前对应/目标更新}
+\xrightarrow{\Repair}
+\mathscr M_1.
+}
+\end{equation}
+这里$\mathscr M_0$不仅包含旧轨迹，还包含一族合法实现、分支关系、依赖信息和可验证的适用条件。$\Repair$不改变被扫描目标和诊断/成像要求；它只重新实现同一个任务。
+
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{p{.22\textwidth}YY}\toprule
+问题 & V3已经有的答案 & 本次应集中的增量\\\midrule
+当前任务怎样实现？ & 有限隐式提升与走廊规划 & 保留，不重写\\
+人体变化后还能用吗？ & 每个旧盒检查统一模型差异 & 根据任务相关失配与依赖关系，判定哪些盒需要真正更新\\
+需要更新时怎么做？ & 再认证或重建单元 & 先运输旧解码器，以小缺陷修复；失败才重新构建\\
+整段能否继续？ & 门点一致、可达链、时间化 & 更新后的单元和门点共同维护，并计入实际起点连接\\\bottomrule
+\end{tabularx}
+\caption{不是新增工具栈，而是把V3已有工具围绕“维护可执行任务记忆”重新组织。}
+\end{table}
+
+\section{最近先例检查：哪些说法不能再算创新}
+\subsection{本轮检索得到的直接反方}
+检索日期为2026年10月7日，主要围绕证书复用、约束流形、增量重规划、参数化验证追踪和曲面任务迁移。这里只据实际核查到的论文范围比较，不把“没有看到相同标题”当作首创证明。
+
+\begin{longtable}{p{.25\textwidth}p{.34\textwidth}p{.32\textwidth}}
+\toprule 先例 & 已有能力 & 本稿必须额外兑现什么\\\midrule\endfirsthead
+\toprule 先例 & 已有能力 & 本稿必须额外兑现什么\\\midrule\endhead
+Safety certificates，IJRR 2016\cite{safetycert} & 保存已检查点的安全区域，让新查询避免重复碰撞检查 & 不仅复用碰撞状态，还维护因人体改变而移动的非线性任务解码器\\
+LPA*及Lifelong-GLS\cite{lpa,lgls} & 在边代价/有效性改变时增量修复图搜索，减少昂贵边评价 & 从解剖变化推出哪些\emph{几何证书}需要更新；不再发明图搜索\\
+IMACS，IJRR 2019\cite{imacs} & 将隐式约束空间与不同采样规划器解耦，保留相应理论性质 & 对同一地址任务跨几何变化维护可验证实现，而非只解决当前约束空间\\
+CUIK与SMM\cite{cuik,smm} & 闭链约束流形及自运动结构、分支与全路径优化 & 同时保留任务视角自由度，维护旧解码器与新几何间的有限关系\\
+参数化Krawczyk追踪\cite{dufflee,lee} & 参数化根的认证、预条件及复杂度/步长分析 & 不能声称新固定点方法；要利用任务因子和影响结构减少整段重复工作\\
+DOF，Science Robotics 2026\cite{dof} & 从曲面几何构造局部任务框架并迁移任务 & 不仅搬运方向场，还检查同一成像关系及机器人连续实现能否被继承\\
+Funnel libraries\cite{funnel} & 复用带扰动保证的反馈运动，在线组合 & 不把“保存可复用安全运动”作为首创；区分当前的几何参考证书与动力学不变集\\\bottomrule
+\end{longtable}
+
+\subsection{从这张表得到的判断}
+\textbf{“局部更新＋缓存＋证书”也不是空白。}如果最后实现只是给改变的网格附近打标记，随后调用原规划器，本稿仍是成熟方法的应用组合。
+
+必须提供的更具体对象是：
+\begin{quote}
+\textbf{由同一材料地址对齐的旧新几何，产生可计算的任务失配与分块修复界；据此运输一族连续实现，并在明确条件下证明省去的重验证不会损害已声明保证。}
+\end{quote}
+这个专门算法是否具有足够独立性，需与通用验证式延拓、完整重建及增量懒搜索在\emph{相同任务和保证}下比较。本文不将已有方法无法处理本任务作为前提。
+
+\section{保留V3的数学对象，但改变记忆单元的内容}
+\subsection{解剖任务与联合提升}
+令参考解剖域具有图册。当前形态通过$\Psi_c(\xi)$解码到世界空间，度量为
+\begin{equation}
+G_c=(D\Psi_c)\T D\Psi_c.
+\end{equation}
+模型中的地址不变不代表物理夹角不变。同患者采用有效材料对应；跨患者只采用解剖语义对应，患者目标后验不能直接互换。调和场是这个地址系统的一种构造，不保证真实内部运动，也不是以下定理唯一可能的坐标实现。
+
+以V3短轴主任务为例，内部目标为$p_c(s)$、单位切向为$t_c(s)$、皮肤为$S_c(u)$。任务关系为
+\begin{equation}
+ f_c(s,u)=t_c(s)\T[S_c(u)-p_c(s)]=0.
+ \label{eq:task}
+\end{equation}
+在适当皮肤图中$u=(\lambda,\eta)$。七关节臂加rail的局部变量仍选择
+\begin{equation}
+ z=(s,\lambda,r,\psi),\qquad y=(\eta,\bar q),
+\end{equation}
+其中$\bar q$为六个从属关节。当前图的七个方程写为
+\begin{equation}
+ \mathcal F_c(z,y)=
+ \begin{bmatrix}
+ f_c(s,\lambda,\eta)\\
+ h_c(z,\eta,\bar q)
+ \end{bmatrix}=0.
+ \label{eq:implicit}
+\end{equation}
+$h_c$是完整声学任务位姿与FK之间的局部六维残差。离流形时仍须采用V3中光滑、正交的姿态延拓，不能将不正交矩阵放入$SE(3)$对数。关节范围、碰撞、声窗和视野分别由$g_j(z,y;c)\ge0$表达。
+
+\subsection{新的记忆不是一张布尔可行性表}
+\begin{definition}[带依赖的可执行记忆单元]
+单元$i$保存
+\begin{equation}
+\mathscr M_i=
+\bigl(Z_i,\mathsf{address}_i,\mathsf{type}_i,
+\mathcal D_i^0,\mathcal B_i^0,\mathcal P_i,
+\mathcal S_i,\mathsf{epoch}_i\bigr).
+\end{equation}
+其中$Z_i$是自由参数域；$\mathcal D_i^0$为旧几何的连续实现解码；$\mathcal B_i^0$包含根、约束及导数证书；$\mathcal P_i$保存物理门点与分支；$\mathcal S_i$保存使该证书有效的几何/模型依赖及影响界；$\mathsf{epoch}_i$记录被认证模型版本。
+\end{definition}
+其变化域不是任意人体参数球，而是由后文有限缺陷测试定义的内近似。仅存一个近似网络或插值解码器时，还需保存其残差及导数误差包络；不能当作旧根精确可求。
+
+\begin{figure}[H]\centering
+\begin{tikzpicture}[>=Latex,b/.style={draw,rounded corners,align=center,text width=34mm,minimum height=12mm,font=\small},l/.style={font=\scriptsize,align=center}]
+\node[b] (a) at (0,1.7) {不变解剖地址\\固定成像任务类型};
+\node[b] (g) at (4.8,1.7) {旧/新材料几何\\同地址比较};
+\node[b] (m) at (9.6,1.7) {旧执行记忆\\解码、分支、证书};
+\node[b] (d) at (0,-.7) {任务相关失配\\而非原始形变量};
+\node[b] (r) at (4.8,-.7) {运输＋有限修复测试\\保留／修复／未知};
+\node[b] (p) at (9.6,-.7) {更新后连续走廊\\原样条与反馈执行};
+\draw[->](a)--(g);\draw[->](g)--(m);
+\draw[->](g.south)--node[l,above,sloped]{精确关系与包含界}(d.north);
+\draw[->](m.south)--(r.north);\draw[->](d)--(r);\draw[->](r)--(p);
+\node[l,text width=133mm] at (4.8,-2) {IRD只指导需要调整的实现；GP更新目标证据。两者的变化都必须通过同一任务关系与证书依赖链。};
+\end{tikzpicture}
+\caption{本次核心不是再加模块，而是为GPS记忆定义一种有适用条件的更新操作。}
+\end{figure}
+
+\section{核心区别之一：几何改变的大小，不等于任务证书改变的大小}
+\subsection{精确有限失配，不从参数距离猜测}
+在同一材料地址和同一个自由参数点，记
+\begin{equation}
+ r_0=S_0-p_0,\quad
+ \Delta r=(S_1-S_0)-(p_1-p_0),\quad
+ \Delta t=t_1-t_0.
+\end{equation}
+由式\eqref{eq:task}直接得到\emph{精确恒等式}
+\begin{equation}
+ \boxed{f_1-f_0=t_0\T\Delta r+\Delta t\T r_0+\Delta t\T\Delta r.}
+ \label{eq:deltaf}
+\end{equation}
+它不要求形变很小。改变皮肤和内部目标的公共分量会抵消；改变切向的分量则通过杠杆$r_0$影响任务。应先在原始表达中利用共同变化与相关性，再取包含界。先分别取绝对值再相加可能破坏这些抵消，只得到不必要的保守结果。
+
+\begin{proposition}[公共刚体变化保持接触任务因子]
+若$p_1=Qp_0+b$、$S_1=QS_0+b$、$t_1=Qt_0$且$Q\in SO(3)$，则$f_1=f_0$。因此在相同材料参数下，接触根及其相对于材料参数的导数保持不变。
+\end{proposition}
+\begin{proof}
+$f_1=(Qt_0)\T Q(S_0-p_0)=f_0$。相同函数的参数导数相同。
+\end{proof}
+\textbf{这个结论只适用于接触任务因子。}患者移动而机器人基座不动时，目标世界位姿变化，IK、关节界和碰撞仍可能变化。绝不能由“任务内在不变”推出“整条机器人路径不必重查”。只有全部相对环境和机器人关系一起变换时，才可能复用更多因子。
+
+\subsection{同样6毫米，不同的影响}
+令$t_0=e_3$、$r_0=(30,50,0)\,\mathrm{mm}$。皮肤相对目标在截面内移动$6\,\mathrm{mm}$时，$\Delta f=0$；沿$t_0$移动同样大小时，$\Delta f=6\,\mathrm{mm}$。但前一种变化仍可改变声束方向和机器人位姿，不能说全部任务或能力都不变。
+
+因此应该逐因子评价：
+\begin{equation}
+\text{接触关系缺陷}\rightarrow
+\text{姿态/IK缺陷}\rightarrow
+\text{关节、碰撞和声窗余量消耗}.
+\end{equation}
+这正是GPS比“把大腿视为一个变形网格”更有用的地方：同一地址使这种有类型的变化可以比较。
+
+\subsection{不变地址、固定任务和可选择实现不能混淆}
+当前目标与任务类型保持。允许改变的只是$\lambda,r,\psi$等已经确认属于任务自由度的实现变量。不能为了让缺陷变小而删去目标、把短轴改成长轴、缩成空视野或放宽事先规定的容差。对于完整内部点已知、几何对应已知的简单点定位，框架应正确返回“无需新信息”，而不是制造一个新的task-insufficiency模块。
+
+\section{核心区别之二：先运输旧解码器，再验证其剩余缺陷}
+\subsection{候选运输不是重新求完整IK}
+新context为$c_1$。从旧解码器构造一个连续候选$\widehat y_i(z)$：可使用旧函数本身、明确的任务运输，或保存在单元中的一阶隐式响应。它不是“已经正确的新解”，也不依赖还没观察到的真实目标；它只根据当前允许使用的几何模型构造。
+
+新的问题只解小的修正$e$：
+\begin{equation}
+ \mathcal F_1(z,\widehat y_i(z)+e)=0.
+ \label{eq:repair}
+\end{equation}
+而非对每个$z$重新在整个关节范围内找根。
+
+\subsection{有限分量缺陷证书}
+\begin{assumption}[统一有限修复域]
+$Z$紧致；$\widehat y(z)$连续；$\mathcal F_1$在$\{(z,\widehat y(z)+e):z\in Z,\ |e|\le r\}$邻域连续且对$y$连续可微。$r\in\R_{>0}^m$，预条件矩阵$C(z)$可逆且连续。所有姿态残差使用同一个有效分支，所有分母有正下界。
+\end{assumption}
+设已通过包含计算得到逐分量上界
+\begin{align}
+ \sup_{z\in Z}|C(z)\mathcal F_1(z,\widehat y(z))|&\le\varepsilon,\\
+ \sup_{z\in Z,\,|e|\le r}|\Id-C(z)D_y\mathcal F_1(z,\widehat y(z)+e)|&\le B,
+ \label{eq:componentbounds}
+\end{align}
+其中$\varepsilon\ge0$、$B\ge0$。矩阵绝对值和不等式均按元素解释。
+
+\begin{theorem}[运输后的整单元修复]
+若
+\begin{equation}
+ \boxed{\varepsilon+Br<r,}
+ \label{eq:vectorcertificate}
+\end{equation}
+则对每个$z\in Z$，存在唯一修正$e^*(z)$满足式\eqref{eq:repair}和$|e^*|\le r$。修正连续依赖$z$，并有
+\begin{equation}
+ \boxed{|e^*(z)|\le b^*:=(\Id-B)^{-1}\varepsilon.}
+ \label{eq:componentrootbound}
+\end{equation}
+若函数在适用开邻域中为$C^k$，修正后的解码器也为$C^k$。
+\end{theorem}
+\begin{proof}
+定义$K_z(e)=e-C(z)\mathcal F_1(z,\widehat y(z)+e)$。均值积分给
+$|K_z(e)-K_z(e')|\le B|e-e'|$，以及$|K_z(e)|\le\varepsilon+Br<r$，故盒映入自身。取加权无穷范数$\|e\|_r=\max_j|e_j|/r_j$，其收缩常数不超过$\max_j(Br)_j/r_j<1$，得到唯一固定点。式\eqref{eq:vectorcertificate}也保证$\rho(B)<1$，且$(\Id-B)^{-1}=\sum_{k\ge0}B^k\ge0$。固定点满足$|e^*|\le\varepsilon+B|e^*|$，得到式\eqref{eq:componentrootbound}。连续性和正则性由统一收缩与隐函数性质得到。
+\end{proof}
+这仍是成熟的分量验证式计算原理\cite{rump,dufflee}。\textbf{本稿不将其本身称为新定理家族。}它是专门更新操作的可检验核心，区别于仅检查新轨迹上若干点。
+
+\subsection{约束余量不能只在运输中心检查}
+若
+\begin{equation}
+ \inf_{z\in Z}g_{j,1}(z,\widehat y(z))\ge\widehat m_j,
+ \qquad
+ \sup|D_yg_{j,1}|\le\ell_j\T,
+\end{equation}
+则修复后的全单元满足
+\begin{equation}
+ \boxed{g_{j,1}(z,\widehat y(z)+e^*(z))
+ \ge\widehat m_j-\ell_j\T b^*.}
+ \label{eq:margin}
+\end{equation}
+右侧为正才可沿用对应约束保证。预测点看起来安全但修复范围跨出障碍或关节界时，不能跳过这一步。反过来，测试不通过只表示本证书不足，不能直接否定真实可行性。
+
+\subsection{旧decoder本身近似时}
+若只保存$\widetilde Y_0$，必须把$\mathcal F_0(z,\widetilde Y_0)$的已知残差包括在新$\varepsilon$中；若使用插值，则包括插值和导数误差。不能使用只有浮点采样误差的“近似旧解”，同时宣称上述全域结论。可采用Taylor模型或区间多项式保存decoder，也可在查询时利用旧根盒做少量认证修正。
+
+\section{任务结构提供什么：分块响应、抵消与二阶剩余缺陷}
+\subsection{接触与IK的三角结构}
+由式\eqref{eq:implicit}，在所选局部变量中
+\begin{equation}
+ D_y\mathcal F_0=
+ \begin{bmatrix}
+ a&0\\ B_0&C_0
+ \end{bmatrix},
+ \qquad
+ a=\partial_\eta f_0.
+ \label{eq:triangular}
+\end{equation}
+设旧根上新方程的残差为$(d_f,d_h)$。一次线性修正为
+\begin{equation}
+ \boxed{
+ \Delta\eta=-a^{-1}d_f,
+ \qquad
+ \Delta\bar q=-C_0^{-1}(d_h-B_0a^{-1}d_f).
+ }
+ \label{eq:schur}
+\end{equation}
+这里的组合残差$d_h-B_0a^{-1}d_f$允许接触调整与位姿调整之间的真实抵消。先把每项独立取绝对值，可能把两个相互补偿的变化错算成两份负担。公式是分块消元，不是新的逆矩阵理论；它使任务类型直接决定误差传播结构和需要重算的因子。
+
+\subsection{一般一阶运输器与剩余缺陷}
+设模型由系数$a$描述，$F(z,Y_0(z);a_0)=0$。可构造
+\begin{equation}
+ \widehat y(z)=Y_0(z)-F_y^{-1}F_a\,\Delta a,
+ \qquad a_1=a_0+\Delta a,
+ \label{eq:predictor}
+\end{equation}
+导数在旧根上计算。假设整个连接段位于同一有效图、组合二阶导数有统一上界$M$，且$\|F_y^{-1}F_a\|\le K$，则Taylor展开消去全部一阶项：
+\begin{equation}
+ \boxed{
+ \|F(z,\widehat y(z);a_1)\|
+ \le \tfrac12 M(1+K)^2\|\Delta a\|^2.
+ }
+ \label{eq:secondorder}
+\end{equation}
+若旧根有残差，或预测导数有误差，还需分别加入旧残差与$O(\|\Delta a\|)$的误差项。
+
+这解释为什么“大体运输＋小范围修复”可能比围绕旧原点重建全域证书更紧。\emph{但一阶预测造成二阶剩余缺陷是经典敏感性结果，不能再次当作独创新现象。}方法增量须由整段结构化更新的效果来支持。
+
+\begin{figure}[H]\centering\figfile{defect_order}{.82}
+\caption{本轮解析双变量模型：直接沿用旧解码器的缺陷是一阶，保存的隐式响应预测留下近二阶缺陷。该机制本身是经典预测--校正，不是患者形变定律。}
+\end{figure}
+
+\section{核心区别之三：哪些单元可以不做昂贵重验证？}
+\subsection{精确依赖与有效影响需要分开}
+将当前几何模型写成系数/状态$a=(a_1,\ldots,a_M)$。单元依赖集合$\mathcal D_i$必须涵盖：内部目标与皮肤查询支持、姿态和标定、机器人基座、所有可能影响该单元的障碍，以及模型误差界。若新旧模型在这些依赖及有效域上\emph{严格相同}，则该单元的方程、解码器和证书完全相同，允许直接保留。
+
+这项精确复用并不新；困难在于构造正确的$\mathcal D_i$。尤其不能用“网格离目标比较远”代替语义依赖。
+
+对近似局部的更新，在共同认证的模型域内可以存储
+\begin{equation}
+ \varepsilon_i\le e_i^0+E_i d+\mathcal Q_i(d),
+ \qquad
+ B_i\le B_i^0+\mathcal B_i(d),
+ \qquad d_j\ge|a_{1,j}-a_{\mathrm{anchor},j}|,
+ \label{eq:influence}
+\end{equation}
+其中$E_i\ge0$和非负余项映射由包含导数得到。约束变化也有相应下界。应尽量在实际任务组合残差上求界，避免重复独立化。该表达允许先做廉价预算检查，只把无法通过的单元送入新的区间求根、分支搜索和细分。
+
+\subsection{一个不能忽略的反例：调和场不是局部作用}
+在固定离散算子下，内点调和值满足
+\begin{equation}
+ u_I=-K_{II}^{-1}K_{IB}b.
+\end{equation}
+即使边界更新$\Delta b$只有少数非零项，
+\begin{equation}
+ \Delta u_I=-K_{II}^{-1}K_{IB}\Delta b
+\end{equation}
+一般仍是全域非零。若网格和算子也改变，还需要处理$\Delta K$；不能沿用固定算子的影响矩阵。在一维区间把右端边界提高$0.1$，全部39个内点都会改变，本轮测试给出的变化范围为$0.0025$至$0.0975$。
+
+\subsection{GP更新也可能全域作用}
+一次观测引起的均值更新形如
+\begin{equation}
+ \Delta m(s)=K_{sX}(K_{XX}+R)^{-1}\mathrm{innovation}.
+\end{equation}
+Mat\'ern核具有非紧支撑，因此远处通常不是精确零。共享配准误差还可能产生低秩但全局的变化。局部概率更新不意味着局部任务证书一定不变。
+
+\begin{figure}[H]\centering\figfile{nonlocal_update}{.8}
+\caption{一个局部观测对240个查询点均产生非零Mat\'ern均值更新。远处可通过小影响上界复用，但不能仅凭空间距离将变化截断为零。}
+\end{figure}
+
+可用方案是：对远处尾部提供显式包含界，预算足够则保留；有严格紧支撑表示时利用真实零依赖；共享状态改变时允许全局廉价筛查。\textbf{本文不承诺所有人体更新只花局部成本。}
+
+\subsection{一个更具体的结果：非紧支撑更新也有有限的证书影响半径}
+前面的“不截断远处GP影响”不意味着一定要对远处做完整IK重验证。可以利用\emph{尾部大小与旧证书余量}得到一个有限判定。以下限定为目标均值更新，其余几何、共享状态、机器人与障碍不变；概率覆盖或协方差域若也参与证书，必须另外计入它们的变化。
+
+令$\chi_i$为单元$i$的归一化测试违背量，例如把式\eqref{eq:vectorcertificate}各分量及式\eqref{eq:margin}写成小于零后取最大值。设旧单元$\chi_i\le-m_i<0$，并在整个共同有效模型域有经验证的敏感性界
+\begin{equation}
+ |\Delta\chi_i|
+ \le\sum_{r=0}^{2}L_{ir}\sup_{s\in I_i}|\Delta e^{(r)}(s)|.
+ \label{eq:jetimpact}
+\end{equation}
+这里$I_i$覆盖该单元所有可能进度，不是只取中心点。$L_{ir}$应由任务、归一化、IK和证书函数的导数包络得到；它们不是任意调节权重。若证书还依赖更高阶目标导数，则相应增加这些项，不能忽略。
+
+采用单位幅度Mat\'ern-$5/2$核
+\begin{equation}
+ k(r)=\left(1+\lambda r+\tfrac13\lambda^2r^2\right)e^{-\lambda r},
+\end{equation}
+并把一次或批量后验均值改变量表示为
+\begin{equation}
+ \Delta e(s)=\sum_{j=1}^{M_c}c_j k(|s-a_j|),
+ \qquad C_1=\sum_j|c_j|.
+ \label{eq:kernelupdate}
+\end{equation}
+已有历史时，中心$a_j$一般同时包含新观测和旧支持点；不能把条件核错误地当作仅围绕最新观测的单个平移不变核。对向量输出用系数范数替代$|c_j|$，并相应定义导数范数。
+
+令$x=\lambda r$，核及其前两阶导数可用以下非负函数上界：
+\begin{align}
+ w_0(r)&=(1+x+x^2/3)e^{-x},\\
+ w_1(r)&=\frac\lambda3(x+x^2)e^{-x},\\
+ w_2(r)&=\frac{\lambda^2}{3}(1+x+x^2)e^{-x}.
+ \label{eq:kerneljets}
+\end{align}
+当$r\ge2/\lambda$时，三个上界均单调下降。
+
+\begin{proposition}[证书余量定义的有限有效影响域]
+假设式\eqref{eq:jetimpact}对所有被考虑单元成立，$L_{ir}\le\bar L_r$，$m_i\ge m_*>0$。若选择$R\ge2/\lambda$使
+\begin{equation}
+ \boxed{C_1\sum_{r=0}^{2}\bar L_r w_r(R)<m_*,}
+ \label{eq:finiteradius}
+\end{equation}
+则任何与全部核中心$a_j$的距离均不小于$R$的单元区间$I_i$，均继续通过该证书测试。此处均值仍可能发生非零变化，但无需重新执行昂贵的该项认证。
+\end{proposition}
+\begin{proof}
+对$I_i$上全部位置以及全部中心，导数单调包络给
+$\sup_{s\in I_i}|\Delta e^{(r)}(s)|\le C_1w_r(R)$。代入式\eqref{eq:jetimpact}，得到$|\Delta\chi_i|<m_*\le m_i$，故新测试值仍小于零。没有将核尾部删掉，而是使用了它的有限上界。
+\end{proof}
+
+若材料区段被等宽$h$单元覆盖，那么可能需要进一步检查的单元数满足
+\begin{equation}
+ \boxed{K\le\min\left\{N,\;M_c\bigl(\lceil2R/h\rceil+2\bigr)\right\}.}
+ \label{eq:candidatecount}
+\end{equation}
+这是对所述一维区段、均匀宽度及完整支持中心的覆盖计数，不是一般算法复杂度。核中心很多、$m_*$很小或共享状态改变时，界可以退化为$N$。
+
+\textbf{这个结果比“变化小就复用”更具体：}实际需要关注多远，由GP相关尺度、任务导数敏感性和旧实现余量共同决定，而不是人为规定一个局部半径。它仍使用成熟核函数和Lipschitz技术；专门贡献要落在$L_{ir}$能否由实际解剖--任务--机器人链计算得足够紧。
+
+合成例取$\lambda=20$、$C_1=0.02$、$(\bar L_0,\bar L_1,\bar L_2)=(1,0.01,0.0001)$和$m_*=0.002$。数值临界半径约$0.25872$；取$R=0.26$，用有理数多项式和$e^{5.2}$的正项Taylor下界，严格验证左侧小于$0.001965$。240个等宽区间、单个中心在0.5时，有114个区间可由尾部证书直接排除在进一步检查之外。这里的敏感性常数是\emph{合成输入}，不是从真实机器人测得；这个例子不等同于上一节240个独立修复单元实验。
+
+\subsection{正确的局部更新定理与成本}
+设已有$N$个单元，保存一套足够覆盖当前路径的门点。对每个单元和门点做以下三选一：依赖严格不变；通过运输后的有限缺陷测试；重新构建并认证。实际起点连接也经过相同要求。
+
+\begin{theorem}[选择性更新的有效性]
+若依赖清单和包含界完整，所有保留或修复单元满足新模型下的等式与不等式，全部使用的门点和起点连接满足新模型的物理一致性，则任何在更新图上选出的V3认证链，都给出新模型中的连续可行参考。省去其他单元的昂贵重新求根，不改变该链已声明的保证。
+\end{theorem}
+\begin{proof}
+依赖严格不变的单元保持原证书；通过式\eqref{eq:vectorcertificate}和\eqref{eq:margin}的单元有新模型下的有效提升；重新构建单元直接具备新证书。共同门点使相邻提升相接。逐段应用V3的凸参数曲线提升和连接构造，得到整链结论。未使用但无法认证的单元不得作为隐含捷径。
+\end{proof}
+本结论是所选更新操作的健全性，不是新全局最优规划定理，也不等于新旧可行域完全相同。
+
+若依赖索引涉及$E_{\rm upd}$个被访问的因子--单元关联，筛查$K$个候选单元，其中$R$个需要昂贵修复，$G$个门点需检查，则一次更新成本应老实写为
+\begin{equation}
+ \boxed{
+ T_{\rm update}
+ \le T_{\rm geometry}+T_{\rm index}(E_{\rm upd})
+ +K T_{\rm screen}+\sum_{i\in\mathcal R}T_i^{\rm repair}
+ +T_{\rm gate}(G)+T_{\rm graph}.
+ }
+ \label{eq:cost}
+\end{equation}
+没有可靠影响索引时，$K$可以等于$N$；图修复也可能全局传播。式\eqref{eq:cost}只说明\emph{昂贵几何重构}可以按实际失效数量计费，不虚构整算法恒为$O(R)$。LPA*/Lifelong-GLS可实现$T_{\rm graph}$，不属于本文新算法\cite{lpa,lgls}。
+
+\section{门点、累计更新与控制接口：不允许省略的代价}
+\subsection{单元正确不代表它们还连得上}
+两个单元分别有根，并不保证端点相同。例如$y^2=1$的正负分支都满足方程，却不能在同一个门点直接拼接。门点需要共同根隔离盒、经验证过渡或其他物理身份检查。只更新节点而沿用所有旧边，可能输出不连续路径。
+
+若某单元需切换分支或改变自由图，应将相邻门点纳入修复闭包。这个闭包可能很大；不能用局部标记掩盖真实全局瓶颈。
+
+\subsection{累计小更新不能反复使用同一份旧余量}
+每个证书必须记录锚点模型$a_{\rm anchor}$。没有重新认证并更新证书时，应使用
+\begin{equation}
+ d\ge |a_{\mathrm{now}}-a_{\rm anchor}|,
+\end{equation}
+而不是只检查最新两帧差异。预算$0.01$、连续八次增量$0.004$的合成例中，逐次错误重置会接受全部八步；相对于原锚点的检查只能接受前两步。通过一次合法重新认证后可以重新锚定，但必须同时更新全部残差、导数和不等式下界。
+
+\subsection{分段运动不继承旧速度界}
+新解码器$Y_1$虽与$Y_0$位置接近，导数可能改变。若要保持旧时间化，应验证$D_zY_1$、$D_z^2Y_1$所诱导的速度和加速度界；否则重新调整时长。根误差上界不自动给速度误差上界。实际机器人还需在已有执行接口中处理跟踪误差和接触约束，本文不替代UltraPoC的患者交互安全分析。
+
+\subsection{更换身体姿态不是机器人瞬移}
+新模型中的走廊存在，不说明当前$q,\dot q$在其入口。起点连接器是整链证书的一部分。大姿态变化、抬起或重新接触，可以作为独立、明确建模的连接动作；不能在“单程连续接触扫描”声明中暗中使用。
+
+\section{选定算法：不新增primitive，只增加一个维护算子}
+\begin{center}\fbox{\begin{minipage}{.94\linewidth}\small
+\textbf{算法：任务保持的执行记忆修复}\par
+输入：GPS任务记录、旧有限实现图册及证书锚点、当前几何/目标更新、实际机器人状态。\par
+1. 按共同解剖地址匹配新旧数据；保持任务类型和物理容差不变。排除只是坐标换图造成的数值变化。\par
+2. 生成依赖影响候选；对共享状态和非局部场传播保守尾部界。\par
+3. 对依赖严格不变的单元直接保留；对其余单元构造旧解码器运输预测，求$\varepsilon_i,B_i$及约束预算。\par
+4. 满足有限测试者保存新的修复解码器/认证oracle和误差预算；不通过者仅标为需要细化或重建，不标为物理不可行。\par
+5. 检查受影响门点与实际起点连接；必要时扩大修复区域。\par
+6. 在更新后的认证图上增量搜索；用原V3样条SQP/QP优化。IRD提供候选和自由方向偏好，不重写目标后验。\par
+7. 新路径/单元通过才执行；没有成功证书时返回UNKNOWN或使用既有安全停止/重新规划机制。\par
+输出：保留/运输复用/重建集合、分支一致的新扫描参考、模型版本及保证范围。
+\end{minipage}}\end{center}
+
+\subsection{IRD的可微性怎样不变成装饰}
+在需要改变自由实现的单元中，仍使用V3的隐式梯度
+\begin{equation}
+ D_z\rho=\rho_z-\rho_y\mathcal F_y^{-1}\mathcal F_z.
+\end{equation}
+它用于选择rail、视角曲线参数与冗余方向，使后续搜索更容易获得余量。但证书已经通过且旧实现满足要求时，不必为了最大化IRD而重优化每个单元。若目标是最低代价恢复可执行性，应先固定此目标，不将“每次都重新找全局最优”混入复用要求。
+
+\subsection{GP在哪里继续保留}
+GP提供内部目标位置及导数的联合后验；新证据改变的是目标信念。当前名义均值和可信模型范围用于更新任务几何；若只持有统计协方差，则只能给模型条件的概率陈述。实际样条/位姿参考仍由任务约束解码，IRD不能删除难以执行的目标样本。DMP、KMP、ProDMP都可以作为参考或估计替代，但不需要为了本次创新重新接入。
+
+\section{本轮实际完成的解析/合成验证}
+\subsection{范围与不可推论的东西}
+附带脚本\texttt{code/verify\_refinement.py}已经执行。没有加载SMPL-X、真实US图像、完整IRD网络或七关节机器人；没有运行用户仓库benchmark。本节验证任务差分、有限修复核心和错误复用反例，\textbf{不是整套机器人实现完成的声明}。
+
+\begin{longtable}{p{.35\textwidth}p{.27\textwidth}p{.28\textwidth}}
+\toprule 检查 & 结果 & 保证边界\\\midrule\endfirsthead
+\toprule 检查 & 结果 & 保证边界\\\midrule\endhead
+式\eqref{eq:deltaf}精确恒等式，500组 & 最大误差$1.11\times10^{-15}$ & 浮点一致性，证明在正文\\
+公共刚体任务不变性，500组 & 最大误差$2.22\times10^{-15}$ & 不包含固定基座IK不变性\\
+同幅不同方向的任务变化 & 同为6 mm，残差为0或6 mm & 只评价该接触等式\\
+分量收缩界 & 修复界$(0.012315,0.001558)$ & 优于示例的单一范数界；非一般必然优势\\
+整盒有理数修复证书 & $q\le0.002114$，修复误差$\le1.448\times10^{-5}$ & 精确有理数验证解析双变量盒\\
+对应密集求根诊断 & 最大误差$1.368\times10^{-5}$ & 密集采样不代替整盒证明\\
+预测器剩余缺陷阶数 & 拟合$1.99948$ & 经典二阶余项的数值检查\\
+240个独立解析单元 & 224直接复用、14运输复用、2请求重建 & 不是一个七关节连续走廊；不含门点性能\\
+一维调和局部边界变化 & 39个内点全部非零变化 & 反驳“局部输入必然局部影响”\\
+一次Mat\'ern观测更新 & 240个查询点全部非零 & 不允许直接截断远处影响\\
+累计预算反例 & 错误逐次接受8步；锚点检查只接受2步 & 必须维护证书版本\\
+门点分支反例 & $+1$和$-1$均为根，但不是同一门点 & 不能仅复用节点证书\\
+非紧支撑有效影响域 & $R=0.26$通过有理数界，114/240区间可筛除 & 以合成任务敏感性与余量为条件\\\bottomrule
+\end{longtable}
+
+\subsection{解析单元的完整方程与严格界}
+定义
+\begin{align}
+ F_1^{(1)}&=\eta-z-\delta,\\
+ F_1^{(2)}&=q+\beta q^3+\kappa(\eta-z)-(z+\beta z^3)-p.
+ \label{eq:synthetic}
+\end{align}
+旧参数$\delta=p=0$时，旧解码器精确为$(\eta,q)=(z,z)$。这是接触因子影响隐式响应的简化模型，$q$不是完整机器人关节。
+
+预测为
+\begin{equation}
+ \widehat\eta=z+\delta,
+ \qquad
+ \widehat q=z+\Delta q,
+ \qquad
+ \Delta q=\frac{p-\kappa\delta}{1+3\beta z^2}.
+\end{equation}
+第一残差精确为0，第二残差为
+\begin{equation}
+ F_1^{(2)}(z,\widehat y)=\beta(3z\Delta q^2+\Delta q^3).
+\end{equation}
+对$z\in[1/5,1/4]$、$\beta=1/10$、$\kappa=7/10$、$\delta=1/50$、$p=0$，令$a(z)=1+3\beta z^2$，使用
+\begin{equation}
+ C(z)=\begin{bmatrix}1&0\\-\kappa/a(z)&1/a(z)\end{bmatrix}.
+\end{equation}
+逐分量Jacobian余项只有第二行第二列非零。令$d\ge\sup|\Delta q|$，修正半径$r_q=1/25000$，则
+\begin{align}
+ \varepsilon_q&\le\frac{\beta(3z_{\max}d^2+d^3)}{a_{\min}},\\
+ B_{qq}&\le\frac{3\beta[2z_{\max}(d+r_q)+(d+r_q)^2]}{a_{\min}}.
+\end{align}
+脚本用\texttt{Fraction}精确检查$\varepsilon_q+B_{qq}r_q<r_q$，不是用随机采样代替上界。相同小修正半径下，不先运输旧decoder的测试不能通过。
+
+\subsection{240单元例子的准确含义}
+例子中有240个\emph{独立}解析单元，16个接触因子被改变。224个完全无依赖变化，直接复用；14个在同一小修正盒中通过；2个触及预设约束预算，需要更大重建/另选实现。接受单元的2618个诊断求根点没有违反所用约束。\textbf{两项需要修复不等于最终无解；本轮没有实现它们的替代路径，也没有测量真实机器人速度提升。}
+
+\begin{figure}[H]\centering\figfile{repair_set}{.9}
+\caption{只表示解析单元的更新分类，而不是患者身体上的真实修复分布。昂贵重构请求为2，仍需16次廉价测试和依赖查询；不能报告“整体快120倍”。}
+\end{figure}
+
+\section{核心贡献的最终提炼与论文写法}
+\subsection{不要再将什么写成核心贡献}
+不写“首次把SMPL、GP、IRD和QP统一”；不写“提出新的收缩定理”；不写“增量规划首次避免重复计算”；不写“在任何姿态变化下只更新局部区域”。这些或者不真实，或者已经有直接先例。
+
+\subsection{建议凝聚为一个主张，两个技术支撑}
+\begin{quote}
+\textbf{主张：将Anatomical GPS从位置/轨迹记忆提升为可以随几何更新而维护的可执行任务记忆。}
+\end{quote}
+两个技术支撑为：
+\begin{enumerate}
+\item \textbf{任务相关的变更归因。}从有类型的材料--成像关系计算失配及其依赖，把保持任务的几何变化与真正消耗机器人实现余量的变化分开；不使用一个全局姿态距离决定重建。
+\item \textbf{有限且选择性的修复。}运输旧decoder，在有限单元上验证剩余缺陷、约束余量及门点；只对不能通过的部分执行昂贵分支重建，并给出包含廉价筛查与非局部传播的正确成本分解。
+\end{enumerate}
+这两个支撑属于\emph{同一个记忆维护操作}，不是两个新的并行控制模块。
+
+\paragraph{可使用的英文中心句。}
+\begin{quote}
+We formulate anatomical task transfer as the maintenance of an executable task memory, rather than the replay of stored poses. Changes in anatomical geometry are mapped to task-factor defects and branch-consistent certificate updates; unchanged or bounded-defect realizations are retained, and only unresolved regions are reconstructed.
+\end{quote}
+
+\paragraph{方法贡献句。}
+\begin{quote}
+The method couples typed anatomical correspondences with finite implicit realization certificates, providing a sound selective-update procedure and an explicit accounting of the geometry, screening, repair, and graph-maintenance costs.
+\end{quote}
+句中的``sound''仅在本稿声明的模型、包含界、依赖完整性和连接条件下成立。没有完成最近方法的同条件对照前，不使用``first''或``universally more efficient''。
+
+\subsection{这是否足以算独立创新？}
+\textbf{不能仅凭上述两句话判定。}如果实现只是按网格局部性删除一批节点，或对每个节点完整重跑同一个区间求解器，那么仍是自然组合。要证明方法增量，必须显示：任务因子抵消和结构化缺陷让\emph{本会被通用变化度量判为需要重建的单元}继续被正确复用，并且在真实人体/目标更新中这种情况足够常见、成本足够显著。
+
+相比只写V3的整体扰动范数，本次已经给出更可检验的专门更新机制，并对非紧支撑均值更新导出任务余量条件下的有限影响半径；但分量收缩、预测--校正、依赖图、图修复都非首次。最终贡献应是\textbf{领域结构带来的可计算维护方法及其条件性保证}，而非宣称发明普遍超越成熟数值方法的新数学。
+
+\section{怎样用同条件实验区分“方法增量”与“换包装”}
+\subsection{四个固定对照}
+所有方法使用同一个人体拟合、内部目标后验、声学任务、真实约束、分支检查与最终执行器。比较：
+\begin{enumerate}
+\item 每次从头构建全部有限实现图册；
+\item 原V3：保存盒，但用统一模型差异逐盒复用；
+\item 原V3＋成熟增量/懒图搜索，几何证书仍按原方式更新；
+\item 本稿：任务因子变更、运输预测、分量预算与完整门点修复，再使用\emph{相同}图搜索。
+\end{enumerate}
+这样才不会把Lifelong-GLS的收益误归于新方法，也不会因放松碰撞精度而假装提高速度。
+
+\subsection{三个决定性任务}
+\paragraph{同幅度、不同任务影响。}保持原始几何变化量相近，分别产生公共运动、截面内变化和切向相关变化。检查方法是否根据真正任务/IK缺陷决定重构，而非简单根据毫米数或膝角阈值。
+
+\paragraph{长序列局部变化与全局尾部。}大腿到小腿扫描中，改变一个局部目标区段；分别用紧支撑表示和具有全局影响的调和/GP更新。测量廉价影响传播、重认证数量、门点检查与总时间。全局情形不能只报告近处节点。
+
+\paragraph{靠近分支或小余量区域。}让相同形变发生在宽裕区和近奇异/碰撞区。正确算法应在后者扩大修复、重规划或返回UNKNOWN，而非为保持速度强行复用。特别记录错误接受，而不仅报告最终扫描成功率。
+
+\subsection{评价指标}
+主要指标是：相同保证下的昂贵验证次数、总更新延迟、峰值内存、复用率、门点修复比例、证书宽度/保守程度、错误接受与UNKNOWN比例、实际起点连接代价。其次才是最终路径长度、动作平滑性和成像误差。概率预测的校准单独报告，不把窄管道当作真实误差保证。
+
+\section{反方审查后保留的路线与停止条件}
+\begin{table}[H]\centering\small
+\begin{tabularx}{\textwidth}{p{.29\textwidth}Y}\toprule
+审稿人攻击 & 本稿的答复与真正需要补的证据\\\midrule
+这就是动态规划缓存 & 接受缓存本身不新。需要证实变化的非线性任务流形可以被有限运输修复，且减少完整证书重构。\\
+这就是Krawczyk追踪 & 接受验证内核已有。区别只能是任务地址/因子结构与全走廊维护；必须与通用参数化追踪同条件比较。\\
+局部更新是假设出来的 & 明确保留调和/GP的非局部反例，成本含全局筛查。只有完整影响界允许省略昂贵重构。\\
+修改了任务才更容易复用 & 任务类型、内部目标和容差固定；只改原本允许的实现变量。\\
+根存在不等于机器人安全 & 保证限于模型参考、真实配置约束及余量；执行误差、接触安全、误差模型另行处理。\\
+合成结果不能支持实际优势 & 接受。本轮只验证构造；未来必须实现真实联合提升和测量实际收益。\\\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{停止条件：}若保守包含界使几乎所有真实更新都需全重建，或主要速度收益完全来自成熟懒图搜索，或任务失配测试与原V3全局测试没有有意义的差异，则本次精炼还不足以支撑额外原创性。应当缩小主张，而不是再增加GP、DMP或概率指标。
+
+\textbf{最后的定位：}V3路线不变。新的贡献中心不再是“工具组合产生了完整系统”，而是\emph{同一解剖任务的一族合法实现，如何在形态变化后被有选择地保存、运输和修复}。这与用户的GPS、长程记忆和中断恢复最紧密，也给出了可失败、可比较、可验证的研究问题。
+
+\appendix
+\section{两个容易被忽略的表示问题}
+\subsection{残差尺度和坐标变化}
+式\eqref{eq:componentbounds}中的分量预算须在固定物理单位下定义。对固定可逆行变换$\widetilde F=AF$，同时令$\widetilde C=CA^{-1}$，则$\widetilde C\widetilde F=CF$与$\widetilde C\widetilde F_y=CF_y$不变。若改变变量图，必须运输同一物理集合及预算；不能在新坐标中随意重新设置相同数值半径并声称证书不变。对依赖变量的非线性残差变换，还需包括其导数项。
+
+\subsection{源不确定性与当前模型变化}
+旧证据只约束其采集患者及采集context下的模型。新US更新、人体跟踪更新和标定修订应分别记录，保持共享误差相关性。执行参考的调整不是新的观测；新后验均值的变化也不是组织真实速度。对一组有界可能模型统一验证可得到集合保证；仅对均值验证则只是名义证书，不能宣称概率管道中的每个世界均已可行。
+
+\section{复现与交付范围}
+\begin{verbatim}
+python code/verify_refinement.py
+python code/make_figures.py
+latexmk -xelatex -interaction=nonstopmode main.tex
+\end{verbatim}
+脚本依赖NumPy、SciPy、Matplotlib，严格解析盒使用标准库\texttt{Fraction}。所有结果写入\texttt{checks/results.json}与\texttt{checks/synthetic\_arrays.npz}。正文图可由脚本重建。单文件主文包含参考文献，缺图时显示说明；完整工程使用TeX Live自带Fandol字体，不分发任何字体文件。
+
+本文实际查看V3源文件的有限模型复用、SQP/QP与反方审查章节，并渲染检查其相关PDF页面；PPT以提供的全文记录作为设计依据。本轮未重新读取或运行全部GitHub代码，不把V3中的接口设想改称已实现。外部文献核查记录在\texttt{SOURCE\_AUDIT.md}。
+
+\begin{thebibliography}{99}
+\bibitem{v3} NMI研究设计稿. \emph{Anatomical GPS：从不变解剖地址到任务保持的有限可行扫描}. 用户提供的V3 PDF/LaTeX，2026年10月7日。内部研究稿，非已发表文献。
+\bibitem{ppt} 用户提供的\emph{演示文稿3 [自动保存的](1)}，第73、80--83、88、90页及相应文本：Anatomical GPS、posture-independent coordinates、information storage、interrupt and resume。内部设计材料，非已发表文献。
+\bibitem{safetycert} J. Bialkowski, M. Otte, S. Karaman, and E. Frazzoli. Efficient collision checking in sampling-based motion planning via safety certificates. \emph{The International Journal of Robotics Research}, 35(7):767--796, 2016. \url{https://doi.org/10.1177/0278364915625345}.
+\bibitem{lpa} S. Koenig, M. Likhachev, and D. Furcy. Lifelong Planning A*. \emph{Artificial Intelligence}, 155(1--2):93--146, 2004. \url{https://doi.org/10.1016/j.artint.2003.12.001}.
+\bibitem{lgls} J. Lim, M. Ghanei, R. C. Lawson, S. Srinivasa, and P. Tsiotras. Lazy Incremental Search for Efficient Replanning with Bounded Suboptimality Guarantees. 本稿核查arXiv版本，2022. \url{https://arxiv.org/abs/2210.12851}.
+\bibitem{imacs} Z. Kingston, M. Moll, and L. E. Kavraki. Exploring implicit spaces for constrained sampling-based planning. \emph{The International Journal of Robotics Research}, 38(10--11):1151--1178, 2019. \url{https://doi.org/10.1177/0278364919868530}.
+\bibitem{cuik} J. M. Porta, L. Ros, O. Bohigas, M. Manubens, C. Rosales, and L. Jaillet. The CUIK Suite: Analyzing the Motion of Closed-Chain Multibody Systems. \emph{IEEE Robotics and Automation Magazine}, 21(3):105--114, 2014. \url{https://doi.org/10.1109/MRA.2013.2287462}.
+\bibitem{smm} M. Fabregat-Ja\'en, A. Peidr\'o, M. Colombo, P. Rocco, and \'O. Reinoso. Topological and spatial analysis of self-motion manifolds for global redundancy resolution in kinematically redundant robots. \emph{Mechanism and Machine Theory}, 210:106020, 2025. \url{https://doi.org/10.1016/j.mechmachtheory.2025.106020}.
+\bibitem{dufflee} T. Duff and K. Lee. Certified homotopy tracking using the Krawczyk method. \emph{ISSAC}, pp.274--282, 2024. \url{https://arxiv.org/abs/2402.07053}.
+\bibitem{lee} K. Lee. A priori bounds for certified Krawczyk homotopy tracking. \emph{arXiv preprint}, 2025. \url{https://arxiv.org/abs/2512.01355}.
+\bibitem{rump} S. M. Rump. Verification methods: Rigorous results using floating-point arithmetic. \emph{Acta Numerica}, 19:287--449, 2010. \url{https://doi.org/10.1017/S096249291000005X}.
+\bibitem{dof} C. Bilaloglu, T. L\"ow, and S. Calinon. Object-centric task representation and transfer using diffused orientation fields. \emph{Science Robotics}, 11(113):eaea1762, 2026. \url{https://doi.org/10.1126/scirobotics.aea1762}.
+\bibitem{funnel} A. Majumdar and R. Tedrake. Funnel libraries for real-time robust feedback motion planning. \emph{The International Journal of Robotics Research}, 36(8):947--982, 2017. \url{https://doi.org/10.1177/0278364917712421}.
+\end{thebibliography}
+\end{document}

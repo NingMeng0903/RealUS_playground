@@ -1,0 +1,80 @@
+{
+  "scope": "Post-run descriptive paired context bootstrap; 512 independent synthetic contexts, not16384 independent candidates or patients",
+  "bootstrap_seed": 720995,
+  "bootstrap_replicates": 4000,
+  "train_seed_count_for_this_ablation": 1,
+  "response_comparisons": {
+    "constant_basis_ls": {
+      "rmse_difference_mm": -0.12686586380004883,
+      "paired_context_bootstrap_CI95_mm": [
+        -0.13402190953493118,
+        -0.11943663582205773
+      ],
+      "relative_reduction": 0.7540543079376221,
+      "relative_reduction_CI95": [
+        0.7409383192658424,
+        0.7659109428524971
+      ]
+    },
+    "typed_no_context": {
+      "rmse_difference_mm": -0.12936587631702423,
+      "paired_context_bootstrap_CI95_mm": [
+        -0.13635808639228345,
+        -0.12213041186332702
+      ],
+      "relative_reduction": 0.7576553821563721,
+      "relative_reduction_CI95": [
+        0.7451720044016839,
+        0.7693307399749756
+      ]
+    }
+  },
+  "action_comparisons": {
+    "target_pos": {
+      "mean_regret_change_mm": -0.015319529655624938,
+      "paired_context_bootstrap_regret_CI95_mm": [
+        -0.021177866538333246,
+        -0.009956445253982493
+      ],
+      "success_change_pp": 0.0,
+      "paired_context_bootstrap_success_CI95_pp": [
+        0.0,
+        0.0
+      ],
+      "candidate_oracle_success": 1.0,
+      "full_context_success": 1.0
+    },
+    "target_neg": {
+      "mean_regret_change_mm": -0.009494413328818542,
+      "paired_context_bootstrap_regret_CI95_mm": [
+        -0.014492828504987005,
+        -0.0050743429837836074
+      ],
+      "success_change_pp": 0.1953125,
+      "paired_context_bootstrap_success_CI95_pp": [
+        0.0,
+        0.5859375
+      ],
+      "candidate_oracle_success": 0.767578125,
+      "full_context_success": 0.767578125
+    },
+    "target_alt": {
+      "mean_regret_change_mm": -0.005801183063963269,
+      "paired_context_bootstrap_regret_CI95_mm": [
+        -0.009339124547425205,
+        -0.0027683528880561824
+      ],
+      "success_change_pp": 0.78125,
+      "paired_context_bootstrap_success_CI95_pp": [
+        0.1953125,
+        1.5625
+      ],
+      "candidate_oracle_success": 0.84765625,
+      "full_context_success": 0.84765625
+    }
+  },
+  "input_sha256": {
+    "response_learning_geometry/geometry_addendum/context_ablation/RESULTS.json": "c21273bdeb54f403f95c18efcf0988eee2638d0ac22aa593c2b8703ed539ceb8",
+    "response_learning_geometry/geometry_addendum/context_ablation/RAW_RESULTS.npz": "3f45c0519a9348041ef8d9347f3a2449f69af1cd3ff3723c30d5b97d580493ca"
+  }
+}

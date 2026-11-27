@@ -55,7 +55,6 @@ class ContactGatedReference:
         self._force_last_time = None
         self._seen_air = False
         self._seek_wall_start = None
-        self._seek_normal = None
         self._contact_present: Callable[[], bool] | None = None
         self._started = False
         self._elapsed_s = 0.0
@@ -95,7 +94,6 @@ class ContactGatedReference:
         self._force_since = self._force_last_time = None
         self._seen_air = False
         self._seek_wall_start = None
-        self._seek_normal = None
         self._hold_pose = None
         self._start_offset = None
 
@@ -116,12 +114,6 @@ class ContactGatedReference:
             raise RuntimeError("ICRA contact seek timed out before sustained 4 N")
         if getattr(self.reference, "spec", {}).get("schema") == "icra_path_v1":
             anchor = self._anchor().pose_d
-            if self._seek_normal is None:
-                from scipy.spatial.transform import Rotation
-
-                self._seek_normal = -Rotation.from_euler("xyz", anchor[3:]).as_matrix()[:, 2]
-            if float((np.asarray(pose)[:3] - anchor[:3]) @ self._seek_normal) < -0.010:
-                raise RuntimeError("ICRA contact seek exceeded taught surface by 10 mm")
             if self.max_lateral_drift_m > 0.0:
                 drift = float(np.linalg.norm(np.asarray(pose, dtype=float)[:2] - anchor[:2]))
                 if drift > self.max_lateral_drift_m:

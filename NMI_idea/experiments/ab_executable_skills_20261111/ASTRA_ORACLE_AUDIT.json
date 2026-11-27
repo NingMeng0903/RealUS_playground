@@ -1,0 +1,181 @@
+{
+  "recoverable_oracle_paths": [
+    {
+      "case_id": "00-EL",
+      "legal_target_path": [
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "00-ER",
+      "legal_target_path": [
+        "move_ER_to_EL",
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.8464124607120003
+    },
+    {
+      "case_id": "01-EL",
+      "legal_target_path": [
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "01-ER",
+      "legal_target_path": [
+        "move_ER_to_C",
+        "move_C_to_EL",
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.84945444946632
+    },
+    {
+      "case_id": "02-EL",
+      "legal_target_path": [
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "02-ER",
+      "legal_target_path": [
+        "move_ER_to_EL",
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.7727111789040001
+    },
+    {
+      "case_id": "03-EL",
+      "legal_target_path": [
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "03-ER",
+      "legal_target_path": [
+        "move_ER_to_C",
+        "move_C_to_EL",
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.78030018945144
+    },
+    {
+      "case_id": "04-EL",
+      "legal_target_path": [
+        "move_EL_to_ER",
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.7727111789040001
+    },
+    {
+      "case_id": "04-ER",
+      "legal_target_path": [
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "05-EL",
+      "legal_target_path": [
+        "move_EL_to_C",
+        "move_C_to_ER",
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.78030018945144
+    },
+    {
+      "case_id": "05-ER",
+      "legal_target_path": [
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "06-EL",
+      "legal_target_path": [
+        "move_EL_to_ER",
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.8464124607120003
+    },
+    {
+      "case_id": "06-ER",
+      "legal_target_path": [
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "07-EL",
+      "legal_target_path": [
+        "move_EL_to_C",
+        "move_C_to_ER",
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.84945444946632
+    },
+    {
+      "case_id": "07-ER",
+      "legal_target_path": [
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "08-EL",
+      "legal_target_path": [
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    },
+    {
+      "case_id": "08-ER",
+      "legal_target_path": [
+        "move_ER_to_EL",
+        "move_EL_to_TL",
+        "scan_TL"
+      ],
+      "correct_probability_given_true_initial_state": 0.7727111789040001
+    },
+    {
+      "case_id": "09-EL",
+      "legal_target_path": [
+        "move_EL_to_ER",
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.7727111789040001
+    },
+    {
+      "case_id": "09-ER",
+      "legal_target_path": [
+        "move_ER_to_TR",
+        "scan_TR"
+      ],
+      "correct_probability_given_true_initial_state": 0.7675460856
+    }
+  ],
+  "min_positive_probability": 0.7675460856,
+  "permanent_transition_target_checks": 256,
+  "permanent_correct_probability_upper_bound": 0.0
+}

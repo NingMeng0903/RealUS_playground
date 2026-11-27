@@ -1,0 +1,23 @@
+{
+  "decision": "APPROVE frozen sampled L0 policy comparison; prior budget HOLD lifted",
+  "audit_files": {
+    "PLANNER_PROTOCOL_REVIEW_ADDENDUM.txt": "56ce7cb2f72235d8412105f8a60f267448db62ba21268284c373c911a0038697",
+    "check_sampled_backup.py": "2334b4ea0db76ca73da9d3057c294f3d23d30a689a96506ace7800b99518fb60",
+    "sampled_backup_check.json": "70b4882e3daa7301c2c8d00a7270e703cc523952b95b7044d02296066d537ab0",
+    "sampled_backup_check.log": "8934828394e088e116bd508f8b31e5eb917596ea73e88fd0a6ac11bb7ec51f8b",
+    "resources_repaired_recheck.log": "3000927c23fb697a948f80ed8a877aab76ee6ed4d52d4ad2dda14c7fa0e10692",
+    "test_repaired_resource_formulas.py": "20b12f470275c012855a8add96b7d50d407029904f569462b0a578fd8507df07",
+    "resource_formula_recheck.log": "77bdbb2617875ac1751b5d30255ac1d10d7922d9bedc1c6ade84bfe8ca13348e",
+    "test_release_guard_checks.json": "9003f113c54930f9f73615dbff7b8eda9e5be488e8f0525a196592a6db420a25"
+  },
+  "reviewed_sources": {
+    "planning/system.py": "c9983d1fd606223612d7f6b3dffac132bf4f8bd176c8d1ac46a88ae5be7c29c7",
+    "planning/PROTOCOL.json": "a1221257b245977bbf8888d996e76f2213cc3002e3b156c967e62797fd900d84",
+    "planning/run_experiment.py": "44242e8cdbb1d93815f6596cdaf56504fb1e8b4a8ef46f2ab56b9cf95d911480",
+    "planning/test_resources.py": "28f4832a95022732a6f9329f1b1a1e45e5eb27472d20faca684ad392fa7a30d1",
+    "planning/DEV_AMENDMENT_02.txt": "893b59d447184744b4e1c175e4e49cba5e3779659034ac1486256d7f01e2d71e",
+    "observation/environment.py": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+    "observation/servo.py": "ae506a793d419118cf32e7ce466b8591721a7cc9fefe45c9b7cb16e8606b2697",
+    "capability/capability.py": "8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4"
+  }
+}

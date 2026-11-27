@@ -1,0 +1,345 @@
+{
+  "scope": "Actual saved harmonic cells and seven SMPL-X poses per side. Fixed local tangent frame per trajectory, not motion within a deforming frame, contact, or scan execution. Interior samples test the material interface only.",
+  "seed": 721120,
+  "cell_ids": {
+    "right": [
+      214757,
+      196889,
+      195585,
+      235778,
+      57171,
+      137880,
+      231932,
+      312783,
+      35824,
+      313206,
+      107786,
+      121860,
+      66525,
+      156098,
+      944,
+      252542,
+      246283,
+      299308,
+      15251,
+      250027,
+      60243,
+      310241,
+      154587,
+      252384,
+      24842,
+      62873,
+      223404,
+      140760,
+      55678,
+      287247,
+      244963,
+      121285
+    ],
+    "left": [
+      132690,
+      293606,
+      68211,
+      29290,
+      281128,
+      135009,
+      214548,
+      248810,
+      298707,
+      107190,
+      50332,
+      34653,
+      38440,
+      296095,
+      63769,
+      231660,
+      219118,
+      229304,
+      60568,
+      285788,
+      257454,
+      8855,
+      319878,
+      132170,
+      137556,
+      265952,
+      58893,
+      121328,
+      58079,
+      90601,
+      42538,
+      307992
+    ]
+  },
+  "reference_duration_s": 0.9,
+  "sample_times_s": [
+    0.0,
+    0.1125,
+    0.225,
+    0.3375,
+    0.45,
+    0.5625,
+    0.675,
+    0.7875,
+    0.9
+  ],
+  "local_goal_m_m_rad": [
+    0.004,
+    -0.003,
+    0.12
+  ],
+  "error_columns": [
+    "local_position_m",
+    "local_rotation_matrix",
+    "local_twist",
+    "common_SE3_position_m",
+    "common_SE3_rotation_matrix",
+    "common_SE3_twist"
+  ],
+  "by_pose": [
+    {
+      "side": "right",
+      "knee_deg": 0,
+      "addresses": 32,
+      "minimum_F_determinant": 0.9999566099950417,
+      "max_tangent_normal_dot": 5.551115123125783e-17,
+      "errors_max": [
+        1.0950441942103595e-16,
+        1.0710853705514578e-15,
+        1.6653345369377348e-16,
+        4.440892098500626e-16,
+        1.1102230246251565e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "right",
+      "knee_deg": 15,
+      "addresses": 32,
+      "minimum_F_determinant": 0.9436059977332353,
+      "max_tangent_normal_dot": 1.1102230246251565e-16,
+      "errors_max": [
+        1.1188966420050406e-16,
+        9.531914194345656e-16,
+        1.1102230246251565e-16,
+        4.440892098500626e-16,
+        1.1102230246251565e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "right",
+      "knee_deg": 30,
+      "addresses": 32,
+      "minimum_F_determinant": 0.8717931841530815,
+      "max_tangent_normal_dot": 1.6653345369377348e-16,
+      "errors_max": [
+        9.8879238130678e-17,
+        9.577265757092963e-16,
+        1.1102230246251565e-16,
+        2.220446049250313e-16,
+        1.1102230246251565e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "right",
+      "knee_deg": 45,
+      "addresses": 32,
+      "minimum_F_determinant": 0.7749334512031765,
+      "max_tangent_normal_dot": 2.220446049250313e-16,
+      "errors_max": [
+        9.063930161978817e-17,
+        1.0146162751994637e-15,
+        6.031516395912149e-17,
+        4.440892098500626e-16,
+        1.1102230246251565e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "right",
+      "knee_deg": 60,
+      "addresses": 32,
+      "minimum_F_determinant": 0.6580427723904215,
+      "max_tangent_normal_dot": 1.6653345369377348e-16,
+      "errors_max": [
+        5.5077470362263625e-17,
+        1.1334103208888563e-15,
+        1.1102230246251565e-16,
+        2.220446049250313e-16,
+        1.609823385706477e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "right",
+      "knee_deg": 75,
+      "addresses": 32,
+      "minimum_F_determinant": 0.532344388996835,
+      "max_tangent_normal_dot": 1.1102230246251565e-16,
+      "errors_max": [
+        5.551115123125783e-17,
+        1.0134715443945394e-15,
+        1.1102230246251565e-16,
+        2.220446049250313e-16,
+        1.3600232051658168e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "right",
+      "knee_deg": 90,
+      "addresses": 32,
+      "minimum_F_determinant": 0.4066218364221015,
+      "max_tangent_normal_dot": 1.1102230246251565e-16,
+      "errors_max": [
+        5.5489806301769984e-17,
+        9.476471117254244e-16,
+        1.1102230246251565e-16,
+        2.220446049250313e-16,
+        1.3461454173580023e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "left",
+      "knee_deg": 0,
+      "addresses": 32,
+      "minimum_F_determinant": 0.9999833855012141,
+      "max_tangent_normal_dot": 8.326672684688674e-17,
+      "errors_max": [
+        1.0831179703130189e-16,
+        1.043304380650155e-15,
+        5.87137117341803e-17,
+        4.440892098500626e-16,
+        1.4988010832439613e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "left",
+      "knee_deg": 15,
+      "addresses": 32,
+      "minimum_F_determinant": 0.9205596335881032,
+      "max_tangent_normal_dot": 1.1102230246251565e-16,
+      "errors_max": [
+        1.0928757898653885e-16,
+        1.1550629757238106e-15,
+        1.1102230246251565e-16,
+        4.440892098500626e-16,
+        1.9984014443252818e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "left",
+      "knee_deg": 30,
+      "addresses": 32,
+      "minimum_F_determinant": 0.81232497374025,
+      "max_tangent_normal_dot": 1.1102230246251565e-16,
+      "errors_max": [
+        9.71445146547012e-17,
+        9.15852953679652e-16,
+        1.1102230246251565e-16,
+        2.220446049250313e-16,
+        1.6653345369377348e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "left",
+      "knee_deg": 45,
+      "addresses": 32,
+      "minimum_F_determinant": 0.6826830411217517,
+      "max_tangent_normal_dot": 1.6653345369377348e-16,
+      "errors_max": [
+        1.0061396160665481e-16,
+        1.0408340855860843e-15,
+        1.1102230246251565e-16,
+        4.440892098500626e-16,
+        1.2212453270876722e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "left",
+      "knee_deg": 60,
+      "addresses": 32,
+      "minimum_F_determinant": 0.54043578302019,
+      "max_tangent_normal_dot": 1.6653345369377348e-16,
+      "errors_max": [
+        5.4643789493269423e-17,
+        1.2490009027033011e-15,
+        1.1102230246251565e-16,
+        4.440892098500626e-16,
+        1.4328815911568427e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "left",
+      "knee_deg": 75,
+      "addresses": 32,
+      "minimum_F_determinant": 0.3952996388856642,
+      "max_tangent_normal_dot": 1.1102230246251565e-16,
+      "errors_max": [
+        5.637851296924623e-17,
+        1.0819386870840483e-15,
+        1.6653345369377348e-16,
+        2.220446049250313e-16,
+        1.4432899320127035e-15,
+        5.551115123125783e-17
+      ]
+    },
+    {
+      "side": "left",
+      "knee_deg": 90,
+      "addresses": 32,
+      "minimum_F_determinant": 0.25717270716622304,
+      "max_tangent_normal_dot": 1.1102230246251565e-16,
+      "errors_max": [
+        5.5294310796760726e-17,
+        1.1743183488588565e-15,
+        1.1102230246251565e-16,
+        2.220446049250313e-16,
+        1.4155343563970746e-15,
+        5.551115123125783e-17
+      ]
+    }
+  ],
+  "negative_deformed_pose_quantiles": {
+    "frozen_frame_endpoint_mm": {
+      "median": 1.3816899314328093,
+      "p95": 6.4229629896612455,
+      "max": 7.216673893628387
+    },
+    "wrong_normal_deg": {
+      "median": 2.8511435506661766,
+      "p95": 12.418456674019986,
+      "max": 39.025407353856885
+    }
+  },
+  "input_sha256": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/harmonic_mechanism/RAW_RESULTS.npz": "6157aab042870eb00489e493e168a4d796b746c43de388905e38d7761974503c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/transport_response_bridge/run_bridge.py": "4e1e162aac922ecd370ec975c1033d51eac0659d24f6f48369fbf43347294459",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/motion.py": "d2138760422dc4ccf073d797d2c4bfd853f9662d07a50102bc2d7496e6e7c884",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_observation_stress_20261111/audit_material_prodmp.py": "faa57e0bb4ce8f35f4fa0859a3a8c28c0dc61e263128f44eb0774ad0e12c5fa2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_00.npz": "1575ef5701f90fb98046da774e17951da438507d94287da11e766969c87a9d30",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_15.npz": "093f6366306f5733a45331ff86f50677eeff431b7f8421070dc4421a8fc873fa",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_30.npz": "b90b2e3c8778e27828d31ed89732a89a2bd021e9807818f2b1accf9d5d90b9cc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_45.npz": "efd1a63d4912033fd14a4c8eb50d0e3f9bd45ae9497c75efa9ed6f74e0277723",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_60.npz": "ab5e8a6dd448beb065717c2de559a0cb0b4f96eaf199fbd65de53a9c1a8c4329",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_75.npz": "274d8783535177c962ff405aedf336a9f038da3015e55b0e03ca9b0e88a80916",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_90.npz": "f8c6a7b186d3ebc9f3d2ff6a275fee0f789845124106254ae1fad375cf416291",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_left.npz": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_00.npz": "f88ffbfbfea6954ebb8452e9cc8e2ecacdc1df8feed844d5d796ed1f37f02ca1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_15.npz": "4f2626c832a2e9314f4984f485cfa0537ed820a91b777c0c15e7221f77d53bed",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_30.npz": "2c296872615086ddfff7a75a2b43d1b8ac338701691c3fa90d8a99fcaf9488a2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_45.npz": "7def822991037df52d058346cc31b7e926c77e398ba8947700f627813cd43890",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_60.npz": "0ec623e57f8c7e7aaf7b5263750ecaa2e8ef2ad856570bc661d9d93e82d906dc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_75.npz": "fef3a19f3545d555305634ac9962943a7538255ea533d4120ac6a8c4d02fbdee",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/left_pose_90.npz": "822f98a4b1c5bdad0b88be5fc61b7a306f92586292fd80dd7bf2614d3cac7d14"
+  }
+}

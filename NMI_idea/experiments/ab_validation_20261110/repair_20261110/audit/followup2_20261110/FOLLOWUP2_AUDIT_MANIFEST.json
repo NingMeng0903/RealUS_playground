@@ -1,0 +1,142 @@
+{
+  "scope": "Independent read-only offline audit; only followup2 audit files written; no native/hardware replays. Timing 8 frozen cases; cross-track saved-data/source diagnosis; 4 task-weight plus 6 relaxed cases; d=0 contact atlas; L0 streaming A. Later combined weight/lead/time-law experiments not included.",
+  "python": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+  "files": {
+    "CONTACT_SURFACE_AUDIT.txt": {
+      "bytes": 3436,
+      "sha256": "c32a49028c5492a642d223e1886654ab4e354389a214e1ad5d53d9214a59c878"
+    },
+    "CROSS_TRACK_ADDENDUM.txt": {
+      "bytes": 2232,
+      "sha256": "1507fdade10c4c134fad15883914ffb345115a151649f194dce075aa670b997c"
+    },
+    "CROSS_TRACK_DIAGNOSIS.txt": {
+      "bytes": 5547,
+      "sha256": "ad4f1e2849f9a1140a489630c0840d03b728624f932c17d7ac82775ff6744023"
+    },
+    "MIDSCAN_WEIGHT_AUDIT.txt": {
+      "bytes": 7409,
+      "sha256": "a69598c1fe68a216c0d68a7add28f1486d269e7af39dd95b77934d597d619ab6"
+    },
+    "QP_DIAGNOSIS_MANIFEST.json": {
+      "bytes": 2307,
+      "sha256": "8016959ca5d9363c9cb12b22803fae08e3329fe1bb5e702bc6dad23f47d4a778"
+    },
+    "QP_TIMING_AUDIT.txt": {
+      "bytes": 3852,
+      "sha256": "1ac281a1b3fbdfc696d47459a28305f9e71eb5dfeb7d69d1c961488dd3bc74a1"
+    },
+    "STREAMING_A_AUDIT.txt": {
+      "bytes": 7804,
+      "sha256": "5e8d40fe6ddf698dc544639ce6992fc8bd2d1d4d50029c798666f8a6e5509ce5"
+    },
+    "cbf_active_subset.json": {
+      "bytes": 2096,
+      "sha256": "99c1cbee0a07d7ae7d7cb60ae93584b2d87f23e3289a9e6de3f717c454eebb09"
+    },
+    "check_contact_surface.py": {
+      "bytes": 7118,
+      "sha256": "8892d23b4667e54a4b260b03d74352c750c8d609c825b4a0d10e9bb10a08530b"
+    },
+    "check_midscan_weights.py": {
+      "bytes": 8382,
+      "sha256": "34ef9b257c2ec0b82d540ffa2bb2760cdebd117e154ad08b837e8c2ebdda7153"
+    },
+    "check_qp_timing.py": {
+      "bytes": 12604,
+      "sha256": "accc4797dec4f0a9b63345102a1457b30dc88f6d68694208a0b2b26d330619b2"
+    },
+    "check_streaming.py": {
+      "bytes": 10674,
+      "sha256": "b201ecc09cca47db901cb19609bf80e9bcbf4c9c848374b927bd9a70b9059032"
+    },
+    "contact_surface_independent.json": {
+      "bytes": 7751,
+      "sha256": "35bc5017320a1f2cfc66345e0d29658916424788a3c8bfb443344ca8ae5234c9"
+    },
+    "contact_surface_independent.log": {
+      "bytes": 7776,
+      "sha256": "2796dd78b81ddeed75a6eb1786fa91fdc075ac19724c4753414435ca646b7fbe"
+    },
+    "contact_tests.log": {
+      "bytes": 98,
+      "sha256": "698857960888a8b7dfacbbedaa34caceac2111f4575220562fe736c8ada79c50"
+    },
+    "cross_track_diagnosis.json": {
+      "bytes": 35986,
+      "sha256": "df069b508f846910e9cfdcc631aa75a83526a56546786336fb85eda3aebd4f70"
+    },
+    "cross_track_diagnosis.log": {
+      "bytes": 35986,
+      "sha256": "df069b508f846910e9cfdcc631aa75a83526a56546786336fb85eda3aebd4f70"
+    },
+    "diagnose_cross_track.py": {
+      "bytes": 8454,
+      "sha256": "c3caf460a6861fc99925711f8181a240ffdf2f2e90b0dc2727049dc6de350a77"
+    },
+    "lead_counterexample_independent.json": {
+      "bytes": 1473,
+      "sha256": "8aab71478737ba204c7a59057c7d9400394b8becac0bb8dc31de589111382324"
+    },
+    "midscan_weights_independent.json": {
+      "bytes": 99734,
+      "sha256": "d4b3faf30e01b92d429594036a1a694863bdb01837f34106930b84949ba6e821"
+    },
+    "midscan_weights_independent.log": {
+      "bytes": 7020,
+      "sha256": "c68b43d34813b938e78ef67523cafc4c0ae8b2d49a1702268fd47fcaa9a7deb5"
+    },
+    "qp_timing_independent.json": {
+      "bytes": 25804,
+      "sha256": "1589cf3119b844b3f5fd2b9cbccb2851108ac75ccfe072d814d4429cc19f3933"
+    },
+    "qp_timing_independent.log": {
+      "bytes": 25804,
+      "sha256": "1589cf3119b844b3f5fd2b9cbccb2851108ac75ccfe072d814d4429cc19f3933"
+    },
+    "reference_knot_jumps.json": {
+      "bytes": 15688,
+      "sha256": "cbb11682e0f89c0a494716e1a6719ce407d88c2dc434eb555a148fed83a1bceb"
+    },
+    "source_at_diagnosis/controller.yaml": {
+      "bytes": 27446,
+      "sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f"
+    },
+    "source_at_diagnosis/native_inner.cpp": {
+      "bytes": 94924,
+      "sha256": "bd86583c3508d4879fa47d8b1bdf31bf8307a2a5ae39ebca4ebd9f8e42eafec5"
+    },
+    "source_at_diagnosis/native_kinematics.cpp": {
+      "bytes": 3457,
+      "sha256": "de93aad4e0f449fbb41dfacc21519e7dbb2aa223b2c43efb9241c92b5c509ad9"
+    },
+    "source_at_diagnosis/native_types.hpp": {
+      "bytes": 16079,
+      "sha256": "f98826cea468eb0562f32df5725da0cd360bf4f2b969df8c18f46c6e5e61d55c"
+    },
+    "source_at_diagnosis/python_client.py": {
+      "bytes": 46788,
+      "sha256": "d831ab4ff4b277fb08310492136e444d0df74730f69c6ca6af36216742de2ad4"
+    },
+    "source_at_diagnosis/python_loop.py": {
+      "bytes": 374191,
+      "sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40"
+    },
+    "streaming_independent.json": {
+      "bytes": 7607,
+      "sha256": "864a29537c7fb19641c04cecf2ca803b88f5e8d252f731710071b110822e683b"
+    },
+    "streaming_independent.log": {
+      "bytes": 5129,
+      "sha256": "ba487adfb74361913c3c2dda5a3000bd694bf590300a4ac8c9a6ea96902e6248"
+    },
+    "streaming_manifest_at_audit.json": {
+      "bytes": 8693,
+      "sha256": "14e34153d8a2e51db587a1daccaf801011f298dfd8f0fd4cc672743ef3bc623d"
+    },
+    "streaming_tests.log": {
+      "bytes": 98,
+      "sha256": "1cce3ba4edbd626a3afe9b79c68de56d985784bdc8b31bee3c1ee66bccaef9b9"
+    }
+  }
+}

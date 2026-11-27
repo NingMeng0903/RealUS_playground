@@ -1,0 +1,20 @@
+{
+  "protocol_sha256": "a1221257b245977bbf8888d996e76f2213cc3002e3b156c967e62797fd900d84",
+  "tests": [
+    {
+      "case": "method",
+      "exit_code": 1,
+      "stderr": "formal test methods/action budget are locked by protocol",
+      "output_not_created": true,
+      "test_catalogue_not_reached": true
+    },
+    {
+      "case": "budget",
+      "exit_code": 1,
+      "stderr": "formal test methods/action budget are locked by protocol",
+      "output_not_created": true,
+      "test_catalogue_not_reached": true
+    }
+  ],
+  "passed": true
+}

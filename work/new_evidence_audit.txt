@@ -1,0 +1,75 @@
+V8.5 evidence-branch audit (2026-11-08)
+
+Scope and provenance
+--------------------
+- The remote ref `origin/analysis/v852-evidence-20261108` currently resolves to
+  `190e9e3cec96f2a467884b545e465364cfc76501` (commit time 2026-11-08
+  15:08:06 +0800). I fetched it only to the isolated local ref
+  `refs/remotes/audit/analysis-v852-evidence-20261108`.
+- This is exactly the comparison base named in the request. `git diff --stat`
+  and `git diff --name-status` between the base and the fetched ref are empty;
+  therefore the advertised “new evidence” is not present on the remote branch
+  at audit time. No worktree/index files were changed by this audit.
+- The branch contains the V8.5.2 third-party package under
+  `NMI_idea/experiments/v852/2026-11-08/third_party_review/`. It contains no
+  `Anatomical_GPS_V8.5.3.tex`, V8.5.3 PDF, V8.5.3 bundle/zip, or V8.5.3-specific
+  verification script. `prepare_analysis.py` is the V8.5.2 package verifier;
+  generic repository verification scripts are unrelated.
+
+What the uploaded V8.5.2 evidence actually supports
+----------------------------------------------------
+- Cartesian-lag geometric simulation: 5,440 complete-chain interventions
+  (two main runs plus matched-budget supplements), but only 96 main and 40
+  supplement configuration cases—not 5,440 independent objects/patients.
+  There is no real B-mode, probe-contact, force, or hardware result.
+- A (curve prediction): for rho=+0.8, the combined KEY_METRICS values are
+  max population-curve errors 2.22 percentage points (basic), 7.45 pp
+  (variable), and 15.03 pp (stress). The fixed-60-degree balanced supplement
+  can reach roughly 41 pp maximum error. Full-history and structural models
+  are close; a stable data-efficiency advantage is not established.
+- B (release timing): early versus 8-s-late old evidence has peak completion
+  differences of about 7.19 pp (basic), 11.25 pp (variable), and 4.45 pp
+  (stress), only at selected budgets and not a pre-registered/significance
+  result. The stress effect is unstable.
+- C (interaction cost): at the same minimum population target (>=0.8), the
+  basic/variable early-vs-hidden costs are nearly equal; the stress condition
+  has no saving. The attained completion rates overshoot and differ, so these
+  are not equal-completion cost comparisons.
+- Genesis joint execution is free-space position-PD validation: 26/32
+  candidates completed, 6 were rejected before execution, and all eight
+  public conditions had a candidate. It is not a contact/B-mode/real-robot
+  validation. The full-leg v2 zero-completion result is limited to a finite
+  virtual-registration/candidate grid and is not a global reachability result.
+- Joint entry-conditioned v3 has only two independent test objects and six
+  continuation chains. It predicted completion at T=20 for all cases but
+  measured 0.5; both measured cases completed by T>=40. All conditions chose
+  the same `fixed_plus` tree and the q-command traces were identical across
+  information conditions, so it shows no observed B/C information benefit.
+- The option-tree `1/2` versus `1` table and finite-limit parity results are
+  mathematical toy-model checks, not robot experiments. They cannot be
+  counted as physical evidence of a 0-to-1 capability transition.
+
+Consequences for the strong claim
+----------------------------------
+The branch does not support claims that the method reliably predicts a real
+completion window, causes a dIRD/harmonic-coordinate benefit, beats a strong
+full-history baseline in data efficiency, or transfers to multi-organ graph
+nodes. In particular, the package records the main m+/m- quantities as
+geometric reference/path parameters rather than measured dIRD joint modes;
+there is no controlled pair of equally image-qualified dIRD implementations
+with crossed downstream outcomes. Thus the necessary “old evidence selects a
+different legal continuation and changes the guaranteed task set” condition
+has not been executed. The V8.5.3 claims in the pasted conversation (31-page
+manuscript/bundle and proposed four-cell/graph protocol) are not auditable
+from this remote ref; they should be treated as design/theory until the
+corresponding commit and verification outputs are pushed.
+
+Files inspected
+---------------
+- `third_party_review/README.txt`
+- `third_party_review/FINDINGS_AND_NEXT_ITERATION_zh.txt`
+- `third_party_review/KEY_METRICS.json`
+- `third_party_review/reports/combined/RESULTS.txt`
+- `third_party_review/data/v852_joint_execution_20261108/README.txt`
+- `third_party_review/data/v852_joint_core_20261108/README.txt`
+- pasted attachment `/home/camp/.codex/attachments/dbcaa2e1-7616-4d5e-acdd-ea3d3ed8f3c0/Pasted text.txt` (tail claims only; not repository evidence)

@@ -1,0 +1,19 @@
+Schema-5 Gate 3 recovery source archive
+
+Archive: baseline_source.tar.gz
+SHA-256: 56dd1d980dd466bd1b9dc3882c15317768f4094ef02a0eea11ba5ba71583298f
+All 15 repository-relative .py members, and only those members, were verified byte-for-byte by SHA-256 against input_sha256.txt. No unrecovered source hashes. Thirteen source files came from the worktree after matching the manifest. reader/baselines.py and reader/eval_reader.py had changed; the archived preimages came from exact raw tool reads in history://ReaderRecoveryReview (baselines.py lines 1–223; eval_reader.py lines 1–360, 361–730, 731–937) and independently matched the manifest. No working code, checkpoints, old reports, assets, experiments or tests were touched for this archive.
+
+From the repository root, extract and verify in an isolated directory:
+
+E=NMI_idea/experiments/anatomical_gps_unified_20261126
+R=$E/results/step3_recovery
+D=$(mktemp -d)
+tar -xzf "$R/baseline_source.tar.gz" -C "$D"
+awk '$2 ~ /\.py$/ {print}' "$R/input_sha256.txt" | (cd "$D" && sha256sum --check)
+
+To replay, keep the repository as cwd and link the unchanged sibling experiment that the archived simulator resolves relative to __file__. The archive is source-only; replay also requires the original checkpoints and non-Blender asset dependencies on disk. Use the archived experiment first on PYTHONPATH and a fresh output directory, not the corrective worktree or original report paths. Example for Open3D (not executed during archive creation):
+
+ln -s "$PWD/NMI_idea/experiments/ab_validation_20261110" "$D/NMI_idea/experiments/ab_validation_20261110"
+P=/media/camp/EXT_DRIVE/envs/genesis/bin/python
+env -u AGPS_EVAL_HOLDOUT_ALLOWED PYTHONPATH="$D/$E:$PWD" PYTHONDONTWRITEBYTECODE=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 "$P" -m reader.eval_reader --split LOAO_OPEN3D --checkpoint "$E/checkpoints/reader_loao_open3d.pt" --seed 42 --out "$D/loao_open3d.json"

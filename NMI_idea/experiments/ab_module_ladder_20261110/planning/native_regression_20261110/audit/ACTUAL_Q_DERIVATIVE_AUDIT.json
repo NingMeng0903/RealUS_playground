@@ -1,0 +1,41 @@
+{
+  "scope": "Actual ideal measured-q increments, velocity and acceleration including segment boundaries; not derivative of only published qdot",
+  "result_sha256": "13b8870bcd1ae504231808869f4a188db8cf27eb2dc0e1322c3e48e0ba7fa968",
+  "dt": 0.005,
+  "episodes": [
+    {
+      "object": 0,
+      "original_context": "a0_identity",
+      "samples": 864,
+      "q_finite_difference_velocity_margin": 0.36682856676081255,
+      "q_finite_difference_acceleration_margin": 0.812417202665003,
+      "max_q_fd_velocity_vs_reported_qdot": 0.0010558380372189414
+    },
+    {
+      "object": 0,
+      "original_context": "a0_t2_-0.08m",
+      "samples": 1413,
+      "q_finite_difference_velocity_margin": 0.3781096558541194,
+      "q_finite_difference_acceleration_margin": 1.4016283891577594,
+      "max_q_fd_velocity_vs_reported_qdot": 0.0010219740487908253
+    },
+    {
+      "object": 1,
+      "original_context": "a0_identity",
+      "samples": 1615,
+      "q_finite_difference_velocity_margin": 0.36036109179670117,
+      "q_finite_difference_acceleration_margin": -1.8900436771218665e-12,
+      "max_q_fd_velocity_vs_reported_qdot": 0.0010931118746185728
+    },
+    {
+      "object": 1,
+      "original_context": "a0_t2_-0.08m",
+      "samples": 1206,
+      "q_finite_difference_velocity_margin": 0.39144856242229153,
+      "q_finite_difference_acceleration_margin": 1.4965489611624236,
+      "max_q_fd_velocity_vs_reported_qdot": 0.0006949433127800267
+    }
+  ],
+  "min_velocity_margin": 0.36036109179670117,
+  "min_acceleration_margin": -1.8900436771218665e-12
+}

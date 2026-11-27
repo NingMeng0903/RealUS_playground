@@ -1,0 +1,74 @@
+{
+  "all": {
+    "n": 48,
+    "median_chart_distance_from_witness": 1.3015832877427986,
+    "any_correct": 36,
+    "continue": 16,
+    "near_initial": {
+      "correct": 31,
+      "wrong": 1
+    },
+    "reverse_extended": {
+      "correct": 32,
+      "wrong": 1
+    },
+    "student_feedback": {
+      "correct": 32,
+      "wrong": 0
+    }
+  },
+  "near_overshoot": {
+    "n": 16,
+    "median_chart_distance_from_witness": 0.8851075301175183,
+    "any_correct": 10,
+    "continue": 0,
+    "near_initial": {
+      "correct": 7,
+      "wrong": 1
+    },
+    "reverse_extended": {
+      "correct": 7,
+      "wrong": 1
+    },
+    "student_feedback": {
+      "correct": 7,
+      "wrong": 0
+    }
+  },
+  "nominal_approach": {
+    "n": 16,
+    "median_chart_distance_from_witness": 1.3015832877427986,
+    "any_correct": 16,
+    "continue": 16,
+    "near_initial": {
+      "correct": 16,
+      "wrong": 0
+    },
+    "reverse_extended": {
+      "correct": 16,
+      "wrong": 0
+    },
+    "student_feedback": {
+      "correct": 16,
+      "wrong": 0
+    }
+  },
+  "wide_near_miss": {
+    "n": 16,
+    "median_chart_distance_from_witness": 1.444844547396361,
+    "any_correct": 10,
+    "continue": 0,
+    "near_initial": {
+      "correct": 8,
+      "wrong": 0
+    },
+    "reverse_extended": {
+      "correct": 9,
+      "wrong": 0
+    },
+    "student_feedback": {
+      "correct": 9,
+      "wrong": 0
+    }
+  }
+}

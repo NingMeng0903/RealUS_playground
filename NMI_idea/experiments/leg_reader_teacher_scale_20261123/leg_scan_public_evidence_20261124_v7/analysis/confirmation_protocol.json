@@ -1,0 +1,40 @@
+{
+  "experiment": "leg_scan_public_evidence_20261124_v7",
+  "base_commit": "60a77233b60686cfeed377757503c1fa95f8ff6f",
+  "primary": "groin_to_distal_calf/objects_no_stop",
+  "comparator": "pinned_v6_shared_readout_MPC",
+  "v6_reader_freeze": "4b17a308a9aa6c74863d7a6596263c347580013505402ef70d684a599687597d",
+  "v6_closed_freeze": "666a7dc4058a2345c1535e0c06ab86d909ad56cf46d9366d643bb78307be7492",
+  "data_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "case_seed": 2107240000000000,
+  "layout_counts_by_route": {
+    "femoral": 32,
+    "groin_to_distal_calf": 96
+  },
+  "policy_and_reader_changed": false,
+  "programs": [
+    "mpc",
+    "equal_time_hold",
+    "objects_no_stop"
+  ],
+  "evaluation_tapes": [
+    "actual",
+    "proof_0",
+    "proof_1"
+  ],
+  "proof_offsets": [
+    5000000000000,
+    6000000000000
+  ],
+  "gate": {
+    "strict_independent_layout_bootstrap_lower95": ">0",
+    "wrong_branch_independent_upper95": 0.03,
+    "actual_strict_net": ">=0",
+    "contrast": "objects_no_stop versus mpc"
+  },
+  "dird": false,
+  "source": {
+    "study_v7.py": "e339162bd090714189be9e568dbcc59a361f569c25c0fe1e8f4e428491da97a9",
+    "confirm_v6.py": "8d11297fcc549b0017c23b81a113cf1943dd8fb0b2a09c3f3df34ce171fa0acb"
+  }
+}

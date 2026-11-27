@@ -1,0 +1,67 @@
+{
+  "experiment": "leg_scan_public_evidence_20261124_v7",
+  "scope": "v6 confirmed reader_fresh whole-route before→after_probe, fixed old IDs from v6 link_evidence_audit",
+  "stage_definitions": {
+    "retrieved_true_path": "simple connectivity using all retrieved pairs with equal nonnegative instance",
+    "thresholded_true_path": "simple connectivity using equal-instance retrieved pairs above learned threshold",
+    "true_only_greedy_path": "exact deployment score ordering and _Forest guards, with only true pairs eligible",
+    "public_greedy_path": "exact deployment score ordering and _Forest guards, all public pairs eligible",
+    "public_state_track_path": "v6 objects track IDs after role fusion",
+    "oracle_track_path": "v6 object_oracle track IDs, truth edges only offline"
+  },
+  "summary": {
+    "cases": 96,
+    "categories": {
+      "old_target": 82,
+      "old_wrong": 6,
+      "old_unknown": 8
+    },
+    "old_target_cases": 82,
+    "same_instance_seen": 76,
+    "retrieved_true_path": 64,
+    "thresholded_true_path": 9,
+    "true_only_greedy_path": 9,
+    "public_greedy_path": 9,
+    "public_state_track_path": 9,
+    "oracle_track_path": 64,
+    "oracle_only_public_missed": 55,
+    "oracle_not_connected": 12,
+    "direct_positive_pair_counts": {
+      "retrieved": 387,
+      "thresholded": 38
+    },
+    "true_positive_pair_reasons": {
+      "below_threshold": 349,
+      "connected_redundant": 21,
+      "kept": 17,
+      "not_retrieved": 410
+    },
+    "public_positive_pair_reasons": {
+      "below_threshold": 349,
+      "connected_redundant": 21,
+      "kept": 17,
+      "not_retrieved": 410
+    },
+    "greedy_edge_reasons_target_cases": {
+      "true_only": {
+        "kept": 17547,
+        "not_truth_positive": 208451,
+        "connected_redundant": 39445,
+        "below_threshold": 57948
+      },
+      "public": {
+        "kept": 18145,
+        "connected_redundant": 40977,
+        "same_frame": 409,
+        "below_threshold": 263860
+      }
+    },
+    "reproduced_split": {
+      "same_seen": 76,
+      "public_connected": 9,
+      "oracle_connected": 64,
+      "oracle_only": 55,
+      "oracle_not_connected": 12
+    }
+  }
+}

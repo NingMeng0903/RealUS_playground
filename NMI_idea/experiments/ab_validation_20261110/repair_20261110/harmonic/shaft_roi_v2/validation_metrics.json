@@ -1,0 +1,298 @@
+{
+  "right": {
+    "radial_depth_step_min": 0.0795048177242279,
+    "radial_depth_nonstrict_ray_count": 0,
+    "h_label_step_min": 0.011267602443695068,
+    "outer_source_triangle_barycentric_identity_error_m": {
+      "count": 7776,
+      "min": 1.947814233109481e-10,
+      "mean": 2.0029209851268162e-08,
+      "p95": 5.034410786518803e-08,
+      "max": 5.987064882157727e-08
+    },
+    "outer_nodes_to_original_owned_skin_m": {
+      "count": 7776,
+      "min": 1.7518026976788506e-12,
+      "mean": 3.3284560308024225e-09,
+      "p95": 8.624048285356328e-09,
+      "max": 1.7017599329357782e-08
+    },
+    "loft_4096_triangle_interior_to_original_owned_skin_m": {
+      "count": 4096,
+      "min": 7.146744520484467e-10,
+      "mean": 2.3354348190546183e-05,
+      "p95": 5.9459390316201277e-05,
+      "max": 0.00016736887828313233
+    },
+    "boundary_outer_abs_d_max": 4.586429630370105e-17,
+    "boundary_inner_abs_d_minus1_max": 0.0,
+    "unassisted_256_native_tet_roundtrip_error_m": {
+      "count": 256,
+      "min": 1.4059856549321141e-09,
+      "mean": 2.0395680730878882e-08,
+      "p95": 5.231977096731402e-08,
+      "max": 5.877727504725017e-08
+    },
+    "periodic_seam_0_vs_2pi_position_error_m": {
+      "count": 3,
+      "min": 3.725290298461914e-09,
+      "mean": 5.881076070579638e-09,
+      "p95": 8.055795763795003e-09,
+      "max": 8.33000246558413e-09
+    },
+    "periodic_seam_plusminus_1e6rad_gap_m": {
+      "count": 3,
+      "min": 4.360340355447079e-08,
+      "mean": 5.5902667384089e-08,
+      "p95": 7.037195466352842e-08,
+      "max": 7.245186850468599e-08
+    },
+    "domain_rejection": {
+      "far": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation.",
+      "excluded_centerline": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation.",
+      "outside_proximal_h": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+    },
+    "pose_sweep": [
+      {
+        "knee_deg": 0,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.9989154235346906,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          4.291534423828125e-06,
+          1.7881393432617188e-07,
+          4.76837158203125e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 15,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.901043871600883,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.049041748046875e-05,
+          1.1920928955078125e-07,
+          6.183981895446777e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 30,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.7753506960286243,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          2.5272369384765625e-05,
+          1.1920928955078125e-07,
+          8.642673492431641e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 45,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.6314457719750921,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.0110437870025635e-05,
+          1.1920928955078125e-07,
+          1.4156103134155273e-06
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 60,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.4791387883405172,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.1205673217773438e-05,
+          1.1920928955078125e-07,
+          7.152557373046875e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 75,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.3278900446474431,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.2159347534179688e-05,
+          1.1920928955078125e-07,
+          8.344650268554688e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 90,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.1871679963868751,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.9788742065429688e-05,
+          1.1920928955078125e-07,
+          8.642673492431641e-07
+        ],
+        "query_status": "passed"
+      }
+    ],
+    "wall_s": 5.733712545999879
+  },
+  "left": {
+    "radial_depth_step_min": 0.0723368301987648,
+    "radial_depth_nonstrict_ray_count": 0,
+    "h_label_step_min": 0.011267602443695068,
+    "outer_source_triangle_barycentric_identity_error_m": {
+      "count": 7776,
+      "min": 2.4362924578137705e-10,
+      "mean": 1.975638115725233e-08,
+      "p95": 4.982406679880004e-08,
+      "max": 5.970951123496134e-08
+    },
+    "outer_nodes_to_original_owned_skin_m": {
+      "count": 7776,
+      "min": 1.1675123568263978e-13,
+      "mean": 3.3536524259596315e-09,
+      "p95": 8.474777393997804e-09,
+      "max": 1.922659845354602e-08
+    },
+    "loft_4096_triangle_interior_to_original_owned_skin_m": {
+      "count": 4096,
+      "min": 6.62253155659577e-09,
+      "mean": 2.384511175957453e-05,
+      "p95": 6.171849822605832e-05,
+      "max": 0.00022626084944317424
+    },
+    "boundary_outer_abs_d_max": 4.551350554952956e-17,
+    "boundary_inner_abs_d_minus1_max": 0.0,
+    "unassisted_256_native_tet_roundtrip_error_m": {
+      "count": 256,
+      "min": 8.203587191467353e-10,
+      "mean": 1.9409032766246964e-08,
+      "p95": 5.2344808257235953e-08,
+      "max": 5.9590786444780923e-08
+    },
+    "periodic_seam_0_vs_2pi_position_error_m": {
+      "count": 3,
+      "min": 3.725290298461914e-09,
+      "mean": 6.020735613769072e-09,
+      "p95": 8.432876530406475e-09,
+      "max": 8.74898109515243e-09
+    },
+    "periodic_seam_plusminus_1e6rad_gap_m": {
+      "count": 3,
+      "min": 3.7990655954445174e-08,
+      "mean": 5.491929518560331e-08,
+      "p95": 7.276832256764009e-08,
+      "max": 7.511449950925453e-08
+    },
+    "domain_rejection": {
+      "far": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation.",
+      "excluded_centerline": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation.",
+      "outside_proximal_h": "1 query points lie outside the baked tetrahedral depth domain (first input indices: [0]). The baked inner/outer shells are not necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' for that separate field, or explicitly request outside='nearest' nodal extrapolation."
+    },
+    "pose_sweep": [
+      {
+        "knee_deg": 0,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.9990603524720131,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          5.4836273193359375e-06,
+          1.1920928955078125e-07,
+          7.152557373046875e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 15,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.8958552875771763,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.0013580322265625e-05,
+          1.1920928955078125e-07,
+          5.662441253662109e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 30,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.7653435216857308,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.8835067749023438e-05,
+          1.1920928955078125e-07,
+          1.1324882507324219e-06
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 45,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.6173478160949646,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          2.0742416381835938e-05,
+          1.1920928955078125e-07,
+          1.2814998626708984e-06
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 60,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.46195078984979515,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.4781951904296875e-05,
+          1.1920928955078125e-07,
+          6.034970283508301e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 75,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.3090500641722428,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.3589859008789062e-05,
+          1.1920928955078125e-07,
+          8.344650268554688e-07
+        ],
+        "query_status": "passed"
+      },
+      {
+        "knee_deg": 90,
+        "nonpositive_tets": 0,
+        "pose_over_rest_det_min": 0.16832990478929108,
+        "radial_distance_order_nonincreasing": 0,
+        "neighbor_h_layer_order_nonpositive": 0,
+        "material_label_coordinate_abs_error_max": [
+          1.7642974853515625e-05,
+          1.1920928955078125e-07,
+          1.1026859283447266e-06
+        ],
+        "query_status": "passed"
+      }
+    ],
+    "wall_s": 5.7619480670000485
+  }
+}

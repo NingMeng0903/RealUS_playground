@@ -1,0 +1,64 @@
+{
+  "right": {
+    "original_vertices": 31785,
+    "original_faces": 63104,
+    "retained_vertices": 29287,
+    "retained_faces": 58100,
+    "removed_faces": 5004,
+    "ownership": {
+      "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+      "ipsilateral_joint_indices": [
+        2,
+        5,
+        8,
+        11
+      ],
+      "contralateral_joint_indices": [
+        1,
+        4,
+        7,
+        10
+      ],
+      "joint_chain": [
+        "hip",
+        "knee",
+        "ankle",
+        "foot"
+      ],
+      "coordinates_modified": false,
+      "candidate_only": true,
+      "volume_arrays_are_old_and_invalid": true
+    }
+  },
+  "left": {
+    "original_vertices": 31480,
+    "original_faces": 62464,
+    "retained_vertices": 29195,
+    "retained_faces": 57900,
+    "removed_faces": 4564,
+    "ownership": {
+      "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+      "ipsilateral_joint_indices": [
+        1,
+        4,
+        7,
+        10
+      ],
+      "contralateral_joint_indices": [
+        2,
+        5,
+        8,
+        11
+      ],
+      "joint_chain": [
+        "hip",
+        "knee",
+        "ankle",
+        "foot"
+      ],
+      "coordinates_modified": false,
+      "candidate_only": true,
+      "volume_arrays_are_old_and_invalid": true
+    }
+  }
+}

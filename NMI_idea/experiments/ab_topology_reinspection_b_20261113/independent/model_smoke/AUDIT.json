@@ -1,0 +1,234 @@
+{
+  "metrics": {
+    "mpc": {
+      "all": {
+        "abstain": 3,
+        "affirmative_error": 1,
+        "correct_declaration": 10,
+        "correct_images": 4,
+        "mean_cost": {
+          "captures": 8.5,
+          "rail_mm": 455.05411494124473,
+          "seconds": 13.600000000000001,
+          "tcp_mm": 97.96065341249242,
+          "turn_deg": 52.402747639488446
+        },
+        "n": 16,
+        "success": 10,
+        "wrong": 3
+      },
+      "by_family": {
+        "0": {
+          "abstain": 2,
+          "affirmative_error": 0,
+          "correct_declaration": 4,
+          "correct_images": 4,
+          "mean_cost": {
+            "captures": 10.625,
+            "rail_mm": 533.0455535290502,
+            "seconds": 17.0,
+            "tcp_mm": 115.6761313874936,
+            "turn_deg": 73.56029699218796
+          },
+          "n": 8,
+          "success": 4,
+          "wrong": 2
+        },
+        "1": {
+          "abstain": 0,
+          "affirmative_error": 1,
+          "correct_declaration": 2,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 6.333333333333333,
+            "rail_mm": 413.4586810277485,
+            "seconds": 10.133333333333335,
+            "tcp_mm": 89.11901201258759,
+            "turn_deg": 38.816027427479
+          },
+          "n": 3,
+          "success": 2,
+          "wrong": 1
+        },
+        "2": {
+          "abstain": 1,
+          "affirmative_error": 0,
+          "correct_declaration": 2,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 7.333333333333333,
+            "rail_mm": 371.8632471142523,
+            "seconds": 11.733333333333334,
+            "tcp_mm": 83.85910213814653,
+            "turn_deg": 35.16363837654601
+          },
+          "n": 3,
+          "success": 2,
+          "wrong": 0
+        },
+        "3": {
+          "abstain": 0,
+          "affirmative_error": 0,
+          "correct_declaration": 2,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 5,
+            "rail_mm": 330.2678132007561,
+            "seconds": 8.0,
+            "tcp_mm": 61.513530523863764,
+            "turn_deg": 14.01129444111823
+          },
+          "n": 2,
+          "success": 2,
+          "wrong": 0
+        }
+      }
+    },
+    "rollout": {
+      "all": {
+        "abstain": 5,
+        "affirmative_error": 1,
+        "correct_declaration": 9,
+        "correct_images": 2,
+        "mean_cost": {
+          "captures": 9.375,
+          "rail_mm": 439.4558272236836,
+          "seconds": 15.000000000000002,
+          "tcp_mm": 101.26569316778888,
+          "turn_deg": 56.29156476921629
+        },
+        "n": 16,
+        "success": 9,
+        "wrong": 2
+      },
+      "by_family": {
+        "0": {
+          "abstain": 4,
+          "affirmative_error": 1,
+          "correct_declaration": 2,
+          "correct_images": 2,
+          "mean_cost": {
+            "captures": 11.75,
+            "rail_mm": 517.447265811489,
+            "seconds": 18.8,
+            "tcp_mm": 124.7488372683591,
+            "turn_deg": 80.76122795897608
+          },
+          "n": 8,
+          "success": 2,
+          "wrong": 2
+        },
+        "1": {
+          "abstain": 0,
+          "affirmative_error": 0,
+          "correct_declaration": 3,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 8,
+            "rail_mm": 371.8632471142523,
+            "seconds": 12.8,
+            "tcp_mm": 86.07684665486704,
+            "turn_deg": 34.23850854272955
+          },
+          "n": 3,
+          "success": 3,
+          "wrong": 0
+        },
+        "2": {
+          "abstain": 1,
+          "affirmative_error": 0,
+          "correct_declaration": 2,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 7.333333333333333,
+            "rail_mm": 371.8632471142523,
+            "seconds": 11.733333333333334,
+            "tcp_mm": 80.33426384180686,
+            "turn_deg": 41.27903270840897
+          },
+          "n": 3,
+          "success": 2,
+          "wrong": 0
+        },
+        "3": {
+          "abstain": 0,
+          "affirmative_error": 0,
+          "correct_declaration": 2,
+          "correct_images": 0,
+          "mean_cost": {
+            "captures": 5,
+            "rail_mm": 330.2678132007561,
+            "seconds": 8.0,
+            "tcp_mm": 61.513530523863764,
+            "turn_deg": 14.01129444111823
+          },
+          "n": 2,
+          "success": 2,
+          "wrong": 0
+        }
+      },
+      "contrast": {
+        "affirmative_harm_benefit": [
+          1,
+          1
+        ],
+        "cost_ci95_simultaneous_bonferroni": [
+          [
+            -6.089076374000092,
+            -3.6915482484563995,
+            -54.59400701146377,
+            -0.25,
+            -0.40000000000000013
+          ],
+          [
+            12.779705540333593,
+            12.26394115858057,
+            23.397431576341617,
+            2.25,
+            3.5999999999999996
+          ]
+        ],
+        "cost_mean_delta": [
+          3.3050397552964634,
+          3.8888171297278467,
+          -15.598287717561078,
+          0.875,
+          1.4000000000000004
+        ],
+        "success_ci95_pp": [
+          -25.0,
+          12.5
+        ],
+        "success_delta_pp": -6.25,
+        "success_wins_losses": [
+          1,
+          2
+        ]
+      }
+    }
+  },
+  "motion": {
+    "inputs": {
+      "ab_full_b_rollout_20261113/motion/BANK_MAIN.json.xz": {
+        "edges": 168,
+        "file_sha256": "f834013839500edcb686a08b045bb4c909d35164620f4056e45cf93d1b78d32f"
+      },
+      "ab_inverse_acquisition_b_20261113/motion/BANK.json.xz": {
+        "edges": 264,
+        "file_sha256": "470d1732dab2f7a89ae67f73fec2f2874c1aeda287a351f133aec78bda4fbb3b"
+      }
+    },
+    "max_abs_error": {
+      "joint_endpoint": 0.0,
+      "rail_mm": 0.0,
+      "sample_endpoint": 0.0,
+      "tcp_mm": 0.0
+    }
+  },
+  "reconstruction": {
+    "model_replayed": true,
+    "prefixes": 16,
+    "suffix_packets": 126,
+    "supported_packets": 126
+  }
+}

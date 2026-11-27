@@ -1,0 +1,7 @@
+{
+  "includes": ["causal_no_ruckig_config.json"],
+  "module_c": {"enable": false, "use_ruckig": false},
+  "topology_transfer": {"module_c_light": {"enable": false, "use_ruckig": false}},
+  "closed_loop_servo": {"module_c": {"enable": false, "use_ruckig": false}},
+  "repair_validation": {"description": "Entire Module C bypassed. This differs from disabling Ruckig alone. Prepared-path probe simulation only."}
+}

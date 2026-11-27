@@ -1,0 +1,308 @@
+{
+  "scope": "v4 native continuing development pilot; no held-out efficacy claim",
+  "created_utc": "2026-11-11T13:56:47.656206+00:00",
+  "test_used": false,
+  "no_task_deadline": true,
+  "checkpoints_fresh_packets": [
+    8,
+    16,
+    32
+  ],
+  "rows": [
+    {
+      "configuration": "A_task",
+      "planned_episodes": 16,
+      "computed_episodes": 16,
+      "compute_missing": 0,
+      "correct": 15,
+      "false_declared": 0,
+      "unresolved_including_compute_missing": 1,
+      "success_bounds": [
+        0.9375,
+        1.0
+      ],
+      "reasons": {
+        "public_accepted_probe": 8,
+        "watchdog_probe_guard": 1,
+        "public_accepted_terminal": 7
+      },
+      "native_no_witness_count": 4,
+      "local_option_rejections": 1,
+      "loss_episodes": 2,
+      "rollout_switches": 0,
+      "sum_fresh_packets": 54,
+      "sum_simulated_physical_seconds": 109.54500000000002,
+      "sum_planning_wall_seconds": 1411.6790612779987,
+      "paths": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_task/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_task/case_0001/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_task/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_task/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_task/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_task/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_task/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_task/case_0007/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_task/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_task/case_0001/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_task/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_task/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_task/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_task/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_task/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_task/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_task/case_0007/RESULT.json"
+      ]
+    },
+    {
+      "configuration": "A_info",
+      "planned_episodes": 16,
+      "computed_episodes": 16,
+      "compute_missing": 0,
+      "correct": 15,
+      "false_declared": 0,
+      "unresolved_including_compute_missing": 1,
+      "success_bounds": [
+        0.9375,
+        1.0
+      ],
+      "reasons": {
+        "public_accepted_probe": 8,
+        "watchdog_probe_guard": 1,
+        "public_accepted_terminal": 7
+      },
+      "native_no_witness_count": 0,
+      "local_option_rejections": 0,
+      "loss_episodes": 2,
+      "rollout_switches": 0,
+      "sum_fresh_packets": 48,
+      "sum_simulated_physical_seconds": 106.99999999999999,
+      "sum_planning_wall_seconds": 1697.2695545970018,
+      "paths": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_info/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_info/case_0001/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_info/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0000_0003/dev/fixture_00_constrained/A_info/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_info/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_info/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_info/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_00/cases_0004_0007/dev/fixture_00_constrained/A_info/case_0007/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_info/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_info/case_0001/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_info/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0000_0003/dev/fixture_01_constrained/A_info/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_info/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_info/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_info/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/A_info/fixture_01/cases_0004_0007/dev/fixture_01_constrained/A_info/case_0007/RESULT.json"
+      ]
+    },
+    {
+      "configuration": "B_rollout",
+      "planned_episodes": 16,
+      "computed_episodes": 16,
+      "compute_missing": 0,
+      "correct": 15,
+      "false_declared": 0,
+      "unresolved_including_compute_missing": 1,
+      "success_bounds": [
+        0.9375,
+        1.0
+      ],
+      "reasons": {
+        "public_accepted_probe": 8,
+        "watchdog_probe_guard": 1,
+        "public_accepted_terminal": 7
+      },
+      "native_no_witness_count": 4,
+      "local_option_rejections": 1,
+      "loss_episodes": 2,
+      "rollout_switches": 0,
+      "sum_fresh_packets": 54,
+      "sum_simulated_physical_seconds": 109.54500000000002,
+      "sum_planning_wall_seconds": 2074.9353315929948,
+      "paths": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/B_rollout/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/B_rollout/case_0001/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0002_0003/dev/fixture_00_constrained/B_rollout/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0002_0003/dev/fixture_00_constrained/B_rollout/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0004_0005/dev/fixture_00_constrained/B_rollout/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0004_0005/dev/fixture_00_constrained/B_rollout/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0006_0007/dev/fixture_00_constrained/B_rollout/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0006_0007/dev/fixture_00_constrained/B_rollout/case_0007/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0000_0001/dev/fixture_01_constrained/B_rollout/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0000_0001/dev/fixture_01_constrained/B_rollout/case_0001/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0002_0003/dev/fixture_01_constrained/B_rollout/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0002_0003/dev/fixture_01_constrained/B_rollout/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0004_0005/dev/fixture_01_constrained/B_rollout/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0004_0005/dev/fixture_01_constrained/B_rollout/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0006_0007/dev/fixture_01_constrained/B_rollout/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_01/cases_0006_0007/dev/fixture_01_constrained/B_rollout/case_0007/RESULT.json"
+      ]
+    },
+    {
+      "configuration": "pair_fixed_dwell_15",
+      "planned_episodes": 16,
+      "computed_episodes": 16,
+      "compute_missing": 0,
+      "correct": 15,
+      "false_declared": 0,
+      "unresolved_including_compute_missing": 1,
+      "success_bounds": [
+        0.9375,
+        1.0
+      ],
+      "reasons": {
+        "public_accepted_probe": 4,
+        "watchdog_probe_guard": 1,
+        "public_accepted_terminal": 11
+      },
+      "native_no_witness_count": 21,
+      "local_option_rejections": 0,
+      "loss_episodes": 2,
+      "rollout_switches": 0,
+      "sum_fresh_packets": 125,
+      "sum_simulated_physical_seconds": 203.475,
+      "sum_planning_wall_seconds": 1730.5705259090028,
+      "paths": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0000/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0001/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0004/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_15/case_0007/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0001/RESULT_GUARD_32.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0004/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_15/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_15/case_0007/RESULT.json"
+      ]
+    },
+    {
+      "configuration": "pair_fixed_dwell_30",
+      "planned_episodes": 16,
+      "computed_episodes": 16,
+      "compute_missing": 0,
+      "correct": 15,
+      "false_declared": 0,
+      "unresolved_including_compute_missing": 1,
+      "success_bounds": [
+        0.9375,
+        1.0
+      ],
+      "reasons": {
+        "public_accepted_probe": 2,
+        "watchdog_probe_guard": 1,
+        "public_accepted_terminal": 13
+      },
+      "native_no_witness_count": 19,
+      "local_option_rejections": 1,
+      "loss_episodes": 3,
+      "rollout_switches": 0,
+      "sum_fresh_packets": 117,
+      "sum_simulated_physical_seconds": 206.75000000000003,
+      "sum_planning_wall_seconds": 2297.559463957001,
+      "paths": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0001/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0004/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_30/case_0007/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0000/RESULT_GUARD_32.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0001/RESULT_GUARD_32.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0006/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_30/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_30/case_0007/RESULT.json"
+      ]
+    },
+    {
+      "configuration": "pair_fixed_dwell_60",
+      "planned_episodes": 16,
+      "computed_episodes": 16,
+      "compute_missing": 0,
+      "correct": 15,
+      "false_declared": 0,
+      "unresolved_including_compute_missing": 1,
+      "success_bounds": [
+        0.9375,
+        1.0
+      ],
+      "reasons": {
+        "public_accepted_terminal": 12,
+        "watchdog_probe_guard": 1,
+        "public_accepted_probe": 3
+      },
+      "native_no_witness_count": 28,
+      "local_option_rejections": 0,
+      "loss_episodes": 0,
+      "rollout_switches": 0,
+      "sum_fresh_packets": 109,
+      "sum_simulated_physical_seconds": 214.58000000000007,
+      "sum_planning_wall_seconds": 3643.604213277009,
+      "paths": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0001/RESULT_GUARD_32.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0000_0003/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0004/RESULT_GUARD_16.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_00/cases_0004_0007/dev/fixture_00_constrained/pair_fixed_dwell_60/case_0007/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0000/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0001/RESULT_GUARD_32.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0002/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0000_0003/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0003/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0004/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0005/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0006/RESULT.json",
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/pair_fixed_dwell_60/fixture_01/cases_0004_0007/dev/fixture_01_constrained/pair_fixed_dwell_60/case_0007/RESULT.json"
+      ]
+    }
+  ],
+  "paired_descriptive_counts": [
+    {
+      "versus": "A_task",
+      "paired_episodes": 16,
+      "B_observed_only_wins": 0,
+      "B_observed_only_losses": 0,
+      "warning": "Unresolved is not failure. Development pilot; mirrors share subjects."
+    },
+    {
+      "versus": "A_info",
+      "paired_episodes": 16,
+      "B_observed_only_wins": 0,
+      "B_observed_only_losses": 0,
+      "warning": "Unresolved is not failure. Development pilot; mirrors share subjects."
+    },
+    {
+      "versus": "pair_fixed_dwell_15",
+      "paired_episodes": 16,
+      "B_observed_only_wins": 0,
+      "B_observed_only_losses": 0,
+      "warning": "Unresolved is not failure. Development pilot; mirrors share subjects."
+    },
+    {
+      "versus": "pair_fixed_dwell_30",
+      "paired_episodes": 16,
+      "B_observed_only_wins": 0,
+      "B_observed_only_losses": 0,
+      "warning": "Unresolved is not failure. Development pilot; mirrors share subjects."
+    },
+    {
+      "versus": "pair_fixed_dwell_60",
+      "paired_episodes": 16,
+      "B_observed_only_wins": 0,
+      "B_observed_only_losses": 0,
+      "warning": "Unresolved is not failure. Development pilot; mirrors share subjects."
+    }
+  ]
+}

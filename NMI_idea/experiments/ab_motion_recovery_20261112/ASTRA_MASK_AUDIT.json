@@ -1,0 +1,67 @@
+{
+  "audit_scope": "Independent raster hash reconstruction, posterior filtering, counts, travel, target-error, sequence and public rigid-transform arithmetic. No import of witness helpers; no native/ultrasound experiment rerun.",
+  "source_sha256": "a19f7f084714140dc196da781a4410820d285d1d7615b923230b4983b2dd1dec",
+  "result_sha256": "1823d59ac1e4cfeee9f75b66cc3eb52dd4de34839dec8662375c29e101182e96",
+  "rows_checked": 24,
+  "observation_hashes_independently_matched": 56,
+  "distinguishing_candidate_positions_mm": [
+    15,
+    20,
+    25
+  ],
+  "active_first_probe_mm": 15,
+  "counts": {
+    "tracked_branch/geometry_replay": {
+      "wrong": 2
+    },
+    "tracked_branch/local_full_history": {
+      "abstain": 2
+    },
+    "tracked_branch/classical_fixed_sweep": {
+      "correct": 2
+    },
+    "tracked_branch/active_mask_recovery": {
+      "correct": 2
+    },
+    "uniform_tube_symmetry/geometry_replay": {
+      "wrong": 2
+    },
+    "uniform_tube_symmetry/local_full_history": {
+      "abstain": 2
+    },
+    "uniform_tube_symmetry/classical_fixed_sweep": {
+      "abstain": 2
+    },
+    "uniform_tube_symmetry/active_mask_recovery": {
+      "abstain": 2
+    },
+    "inner_registration_revealed/geometry_replay": {
+      "correct": 2
+    },
+    "inner_registration_revealed/local_full_history": {
+      "correct": 2
+    },
+    "inner_registration_revealed/classical_fixed_sweep": {
+      "correct": 2
+    },
+    "inner_registration_revealed/active_mask_recovery": {
+      "correct": 2
+    }
+  },
+  "max_rotation_orthonormal_error": 1.1102230246251565e-16,
+  "tracked_branch_capture_counts_including_target": {
+    "active": 3,
+    "fixed_sweep": 5
+  },
+  "tracked_branch_total_travel_mm_by_slip": {
+    "-5": {
+      "active": 35,
+      "fixed_sweep": 35
+    },
+    "+5": {
+      "active": 25,
+      "fixed_sweep": 25
+    }
+  },
+  "conclusion": "The frozen landmark recovery mechanism works in the ideal two-mode mask model. Full-history classical sweep matches accuracy and path. Exact template-guided active matching uses fewer captures; it is itself a classical same-information baseline. No full B-specific or sensor-noise/native/clinical advantage is demonstrated."
+}

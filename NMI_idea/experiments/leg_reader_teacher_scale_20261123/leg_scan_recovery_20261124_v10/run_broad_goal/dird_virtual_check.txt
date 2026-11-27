@@ -1,0 +1,3 @@
+femoral True None
+groin_to_distal_calf True None
+{"route": "groin_to_distal_calf", "station": 63, "sector": 4, "ticks": 28, "selection": "dird_ranked_equivalent_plans", "report": "score_only_virtual_interpolated", "score_mean": -21.09019303979411, "variants": [-20.427403266563985, -20.44370331103591], "updates": 5}

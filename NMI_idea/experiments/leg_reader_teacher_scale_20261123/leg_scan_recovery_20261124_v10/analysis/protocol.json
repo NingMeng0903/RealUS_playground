@@ -1,0 +1,63 @@
+{
+  "base": "f115a663ec260779bc6a7dcb9b17e88a1354dd71",
+  "sources": {
+    "recovery_task.py": "eae7d283a53dc7cdd1376b4ae64ce688b57cc620bf5cae0cea6eb39670f25e40",
+    "recovery_motion.py": "223f746809b8f523bc2f52037b226cf9bd5c93b49a1b2021514dca84c6ae9a2f",
+    "recovery_teacher.py": "0361a1bbb3df62c85e080a9ca11680c45ad7ae52167121ed532106f2879056ac",
+    "recovery_policy.py": "fab63ebb65b1202944218767f468853a1ba0a8955bcd56d0547e8cb80f3e2fe5",
+    "recovery_reader.py": "5ef925a7c54487966741b436d50a717d439526775ee5335da0357a695ca39030",
+    "run_recovery.py": "5a72a699b303c5ee337c047bf3647db704c7ae79006ace300ee2cdead3ec83da"
+  },
+  "v9_sources": {
+    "public_v9.py": "966f5c18b11f36f2e1aa07a0e953ca3e0691e65314f6c75d4a3d54d1659b0b61",
+    "study_v9.py": "a474e2944c4a2a940e2bdc51cd21902caaa6ea6569f13f9d5416e79e2cb3ee08",
+    "scan_v9.py": "4cbae254ddac62b3776dbde823de4dc8fde6272ff221e9603c3a6f1602620d18",
+    "reader_v9.py": "d55abff43c71c8f1a28f82f42f7e5f63d0674be52656652706935360069e9154"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "initial_reader_sha256": "1e7de7e3c88729069a1ef033514460c735315135b25aa158e465ae0a8e342628",
+  "gpu_preflight_sha256": "9abd72222fb6f517d16914cc4228c3d59bfd39cee96ecee714e5d14fdf609ea8",
+  "seeds": {
+    "smoke": 7531100000000000,
+    "strong": 7531105000000000,
+    "reader_train": 7531110000000000,
+    "reader_cal": 7531115000000000,
+    "reader_dev": 7531120000000000,
+    "compose_teacher": 7531125000000000,
+    "adapt": 7531130000000000,
+    "online": 7531135000000000,
+    "dev": 7531140000000000,
+    "test": 7531145000000000
+  },
+  "optimizer_seed": 261124101,
+  "search_tapes": [
+    15000000001,
+    16000000001
+  ],
+  "teacher_proof_tape": 17000000001,
+  "test_tapes": [
+    null,
+    21000000001,
+    22000000001
+  ],
+  "cohorts": {
+    "strong": 144,
+    "reader_train": 132,
+    "reader_cal": 36,
+    "reader_dev": 48,
+    "reader_epochs": 8,
+    "compose_teacher": 168,
+    "teacher_dev": 48,
+    "rounds": 3,
+    "online_batch": 64,
+    "dev": 60,
+    "test": 160
+  },
+  "dird": false,
+  "motion": "contact and speed checked; no run-level motion allowance; elapsed and distance recorded",
+  "repair_policy": "compare routine progress with one normalized group of unresolved goals; settled regular views stay closed",
+  "readiness": "accepted regular regions; acceptance, score >=.86 and target probability >=.65 for later problem regions",
+  "selection": "shared reader, actual greedy full-route dev first whole strict then wrong; femoral strict then wrong",
+  "reused_motion_trials_sha256": "372f9e502a26b5dfb8dadf04e022f610d1ec6598ad6e5e9d5bd6b1fdd5d79494",
+  "reader_collection_lineage_sha256": "6326ccf988105e649384bad61da56147ea7ec23a0d8002c1eb2a4883e63ec93b"
+}

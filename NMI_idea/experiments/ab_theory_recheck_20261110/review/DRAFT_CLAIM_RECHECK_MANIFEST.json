@@ -1,0 +1,19 @@
+{
+  "created_utc": "2026-11-10T17:05:30.139098+00:00",
+  "scope": "Targeted V9.3/V6.1 theoretical claim recheck; linked independent SMC/geometry checks; no learned skill, full A/B or physical ultrasound validation.",
+  "files": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/DRAFT_CLAIM_RECHECK.txt": "df807d510eae764c5a102bc746dae6db73fb619d61e713fbe4e4b11dcb1eb3c9",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/check_draft_counterexamples.py": "4c09d2a9df945d99b5731743876b48aafa7b17a2627ffc897f0b9f61664e418b",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/DRAFT_COUNTEREXAMPLES.json": "0f4ff7f1afac4da683c465afa5da1c32a133c3f287b563b2859b4ff8fdbd70e5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/geometry_addendum_manifest.json": "ef5ec62369e3f894d844fa11cd5675aa20b047fc551d13ac2252c2d9883cff4c",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/MANIFEST.json": "ebc9dac762ebbc874fb1989ae20ba009e5e0bf40e55ccc26f568808d02dd123e"
+  },
+  "read_only_inputs": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/ideas/Anatomical_GPS_V9.3.tex": "6948528c426313fe9383469d5ebb0b2f4cd7a2a63291f5d098c421f74cdb0471",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/ideas/Anatomical_GPS_V6.1.tex": "5848d3414b8ee0eb43c4ab230e309931918d797c84e893e434443543907c8328",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_identification/baseline_addendum/REPORT.txt": "9be4cfb1a3be3e8d970d760e02d82078345357e9c008baca60d9edd2097a4ddd",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/PRIMARY_PAPERS.txt": "851b9a41ad96e9f03207bb2d1fa06a0d824294f991179daa0eb852009568acc1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/REVIEW.txt": "c2986f38a94a7c5c6f731aa605a374682b9d0a331e711af487ce1c47b52f4aae",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/REPORT.txt": "3b25002a00b70d1e52e6e3cfa5de3ec43c2cf06d634447d503f615f2a78d7772"
+  }
+}

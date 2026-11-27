@@ -1,0 +1,16 @@
+{
+  "train": {
+    "seed": 721501,
+    "count": 512
+  },
+  "calibration": {
+    "seed": 721502,
+    "count": 128
+  },
+  "test": {
+    "seed": 721503,
+    "count": 128
+  },
+  "noise_seed": 721504,
+  "calibration_version": "v3_prefix_subject_weighted_dwell_white_hmm_single_transition_joint_gh"
+}

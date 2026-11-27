@@ -1,0 +1,7 @@
+{
+  "includes": ["/media/camp/EXT_DRIVE/Among_US/DMP_playground/configs/smplx_recovered_20261108.json"],
+  "module_c": {"enable": true, "use_ruckig": false},
+  "topology_transfer": {"module_c_light": {"enable": true, "use_ruckig": false}},
+  "closed_loop_servo": {"module_c": {"enable": true, "use_ruckig": false}},
+  "repair_validation": {"description": "Ruckig disabled, existing non-Ruckig Module C position blend and rotation limiter retained. Prepared-path probe simulation only."}
+}

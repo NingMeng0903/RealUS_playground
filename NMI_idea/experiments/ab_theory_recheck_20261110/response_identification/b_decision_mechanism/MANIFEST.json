@@ -1,0 +1,12 @@
+{
+  "files_sha256": {
+    "PROTOCOL.txt": "e0050f2b99cb1ffdc57e90853be46e04daa039ba21d3c82597301f97abea72ba",
+    "RAW_RESULTS.npz": "2c668391ee950a9870201d1df786f65fb271d08841ad19ce030d48042324ccfb",
+    "REPORT.txt": "e279fe75e000f58ae60de5cf5d4a894421d2a5e738e3ecf7a6d03196f83ee93f",
+    "RESULTS.json": "b71bb1d8752bf3f5cda584b8389a928c6352f3edcf070fdaada354ef0185f698",
+    "run_mechanism.py": "643b77d095424f604e99e25a6558489bc52f649b1943b18b5f0109228d8ae2f6",
+    "test_mechanism.py": "d44c235421efce319aadc8a44462ebe185972d1d9d7cd9061234a5e38debdf7d"
+  },
+  "numpy": "2.2.6",
+  "python": "3.10.20"
+}

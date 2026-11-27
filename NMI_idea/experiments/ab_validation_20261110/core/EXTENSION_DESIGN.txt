@@ -1,0 +1,37 @@
+POST-MAIN PRE-EXTENSION DESIGN, 2026-11-10
+Main frozen results remain in main_frozen_result/. This separately labelled
+extension was requested after the main results to close learned A -> B dataflow.
+No extension scores exist at this point. No tuning/seed replacement is allowed.
+
+Use the positive-condition A ridge coefficients already fit on seed41101.
+The same fixed graph, 72 priors/placements, two inspection observations plus
+terminal acquisition, .02m/s path costing and actual exact feasibility apply.
+Seed41107 draws one public c~Uniform([-1,1]^3) per public scenario and one
+persistent E_h~Normal(0,.04)^(2x2) per target hypothesis h. These do not change
+across repeated observations/branches and are independent of A training worlds.
+For each inspection edge, u=(actual DMP endpoint - initial TCP position)/.04m.
+For finite hypothesis target t_h, e_h=(initial TCP - t_h)/.04m (xy components).
+True post-action feature is e_h + [I+G(c)+E_h]u, with the original A G(c).
+Learned prediction is e_h+u+features(c,u)W from actual a_results coefficients.
+Analytic prediction is e_h+u. Thus a common passive coordinate chart is used;
+this is a synthetic local response field, not tissue or ultrasound propagation.
+
+Convert feature z to a five-outcome sensor kernel: detection probability
+.1+.85*exp(-||z||^2/(2*.8^2)); no_detection probability=1-detection.
+Conditional directional marker probabilities are softmax([zx,-zx,zy,-zy]/.4).
+All outcomes have strictly positive likelihood (broad support); independent
+sensor draws are conditionally independent given persistent h and E_h.
+Ktrue is generated from the true response field, not learned predictions.
+Khat is separately generated from learned or analytic predicted features.
+Policies receive only public c, initial prior, Khat and graph; Ktrue/E_h are
+only available to evaluation. Planning/reference both use Khat; evaluation
+integrates one persistent true hypothesis through all observations using Ktrue.
+
+Compare learned and analytic full-belief greedy, same-horizon open-loop and
+B; learned full-history exact reference; learned proxy-only/no-cap/collapse
+ablations. Report expected true task loss+cost as primary extension outcome,
+planning loss separately, false acceptance, no-gain/adverse cases and model
+kernel errors. Agreement of B/reference applies to the assumed learned model,
+not a correctness claim about the perturbed true sensor. No physical claim.
+Count response-kernel table construction calls/time, planning work/time and
+shared precomputed mechanical graph queries; no new dIRD calls are hidden.

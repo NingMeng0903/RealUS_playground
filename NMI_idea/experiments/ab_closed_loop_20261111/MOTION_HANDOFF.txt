@@ -1,0 +1,40 @@
+`robot_motion.py` is the motion adapter for the closed-loop experiment.
+
+API
+
+* `NativeMotionEnvironment()` loads the audited public q2_+1 seed and body
+  anchor from `public_prior_layout/SELECTED.json`, the production ProDMP
+  reference, the capability evaluator, and the native deterministic replay.
+* `measured_goal_pose(contact_frame, [x_m,y_m,yaw_rad])` and
+  `prodmp_path(start_local, goal_local, contact_frame, duration_s, samples)`
+  decode a local action through the current measured contact frame.
+* `screen_dird(path, q)` runs the original dIRD proxy plus exact finite static
+  endpoint checks. The result is a screening record and is not a path proof.
+* `execute(path, state=None, ...)` calls the actual deterministic native QP
+  replay. Passing `MotionState.from_result(previous_result)` restores the
+  complete controller history and continues from measured q/qdot. It returns
+  full trace, exit_state, simulated duration, wall duration, tracking result,
+  dIRD screen and whole-segment constraint status.
+* `execute_local(start_local, goal_local, contact_frame, duration_s, ...)`
+  starts at current measured FK, decodes the full measured target pose through
+  the contact frame, runs a scalar integral-basis ProDMP phase from 0 to 1,
+  and applies linear translation plus exponential-map rotation in full SE(3).
+  The third local chart coordinate is signed tilt about contact-frame local x.
+  Duration is stored in immutable event provenance for prefix replay.
+* `WindowConstraint` checks every actual TCP trace sample in the contact frame,
+  with rectangular bounds and forbidden rectangles. It never reads hidden
+  anatomy.
+
+Smoke verification on 2026-11-11
+
+* Python backend: 0.16 s native-model execution, no failures, whole segment
+  pass.
+* Native backend: 0.16 s deterministic native-QP execution, no failures,
+  `motion_tracking_pass_2mm_2deg=True`, whole segment pass.
+* A chained second branch from the first native exit restored the complete
+  prefix with q/qdot/acceleration reconstruction error 0 and passed.
+* A 1.5 s pure local tilt and a 20 mm mixed translation plus tilt both passed
+  the native tracking and whole-segment gates with no solver failures.
+
+The adapter includes no hardware connection, ultrasound renderer, or hidden
+target query. It preserves the replay's complete-history continuation contract.

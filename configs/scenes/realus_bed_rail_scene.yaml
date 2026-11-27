@@ -1,5 +1,7 @@
 name: realus_bed_rail_scene
 environment:
+  ue_environment_preset: soft_studio
+  ue_ground_plane_color: [0.055, 0.060, 0.070, 1.0]
   ue_map: /Game/Bedlam/IBLMap
   ue_hdri_name: abandoned_hopper_terminal_03
   ground_plane_color:
@@ -12,16 +14,21 @@ support_surface:
   pos:
   - 0.0
   - 0.0
-  - 0.23082906638052347
+  - 0.14041453319026173
   size:
   - 1.926561951637268
   - 0.701645016670227
-  - 0.1
+  - 0.28082906638052346
   rotation_deg: -0.010040283203125
+  quat_xyzw:
+  - 0.0
+  - 0.0
+  - -8.761799975150096e-05
+  - 0.999999996161543
   color:
   - 0.55
-  - 0.55
-  - 0.57
+  - 0.78
+  - 0.95
   - 1.0
   semantic_role: bed
   spawn_in_genesis: true
@@ -52,14 +59,14 @@ robot:
   model_id: rm75_6f_8dof
   name: robot_main
   base_pos:
-  - 0.0
-  - 0.52
-  - 0.0
+  - -0.4494202494604286
+  - 0.4488370418535608
+  - -0.0020000000000000018
   base_quat_wxyz:
-  - -0.7071067811865477
-  - 0.0
-  - 0.0
-  - 0.7071067811865475
+  - -0.707106781186194
+  - 6.133173666736564e-19
+  - 1.2266347333473124e-18
+  - 0.707106781186901
   joint_positions: *id001
   rail:
     enabled: true
@@ -90,7 +97,7 @@ human:
   - 0.0
 motion:
   source_id: realus_easymocap_subject
-  sequence_npz_path: outputs/ue_bake/subject_shape_tpose.npz
+  sequence_npz_path: assets/human_reference/subject_shape_tpose.npz
   fps: 30.0
   frame_count: 1
   start_frame: 0
@@ -114,7 +121,10 @@ ue_avatar:
   hidden_material_path: /Engine/PS/Bedlam/Core/Materials/M_SMPLX_Hidden.M_SMPLX_Hidden
   fbx_global_scale: 100.0
   subject_betas_path: outputs/offline_capture/latest/beta_calibration/betas.npy
-  note: After EasyMocap fit, rebake body with subject shapes (see bake_subject_ue_body.py)
+  initial_pose: tpose
+  shape_authority: ue_skeletal_mesh
+  note: BEDLAM skeletal mesh defines rendered shape; subject betas require an explicitly
+    imported subject mesh.
 cameras:
 - name: cam1
   res:
@@ -134,6 +144,42 @@ cameras:
   - 0.522966179751734
   fov: 44.234570590419565
   fov_axis: vertical
+  intrinsics:
+  - - 1325.06992068702
+    - 0.0
+    - 964.0668306960372
+  - - 0.0
+    - 1328.7095435231263
+    - 532.3394514567664
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - 0.999837513644645
+    - -0.014062581104668426
+    - -0.01127785970690225
+    - -0.007696609792999619
+  - - -0.006085974816757897
+    - -0.8522374191779535
+    - 0.5231198163532244
+    - -0.8888012726185938
+  - - -0.01696782889542181
+    - -0.522966179751734
+    - -0.8521845267419802
+    - 1.6918787089136385
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
 - name: cam2
   res:
   - 1920
@@ -152,6 +198,42 @@ cameras:
   - 0.7676617158710075
   fov: 43.96475402015218
   fov_axis: vertical
+  intrinsics:
+  - - 1337.1751342055215
+    - 0.0
+    - 975.1075839483836
+  - - 0.0
+    - 1337.7313887970467
+    - 560.0300609498038
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - -0.5449953866858651
+    - -0.5339482479585084
+    - 0.6464358413571784
+    - -1.493263325475338
+  - - -0.8384010833704235
+    - 0.3543935079642376
+    - -0.41411214050556644
+    - 0.8781155611496004
+  - - -0.007978213611104956
+    - -0.7676617158710075
+    - -0.6408056164653646
+    - 1.5356295813890233
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
 - name: cam3
   res:
   - 1920
@@ -170,6 +252,42 @@ cameras:
   - 0.6491483127890256
   fov: 42.99366126007098
   fov_axis: vertical
+  intrinsics:
+  - - 1371.6142420974936
+    - 0.0
+    - 998.2245338999836
+  - - 0.0
+    - 1371.0922735981253
+    - 540.7921374312424
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - -0.9567070162529029
+    - 0.2725684889341184
+    - -0.10206911330387197
+    - 0.2173043875011965
+  - - 0.27162228735989724
+    - 0.7101499044864932
+    - -0.6495447991980245
+    - 1.1916732923709068
+  - - -0.10456107334886428
+    - -0.6491483127890256
+    - -0.7534410726415799
+    - 1.6365047567347264
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
 - name: cam4
   res:
   - 1920
@@ -188,3 +306,39 @@ cameras:
   - 0.7908653952190474
   fov: 43.13956644978462
   fov_axis: vertical
+  intrinsics:
+  - - 1366.3979855885582
+    - 0.0
+    - 977.2198352139376
+  - - 0.0
+    - 1365.9886168008622
+    - 541.179051947081
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - 0.6211410988077398
+    - -0.4883279252582682
+    - 0.612959682836374
+    - -1.5365651454938123
+  - - -0.7834897931452266
+    - -0.3688736423997056
+    - 0.5000759742059442
+    - -0.9363151605636124
+  - - -0.01809639210351066
+    - -0.7908653952190474
+    - -0.6117225247102283
+    - 1.5501855134239166
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle

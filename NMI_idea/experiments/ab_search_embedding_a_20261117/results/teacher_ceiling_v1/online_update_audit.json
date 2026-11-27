@@ -1,0 +1,17 @@
+{
+  "alias_packet_checks": 81,
+  "archives": {
+    "results/teacher_ceiling_v1/online_update_cases.jsonl.gz": {
+      "worlds": 64,
+      "trajectories": 256,
+      "retractions": 494,
+      "centered_mistakes": 0
+    },
+    "results/teacher_ceiling_v1/full_online_update_cases.jsonl.gz": {
+      "worlds": 64,
+      "trajectories": 256,
+      "retractions": 656,
+      "centered_mistakes": 0
+    }
+  }
+}

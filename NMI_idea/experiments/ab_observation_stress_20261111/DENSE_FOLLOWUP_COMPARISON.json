@@ -1,0 +1,762 @@
+{
+  "pairing": {
+    "independent_objects": 32,
+    "same_worlds_and_random_numbers": true,
+    "common_endpoint_mask_cost_and_likelihood_exact": true
+  },
+  "scope": "Independent candidate-library follow-up on the declared synthetic observation model. Supports positive correct-stop query is an upper bound, and poses have static robot witnesses.",
+  "coarse": {
+    "query_support": {
+      "contexts": [
+        {
+          "context": "prior_only_layout",
+          "geometrically_qualified_objects": 11,
+          "qualified_objects_with_nonzero_public_correct_query": 4,
+          "geometry_qualified_but_query_zero_objects": [
+            8,
+            9,
+            21,
+            22,
+            25,
+            26,
+            31
+          ]
+        },
+        {
+          "context": "prior_only_layout_partial_endpoint_witnesses",
+          "geometrically_qualified_objects": 10,
+          "qualified_objects_with_nonzero_public_correct_query": 4,
+          "geometry_qualified_but_query_zero_objects": [
+            8,
+            9,
+            21,
+            25,
+            26,
+            31
+          ]
+        }
+      ],
+      "supported_pose_count": 11,
+      "scope": "Necessary positive support of a correct-stop query in either mode. Threshold, current belief, true public return, timing and execution may further reduce completion."
+    },
+    "source_and_stop": [
+      {
+        "regime": "bursty",
+        "method": "A_task",
+        "trials": 64,
+        "acquisitions": 375,
+        "in_fov_without_target_return": 28,
+        "outside_fov": 247,
+        "loss_by_onset": {
+          "in_fov": {
+            "events": 13,
+            "recovered": 9,
+            "longest_blocks_without_return": 2
+          },
+          "out_of_fov": {
+            "events": 9,
+            "recovered": 3,
+            "longest_blocks_without_return": 5
+          }
+        },
+        "stop_calibration": {
+          "stops": 3,
+          "correct": 2,
+          "mean_model_correct_probability": 0.8636631453861572,
+          "empirical_correct_fraction": 0.6666666666666666,
+          "false_stop_source": {
+            "clutter": 1
+          }
+        }
+      },
+      {
+        "regime": "bursty",
+        "method": "B_two",
+        "trials": 64,
+        "acquisitions": 374,
+        "in_fov_without_target_return": 41,
+        "outside_fov": 264,
+        "loss_by_onset": {
+          "in_fov": {
+            "events": 9,
+            "recovered": 5,
+            "longest_blocks_without_return": 5
+          },
+          "out_of_fov": {
+            "events": 24,
+            "recovered": 8,
+            "longest_blocks_without_return": 5
+          }
+        },
+        "stop_calibration": {
+          "stops": 3,
+          "correct": 2,
+          "mean_model_correct_probability": 0.7782177040517361,
+          "empirical_correct_fraction": 0.6666666666666666,
+          "false_stop_source": {
+            "clutter": 1
+          }
+        }
+      },
+      {
+        "regime": "bursty",
+        "method": "B_fixed",
+        "trials": 64,
+        "acquisitions": 379,
+        "in_fov_without_target_return": 34,
+        "outside_fov": 248,
+        "loss_by_onset": {
+          "out_of_fov": {
+            "events": 36,
+            "recovered": 13,
+            "longest_blocks_without_return": 5
+          },
+          "in_fov": {
+            "events": 4,
+            "recovered": 3,
+            "longest_blocks_without_return": 3
+          }
+        },
+        "stop_calibration": {
+          "stops": 2,
+          "correct": 1,
+          "mean_model_correct_probability": 0.725431411664915,
+          "empirical_correct_fraction": 0.5,
+          "false_stop_source": {
+            "decoy": 1
+          }
+        }
+      },
+      {
+        "regime": "bursty",
+        "method": "B_no_future_cap",
+        "trials": 64,
+        "acquisitions": 375,
+        "in_fov_without_target_return": 48,
+        "outside_fov": 249,
+        "loss_by_onset": {
+          "out_of_fov": {
+            "events": 20,
+            "recovered": 8,
+            "longest_blocks_without_return": 5
+          },
+          "in_fov": {
+            "events": 10,
+            "recovered": 6,
+            "longest_blocks_without_return": 5
+          }
+        },
+        "stop_calibration": {
+          "stops": 3,
+          "correct": 3,
+          "mean_model_correct_probability": 0.8380158060971196,
+          "empirical_correct_fraction": 1.0,
+          "false_stop_source": {}
+        }
+      }
+    ],
+    "acquisition_stages": {
+      "A_task": {
+        "episodes": 64,
+        "with_qualified_endpoint": 21,
+        "visited_qualified_endpoint": 4,
+        "obtained_correct_public_gate": 4,
+        "obtained_but_no_correct_stop": 2,
+        "correct_stops": 2
+      },
+      "B_two": {
+        "episodes": 64,
+        "with_qualified_endpoint": 21,
+        "visited_qualified_endpoint": 3,
+        "obtained_correct_public_gate": 3,
+        "obtained_but_no_correct_stop": 1,
+        "correct_stops": 2
+      },
+      "B_fixed": {
+        "episodes": 64,
+        "with_qualified_endpoint": 21,
+        "visited_qualified_endpoint": 4,
+        "obtained_correct_public_gate": 3,
+        "obtained_but_no_correct_stop": 2,
+        "correct_stops": 1
+      },
+      "B_no_future_cap": {
+        "episodes": 64,
+        "with_qualified_endpoint": 21,
+        "visited_qualified_endpoint": 3,
+        "obtained_correct_public_gate": 3,
+        "obtained_but_no_correct_stop": 0,
+        "correct_stops": 3
+      }
+    }
+  },
+  "dense": {
+    "query_support": {
+      "contexts": [
+        {
+          "context": "prior_only_layout",
+          "geometrically_qualified_objects": 26,
+          "qualified_objects_with_nonzero_public_correct_query": 15,
+          "geometry_qualified_but_query_zero_objects": [
+            0,
+            7,
+            8,
+            11,
+            17,
+            18,
+            22,
+            25,
+            26,
+            29,
+            31
+          ]
+        },
+        {
+          "context": "prior_only_layout_partial_endpoint_witnesses",
+          "geometrically_qualified_objects": 24,
+          "qualified_objects_with_nonzero_public_correct_query": 14,
+          "geometry_qualified_but_query_zero_objects": [
+            0,
+            7,
+            8,
+            11,
+            17,
+            18,
+            25,
+            26,
+            29,
+            31
+          ]
+        }
+      ],
+      "supported_pose_count": 63,
+      "scope": "Necessary positive support of a correct-stop query in either mode. Threshold, current belief, true public return, timing and execution may further reduce completion."
+    },
+    "source_and_stop": [
+      {
+        "regime": "bursty",
+        "method": "A_task",
+        "trials": 64,
+        "acquisitions": 366,
+        "in_fov_without_target_return": 44,
+        "outside_fov": 230,
+        "loss_by_onset": {
+          "out_of_fov": {
+            "events": 22,
+            "recovered": 13,
+            "longest_blocks_without_return": 5
+          },
+          "in_fov": {
+            "events": 11,
+            "recovered": 3,
+            "longest_blocks_without_return": 3
+          }
+        },
+        "stop_calibration": {
+          "stops": 8,
+          "correct": 6,
+          "mean_model_correct_probability": 0.8622260440337045,
+          "empirical_correct_fraction": 0.75,
+          "false_stop_source": {
+            "target_unqualified": 2
+          }
+        }
+      },
+      {
+        "regime": "bursty",
+        "method": "B_two",
+        "trials": 64,
+        "acquisitions": 377,
+        "in_fov_without_target_return": 45,
+        "outside_fov": 246,
+        "loss_by_onset": {
+          "out_of_fov": {
+            "events": 26,
+            "recovered": 11,
+            "longest_blocks_without_return": 5
+          },
+          "in_fov": {
+            "events": 12,
+            "recovered": 5,
+            "longest_blocks_without_return": 4
+          }
+        },
+        "stop_calibration": {
+          "stops": 4,
+          "correct": 2,
+          "mean_model_correct_probability": 0.8997255498545076,
+          "empirical_correct_fraction": 0.5,
+          "false_stop_source": {
+            "target_unqualified": 2
+          }
+        }
+      },
+      {
+        "regime": "bursty",
+        "method": "B_fixed",
+        "trials": 64,
+        "acquisitions": 372,
+        "in_fov_without_target_return": 43,
+        "outside_fov": 236,
+        "loss_by_onset": {
+          "out_of_fov": {
+            "events": 34,
+            "recovered": 15,
+            "longest_blocks_without_return": 5
+          },
+          "in_fov": {
+            "events": 11,
+            "recovered": 6,
+            "longest_blocks_without_return": 2
+          }
+        },
+        "stop_calibration": {
+          "stops": 7,
+          "correct": 5,
+          "mean_model_correct_probability": 0.9091238060499647,
+          "empirical_correct_fraction": 0.7142857142857143,
+          "false_stop_source": {
+            "clutter": 1,
+            "decoy": 1
+          }
+        }
+      },
+      {
+        "regime": "bursty",
+        "method": "B_no_future_cap",
+        "trials": 64,
+        "acquisitions": 377,
+        "in_fov_without_target_return": 43,
+        "outside_fov": 246,
+        "loss_by_onset": {
+          "out_of_fov": {
+            "events": 25,
+            "recovered": 10,
+            "longest_blocks_without_return": 5
+          },
+          "in_fov": {
+            "events": 12,
+            "recovered": 5,
+            "longest_blocks_without_return": 4
+          }
+        },
+        "stop_calibration": {
+          "stops": 4,
+          "correct": 2,
+          "mean_model_correct_probability": 0.8997255498545076,
+          "empirical_correct_fraction": 0.5,
+          "false_stop_source": {
+            "target_unqualified": 2
+          }
+        }
+      }
+    ],
+    "acquisition_stages": {
+      "A_task": {
+        "episodes": 64,
+        "with_qualified_endpoint": 50,
+        "visited_qualified_endpoint": 8,
+        "obtained_correct_public_gate": 6,
+        "obtained_but_no_correct_stop": 0,
+        "correct_stops": 6
+      },
+      "B_two": {
+        "episodes": 64,
+        "with_qualified_endpoint": 50,
+        "visited_qualified_endpoint": 4,
+        "obtained_correct_public_gate": 2,
+        "obtained_but_no_correct_stop": 0,
+        "correct_stops": 2
+      },
+      "B_fixed": {
+        "episodes": 64,
+        "with_qualified_endpoint": 50,
+        "visited_qualified_endpoint": 7,
+        "obtained_correct_public_gate": 6,
+        "obtained_but_no_correct_stop": 1,
+        "correct_stops": 5
+      },
+      "B_no_future_cap": {
+        "episodes": 64,
+        "with_qualified_endpoint": 50,
+        "visited_qualified_endpoint": 4,
+        "obtained_correct_public_gate": 3,
+        "obtained_but_no_correct_stop": 1,
+        "correct_stops": 2
+      }
+    }
+  },
+  "paired_gains": [
+    {
+      "method": "A_task",
+      "context": "prior_only_layout",
+      "independent_objects": 32,
+      "dense_only_correct_count": 1,
+      "coarse_only_correct_count": 1,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.0,
+          "object_bootstrap_95": [
+            -0.09375,
+            0.09375
+          ]
+        },
+        "false_stop": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            0.0,
+            0.09375
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -0.3076169672810496,
+          "object_bootstrap_95": [
+            -4.958905540056962,
+            4.036054638213813
+          ]
+        }
+      }
+    },
+    {
+      "method": "A_task",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "independent_objects": 32,
+      "dense_only_correct_count": 5,
+      "coarse_only_correct_count": 1,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.125,
+          "object_bootstrap_95": [
+            0.0,
+            0.28125
+          ]
+        },
+        "false_stop": {
+          "mean": 0.0,
+          "object_bootstrap_95": [
+            -0.09375,
+            0.09375
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -6.188603891157727,
+          "object_bootstrap_95": [
+            -13.934340192990298,
+            0.39665592895265167
+          ]
+        }
+      }
+    },
+    {
+      "method": "A_task",
+      "context": "pooled",
+      "independent_objects": 32,
+      "dense_only_correct_count": 6,
+      "coarse_only_correct_count": 2,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.0625,
+          "object_bootstrap_95": [
+            -0.046875,
+            0.171875
+          ]
+        },
+        "false_stop": {
+          "mean": 0.015625,
+          "object_bootstrap_95": [
+            -0.03125,
+            0.078125
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -3.2481104292193885,
+          "object_bootstrap_95": [
+            -8.6506883368537,
+            2.125801548057659
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_fixed",
+      "context": "prior_only_layout",
+      "independent_objects": 32,
+      "dense_only_correct_count": 2,
+      "coarse_only_correct_count": 0,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.0625,
+          "object_bootstrap_95": [
+            0.0,
+            0.15625
+          ]
+        },
+        "false_stop": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            -0.0625,
+            0.125
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -3.133341488822638,
+          "object_bootstrap_95": [
+            -7.887213786255595,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_fixed",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "independent_objects": 32,
+      "dense_only_correct_count": 2,
+      "coarse_only_correct_count": 0,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.0625,
+          "object_bootstrap_95": [
+            0.0,
+            0.15625
+          ]
+        },
+        "false_stop": {
+          "mean": 0.0,
+          "object_bootstrap_95": [
+            0.0,
+            0.0
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -2.971922850584691,
+          "object_bootstrap_95": [
+            -7.9501809054175006,
+            0.48706296216161704
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_fixed",
+      "context": "pooled",
+      "independent_objects": 32,
+      "dense_only_correct_count": 4,
+      "coarse_only_correct_count": 0,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.0625,
+          "object_bootstrap_95": [
+            0.0,
+            0.140625
+          ]
+        },
+        "false_stop": {
+          "mean": 0.015625,
+          "object_bootstrap_95": [
+            -0.03125,
+            0.0625
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -3.052632169703664,
+          "object_bootstrap_95": [
+            -7.132659808066891,
+            0.12176574054040426
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_no_future_cap",
+      "context": "prior_only_layout",
+      "independent_objects": 32,
+      "dense_only_correct_count": 1,
+      "coarse_only_correct_count": 0,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            0.0,
+            0.09375
+          ]
+        },
+        "false_stop": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            0.0,
+            0.09375
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -1.5938262539508044,
+          "object_bootstrap_95": [
+            -4.666751462620415,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_no_future_cap",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "independent_objects": 32,
+      "dense_only_correct_count": 0,
+      "coarse_only_correct_count": 2,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": -0.0625,
+          "object_bootstrap_95": [
+            -0.15625,
+            0.0
+          ]
+        },
+        "false_stop": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            0.0,
+            0.09375
+          ]
+        },
+        "restricted_time_s": {
+          "mean": 3.325625042484352,
+          "object_bootstrap_95": [
+            0.0,
+            8.36955980897352
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_no_future_cap",
+      "context": "pooled",
+      "independent_objects": 32,
+      "dense_only_correct_count": 1,
+      "coarse_only_correct_count": 2,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": -0.015625,
+          "object_bootstrap_95": [
+            -0.078125,
+            0.03125
+          ]
+        },
+        "false_stop": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            0.0,
+            0.078125
+          ]
+        },
+        "restricted_time_s": {
+          "mean": 0.8658993942667739,
+          "object_bootstrap_95": [
+            -1.4790989547188065,
+            4.008956061932046
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_two",
+      "context": "prior_only_layout",
+      "independent_objects": 32,
+      "dense_only_correct_count": 1,
+      "coarse_only_correct_count": 0,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            0.0,
+            0.09375
+          ]
+        },
+        "false_stop": {
+          "mean": 0.03125,
+          "object_bootstrap_95": [
+            0.0,
+            0.09375
+          ]
+        },
+        "restricted_time_s": {
+          "mean": -1.593456324169618,
+          "object_bootstrap_95": [
+            -4.665572256933122,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_two",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "independent_objects": 32,
+      "dense_only_correct_count": 0,
+      "coarse_only_correct_count": 1,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": -0.03125,
+          "object_bootstrap_95": [
+            -0.09375,
+            0.0
+          ]
+        },
+        "false_stop": {
+          "mean": 0.0,
+          "object_bootstrap_95": [
+            -0.09375,
+            0.09375
+          ]
+        },
+        "restricted_time_s": {
+          "mean": 1.78481253106584,
+          "object_bootstrap_95": [
+            0.0,
+            5.35443759319752
+          ]
+        }
+      }
+    },
+    {
+      "method": "B_two",
+      "context": "pooled",
+      "independent_objects": 32,
+      "dense_only_correct_count": 1,
+      "coarse_only_correct_count": 1,
+      "dense_minus_coarse": {
+        "success": {
+          "mean": 0.0,
+          "object_bootstrap_95": [
+            -0.046875,
+            0.046875
+          ]
+        },
+        "false_stop": {
+          "mean": 0.015625,
+          "object_bootstrap_95": [
+            -0.03125,
+            0.078125
+          ]
+        },
+        "restricted_time_s": {
+          "mean": 0.09567810344811101,
+          "object_bootstrap_95": [
+            -2.2179894128908284,
+            2.5050237232351615
+          ]
+        }
+      }
+    }
+  ],
+  "dense_paired_success": {
+    "left": "B_two",
+    "right": "A_task",
+    "objects": 32,
+    "placements": 2,
+    "delta_success": -0.0625,
+    "object_bootstrap_exact_95": [
+      -0.15625,
+      0.03125
+    ]
+  }
+}

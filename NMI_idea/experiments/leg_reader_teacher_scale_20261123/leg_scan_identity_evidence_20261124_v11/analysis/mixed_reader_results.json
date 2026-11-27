@@ -1,0 +1,468 @@
+{
+  "baseline_v10": {
+    "femoral": {
+      "submitted": 96,
+      "wrong_regions": 1,
+      "wrong_branch_regions": 0,
+      "wrong_branch_cases": 0,
+      "wrong_delivery_cases": 1,
+      "correct_regions": 95,
+      "strict": 15,
+      "risk": 0.010416666666666666,
+      "wrong_branch_risk": 0.0,
+      "wrong_role_counts": {
+        "arterial_competitor": 0,
+        "great_saphenous": 0,
+        "deep_femoral_or_fibular": 0,
+        "small_saphenous_or_other": 0,
+        "unmodeled_blender_vessel": 0,
+        "artifact": 1,
+        "mixed": 0
+      },
+      "captured_regions": 96,
+      "readout_misses": 1,
+      "captured_and_abstained": 0,
+      "captured_and_wrong": 1,
+      "layouts": 16
+    },
+    "groin_to_distal_calf": {
+      "submitted": 192,
+      "wrong_regions": 16,
+      "wrong_branch_regions": 4,
+      "wrong_branch_cases": 4,
+      "wrong_delivery_cases": 12,
+      "correct_regions": 176,
+      "strict": 20,
+      "risk": 0.08333333333333333,
+      "wrong_branch_risk": 0.020833333333333332,
+      "wrong_role_counts": {
+        "arterial_competitor": 1,
+        "great_saphenous": 0,
+        "deep_femoral_or_fibular": 0,
+        "small_saphenous_or_other": 0,
+        "unmodeled_blender_vessel": 3,
+        "artifact": 8,
+        "mixed": 4
+      },
+      "captured_regions": 192,
+      "readout_misses": 16,
+      "captured_and_abstained": 0,
+      "captured_and_wrong": 16,
+      "layouts": 32
+    }
+  },
+  "epochs": [
+    {
+      "epoch": 1,
+      "loss": 1.0339730352163314,
+      "development": {
+        "femoral": {
+          "submitted": 96,
+          "wrong_regions": 1,
+          "wrong_branch_regions": 0,
+          "wrong_branch_cases": 0,
+          "wrong_delivery_cases": 1,
+          "correct_regions": 95,
+          "strict": 15,
+          "risk": 0.010416666666666666,
+          "wrong_branch_risk": 0.0,
+          "wrong_role_counts": {
+            "arterial_competitor": 0,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 0,
+            "artifact": 1,
+            "mixed": 0
+          },
+          "captured_regions": 96,
+          "readout_misses": 1,
+          "captured_and_abstained": 0,
+          "captured_and_wrong": 1,
+          "layouts": 16
+        },
+        "groin_to_distal_calf": {
+          "submitted": 189,
+          "wrong_regions": 11,
+          "wrong_branch_regions": 2,
+          "wrong_branch_cases": 2,
+          "wrong_delivery_cases": 10,
+          "correct_regions": 178,
+          "strict": 21,
+          "risk": 0.0582010582010582,
+          "wrong_branch_risk": 0.010582010582010581,
+          "wrong_role_counts": {
+            "arterial_competitor": 1,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 1,
+            "artifact": 6,
+            "mixed": 3
+          },
+          "captured_regions": 192,
+          "readout_misses": 14,
+          "captured_and_abstained": 3,
+          "captured_and_wrong": 11,
+          "layouts": 32
+        }
+      },
+      "key": [
+        true,
+        21,
+        -2,
+        178
+      ]
+    },
+    {
+      "epoch": 2,
+      "loss": 0.9605286210775376,
+      "development": {
+        "femoral": {
+          "submitted": 96,
+          "wrong_regions": 2,
+          "wrong_branch_regions": 0,
+          "wrong_branch_cases": 0,
+          "wrong_delivery_cases": 2,
+          "correct_regions": 94,
+          "strict": 14,
+          "risk": 0.020833333333333332,
+          "wrong_branch_risk": 0.0,
+          "wrong_role_counts": {
+            "arterial_competitor": 0,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 0,
+            "artifact": 2,
+            "mixed": 0
+          },
+          "captured_regions": 96,
+          "readout_misses": 2,
+          "captured_and_abstained": 0,
+          "captured_and_wrong": 2,
+          "layouts": 16
+        },
+        "groin_to_distal_calf": {
+          "submitted": 191,
+          "wrong_regions": 13,
+          "wrong_branch_regions": 4,
+          "wrong_branch_cases": 4,
+          "wrong_delivery_cases": 11,
+          "correct_regions": 178,
+          "strict": 20,
+          "risk": 0.06806282722513089,
+          "wrong_branch_risk": 0.020942408376963352,
+          "wrong_role_counts": {
+            "arterial_competitor": 2,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 2,
+            "artifact": 5,
+            "mixed": 4
+          },
+          "captured_regions": 192,
+          "readout_misses": 14,
+          "captured_and_abstained": 1,
+          "captured_and_wrong": 13,
+          "layouts": 32
+        }
+      },
+      "key": [
+        true,
+        20,
+        -4,
+        178
+      ]
+    },
+    {
+      "epoch": 3,
+      "loss": 0.9701368689537049,
+      "development": {
+        "femoral": {
+          "submitted": 96,
+          "wrong_regions": 1,
+          "wrong_branch_regions": 0,
+          "wrong_branch_cases": 0,
+          "wrong_delivery_cases": 1,
+          "correct_regions": 95,
+          "strict": 15,
+          "risk": 0.010416666666666666,
+          "wrong_branch_risk": 0.0,
+          "wrong_role_counts": {
+            "arterial_competitor": 0,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 0,
+            "artifact": 1,
+            "mixed": 0
+          },
+          "captured_regions": 96,
+          "readout_misses": 1,
+          "captured_and_abstained": 0,
+          "captured_and_wrong": 1,
+          "layouts": 16
+        },
+        "groin_to_distal_calf": {
+          "submitted": 191,
+          "wrong_regions": 14,
+          "wrong_branch_regions": 4,
+          "wrong_branch_cases": 4,
+          "wrong_delivery_cases": 12,
+          "correct_regions": 177,
+          "strict": 19,
+          "risk": 0.07329842931937172,
+          "wrong_branch_risk": 0.020942408376963352,
+          "wrong_role_counts": {
+            "arterial_competitor": 2,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 2,
+            "artifact": 6,
+            "mixed": 4
+          },
+          "captured_regions": 192,
+          "readout_misses": 15,
+          "captured_and_abstained": 1,
+          "captured_and_wrong": 14,
+          "layouts": 32
+        }
+      },
+      "key": [
+        true,
+        19,
+        -4,
+        177
+      ]
+    },
+    {
+      "epoch": 4,
+      "loss": 0.9316491454839706,
+      "development": {
+        "femoral": {
+          "submitted": 94,
+          "wrong_regions": 0,
+          "wrong_branch_regions": 0,
+          "wrong_branch_cases": 0,
+          "wrong_delivery_cases": 0,
+          "correct_regions": 94,
+          "strict": 14,
+          "risk": 0.0,
+          "wrong_branch_risk": 0.0,
+          "wrong_role_counts": {
+            "arterial_competitor": 0,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 0,
+            "artifact": 0,
+            "mixed": 0
+          },
+          "captured_regions": 96,
+          "readout_misses": 2,
+          "captured_and_abstained": 2,
+          "captured_and_wrong": 0,
+          "layouts": 16
+        },
+        "groin_to_distal_calf": {
+          "submitted": 191,
+          "wrong_regions": 14,
+          "wrong_branch_regions": 4,
+          "wrong_branch_cases": 4,
+          "wrong_delivery_cases": 12,
+          "correct_regions": 177,
+          "strict": 19,
+          "risk": 0.07329842931937172,
+          "wrong_branch_risk": 0.020942408376963352,
+          "wrong_role_counts": {
+            "arterial_competitor": 2,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 2,
+            "artifact": 6,
+            "mixed": 4
+          },
+          "captured_regions": 192,
+          "readout_misses": 15,
+          "captured_and_abstained": 1,
+          "captured_and_wrong": 14,
+          "layouts": 32
+        }
+      },
+      "key": [
+        true,
+        19,
+        -4,
+        177
+      ]
+    },
+    {
+      "epoch": 5,
+      "loss": 0.8851600557565689,
+      "development": {
+        "femoral": {
+          "submitted": 96,
+          "wrong_regions": 0,
+          "wrong_branch_regions": 0,
+          "wrong_branch_cases": 0,
+          "wrong_delivery_cases": 0,
+          "correct_regions": 96,
+          "strict": 16,
+          "risk": 0.0,
+          "wrong_branch_risk": 0.0,
+          "wrong_role_counts": {
+            "arterial_competitor": 0,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 0,
+            "artifact": 0,
+            "mixed": 0
+          },
+          "captured_regions": 96,
+          "readout_misses": 0,
+          "captured_and_abstained": 0,
+          "captured_and_wrong": 0,
+          "layouts": 16
+        },
+        "groin_to_distal_calf": {
+          "submitted": 192,
+          "wrong_regions": 15,
+          "wrong_branch_regions": 6,
+          "wrong_branch_cases": 5,
+          "wrong_delivery_cases": 12,
+          "correct_regions": 177,
+          "strict": 20,
+          "risk": 0.078125,
+          "wrong_branch_risk": 0.03125,
+          "wrong_role_counts": {
+            "arterial_competitor": 3,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 3,
+            "artifact": 5,
+            "mixed": 4
+          },
+          "captured_regions": 192,
+          "readout_misses": 15,
+          "captured_and_abstained": 0,
+          "captured_and_wrong": 15,
+          "layouts": 32
+        }
+      },
+      "key": [
+        false,
+        20,
+        -5,
+        177
+      ]
+    },
+    {
+      "epoch": 6,
+      "loss": 0.8999254643917084,
+      "development": {
+        "femoral": {
+          "submitted": 96,
+          "wrong_regions": 0,
+          "wrong_branch_regions": 0,
+          "wrong_branch_cases": 0,
+          "wrong_delivery_cases": 0,
+          "correct_regions": 96,
+          "strict": 16,
+          "risk": 0.0,
+          "wrong_branch_risk": 0.0,
+          "wrong_role_counts": {
+            "arterial_competitor": 0,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 0,
+            "artifact": 0,
+            "mixed": 0
+          },
+          "captured_regions": 96,
+          "readout_misses": 0,
+          "captured_and_abstained": 0,
+          "captured_and_wrong": 0,
+          "layouts": 16
+        },
+        "groin_to_distal_calf": {
+          "submitted": 192,
+          "wrong_regions": 14,
+          "wrong_branch_regions": 4,
+          "wrong_branch_cases": 4,
+          "wrong_delivery_cases": 11,
+          "correct_regions": 178,
+          "strict": 21,
+          "risk": 0.07291666666666667,
+          "wrong_branch_risk": 0.020833333333333332,
+          "wrong_role_counts": {
+            "arterial_competitor": 1,
+            "great_saphenous": 0,
+            "deep_femoral_or_fibular": 0,
+            "small_saphenous_or_other": 0,
+            "unmodeled_blender_vessel": 3,
+            "artifact": 5,
+            "mixed": 5
+          },
+          "captured_regions": 192,
+          "readout_misses": 14,
+          "captured_and_abstained": 0,
+          "captured_and_wrong": 14,
+          "layouts": 32
+        }
+      },
+      "key": [
+        true,
+        21,
+        -4,
+        178
+      ]
+    }
+  ],
+  "selected": {
+    "epoch": 1,
+    "parameter_updates": {
+      "encode1.weight": 0.007348805665969849,
+      "encode1.bias": 0.006119444966316223,
+      "encode2.weight": 0.007177706807851791,
+      "encode2.bias": 0.00532841682434082,
+      "embedding.weight": 0.007269967347383499,
+      "embedding.bias": 0.005478426814079285,
+      "edge1.weight": 0.00690208375453949,
+      "edge1.bias": 0.005973160266876221,
+      "edge2.weight": 0.00603938102722168,
+      "edge2.bias": 0.005605489015579224,
+      "value.weight": 0.006761908531188965,
+      "value.bias": 0.005359426140785217,
+      "fuse.weight": 0.007454931735992432,
+      "fuse.bias": 0.006630897521972656,
+      "target.weight": 0.00593973696231842,
+      "target.bias": 0.0007345080375671387,
+      "raw_skip.weight": 0.005246249958872795,
+      "raw_skip.bias": 0.0007394421845674515,
+      "rank.weight": 0.005405128002166748,
+      "rank.bias": 0.0017608599737286568,
+      "role.weight": 0.007663160562515259,
+      "role.bias": 0.007269322872161865,
+      "null1.weight": 0.005947083234786987,
+      "null1.bias": 0.003919124603271484,
+      "null2.weight": 0.003368675708770752,
+      "null2.bias": 0.0017550289630889893
+    },
+    "cpu_cuda_max_error": 2.193450927734375e-05,
+    "checkpoint_sha256": "a1304c832a8713b4f66ed37dfdc2e3997e8e9ba6653ebc156259fe5e45481326"
+  },
+  "mix": [
+    8,
+    7,
+    5
+  ],
+  "cuda_optimizer_steps": 120,
+  "bundle_sha256": "48c6a7acb4095b8ef1de550065549b6a4d22bdf7ec358533c1dcfc5cab5e7253"
+}

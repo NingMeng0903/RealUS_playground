@@ -1,0 +1,1125 @@
+{
+  "source": "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_reader_feedback_20261123_v4/run/action_results.json",
+  "reader_freeze": "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_reader_feedback_20261123_v4/run/reader_freeze.json",
+  "route": "groin_to_distal_calf",
+  "case_count_total": 256,
+  "old_review_rescue_vs_hold_count": 22,
+  "mpc_strict_success_oracle_strict_loss_count": 25,
+  "union_count": 45,
+  "intersection_count": 2,
+  "selected_case_indices": [
+    0,
+    1,
+    2,
+    4,
+    10,
+    16,
+    18,
+    19,
+    20,
+    21,
+    28,
+    39,
+    40,
+    54,
+    72,
+    76,
+    82,
+    84,
+    86,
+    88,
+    90,
+    102,
+    108,
+    109,
+    112,
+    118,
+    126,
+    130,
+    132,
+    134,
+    141,
+    146,
+    154,
+    160,
+    165,
+    166,
+    180,
+    183,
+    199,
+    202,
+    212,
+    233,
+    236,
+    242,
+    244
+  ],
+  "selected_case_ids": [
+    "v4_search_test_000001",
+    "v4_search_test_000003",
+    "v4_search_test_000005",
+    "v4_search_test_000009",
+    "v4_search_test_000021",
+    "v4_search_test_000033",
+    "v4_search_test_000037",
+    "v4_search_test_000039",
+    "v4_search_test_000041",
+    "v4_search_test_000043",
+    "v4_search_test_000057",
+    "v4_search_test_000079",
+    "v4_search_test_000081",
+    "v4_search_test_000109",
+    "v4_search_test_000145",
+    "v4_search_test_000153",
+    "v4_search_test_000165",
+    "v4_search_test_000169",
+    "v4_search_test_000173",
+    "v4_search_test_000177",
+    "v4_search_test_000181",
+    "v4_search_test_000205",
+    "v4_search_test_000217",
+    "v4_search_test_000219",
+    "v4_search_test_000225",
+    "v4_search_test_000237",
+    "v4_search_test_000253",
+    "v4_search_test_000261",
+    "v4_search_test_000265",
+    "v4_search_test_000269",
+    "v4_search_test_000283",
+    "v4_search_test_000293",
+    "v4_search_test_000309",
+    "v4_search_test_000321",
+    "v4_search_test_000331",
+    "v4_search_test_000333",
+    "v4_search_test_000361",
+    "v4_search_test_000367",
+    "v4_search_test_000399",
+    "v4_search_test_000405",
+    "v4_search_test_000425",
+    "v4_search_test_000467",
+    "v4_search_test_000473",
+    "v4_search_test_000485",
+    "v4_search_test_000489"
+  ],
+  "old_review_rescue_case_ids": [
+    "v4_search_test_000003",
+    "v4_search_test_000009",
+    "v4_search_test_000037",
+    "v4_search_test_000039",
+    "v4_search_test_000043",
+    "v4_search_test_000079",
+    "v4_search_test_000081",
+    "v4_search_test_000109",
+    "v4_search_test_000169",
+    "v4_search_test_000173",
+    "v4_search_test_000181",
+    "v4_search_test_000217",
+    "v4_search_test_000219",
+    "v4_search_test_000261",
+    "v4_search_test_000283",
+    "v4_search_test_000331",
+    "v4_search_test_000333",
+    "v4_search_test_000361",
+    "v4_search_test_000367",
+    "v4_search_test_000399",
+    "v4_search_test_000405",
+    "v4_search_test_000467"
+  ],
+  "mpc_loss_case_ids": [
+    "v4_search_test_000001",
+    "v4_search_test_000005",
+    "v4_search_test_000021",
+    "v4_search_test_000033",
+    "v4_search_test_000041",
+    "v4_search_test_000057",
+    "v4_search_test_000081",
+    "v4_search_test_000145",
+    "v4_search_test_000153",
+    "v4_search_test_000165",
+    "v4_search_test_000177",
+    "v4_search_test_000205",
+    "v4_search_test_000225",
+    "v4_search_test_000237",
+    "v4_search_test_000253",
+    "v4_search_test_000261",
+    "v4_search_test_000265",
+    "v4_search_test_000269",
+    "v4_search_test_000293",
+    "v4_search_test_000309",
+    "v4_search_test_000321",
+    "v4_search_test_000425",
+    "v4_search_test_000473",
+    "v4_search_test_000485",
+    "v4_search_test_000489"
+  ],
+  "replay_assertions": "all archived actual/proof score fields and selected truth-role IDs matched deterministic replay within float32 tolerance",
+  "actual_tape_selected_union_comparisons": {
+    "oracle_review_vs_equal_time_hold_actual": {
+      "strict_net": 2,
+      "rescue_cases": 2,
+      "loss_cases": 0
+    },
+    "oracle_review_vs_mpc_actual": {
+      "strict_net": -23,
+      "rescue_cases": 2,
+      "loss_cases": 25
+    }
+  },
+  "actual_before_to_after_review_transition_counts": {
+    "mpc": {
+      "same_id_no_change": 45
+    },
+    "equal_time_hold": {
+      "adoption_same_id": 1,
+      "same_id_probability_update": 35,
+      "replacement_adopted": 6,
+      "replacement_remains_abstention": 3
+    },
+    "oracle_review": {
+      "adoption_same_id": 7,
+      "replacement_adopted": 23,
+      "same_id_probability_update": 14,
+      "replacement_remains_abstention": 1
+    }
+  },
+  "joint_counts_by_arm_and_tape": {
+    "mpc": {
+      "actual": {
+        "joint": 21,
+        "old_candidate_end_correct": 26,
+        "suffix_all_correct": 26,
+        "complete_and_budget_legal": 45
+      },
+      "proof_0": {
+        "joint": 8,
+        "old_candidate_end_correct": 26,
+        "suffix_all_correct": 13,
+        "complete_and_budget_legal": 45
+      },
+      "proof_1": {
+        "joint": 9,
+        "old_candidate_end_correct": 27,
+        "suffix_all_correct": 14,
+        "complete_and_budget_legal": 45
+      }
+    },
+    "equal_time_hold": {
+      "actual": {
+        "joint": 2,
+        "old_candidate_end_correct": 26,
+        "suffix_all_correct": 4,
+        "complete_and_budget_legal": 45
+      },
+      "proof_0": {
+        "joint": 8,
+        "old_candidate_end_correct": 26,
+        "suffix_all_correct": 11,
+        "complete_and_budget_legal": 45
+      },
+      "proof_1": {
+        "joint": 9,
+        "old_candidate_end_correct": 26,
+        "suffix_all_correct": 13,
+        "complete_and_budget_legal": 45
+      }
+    },
+    "oracle_review": {
+      "actual": {
+        "joint": 4,
+        "old_candidate_end_correct": 43,
+        "suffix_all_correct": 4,
+        "complete_and_budget_legal": 45
+      },
+      "proof_0": {
+        "joint": 10,
+        "old_candidate_end_correct": 38,
+        "suffix_all_correct": 11,
+        "complete_and_budget_legal": 45
+      },
+      "proof_1": {
+        "joint": 13,
+        "old_candidate_end_correct": 38,
+        "suffix_all_correct": 13,
+        "complete_and_budget_legal": 45
+      }
+    }
+  },
+  "separate_group_reports": {
+    "old_review_rescue_vs_hold_22": {
+      "case_count": 22,
+      "case_ids": [
+        "v4_search_test_000003",
+        "v4_search_test_000009",
+        "v4_search_test_000037",
+        "v4_search_test_000039",
+        "v4_search_test_000043",
+        "v4_search_test_000079",
+        "v4_search_test_000081",
+        "v4_search_test_000109",
+        "v4_search_test_000169",
+        "v4_search_test_000173",
+        "v4_search_test_000181",
+        "v4_search_test_000217",
+        "v4_search_test_000219",
+        "v4_search_test_000261",
+        "v4_search_test_000283",
+        "v4_search_test_000331",
+        "v4_search_test_000333",
+        "v4_search_test_000361",
+        "v4_search_test_000367",
+        "v4_search_test_000399",
+        "v4_search_test_000405",
+        "v4_search_test_000467"
+      ],
+      "arms_by_tape": {
+        "mpc": {
+          "actual": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 5,
+            "required_suffix_all_correct": 3,
+            "strict": 3,
+            "joint": 0,
+            "complete_and_budget_legal": 22
+          },
+          "proof_0": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 6,
+            "required_suffix_all_correct": 4,
+            "strict": 3,
+            "joint": 1,
+            "complete_and_budget_legal": 22
+          },
+          "proof_1": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 6,
+            "required_suffix_all_correct": 6,
+            "strict": 6,
+            "joint": 1,
+            "complete_and_budget_legal": 22
+          }
+        },
+        "equal_time_hold": {
+          "actual": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 5,
+            "required_suffix_all_correct": 3,
+            "strict": 1,
+            "joint": 1,
+            "complete_and_budget_legal": 22
+          },
+          "proof_0": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 5,
+            "required_suffix_all_correct": 3,
+            "strict": 1,
+            "joint": 0,
+            "complete_and_budget_legal": 22
+          },
+          "proof_1": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 5,
+            "required_suffix_all_correct": 5,
+            "strict": 1,
+            "joint": 1,
+            "complete_and_budget_legal": 22
+          }
+        },
+        "oracle_review": {
+          "actual": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 21,
+            "required_suffix_all_correct": 3,
+            "strict": 3,
+            "joint": 3,
+            "complete_and_budget_legal": 22
+          },
+          "proof_0": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 16,
+            "required_suffix_all_correct": 3,
+            "strict": 3,
+            "joint": 2,
+            "complete_and_budget_legal": 22
+          },
+          "proof_1": {
+            "cases": 22,
+            "terminal_old_pool_persists": 22,
+            "final_old_section_correct": 16,
+            "required_suffix_all_correct": 5,
+            "strict": 4,
+            "joint": 5,
+            "complete_and_budget_legal": 22
+          }
+        }
+      },
+      "paired_region_failures": {
+        "actual": {
+          "probe": "oracle_review",
+          "reference": "equal_time_hold",
+          "stream": "actual",
+          "split_definition": "at_or_before_prefix means region <= prefix_region; after_prefix means region > prefix_region",
+          "failure_status_definition": "not_captured if capture=false; abstain if captured but selected_id=-99; wrong otherwise; correct is excluded from failures",
+          "by_prefix_split": {
+            "at_or_before_prefix": {
+              "common_failures": 11,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 11,
+              "common_failure_status_pairs": {
+                "abstain/abstain": 9,
+                "wrong/wrong": 2
+              },
+              "newly_lost_probe_status": {}
+            },
+            "after_prefix": {
+              "common_failures": 29,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0,
+              "common_failure_status_pairs": {
+                "abstain/abstain": 24,
+                "wrong/wrong": 5
+              },
+              "newly_lost_probe_status": {}
+            }
+          },
+          "by_region": {
+            "0": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "1": {
+              "common_failures": 1,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "2": {
+              "common_failures": 1,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "3": {
+              "common_failures": 9,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 8
+            },
+            "4": {
+              "common_failures": 15,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 3
+            },
+            "5": {
+              "common_failures": 14,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            }
+          }
+        },
+        "proof_0": {
+          "probe": "oracle_review",
+          "reference": "equal_time_hold",
+          "stream": "proof_0",
+          "split_definition": "at_or_before_prefix means region <= prefix_region; after_prefix means region > prefix_region",
+          "failure_status_definition": "not_captured if capture=false; abstain if captured but selected_id=-99; wrong otherwise; correct is excluded from failures",
+          "by_prefix_split": {
+            "at_or_before_prefix": {
+              "common_failures": 9,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 10,
+              "common_failure_status_pairs": {
+                "abstain/abstain": 7,
+                "wrong/wrong": 2
+              },
+              "newly_lost_probe_status": {}
+            },
+            "after_prefix": {
+              "common_failures": 32,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0,
+              "common_failure_status_pairs": {
+                "abstain/abstain": 30,
+                "wrong/wrong": 2
+              },
+              "newly_lost_probe_status": {}
+            }
+          },
+          "by_region": {
+            "0": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "1": {
+              "common_failures": 1,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "2": {
+              "common_failures": 2,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "3": {
+              "common_failures": 7,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 9
+            },
+            "4": {
+              "common_failures": 15,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 1
+            },
+            "5": {
+              "common_failures": 16,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            }
+          }
+        },
+        "proof_1": {
+          "probe": "oracle_review",
+          "reference": "equal_time_hold",
+          "stream": "proof_1",
+          "split_definition": "at_or_before_prefix means region <= prefix_region; after_prefix means region > prefix_region",
+          "failure_status_definition": "not_captured if capture=false; abstain if captured but selected_id=-99; wrong otherwise; correct is excluded from failures",
+          "by_prefix_split": {
+            "at_or_before_prefix": {
+              "common_failures": 12,
+              "newly_lost_in_probe": 1,
+              "newly_rescued_in_probe": 7,
+              "common_failure_status_pairs": {
+                "abstain/abstain": 10,
+                "wrong/abstain": 1,
+                "wrong/wrong": 1
+              },
+              "newly_lost_probe_status": {
+                "abstain": 1
+              }
+            },
+            "after_prefix": {
+              "common_failures": 27,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0,
+              "common_failure_status_pairs": {
+                "abstain/abstain": 24,
+                "wrong/wrong": 3
+              },
+              "newly_lost_probe_status": {}
+            }
+          },
+          "by_region": {
+            "0": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "1": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "2": {
+              "common_failures": 1,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "3": {
+              "common_failures": 12,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 5
+            },
+            "4": {
+              "common_failures": 14,
+              "newly_lost_in_probe": 1,
+              "newly_rescued_in_probe": 2
+            },
+            "5": {
+              "common_failures": 12,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            }
+          }
+        }
+      },
+      "after_review_old_winner_vs_hold": {
+        "replacement_oracle_accept_hold_abstain": 11,
+        "same_id_oracle_accept_hold_abstain": 7,
+        "replacement_both_accept": 4
+      },
+      "suffix_echo_vs_references": {
+        "actual": {
+          "equal_time_hold_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 20,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 21,
+            "cases": 22
+          },
+          "oracle_review_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 20,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 21,
+            "cases": 22
+          },
+          "oracle_review_vs_equal_time_hold": {
+            "same_pose_time_sequence_cases": 22,
+            "same_pose_only_sequence_cases": 22,
+            "same_acquired_echo_cases": 22,
+            "same_length_cases": 22,
+            "cases": 22
+          }
+        },
+        "proof_0": {
+          "equal_time_hold_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 19,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 21,
+            "cases": 22
+          },
+          "oracle_review_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 19,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 21,
+            "cases": 22
+          },
+          "oracle_review_vs_equal_time_hold": {
+            "same_pose_time_sequence_cases": 22,
+            "same_pose_only_sequence_cases": 22,
+            "same_acquired_echo_cases": 22,
+            "same_length_cases": 22,
+            "cases": 22
+          }
+        },
+        "proof_1": {
+          "equal_time_hold_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 20,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 21,
+            "cases": 22
+          },
+          "oracle_review_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 20,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 21,
+            "cases": 22
+          },
+          "oracle_review_vs_equal_time_hold": {
+            "same_pose_time_sequence_cases": 22,
+            "same_pose_only_sequence_cases": 22,
+            "same_acquired_echo_cases": 22,
+            "same_length_cases": 22,
+            "cases": 22
+          }
+        }
+      },
+      "fixed_mpc_pose_path_timing_diagnostic": {
+        "delay_without_images_vs_original_mpc": {
+          "cases": 22,
+          "suffix_newly_correct": 8,
+          "suffix_newly_incorrect": 8,
+          "suffix_all_correct_a": 3,
+          "suffix_all_correct_reference": 3
+        },
+        "delay_with_hold_images_vs_delay_without_images": {
+          "cases": 22,
+          "suffix_newly_correct": 0,
+          "suffix_newly_incorrect": 0,
+          "suffix_all_correct_a": 3,
+          "suffix_all_correct_reference": 3
+        },
+        "delay_with_review_images_vs_delay_with_hold_images": {
+          "cases": 22,
+          "suffix_newly_correct": 0,
+          "suffix_newly_incorrect": 0,
+          "suffix_all_correct_a": 3,
+          "suffix_all_correct_reference": 3
+        },
+        "matched_suffix_losses_on_same_case_and_region": {
+          "shared": 8,
+          "delay_only": 0,
+          "archived_review_only": 0
+        }
+      }
+    },
+    "mpc_success_oracle_loss_25": {
+      "case_count": 25,
+      "case_ids": [
+        "v4_search_test_000001",
+        "v4_search_test_000005",
+        "v4_search_test_000021",
+        "v4_search_test_000033",
+        "v4_search_test_000041",
+        "v4_search_test_000057",
+        "v4_search_test_000081",
+        "v4_search_test_000145",
+        "v4_search_test_000153",
+        "v4_search_test_000165",
+        "v4_search_test_000177",
+        "v4_search_test_000205",
+        "v4_search_test_000225",
+        "v4_search_test_000237",
+        "v4_search_test_000253",
+        "v4_search_test_000261",
+        "v4_search_test_000265",
+        "v4_search_test_000269",
+        "v4_search_test_000293",
+        "v4_search_test_000309",
+        "v4_search_test_000321",
+        "v4_search_test_000425",
+        "v4_search_test_000473",
+        "v4_search_test_000485",
+        "v4_search_test_000489"
+      ],
+      "arms_by_tape": {
+        "mpc": {
+          "actual": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 21,
+            "required_suffix_all_correct": 25,
+            "strict": 25,
+            "joint": 21,
+            "complete_and_budget_legal": 25
+          },
+          "proof_0": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 21,
+            "required_suffix_all_correct": 10,
+            "strict": 7,
+            "joint": 7,
+            "complete_and_budget_legal": 25
+          },
+          "proof_1": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 22,
+            "required_suffix_all_correct": 10,
+            "strict": 10,
+            "joint": 9,
+            "complete_and_budget_legal": 25
+          }
+        },
+        "equal_time_hold": {
+          "actual": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 22,
+            "required_suffix_all_correct": 1,
+            "strict": 0,
+            "joint": 1,
+            "complete_and_budget_legal": 25
+          },
+          "proof_0": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 22,
+            "required_suffix_all_correct": 8,
+            "strict": 7,
+            "joint": 8,
+            "complete_and_budget_legal": 25
+          },
+          "proof_1": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 22,
+            "required_suffix_all_correct": 8,
+            "strict": 8,
+            "joint": 8,
+            "complete_and_budget_legal": 25
+          }
+        },
+        "oracle_review": {
+          "actual": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 24,
+            "required_suffix_all_correct": 1,
+            "strict": 0,
+            "joint": 1,
+            "complete_and_budget_legal": 25
+          },
+          "proof_0": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 24,
+            "required_suffix_all_correct": 8,
+            "strict": 7,
+            "joint": 8,
+            "complete_and_budget_legal": 25
+          },
+          "proof_1": {
+            "cases": 25,
+            "terminal_old_pool_persists": 25,
+            "final_old_section_correct": 23,
+            "required_suffix_all_correct": 8,
+            "strict": 8,
+            "joint": 8,
+            "complete_and_budget_legal": 25
+          }
+        }
+      },
+      "paired_region_failures": {
+        "actual": {
+          "probe": "oracle_review",
+          "reference": "mpc",
+          "stream": "actual",
+          "split_definition": "at_or_before_prefix means region <= prefix_region; after_prefix means region > prefix_region",
+          "failure_status_definition": "not_captured if capture=false; abstain if captured but selected_id=-99; wrong otherwise; correct is excluded from failures",
+          "by_prefix_split": {
+            "at_or_before_prefix": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 3,
+              "newly_rescued_in_probe": 0,
+              "common_failure_status_pairs": {},
+              "newly_lost_probe_status": {
+                "wrong": 1,
+                "abstain": 2
+              }
+            },
+            "after_prefix": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 28,
+              "newly_rescued_in_probe": 0,
+              "common_failure_status_pairs": {},
+              "newly_lost_probe_status": {
+                "abstain": 24,
+                "wrong": 4
+              }
+            }
+          },
+          "by_region": {
+            "0": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "1": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "2": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "3": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 2,
+              "newly_rescued_in_probe": 0
+            },
+            "4": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 9,
+              "newly_rescued_in_probe": 0
+            },
+            "5": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 20,
+              "newly_rescued_in_probe": 0
+            }
+          }
+        },
+        "proof_0": {
+          "probe": "oracle_review",
+          "reference": "mpc",
+          "stream": "proof_0",
+          "split_definition": "at_or_before_prefix means region <= prefix_region; after_prefix means region > prefix_region",
+          "failure_status_definition": "not_captured if capture=false; abstain if captured but selected_id=-99; wrong otherwise; correct is excluded from failures",
+          "by_prefix_split": {
+            "at_or_before_prefix": {
+              "common_failures": 2,
+              "newly_lost_in_probe": 2,
+              "newly_rescued_in_probe": 3,
+              "common_failure_status_pairs": {
+                "wrong/abstain": 1,
+                "abstain/abstain": 1
+              },
+              "newly_lost_probe_status": {
+                "wrong": 1,
+                "abstain": 1
+              }
+            },
+            "after_prefix": {
+              "common_failures": 9,
+              "newly_lost_in_probe": 15,
+              "newly_rescued_in_probe": 8,
+              "common_failure_status_pairs": {
+                "abstain/abstain": 8,
+                "abstain/wrong": 1
+              },
+              "newly_lost_probe_status": {
+                "wrong": 5,
+                "abstain": 10
+              }
+            }
+          },
+          "by_region": {
+            "0": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "1": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "2": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 1
+            },
+            "3": {
+              "common_failures": 2,
+              "newly_lost_in_probe": 2,
+              "newly_rescued_in_probe": 2
+            },
+            "4": {
+              "common_failures": 3,
+              "newly_lost_in_probe": 7,
+              "newly_rescued_in_probe": 4
+            },
+            "5": {
+              "common_failures": 6,
+              "newly_lost_in_probe": 8,
+              "newly_rescued_in_probe": 4
+            }
+          }
+        },
+        "proof_1": {
+          "probe": "oracle_review",
+          "reference": "mpc",
+          "stream": "proof_1",
+          "split_definition": "at_or_before_prefix means region <= prefix_region; after_prefix means region > prefix_region",
+          "failure_status_definition": "not_captured if capture=false; abstain if captured but selected_id=-99; wrong otherwise; correct is excluded from failures",
+          "by_prefix_split": {
+            "at_or_before_prefix": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 1,
+              "newly_rescued_in_probe": 0,
+              "common_failure_status_pairs": {},
+              "newly_lost_probe_status": {
+                "abstain": 1
+              }
+            },
+            "after_prefix": {
+              "common_failures": 8,
+              "newly_lost_in_probe": 12,
+              "newly_rescued_in_probe": 10,
+              "common_failure_status_pairs": {
+                "wrong/abstain": 3,
+                "abstain/abstain": 5
+              },
+              "newly_lost_probe_status": {
+                "abstain": 9,
+                "wrong": 3
+              }
+            }
+          },
+          "by_region": {
+            "0": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "1": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "2": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 0
+            },
+            "3": {
+              "common_failures": 0,
+              "newly_lost_in_probe": 0,
+              "newly_rescued_in_probe": 1
+            },
+            "4": {
+              "common_failures": 3,
+              "newly_lost_in_probe": 4,
+              "newly_rescued_in_probe": 3
+            },
+            "5": {
+              "common_failures": 5,
+              "newly_lost_in_probe": 9,
+              "newly_rescued_in_probe": 6
+            }
+          }
+        }
+      },
+      "after_review_old_winner_vs_hold": {
+        "same_id_both_accept": 17,
+        "same_id_oracle_accept_hold_abstain": 1,
+        "replacement_oracle_accept_hold_abstain": 2,
+        "replacement_both_abstain": 1,
+        "replacement_both_accept": 4
+      },
+      "suffix_echo_vs_references": {
+        "actual": {
+          "equal_time_hold_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 23,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 25,
+            "cases": 25
+          },
+          "oracle_review_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 23,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 25,
+            "cases": 25
+          },
+          "oracle_review_vs_equal_time_hold": {
+            "same_pose_time_sequence_cases": 25,
+            "same_pose_only_sequence_cases": 25,
+            "same_acquired_echo_cases": 25,
+            "same_length_cases": 25,
+            "cases": 25
+          }
+        },
+        "proof_0": {
+          "equal_time_hold_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 20,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 22,
+            "cases": 25
+          },
+          "oracle_review_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 20,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 22,
+            "cases": 25
+          },
+          "oracle_review_vs_equal_time_hold": {
+            "same_pose_time_sequence_cases": 25,
+            "same_pose_only_sequence_cases": 25,
+            "same_acquired_echo_cases": 25,
+            "same_length_cases": 25,
+            "cases": 25
+          }
+        },
+        "proof_1": {
+          "equal_time_hold_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 24,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 25,
+            "cases": 25
+          },
+          "oracle_review_vs_mpc": {
+            "same_pose_time_sequence_cases": 0,
+            "same_pose_only_sequence_cases": 24,
+            "same_acquired_echo_cases": 0,
+            "same_length_cases": 25,
+            "cases": 25
+          },
+          "oracle_review_vs_equal_time_hold": {
+            "same_pose_time_sequence_cases": 25,
+            "same_pose_only_sequence_cases": 25,
+            "same_acquired_echo_cases": 25,
+            "same_length_cases": 25,
+            "cases": 25
+          }
+        }
+      },
+      "fixed_mpc_pose_path_timing_diagnostic": {
+        "delay_without_images_vs_original_mpc": {
+          "cases": 25,
+          "suffix_newly_correct": 0,
+          "suffix_newly_incorrect": 28,
+          "suffix_all_correct_a": 1,
+          "suffix_all_correct_reference": 25
+        },
+        "delay_with_hold_images_vs_delay_without_images": {
+          "cases": 25,
+          "suffix_newly_correct": 0,
+          "suffix_newly_incorrect": 0,
+          "suffix_all_correct_a": 1,
+          "suffix_all_correct_reference": 1
+        },
+        "delay_with_review_images_vs_delay_with_hold_images": {
+          "cases": 25,
+          "suffix_newly_correct": 0,
+          "suffix_newly_incorrect": 0,
+          "suffix_all_correct_a": 1,
+          "suffix_all_correct_reference": 1
+        },
+        "matched_suffix_losses_on_same_case_and_region": {
+          "shared": 28,
+          "delay_only": 0,
+          "archived_review_only": 0
+        }
+      }
+    }
+  },
+  "public_id_definition": "candidate IDs are [frame_index, slot] from public history; truth labels are used only in score-only fields and region diagnostics",
+  "suffix_definition": "all regions with numeric index greater than that case's prefix_region; joint additionally requires old terminal label 0 and legal complete budget",
+  "timing_caution": "pose/time differences are recorded; no path or timing cause is inferred from graph association",
+  "case_output_files": [
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000001.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000003.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000005.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000009.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000021.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000033.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000037.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000039.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000041.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000043.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000057.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000079.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000081.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000109.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000145.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000153.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000165.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000169.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000173.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000177.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000181.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000205.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000217.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000219.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000225.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000237.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000253.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000261.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000265.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000269.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000283.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000293.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000309.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000321.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000331.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000333.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000361.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000367.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000399.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000405.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000425.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000467.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000473.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000485.json",
+    "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_scan_anchor_state_20261123_v5/run/forensics/case_v4_search_test_000489.json"
+  ]
+}

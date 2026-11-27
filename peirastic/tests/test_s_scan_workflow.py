@@ -444,8 +444,8 @@ def test_comparison_mode_selects_outer_law(monkeypatch, tmp_path, mode, law):
         if mode == "ac2d":
             assert s_scan.comparison_force_axes(mode) == [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
             assert options["extra"]["admittance_inertia_yy"] == pytest.approx(0.051)
-            assert options["extra"]["admittance_damping_yy"] == pytest.approx(0.22 / 0.75)
-            assert options["extra"]["max_omega_y_rad_s"] == pytest.approx(0.21)
+            assert options["extra"]["admittance_damping_yy"] == pytest.approx(0.22 / 0.60)
+            assert options["extra"]["max_omega_y_rad_s"] == pytest.approx(0.28 * 0.60)
             assert options["extra"]["admittance_coulomb_yy"] == pytest.approx(0.02)
         else:
             assert s_scan.comparison_force_axes(mode) == [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]

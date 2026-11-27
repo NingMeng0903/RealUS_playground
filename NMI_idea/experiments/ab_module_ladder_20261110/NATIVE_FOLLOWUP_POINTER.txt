@@ -1,0 +1,16 @@
+后续执行修复与dIRD合同核查，2026-11-10
+
+先前FINAL_REPORT/MODULE_STATUS及审计是当时冻结结果，保留不改。
+原20段8/20仍是原始设置的真实记录；不能替换其分母或把新设置当原设置。
+
+最新保留偏好、去额外branch硬墙、修物理发布认证、改进局部摆放/初始q后：
+20/20完整执行，通过2mm/2deg；最大.03746mm/.05497deg。
+旧两路径与新布局10s保持回归通过。未验证真实硬件或整腿成像闭环。
+
+最新详细报告：
+planning/native_regression_20261110/FOLLOWUP_REPORT.txt
+
+当前dIRD并非allbranch existential global，训练合同核查：
+planning/native_regression_20261110/DIRD_CONTRACT_FINDING.txt
+
+A/B成像策略结果及连续GT泛化负结果没有重跑或改写。

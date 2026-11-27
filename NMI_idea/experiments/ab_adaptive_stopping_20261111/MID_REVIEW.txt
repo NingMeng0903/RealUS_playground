@@ -1,0 +1,307 @@
+ASTRA MID-IMPLEMENTATION REVIEW — 2026-11-11
+
+Status: implementation audit before formal development/test results. This is
+not ASTRA_FINAL, not a B-versus-A result, and not approval to tune held-out data.
+The reviewed sources were being edited concurrently; findings were sent directly
+to their owners. A fix mentioned below requires its final regression check and
+source hash before calibration and test. No production source was edited here.
+
+1. Exact acceleration, independently checked
+
+For two identical-pose/dwell acquisitions, conditional on one geometry/response
+component let Q be the noisy-quality tail probability, and let the shared
+response projection have variance v and independent image noise variance R.
+With z=(geometric quality + projected mean - threshold)/sqrt(v+R):
+  mu=E Q=Phi(z)
+  nu=E Q^2=Phi(z)-2*OwenT(z,sqrt(R/(2*v+R))).
+Correct-stop, false-stop and reject probabilities at each mode have the forms
+s=a*Q, f=b+(u-a)*Q, c=1-b-u*Q. Thus the shared-latent two-attempt HMM expression
+p1.s+((p1*c)P).s is a quadratic polynomial in Q and is integrated exactly by
+mu and nu. False-stop probability has the same property. Use one transition
+before the first acquisition and a second only when a retry is actually allowed.
+An efficient implementation can evaluate current mode-conditioned mixture
+components directly with mode-path weights, avoiding a predictive merge.
+
+The saved standalone audit_exact_option.py imports no experimental outcome or
+production model. It checks 200 seed-721506 stress inputs against independent
+adaptive Gaussian integration. Saved audit_exact_option.json contains every
+input/error, environment versions, source SHA and maxima:
+  E Q^2 maximum absolute error: 2.9683199463192256e-14
+  full correct-stop probability: 7.51076595775882e-16
+  full false-stop probability: 3.3792413312028202e-15
+  GH33 comparison error: 0.05623825170236668
+  GH65 comparison error: 0.05069447633658819.
+The integration domain is [-12,12] standard deviations, with a split at the
+quality transition and 1e-11 absolute/relative quadrature tolerances. These are
+numerical-identity checks, not empirical ultrasound or policy performance.
+GH33/65 are not converged reference truth over this stress range. Production
+must agree with the analytic/adaptive reference, not preserve GH's errors.
+
+For unequal actions or sensor variances, use the correct joint Gaussian mixed
+moment E(Q1 Q2); a shared scalar node incorrectly forces correlation one. Do
+not equate merely close actual poses without reporting the approximation.
+This optimization preserves the model and all 512 geometry particles and QMC
+outcome counts. The DESIGN_PROTOCOL numerical paragraph is amended before any
+formal result. Final production code must be frozen before recalibration.
+
+2. Probability and policy corrections sent to implementers
+
+- The reviewed complete-option code applied _transition_state and then another
+  transition before the first frame. It also added a retry when max_retries=1.
+  Both change the modeled experiment. Later live edits appeared to repair these;
+  require explicit one/two-attempt regression and independent latent integration.
+- B initially rewarded an accepted current frame using the probability of a
+  FUTURE frame from its posterior. Correct scoring uses predictive immediate
+  correct mass, absorbs immediate false acceptance with value zero, and only
+  continues PUBLICLY REJECTED packets. The live revision uses that structure.
+  Hidden target/clutter labels may supply integrated predictive mass internally,
+  but never condition a public policy branch or posterior update.
+- Future clutter center/axis were sampled as Gaussians with matching variance,
+  while SENSOR_V2 declares uniforms. Sampling must follow the frozen uniform law;
+  any internal distribution indicator must be absent from PublicObservation.
+- H2 used the real acquisition count as lookahead depth, giving two-step search
+  only on the first real decision. Every real replan starts hypothetical depth 0.
+  Keep real history in random-stream/cache keys independently.
+- QMC refinement changed stream tags, and sorted score-gap signs could never
+  detect a change in winner. Use nested common streams, compare winner IDs and
+  per-action value changes, and report unresolved rankings at the declared cap.
+- A_info/A_task tie branches supplied mismatched event IDs to strict updates.
+  All arms need one-step smoke coverage, including ties and missing/clutter.
+- A_info initially used geometry gates alone, omitting response/noiseless-quality
+  task viability. It must implement the frozen latent task class or be labelled
+  a weaker geometry-only auxiliary, with A_task retained as the strong baseline.
+- B must take the SAME common commitment gate as A. Once an option is admitted,
+  return before costly future expansion. This finite experimental common rule
+  isolates diagnostic selection; it is not a universal optimal-stopping theorem.
+- Repeated fixed pairs must finish their second member at counts 3/5/7 before
+  reconsidering commitment. A genuinely accepted fresh image may finish early
+  for every arm. The reviewed loop could commit/exit midway through later pairs.
+  Pair-order selection should match the stated public worst-case completion
+  cost, or an explicit pre-outcome engineering amendment must document its scope.
+- Probability fields require honest names. Public stop probability is correct
+  plus false stop. Identity/geometry/ever-qualified diagnostics must state whether
+  they include detection and must not silently reuse a different evaluator event.
+  Expected future false-stop logs cannot be called complete if continuation
+  branches return zero regardless of their actual false-stop probability.
+
+3. Calibration, physical execution and information boundary
+
+Training must fit response/noise from the independent 512 annotated subjects;
+the different-dwell regression must whiten by sqrt(.15/dwell). Source inspection
+shows this correction and prefix-length 0/1/2/4/6 complete-option labels being
+implemented. Each calibration subject contributes equal total weight. Report
+canonical-pose calibration separately from native measured-pose execution;
+reusing a canonical simulation is not a new independent robot experiment.
+The geometry grid remains fixed with weighted ESS, not unregistered duplicated
+resampling masquerading as restored independent support.
+
+The inspected renderer provides identical public fields for true and clutter
+candidates. Test scenario response, association, geometry and visibility mode
+are kept in renderer/evaluator objects. No inspected action-choice condition
+uses actual private correctness. Final pass must still verify that predictive
+mixture metadata never enters public branch keys/features, and that the tested
+model/hash is exactly the frozen calibrated artifact.
+
+Actual selected routes are checked/executed from the full native state; root's
+new smoke reports one selected check/execute, not 25 hypothetical native paths.
+That smoke used a default model and one development case, so is implementation
+evidence only. Shared exact-prefix caching is allowed; records sharing the same
+robot trajectory do not create independent robot trials.
+
+At this audit, future route prediction ignored the hypothetical state and marked
+all candidates feasible. This is an acoustic belief planner with actual native
+checking, not yet an implemented test of state-dependent future feasibility.
+It cannot establish the independent F effect or completed I/F 2x2. Reversible
+no-deadline layouts may legitimately produce zero F effect; an unimplemented F
+must not be relabelled as a measured zero effect. Mark prediction unknown until
+a public route model exists; never invent an irreversible constraint for a win.
+
+4. Required execution/report boundary before test
+
+Freeze corrected production sources; regenerate calibration; run all-arm smoke
+and numerical checks; complete declared development comparison B_H1/H2,
+A_task/A_info, and pair dwell selection. Do not test first and select later.
+Keep one shared verifier, response model, risk gate, options/retries and guard.
+Report full-denominator final correct completion, wrong declarations (INCLUDING
+probe/pair images), refusal/watchdog and ever-qualified separately. Also report
+committed-option failure (two rejected frames count as failed) separately from
+wrong-declaration rate among all declarations. A terminal commitment gate does
+not by itself calibrate the correctness of every dual-purpose probe declaration.
+
+Loss-mode episodes must use private present_before/present_after for evaluation;
+missing observations are a separate public detector event, not proof of loss.
+Retain censored episodes and report frames/native time to next true packet and
+to final correct completion. The action-independent .70 recovery law cannot
+prove directionally purposeful reappearance when all actions have equal support.
+
+The current resource remedy is equivalent analytic integration plus shared
+prediction/native caches, not lowering particles or branch nodes silently. If
+full H2/development remains too costly after this correction, stop to document
+the finite completed scope before test. Do not declare an unrun H2 variant
+selected, and do not infer B superiority from the one-case timing smoke.
+
+Primary target and controls remain as frozen. No success or failure conclusion
+about B is drawn in this mid-review. ASTRA_FINAL follows actual paired results
+and independent artifact/trace review.
+
+APPENDIX — MINIMUM STATE-DEPENDENT MECHANICAL PREDICTION HANDOFF
+
+The all-true/state-ignored placeholder is missing requested implementation,
+not a completed F test. The following bounded completion reuses existing code
+and changes no obstacle, sensor law, threshold or experimental outcome:
+
+motion.propose(actual_state, action_id) should reuse
+fixture.MotionRollouts.candidates(state,capture). This already starts from the
+supplied measured-frame pose, enumerates rig.route_options with the original
+direct/round-tip/retreat routes, computes route duration, and batches existing
+baked-dIRD scores using the public robot coordinate. Return the finite route
+list, geometric status, travel+dwell estimate, dIRD margins, predicted output
+pose and clock, and explicit predicted/unchecked status. Cache by complete
+actual-state fingerprint plus action and fixture/source version. Acoustic
+outcome branches cannot change the mechanical exit of that same probe program.
+
+For a hypothetical future state, use a separate predicted-state representation:
+predicted pose/clock plus the originating actual-state identity and declared
+available robot-coordinate proxy. Never present a copied q/qdot/history as the
+actual future native exit. After a hypothetical probe, both terminal route
+predictions start at THAT predicted exit. H2 similarly advances the second
+probe's predicted exit. After a real acquisition all recourse starts from the
+measured actual full native exit, including q, qdot, acceleration and history.
+F0 substitutes the declared common nominal state only in this future prediction;
+its actual execution remains identical in checking requirements.
+
+No geometric route means unavailable in this finite route library. A route with
+dIRD screening is a prediction, not a whole-segment certificate. Keep existing
+dIRD ranking semantics; do not invent a mapping from margin to execution-success
+probability. Chosen motions still require exact native checks. If useful, a
+common pre-acoustic engineering pass may check the 12 initial probes and finite
+terminal witnesses, cached identically across subjects/arms. Do not perform a
+12^depth native expansion for every QMC branch. Calibrated acoustic success
+remains conditional on these route predictions until actual mechanical checks;
+the final empirical task outcome includes every actual execution failure.
+
+This is the minimum honest state-dependent public route/dIRD implementation.
+It is not exhaustive reachability or calibrated dynamic-safety probability. In
+the current reversible no-deadline scene, all windows may remain reachable and
+F may have no success effect. Retain that zero result; do not manufacture one
+by adding a wall or turning a low dIRD score into a new absolute exclusion.
+
+RELEASE PRIORITY
+
+Necessary correctness before formal runs: the probability/HMM/retry fixes;
+correct uniform clutter futures; public accepted-frame absorbing value; all-arm
+event-ID regression; H2 depth and nested-refinement behavior; atomic full pairs;
+common gate; the existing state-dependent public route/dIRD proposal interface;
+then freeze sources and regenerate calibration. Canonical calibration versus
+actual-pose mismatch, finite options/guard, approximate future robot state,
+synthetic images and limited robot placements require explicit reporting rather
+than a new mechanism invented during this implementation.
+
+UNVALIDATED NEXT-VERSION SCOPE, NOT A CHANGE TO THIS RUN
+
+If more dwell improves information without a relevant downside, repeatedly
+choosing the longest allowed dwell is compatible with the model. If a strong A
+already approaches the attainable success ceiling, a demanded 10-point gain
+cannot justify weakening it. This sensor's action-independent mode recovery
+also cannot establish smarter directional reacquisition under equal support.
+Reasonable future tests would require independently justified action-dependent
+field of view/acoustic-window/occlusion or contact visibility, actual continuous
+robot/configuration constraints at otherwise informative poses, or measured
+contact/exposure risk that depends on the path. Their parameters and existence
+need physical or independent empirical evidence. None is a licence to add an
+arbitrary hard wall, penalty or hidden irreversible event to obtain a B win.
+
+V3 FOLLOW-UP AUDIT — PRE-DEVELOPMENT RELEASE CHECK
+
+The v3 probability implementation was checked against independent conditional
+probability integration using all 512 production geometry particles. Sixteen
+checks cover prior plus three public updates (candidate/missing/candidate),
+left/right windows, and one/two attempts. Maximum difference in correct/false
+completion probability is 1.5776269179923474e-13; the adaptive integration's
+largest reported error estimate is 1.1398198448629e-12. Audited identities:
+  MODEL.json SHA256 b8dcdbf7d4f57da9b97e10c85334867f964d6c0f19164659426faa53f38cc767
+  belief_model.py SHA256 6d71e17fcb8f027da4d9a8482ce3f778c6446eb579742a59ac1b39c6a56ff3ab
+This checks production same-pose/equal-dwell probabilities, including the
+shared latent and HMM retry. Unequal-pose/dwell GH fallback has not thereby been
+certified. Actual primary prediction uses the frozen identical terminal retry.
+
+Independent v3 calibration record recount matches root's audit: 128 subjects,
+1280 records, exactly 10 equally weighted records per subject, prefixes
+0/1/2/4/6 and both terminal options. The .90 gate admits 218 records from
+83 subjects, with 199 correct (91.2844%). Raw/calibrated Brier scores are
+.13214558322704434/.13132547696283847. These records fitted Platt; the admitted
+rate is resubstitution evidence, not held-out calibration or policy performance.
+The train, calibration, development and test scenario-seed sets are disjoint.
+Calibration and development both use root seed 721502 but different namespace
+hashes; they are different sets of 128 synthetic subjects, not the same cases.
+
+The uniform-clutter internal distribution flag now matches SENSOR_V2 and is
+removed when producing the common public packet. Native motion.propose now
+provides state-dependent original geometry/dIRD routes and explicitly predicted
+outputs that cannot be passed to native execute. Planner wiring is still being
+completed. No formal-development release is issued from this intermediate read.
+
+Remaining concrete planner correctness items sent to the owner:
+  * Exclude terminal options with no public route; predict the retry from the
+    first attempt's predicted exit, not the original pre-option state.
+  * A hypothetical admitted option must apply the same immediate commitment
+    rule as real execution; H2 may not optimistically probe again on that branch.
+  * QMC budgets are selected by hypothetical depth: first layer 16/32/64/256,
+    second layer 8/16/32. They must not be selected by whether recursion is on.
+  * A_info task classes must integrate the Gaussian response covariance and
+    all current mode-conditioned components. Thresholding component means is
+    not posterior class entropy. The latent class excludes transient visibility;
+    visibility is already modeled in the complete option. An exact vectorized
+    Gaussian joint-quadrant/Owen-T expression was supplied and independently
+    checked on 1000 random/zero-threshold inputs against adaptive Plackett
+    integration (seed 721507, maximum discrepancy 2.220446049250313e-16).
+  * Final development freeze must validate the common subject/candidate set,
+    risk/coverage accounting, selected A/B/pair and model/source identity before
+    any held-out test. A raw success-only helper is not sufficient validation.
+
+Root has authorized a separate mathematically equivalent performance rewrite
+of bounded Gaussian-mixture arithmetic. The changing source is not a v3 hash
+failure to conceal: retain v3, verify numerical equivalence, then record source
+lineage and reproduce the 1280 calibration probabilities or regenerate the
+calibration version before formal runs. No particle, component, observation
+node, merge rule or experimental setting may be silently reduced for speed.
+
+PLANNER FOLLOW-UP — CONDITIONAL RELEASE STATUS
+
+The four v3 planner items above are now present in source: Gaussian response
+covariance/all-mode task-class integration; terminal-route filtering and retry
+prediction from the first exit; immediate common commitment on admitted H2
+branches; and depth-based first/second QMC schedules. An independent check of
+the actual production joint-CDF helper on 1000 inputs gives maximum discrepancy
+2.220446049250313e-16 against adaptive integration. The reported 20-pass/2-skip
+regression result is implementer/root evidence, not independently rerun here.
+
+One final common-guard correction remains: every arm must be allowed to apply
+the terminal commitment gate after assimilating its eighth diagnostic frame.
+The reviewed run loop gave this opportunity to pair only, while A/B hit the
+watchdog first. A common boundary rule should commit if admitted, otherwise
+record watchdog without a ninth diagnostic. Root has requested the small fix
+and a boundary regression. Formal development release remains conditional on
+that correction and the pending performance rewrite's numerical equivalence.
+
+Freeze risk semantics are now explicit: protocol gate compliance and observed
+committed-option risk are different fields. With committed_n>0, only configs
+with empirical committed_fail/committed_n<=.10 qualify under the existing risk
+standard. Keep the count and uncertainty, including noisy small denominators;
+do not invent a new confidence-interval gate or waive observed violations.
+With zero commitments, risk is unassessed, not demonstrated compliant. Such a
+config may be reported diagnostically but cannot supply an evidence-backed
+risk-qualified confirmatory winner. If a policy class has no qualifying config,
+report that development result rather than changing the gate or selecting on
+test. Keep all public wrong declarations, including probe/pair frames, as a
+separate risk measure. The full-development driver, rather than the lightweight
+single-fixture helper, must enforce full common case coverage, all candidate
+configs, global selection across mirrors, and frozen source/model identity.
+
+Quality/dwell interpretation for the later conclusion: SENSOR_V2 evaluates
+private quality from the same noisy fresh-frame scalar g+Hw+sensor_noise, not
+from noiseless latent quality. A mean below threshold may cross more often at
+short dwell, so longest dwell is not universally dominant in this exact model.
+The statement that free extra dwell with only beneficial denoising favors the
+longest dwell is conditional. This experiment still does not render raster
+ultrasound or independently validate the scalar quality definition.

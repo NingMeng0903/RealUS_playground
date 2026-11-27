@@ -1,0 +1,57 @@
+仅底层QP的固定慢速对照（2026-11-10）
+
+预先固定的对照
+输入为已封存 audit/phase2_native_subset_inputs.npz 中 branch4_path0_T
+（17个no_dird/path0 pose）与 branch4_path0_q_seed；路径/初始关节相同。
+只变 WorldPolylineReference 的 speed_m_s：先0.020、后0.005，每组仅一次，
+没有因结果好坏重试或挑选。原 0.4 s soft start、2 s settle、dt=.005 s、
+角速度前馈=原始零、QP限值、native后端、URDF TCP、模型时钟规则相同。
+该QPReplayBridge显式关闭未使用的dIRD one-shot stroke planning；它验证的是
+实际底层 JointIkController.update 加生产 Cartesian track outer、理想关节反馈，
+没有接图像/力/接触外环或硬件。非法q会在理想反馈积分之前fail-closed。
+
+结果（p95为各自完整运行的控制tick统计）
+速度          0.020 m/s             0.005 m/s
+参考路径时长   3.892828 s            14.971312 s
+完整tick       1180                  3396
+路径/settle    779/401               2995/401
+位置误差p95    0.106325 mm           0.026124 mm
+路径位置p95    0.104447 mm           0.026519 mm
+角误差p95      7.907539°             2.651112°
+路径角p95      8.107388°             2.670335°
+参考角速p95    0.391081 rad/s         0.097770 rad/s
+路径progress p05 0.998543            0.999999988
+路径progress<.01占比 0             0
+QP task paused 0                    0
+末端位置误差   0.003668 mm           0.000488 mm
+末端角误差     0.161818°             0.048704°
+非法rail/失败  0                     0
+
+参考角速从相同pose序列逐帧的SO(3)相对旋转/0.005s重算，非另一次
+测量。速度降为四分之一后，位置p95约降四倍，角p95约降至三分之一，
+而两组参考进度基本正常、均未task pause。这直接支持该固定branch4路径的
+动态参考跟踪滞后解释；该对照未显示该路径的几何不可达。仍不能推广到
+branch0初始分支、其他路径或任意人体姿态。
+
+慢速角p95仍高于2°；因此降低到0.005m/s没有通过预定2mm/2°整路门。
+两组速度/加速度余量为正，但现有逐坐标命令jerk诊断最小余量分别
+-0.033958/-0.038372（rail米/s³与arm弧度/s³不能混成统一物理量）；
+不能把本次称为全部动态约束合格。两组输出exit_state_valid仅表示未遇
+非法q或桥接器异常，不表示2mm/2°或jerk全部通过。
+
+这组数据说明理想反馈只消除了关节plant误差。移动的目标姿态仍需角速度
+前馈、反馈增益和可行性协调；现有 P 反馈在参考旋转期间产生误差，停住后
+收敛。dIRD烘焙评分不会自动改变这一控制律。
+
+可复核文件：本目录 paired_speed_check.py、paired_speed_results.json、
+native_branch4_path0_speed_0.02_trace.npz、
+native_branch4_path0_speed_0.005_trace.npz。结果JSON记录每组完整统计、
+失败/出口状态/文件指纹；NPZ保留每tick的q、qdot、实际/参考pose、误差、
+progress和命令。脚本从本目录执行，一次按冻结次序跑两组；未覆盖原实验。
+
+SHA256：
+输入 7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8
+脚本 7da97783b2741af0d619421e83695db7b19aa2f4a8b22d2a5e6678bfa2bceff8
+结果 6238ab5171b009c61f3db9f65e276deeec9e0aaf2ced4bb0b20abb1aa369da34
+0.020 trace a1e4921a37e006548cd74ad04b3f0316dca05cd2a078cc8f201f10f7f7f9a665
+0.005 trace 55a161743d89d9b706aa36f890fea8c9f72bd4a3e4561429ead23b4c5b1fbe61

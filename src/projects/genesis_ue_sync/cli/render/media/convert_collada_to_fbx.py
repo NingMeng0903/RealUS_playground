@@ -42,6 +42,35 @@ def _mesh_objects():
     return [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
 
 
+def _match_genesis_material_colors(meshes):
+    # Genesis decodes CAD diffuse colors from sRGB in its rasterizer. UE's
+    # FBX importer copies diffuse constants straight into linear BaseColor.
+    # Decode once here; image texture nodes already handle their own encoding.
+    def linear_channel(value):
+        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+    seen = set()
+    for obj in meshes:
+        for slot in obj.material_slots:
+            material = slot.material
+            if material is None or material.as_pointer() in seen:
+                continue
+            seen.add(material.as_pointer())
+            if not material.use_nodes:
+                color = tuple(material.diffuse_color)
+                material.diffuse_color = (*[linear_channel(v) for v in color[:3]], color[3])
+                continue
+            for node in material.node_tree.nodes:
+                if node.type != "BSDF_PRINCIPLED":
+                    continue
+                base_color = node.inputs["Base Color"]
+                if base_color.is_linked:
+                    continue
+                color = tuple(base_color.default_value)
+                base_color.default_value = (*[linear_channel(v) for v in color[:3]], color[3])
+                material.diffuse_color = base_color.default_value
+
+
 def _mirror_y_for_unreal_link_local(obj) -> None:
     mesh = obj.data
     for vertex in mesh.vertices:
@@ -64,12 +93,15 @@ def _convert_one(
     axis_forward: str,
     axis_up: str,
     mirror_y_for_unreal: bool,
+    match_genesis_colors: bool,
 ) -> None:
     _clear_scene()
     bpy.ops.wm.collada_import(filepath=str(input_path))
     meshes = _mesh_objects()
     if not meshes:
         raise RuntimeError(f"No mesh objects imported from {input_path}")
+    if match_genesis_colors:
+        _match_genesis_material_colors(meshes)
 
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
@@ -122,6 +154,7 @@ def main():
     parser.add_argument("--axis-forward", default="X")
     parser.add_argument("--axis-up", default="Z")
     parser.add_argument("--mirror-y-for-unreal", action="store_true")
+    parser.add_argument("--match-genesis-colors", action="store_true")
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else sys.argv[1:]
     # Use `--opt=value` so values like "-Z" are not parsed as separate argv flags.
     normalized: list[str] = []
@@ -153,6 +186,7 @@ def main():
                 axis_forward=args.axis_forward,
                 axis_up=args.axis_up,
                 mirror_y_for_unreal=bool(args.mirror_y_for_unreal),
+                match_genesis_colors=bool(args.match_genesis_colors),
             )
     else:
         _convert_one(
@@ -162,6 +196,7 @@ def main():
             axis_forward=args.axis_forward,
             axis_up=args.axis_up,
             mirror_y_for_unreal=bool(args.mirror_y_for_unreal),
+            match_genesis_colors=bool(args.match_genesis_colors),
         )
 
 
@@ -182,6 +217,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--axis-forward", default=os.environ.get("AMONGUS_FBX_AXIS_FORWARD", "X"))
     parser.add_argument("--axis-up", default=os.environ.get("AMONGUS_FBX_AXIS_UP", "Z"))
+    parser.add_argument(
+        "--match-genesis-colors",
+        action="store_true",
+        help="Decode constant diffuse sRGB colors for UE linear BaseColor, matching the Genesis rasterizer.",
+    )
     parser.add_argument(
         "--mirror-y-for-unreal",
         action="store_true",
@@ -217,6 +257,7 @@ def main() -> None:
                 f"--axis-forward={args.axis_forward}",
                 f"--axis-up={args.axis_up}",
                 *(["--mirror-y-for-unreal"] if bool(args.mirror_y_for_unreal) else []),
+                *(["--match-genesis-colors"] if bool(args.match_genesis_colors) else []),
             ],
             check=True,
         )

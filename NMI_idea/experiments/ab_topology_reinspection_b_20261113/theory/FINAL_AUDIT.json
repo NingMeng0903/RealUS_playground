@@ -1,0 +1,526 @@
+{
+  "cohorts": {
+    "confirm": {
+      "metrics": {
+        "mpc": {
+          "success": 165,
+          "wrong": 33,
+          "affirmative_error": 19,
+          "positive_success": 51,
+          "mean_cost": {
+            "tcp_mm": 96.44920060826041,
+            "turn_deg": 62.32614703144585,
+            "rail_mm": 435.7853555431583,
+            "seconds": 14.337500000000002
+          }
+        },
+        "rollout": {
+          "success": 176,
+          "wrong": 35,
+          "affirmative_error": 18,
+          "positive_success": 56,
+          "mean_cost": {
+            "tcp_mm": 98.17730460075893,
+            "turn_deg": 67.17941034327,
+            "rail_mm": 437.0530058890166,
+            "seconds": 13.800000000000002
+          }
+        },
+        "witness": {
+          "success": 174,
+          "wrong": 32,
+          "affirmative_error": 17,
+          "positive_success": 58,
+          "mean_cost": {
+            "tcp_mm": 98.57685906584831,
+            "turn_deg": 64.50156409500234,
+            "rail_mm": 445.13295428956314,
+            "seconds": 14.30625
+          }
+        },
+        "fisher": {
+          "success": 170,
+          "wrong": 37,
+          "affirmative_error": 21,
+          "positive_success": 56,
+          "mean_cost": {
+            "tcp_mm": 97.45516087117726,
+            "turn_deg": 64.16242073540008,
+            "rail_mm": 434.236900655534,
+            "seconds": 14.668750000000001
+          }
+        },
+        "greedy": {
+          "success": 172,
+          "wrong": 37,
+          "affirmative_error": 21,
+          "positive_success": 58,
+          "mean_cost": {
+            "tcp_mm": 97.30474722137416,
+            "turn_deg": 63.96226748682403,
+            "rail_mm": 434.236900655534,
+            "seconds": 14.64375
+          }
+        },
+        "nearest": {
+          "success": 119,
+          "wrong": 17,
+          "affirmative_error": 0,
+          "positive_success": 1,
+          "mean_cost": {
+            "tcp_mm": 90.279190444586,
+            "turn_deg": 60.79753284635283,
+            "rail_mm": 408.3729906298795,
+            "seconds": 14.95625
+          }
+        },
+        "prescan_only": {
+          "success": 111,
+          "wrong": 16,
+          "affirmative_error": 0,
+          "positive_success": 0,
+          "mean_cost": {
+            "tcp_mm": 68.87994335421355,
+            "turn_deg": 45.17391342828483,
+            "rail_mm": 330.267813200756,
+            "seconds": 8.0
+          }
+        },
+        "ppo": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            0,
+            0,
+            0
+          ],
+          "all_success": [
+            115,
+            113,
+            114
+          ]
+        },
+        "mlp": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            0,
+            0,
+            0
+          ],
+          "all_success": [
+            113,
+            119,
+            118
+          ]
+        },
+        "cql": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            2,
+            0,
+            1
+          ],
+          "all_success": [
+            116,
+            114,
+            116
+          ]
+        },
+        "bc": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            5,
+            1,
+            3
+          ],
+          "all_success": [
+            120,
+            115,
+            117
+          ]
+        },
+        "bc_mlp": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            0,
+            0,
+            0
+          ],
+          "all_success": [
+            120,
+            120,
+            120
+          ]
+        }
+      },
+      "independent_contrasts": {
+        "mpc_vs_nearest": {
+          "all": {
+            "n": 256,
+            "wins": 54,
+            "losses": 8,
+            "delta_pp": 17.96875,
+            "ci95_pp": [
+              12.5,
+              23.4375
+            ]
+          },
+          "positive": {
+            "n": 128,
+            "wins": 50,
+            "losses": 0,
+            "delta_pp": 39.0625,
+            "ci95_pp": [
+              30.46875,
+              47.65625
+            ]
+          }
+        },
+        "rollout_vs_mpc": {
+          "all": {
+            "n": 256,
+            "wins": 26,
+            "losses": 15,
+            "delta_pp": 4.296875,
+            "ci95_pp": [
+              -0.390625,
+              9.375
+            ]
+          },
+          "positive": {
+            "n": 128,
+            "wins": 18,
+            "losses": 13,
+            "delta_pp": 3.90625,
+            "ci95_pp": [
+              -4.6875,
+              12.5
+            ]
+          }
+        },
+        "witness_vs_mpc": {
+          "all": {
+            "n": 256,
+            "wins": 17,
+            "losses": 8,
+            "delta_pp": 3.515625,
+            "ci95_pp": [
+              -0.390625,
+              7.421875
+            ]
+          },
+          "positive": {
+            "n": 128,
+            "wins": 13,
+            "losses": 6,
+            "delta_pp": 5.46875,
+            "ci95_pp": [
+              -0.78125,
+              12.5
+            ]
+          }
+        }
+      }
+    },
+    "shape": {
+      "metrics": {
+        "mpc": {
+          "success": 147,
+          "wrong": 32,
+          "affirmative_error": 19,
+          "positive_success": 38,
+          "mean_cost": {
+            "tcp_mm": 98.79718930329602,
+            "turn_deg": 65.40000723247918,
+            "rail_mm": 447.753958409535,
+            "seconds": 15.000000000000002
+          }
+        },
+        "rollout": {
+          "success": 141,
+          "wrong": 42,
+          "affirmative_error": 26,
+          "positive_success": 34,
+          "mean_cost": {
+            "tcp_mm": 100.52020086866298,
+            "turn_deg": 68.5993762036085,
+            "rail_mm": 450.28064531481175,
+            "seconds": 14.3375
+          }
+        },
+        "witness": {
+          "success": 140,
+          "wrong": 33,
+          "affirmative_error": 19,
+          "positive_success": 31,
+          "mean_cost": {
+            "tcp_mm": 100.87801061909758,
+            "turn_deg": 67.65973662440322,
+            "rail_mm": 452.84598273424075,
+            "seconds": 14.506250000000001
+          }
+        },
+        "fisher": {
+          "success": 149,
+          "wrong": 40,
+          "affirmative_error": 25,
+          "positive_success": 39,
+          "mean_cost": {
+            "tcp_mm": 100.64381818093,
+            "turn_deg": 69.22302627055298,
+            "rail_mm": 445.534285366634,
+            "seconds": 14.99375
+          }
+        },
+        "greedy": {
+          "success": 147,
+          "wrong": 40,
+          "affirmative_error": 25,
+          "positive_success": 38,
+          "mean_cost": {
+            "tcp_mm": 100.5565622856814,
+            "turn_deg": 69.08202171600712,
+            "rail_mm": 445.534285366634,
+            "seconds": 14.925
+          }
+        },
+        "nearest": {
+          "success": 107,
+          "wrong": 15,
+          "affirmative_error": 1,
+          "positive_success": 2,
+          "mean_cost": {
+            "tcp_mm": 94.52357893864954,
+            "turn_deg": 66.80959111157365,
+            "rail_mm": 422.1076077968484,
+            "seconds": 15.587499999999999
+          }
+        },
+        "prescan_only": {
+          "success": 96,
+          "wrong": 22,
+          "affirmative_error": 0,
+          "positive_success": 0,
+          "mean_cost": {
+            "tcp_mm": 69.011324526857,
+            "turn_deg": 45.779495671195875,
+            "rail_mm": 330.267813200756,
+            "seconds": 8.0
+          }
+        },
+        "ppo": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            0,
+            0,
+            0
+          ],
+          "all_success": [
+            102,
+            103,
+            92
+          ]
+        },
+        "mlp": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            0,
+            0,
+            0
+          ],
+          "all_success": [
+            95,
+            99,
+            108
+          ]
+        },
+        "cql": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            0,
+            0,
+            0
+          ],
+          "all_success": [
+            108,
+            112,
+            113
+          ]
+        },
+        "bc": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            3,
+            1,
+            1
+          ],
+          "all_success": [
+            111,
+            111,
+            108
+          ]
+        },
+        "bc_mlp": {
+          "seeds": [
+            7,
+            29,
+            61
+          ],
+          "positive_success": [
+            0,
+            0,
+            0
+          ],
+          "all_success": [
+            109,
+            110,
+            108
+          ]
+        }
+      },
+      "independent_contrasts": {
+        "mpc_vs_nearest": {
+          "all": {
+            "n": 256,
+            "wins": 46,
+            "losses": 6,
+            "delta_pp": 15.625,
+            "ci95_pp": [
+              10.546875,
+              21.09375
+            ]
+          },
+          "positive": {
+            "n": 128,
+            "wins": 37,
+            "losses": 1,
+            "delta_pp": 28.125,
+            "ci95_pp": [
+              20.3125,
+              35.9375
+            ]
+          }
+        },
+        "rollout_vs_mpc": {
+          "all": {
+            "n": 256,
+            "wins": 16,
+            "losses": 22,
+            "delta_pp": -2.34375,
+            "ci95_pp": [
+              -7.03125,
+              2.34375
+            ]
+          },
+          "positive": {
+            "n": 128,
+            "wins": 10,
+            "losses": 14,
+            "delta_pp": -3.125,
+            "ci95_pp": [
+              -10.9375,
+              3.90625
+            ]
+          }
+        },
+        "witness_vs_mpc": {
+          "all": {
+            "n": 256,
+            "wins": 12,
+            "losses": 19,
+            "delta_pp": -2.734375,
+            "ci95_pp": [
+              -7.03125,
+              1.5625
+            ]
+          },
+          "positive": {
+            "n": 128,
+            "wins": 4,
+            "losses": 11,
+            "delta_pp": -5.46875,
+            "ci95_pp": [
+              -11.71875,
+              0.0
+            ]
+          }
+        }
+      }
+    }
+  },
+  "checks": {
+    "confirm": {
+      "records": 5632,
+      "source_hashes_equal_across_training_seeds": true,
+      "same_case_truth_and_prefix_across_arms_and_seeds": true,
+      "fresh_pair_identity_success_and_cost_recomputed": true,
+      "current_source_matches_freeze": {
+        "core.py": true,
+        "fit_topology.py": true,
+        "imitation.py": true,
+        "learner.py": true,
+        "plan.py": true,
+        "prescan.py": true,
+        "run_topology.py": true,
+        "suffix.py": true,
+        "train.py": true,
+        "witness.py": true,
+        "world.py": true
+      }
+    },
+    "shape": {
+      "records": 5632,
+      "source_hashes_equal_across_training_seeds": true,
+      "same_case_truth_and_prefix_across_arms_and_seeds": true,
+      "fresh_pair_identity_success_and_cost_recomputed": true,
+      "current_source_matches_freeze": {
+        "core.py": true,
+        "fit_topology.py": true,
+        "imitation.py": true,
+        "learner.py": true,
+        "plan.py": true,
+        "prescan.py": true,
+        "run_topology.py": true,
+        "suffix.py": true,
+        "train.py": true,
+        "witness.py": true,
+        "world.py": true
+      }
+    }
+  }
+}

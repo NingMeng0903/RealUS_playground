@@ -76,6 +76,8 @@ class IngressConfig:
     recv_timeout_ms: int = 250
     sync_tolerance_frames: int = 2
     max_buffer_per_camera: int = 8
+    source_profile: str = "realsense"  # realsense | ue
+    metadata_intrinsics: bool = False
     sync_mode: str = "hardware_timestamp"  # hardware_timestamp | frame_index
     max_hardware_spread_ms: float = 33.0
 
@@ -88,6 +90,8 @@ class IngressConfig:
             recv_timeout_ms=int(payload.get("recv_timeout_ms", cls.recv_timeout_ms)),
             sync_tolerance_frames=int(payload.get("sync_tolerance_frames", cls.sync_tolerance_frames)),
             max_buffer_per_camera=int(payload.get("max_buffer_per_camera", cls.max_buffer_per_camera)),
+            source_profile=str(payload.get("source_profile", cls.source_profile)),
+            metadata_intrinsics=bool(payload.get("metadata_intrinsics", cls.metadata_intrinsics)),
             sync_mode=str(payload.get("sync_mode", cls.sync_mode)),
             max_hardware_spread_ms=float(payload.get("max_hardware_spread_ms", cls.max_hardware_spread_ms)),
         )

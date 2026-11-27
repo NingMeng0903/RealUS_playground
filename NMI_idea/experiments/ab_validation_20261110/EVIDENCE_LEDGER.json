@@ -1,0 +1,108 @@
+{
+  "date": "2026-11-10",
+  "selection": "B_full_system_gate_not_met",
+  "items": [
+    {
+      "claim": "A_response",
+      "status": "supported_in_declared_synthetic_family",
+      "evidence": "core/a_results.json",
+      "interpretation": "True selected-action error improves; strong online calibration uncharged error remains competitive."
+    },
+    {
+      "claim": "manual_broad_prior",
+      "status": "conditional_support",
+      "evidence": "core/prior_factorial_results.json",
+      "interpretation": "Fitted source prior helps source and hurts shifted artificial population; not human coverage validation."
+    },
+    {
+      "claim": "full_risk_and_moment_insufficiency",
+      "status": "mathematical_examples_pass",
+      "evidence": "theory/contracts.json",
+      "interpretation": "Examples, not new theorem or patient risk calibration."
+    },
+    {
+      "claim": "e3nn_equivariance_and_gradient",
+      "status": "numerical_contract_pass_cpu_cuda",
+      "evidence": "theory/contracts.json",
+      "interpretation": "Actual typed tensor products; untrained."
+    },
+    {
+      "claim": "e3nn_learning_advantage",
+      "status": "not_tested",
+      "evidence": "theory/contracts.json",
+      "interpretation": "Canonical ordinary network also passes coordinate consistency."
+    },
+    {
+      "claim": "native_primitives",
+      "status": "bounded_module_support",
+      "evidence": "motion/metrics.json",
+      "interpretation": "Actual DMP/KMP generation and prepared-path feedback; not blind first acquisition."
+    },
+    {
+      "claim": "harmonic_depth_stock",
+      "status": "failed_contract",
+      "evidence": "motion/depth_contract.json",
+      "interpretation": "Actual skin d should0, stockmax.954; standalone correctskin adapter repairs this boundary only."
+    },
+    {
+      "claim": "harmonic_superiority",
+      "status": "not_demonstrated",
+      "evidence": "motion/metrics.json",
+      "interpretation": "Canonical registered3D has same correspondence information and exact attached transport."
+    },
+    {
+      "claim": "missing_observation_public_history",
+      "status": "failed_stock_controller",
+      "evidence": "motion/metrics.json",
+      "interpretation": "Identical missing history, different hidden geometry gives different feedback paths."
+    },
+    {
+      "claim": "ruckig_servo_integration",
+      "status": "failed_in_tested_configuration",
+      "evidence": "motion/metrics.json",
+      "interpretation": "Visible fraction drops to2.7%; cause not fully repaired."
+    },
+    {
+      "claim": "dird_derivatives",
+      "status": "fixed_and_verified",
+      "evidence": "dird/summary.json",
+      "interpretation": "Zero-angle production derivative fixed; actual CPU/GPU gradients agree."
+    },
+    {
+      "claim": "dird_proxy_marginal_policy_value",
+      "status": "null_result",
+      "evidence": "core/extension_results.json",
+      "interpretation": "Proxy-only removal ties72/72; exact admissibility remains important."
+    },
+    {
+      "claim": "dird_optimized_path_executability",
+      "status": "failed_in_tested_scene",
+      "evidence": "dird/trajectory_results.json",
+      "interpretation": "Both optimized methods0/6 sampled exact valid despite positive proxies."
+    },
+    {
+      "claim": "B_finite_belief_recourse",
+      "status": "bounded_support",
+      "evidence": "core/b_results.json",
+      "interpretation": "Independent reference agreement; abstract sensor and finite graph."
+    },
+    {
+      "claim": "learned_A_to_B_dataflow",
+      "status": "bounded_offline_support",
+      "evidence": "core/extension_results.json",
+      "interpretation": "Learned response changes likelihood and planning; true perturbation evaluator-only."
+    },
+    {
+      "claim": "physical_first_qualified_image",
+      "status": "not_tested",
+      "evidence": "FINAL_REPORT.txt",
+      "interpretation": "No physical ultrasound/contact; terminal identity model is not image quality acceptance."
+    },
+    {
+      "claim": "EM_and_open_primitive_expansion",
+      "status": "not_tested",
+      "evidence": "AB_ROADMAP.txt",
+      "interpretation": "Optional modules not required or established by current minimal B prototype."
+    }
+  ]
+}

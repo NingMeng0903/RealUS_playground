@@ -1,0 +1,112 @@
+{
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/continuous_smc.py",
+  "sha_before": "b7016ed8fb0c3b9580814aca0af0ccd7543180564e89b91f917c82ff6b4394d4",
+  "sha_after": "b7016ed8fb0c3b9580814aca0af0ccd7543180564e89b91f917c82ff6b4394d4",
+  "source_unchanged": true,
+  "tests": {
+    "check_cess": {
+      "passed": true,
+      "result": {
+        "max_direct_formula_error": 2.6645352591003757e-15,
+        "nonuniform_delta0_equals_N": true,
+        "constant_likelihood_equals_N": true
+      }
+    },
+    "check_scheduler": {
+      "passed": true,
+      "result": {
+        "independent_beta": 0.04094278944527605,
+        "implementation_beta": 0.04094278944527604,
+        "cess": 4.199999999999999,
+        "hard_zero_positive_step": 1e-06,
+        "hard_zero_cess": 1.0
+      }
+    },
+    "check_exact_weight_and_logz": {
+      "passed": true,
+      "result": {
+        "first_logZ": 2.2422647875989434,
+        "joint_logZ": -0.3365788392505682,
+        "first_stages": 4,
+        "second_stages": 4,
+        "exact_telescoping_and_weights": true
+      }
+    },
+    "check_full_history_mh": {
+      "passed": true,
+      "result": {
+        "full_prior_plus_history_plus_beta_block_acceptance": 0.75,
+        "expected_states": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "weighted_move_preserves_weights": true,
+        "two_state_invariance_error": 0.0
+      }
+    },
+    "check_endpoint_commit": {
+      "passed": true,
+      "result": {
+        "near_one_beta_still_uncommitted": 0.9999999995
+      }
+    },
+    "check_proposal": {
+      "passed": true,
+      "result": {
+        "all_7_blocks_roundtrip_max_point_error_m": 3.469446951953614e-18,
+        "input_world_immutable": true,
+        "unclipped_depth_proposal_rejected_by_prior": true,
+        "source_review": "Gaussian zero-mean increments and symmetric sign flips, state-independent block/source selection; no truncation/resampling of invalid proposals."
+      }
+    },
+    "check_geometry_likelihood": {
+      "passed": false,
+      "error": "AssertionError()",
+      "traceback": "Traceback (most recent call last):\n  File \"/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/check_smc_independent.py\", line 319, in main\n    result=fn(smc); results[fn.__name__]={'passed':True,'result':result}\n  File \"/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/check_smc_independent.py\", line 229, in check_geometry_likelihood\n    assert len(calls)==4 and calls[0][1]!=calls[2][1]\nAssertionError\n"
+    },
+    "check_wrapper_history_transaction": {
+      "passed": false,
+      "error": "TypeError(\"check_wrapper_history_transaction.<locals>.synthetic_ll() got an unexpected keyword argument 'backend'\")",
+      "traceback": "Traceback (most recent call last):\n  File \"/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/check_smc_independent.py\", line 319, in main\n    result=fn(smc); results[fn.__name__]={'passed':True,'result':result}\n  File \"/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/check_smc_independent.py\", line 251, in check_wrapper_history_transaction\n    b.update_block(groups[0],pose)\n  File \"/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/continuous_smc.py\", line 615, in update_block\n    update = adaptive_tempered_resample_move(\n  File \"/media/camp/EXT_DRIVE/envs/genesis/lib/python3.10/unittest/mock.py\", line 1114, in __call__\n    return self._mock_call(*args, **kwargs)\n  File \"/media/camp/EXT_DRIVE/envs/genesis/lib/python3.10/unittest/mock.py\", line 1118, in _mock_call\n    return self._execute_mock_call(*args, **kwargs)\n  File \"/media/camp/EXT_DRIVE/envs/genesis/lib/python3.10/unittest/mock.py\", line 1179, in _execute_mock_call\n    result = effect(*args, **kwargs)\n  File \"/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/check_smc_independent.py\", line 246, in engine\n    calls.append({'block':block_ll(particles).copy(),'history':history_ll(particles).copy()})\n  File \"/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/continuous_smc.py\", line 605, in <lambda>\n    block_loglike = lambda ps: self._loglike_frames(\nTypeError: check_wrapper_history_transaction.<locals>.synthetic_ll() got an unexpected keyword argument 'backend'\n"
+    },
+    "check_sequential_gaussian": {
+      "passed": true,
+      "result": {
+        "analytic_mean": 0.6925207756232685,
+        "analytic_variance": 0.0997229916897507,
+        "analytic_logZ": -3.7144097497934565,
+        "four_seeds": [
+          {
+            "seed": 720995,
+            "mean": 0.6918310174520668,
+            "variance": 0.0992734434524129,
+            "logZ": -3.7528227842101263
+          },
+          {
+            "seed": 720996,
+            "mean": 0.6873598162780834,
+            "variance": 0.09706977738967365,
+            "logZ": -3.704267896717366
+          },
+          {
+            "seed": 720997,
+            "mean": 0.6862916725521624,
+            "variance": 0.09810942327553973,
+            "logZ": -3.7096244185378753
+          },
+          {
+            "seed": 720998,
+            "mean": 0.6885680292534264,
+            "variance": 0.09814718049614357,
+            "logZ": -3.694246774522373
+          }
+        ],
+        "interpretation": "Monte Carlo agreement, not exact finite-N evidence or coverage proof."
+      }
+    }
+  },
+  "all_passed": false,
+  "scope": "No locked 720913 cohort, no native execution; fixed DEV only for likelihood API."
+}

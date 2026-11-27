@@ -1,0 +1,9 @@
+{
+  "wall_seconds": 6.754102356993826,
+  "tests_pass": true,
+  "protocol_sha256": "a6e44532a8d8f7516abfd6af90089010ed36263f7a11277f4d95510973f7353c",
+  "code_sha256": {
+    "capability.py": "8dd40a6af7b29ed0b4084e25acb5f403a91a35b364f978ac1233a793467841a4",
+    "run_diagnostic.py": "2c3b065f39073bb7159e25e7e2d5248100c86ffa00bdc4b3f898a7cb7b522098"
+  }
+}

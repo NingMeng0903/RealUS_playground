@@ -1,0 +1,47 @@
+--- before_departure_fix/adapter.py	2026-11-10 13:20:00.947108245 +0800
++++ adapter.py	2026-11-10 13:20:47.665343500 +0800
+@@ -173,7 +173,28 @@
+                         bad_distance = True
+                     distances.append(min(vals) if vals else float('-inf'))
+                 minimum = min(distances)
+-                ex.update({'q_seed_to_first_max_joint_delta_rad': float(np.max(np.abs(q[0, 1:] - seed[1:]))),
++                arm_step = np.max(np.abs(np.diff(chain[:, 1:], axis=0)), axis=1)
++                rail_step = np.abs(np.diff(chain[:, 0]))
++                maximum_arm_step = float(arm_step.max())
++                maximum_rail_step = float(rail_step.max())
++                arm_step_bound = np.deg2rad(float(cfg.maximum_joint_step_deg))
++                rail_step_bound = float(cfg.maximum_rail_step_m)
++                continuity_pass = (maximum_arm_step <= arm_step_bound + 1e-12
++                                   and maximum_rail_step <= rail_step_bound + 1e-12)
++                continuity_failures = []
++                for i, (arm_delta, rail_delta) in enumerate(zip(arm_step, rail_step)):
++                    segment = 'departure' if i == 0 else f'path segment {i - 1}->{i}'
++                    if arm_delta > arm_step_bound + 1e-12:
++                        continuity_failures.append(f'{segment} arm step {np.rad2deg(arm_delta):.6f} deg exceeds {cfg.maximum_joint_step_deg:.6f} deg')
++                    if rail_delta > rail_step_bound + 1e-12:
++                        continuity_failures.append(f'{segment} rail step {rail_delta:.6f} m exceeds {rail_step_bound:.6f} m')
++                ex.update({'q_seed_to_first_max_joint_delta_rad': float(arm_step[0]),
++                           'q_seed_to_first_rail_delta_m': float(rail_step[0]),
++                           'maximum_joint_step_rad_including_departure': maximum_arm_step,
++                           'maximum_rail_step_m_including_departure': maximum_rail_step,
++                           'maximum_allowed_joint_step_deg': float(cfg.maximum_joint_step_deg),
++                           'maximum_allowed_rail_step_m': rail_step_bound,
++                           'continuity_failure_reasons': continuity_failures,
+                            'q_exit': q[-1],
+                            'rail_travel_including_departure_m': float(np.abs(np.diff(chain[:, 0])).sum()),
+                            'arm_joint_l1_travel_including_departure_rad': float(np.abs(np.diff(chain[:, 1:], axis=0)).sum()),
+@@ -189,10 +210,12 @@
+                            'collision_pairs_per_sample': len(self.collision.geom_model.collisionPairs),
+                            'fk_position_max_m': max(poserr), 'fk_rotation_max_rad': max(roterr),
+                            'fk_pass': bool(max(poserr) < 1e-4 and max(roterr) < 1e-3),
+-                           'continuity_pass': True})
++                           'continuity_pass': bool(continuity_pass)})
+                 ex['validated'] = all(ex[k] for k in ('limits_pass', 'collision_pass', 'fk_pass', 'continuity_pass'))
+                 if not ex['validated']:
+-                    ex['reason'] = ', '.join(k + ' failed' for k in ('limits_pass', 'collision_pass', 'fk_pass') if not ex[k])
++                    failures = [k + ' failed' for k in ('limits_pass', 'collision_pass', 'fk_pass') if not ex[k]]
++                    failures.extend(continuity_failures)
++                    ex['reason'] = ', '.join(failures)
+             result['exact'] = ex
+         result['seconds']['total'] = time.perf_counter() - start
+         result['seconds']['exact'] = result['seconds']['total'] - proxy_seconds

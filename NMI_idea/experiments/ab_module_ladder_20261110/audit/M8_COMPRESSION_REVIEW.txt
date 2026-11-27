@@ -1,0 +1,92 @@
+Independent M8 / operator-compression review, 2026-11-10
+
+Status: source/claims/integrity and saved-result checks completed. Fresh numerical
+subset replay is prepared but intentionally deferred while the root's formal
+policy runs charge host compute against the episode deadline. No native process,
+new optimization, held-out patient catalogue or formal policy result is read by
+this review. A later addendum will distinguish newly reproduced results.
+
+M8 conclusions justified by current evidence
+- All 12 optimization/MANIFEST.json hashes match the delivered files. The
+  frozen 16 fixtures, 32 particles per fixture, public mode conditioning,
+  expected-image objective, 20 fixed normalized-gradient steps and trust box
+  are explicit. These are legal prior/model optimization fixtures; they are
+  not observed patient posteriors, trained A skills or actual ultrasound images.
+- Saved results independently recount to mean image energies initial7.975355,
+  image-only6.475283 and joint6.396519. Both optimized methods improve 13/16;
+  cases4,10,14 fail to improve under BOTH. All three methods find/check16/16
+  endpoints, including the initial baseline. Additional checked endpoint gain
+  from the proxy is zero. Joint improves the image surrogate versus image-only
+  in8/16 and the minimum path proxy in7/16; neither is a demonstrated task gain.
+- The loss averages the public source mixture and misses. Its centering/length/
+  depth/identity penalties are a declared surrogate, not the five-frame correct
+  public-stop probability. A lower loss does not establish correct identification,
+  LA stopping, motion execution, contact or scanning success.
+- body_to_world @ Rz/translation is a proper SE(3) chain. The proxy is evaluated
+  on all41 compensated original-DMP samples of the SAME optimized action.
+  m_safe is subtracted in raw NN units; neither its score nor soft minimum is
+  metric physical clearance. Endpoint FK/limits/35-pair checks are separate;
+  they do not certify this Cartesian path, patient collision or dynamics.
+- The Torch clipping/max-component response is piecewise differentiable. Saved
+  independent NumPy finite differences have two tolerance failures, both case5
+  (image and joint): error1.835332 at scaled h=1e-4 with topology changes. At
+  h=1e-5 all16 rows have error<=5.87884e-7. Both step sizes and all failures remain.
+- Explicit equal-component and slab-boundary negatives are retained. Equal
+  disconnected-component centroid AD/FD mismatch is2240.0002; slab-boundary
+  depth/length mismatches are1500/2500. These are points with discontinuous or
+  nondifferentiable selected measurements; one-branch AD is not a global smooth
+  derivative. No convergence/descent guarantee follows from smooth-case checks.
+- All640 optimization transitions change at least one selected-response branch
+  (17431 particle/source changes). The fixed .15 update is much larger than the
+  derivative-test perturbations. A smaller finite-difference tolerance cannot
+  imply every optimization step follows a globally valid linearization.
+- The one-segment tie-flag correction is diagnostic only. The original version
+  and results are preserved; real fixtures have100segments. No model/case/cost
+  retuning or native/hardware benefit is claimed in the delivered report.
+
+Compression conclusions justified by current evidence
+- The code builds M[(a,y,j),h]=L[h,a,y]*R[h,j] from the sealed likelihood/risk
+  arrays. Every latent contributes before minimization; the direct risk b@R
+  stays exact. This is a standard finite Bellman/linear-operator construction,
+  not a new inference principle or a recursive sufficient-state theorem.
+- The 4275x64 matrix has reported numerical rank64. Requested rank32 is a lossy
+  unconstrained SVD, with signed entries retained honestly. It changes the
+  complete direct/probe policy on34/96 saved belief tests, has future-value
+  sup error .9698989, and produces3611 negative Xi entries (minimum about-.3946).
+  This is a negative compression result. Signed approximations must not be
+  described as probabilities, calibrated risks or nonnegative posteriors.
+- Rank64 recovers values to roughly2.2e-13 and the global policy0/96 differences.
+  It does not reduce dimension: full matrix bytes2,188,800 versus rank64 factor
+  bytes2,221,568, before the unchanged exact-direct-risk storage. Thus exact
+  recovery is a useful implementation check, not an efficient compression win.
+- Raw conditional argmin changes include ties: rank64 has33/96 raw best-probe
+  changes but0 substantive non-tie changes and0 global policy changes. The
+  saved tolerance1e-10 correctly separates these; do not interpret numerical
+  tie-breaking as a theoretical counterexample or policy gain.
+- The simplex-uniform propagation bound
+    max_a sum_y max_j max_h |M_r[(a,y,j),h]-M[(a,y,j),h]|
+  is mathematically valid for b in the simplex and the SAME terminal action set.
+  It is conservative: at rank32 it is233.1714, larger than the entire60-unit
+  terminal-risk range. Such a vacuous bound certifies neither useful regret
+  control nor action preservation. Descriptive RMSE cannot replace this bound.
+- These are96 belief weights (64 existing aliases +32 Dirichlet draws), not96
+  independently generated patients. Exact frozen c=.5 chooses95 direct and1
+  probe. All64 aliases remain direct. Earlier28/32 alias disagreements refer
+  ONLY to best probe conditional on probing; full alias policy changes remain
+  0/32. The earlier audit independently recomputed this complete-policy count.
+
+Pending numerical replay after formal timing ends
+Prepared check_module_subset.py will rebuild rank32/64 from sealed L,R and a
+fresh SVD; compare complete policies, bounds and negative entries; reproduce
+M8 image values and case0/5 finite differences against independent NumPy/scipy
+calculations; repeat the two boundary counterexamples; and recheck the existing
+48 endpoint q witnesses without IK search or native execution. Until its output
+exists, the fresh subset results must not be cited as already reproduced.
+
+Final methodological judgment at this stage
+Retain M8 as an optional differentiable-response/gradient-contract diagnostic,
+with no demonstrated executable-task increment. Retain low-rank compression as
+a failed candidate approximation plus exact full-rank recovery control. Neither
+result justifies adding a module to B's essential contribution solely by name.
+The controlled sampled-L0 policy experiment, independent future operator
+identification examples and later physical evidence remain separate questions.

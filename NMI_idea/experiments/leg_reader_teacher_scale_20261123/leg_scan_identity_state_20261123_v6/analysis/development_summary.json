@@ -1,0 +1,96 @@
+{
+  "femoral": {
+    "layout_count": 16,
+    "pre_update_student_strict": 8,
+    "student_choices": {
+      "mpc": 2,
+      "equal_time_hold": 4,
+      "v5_public": 4,
+      "objects_stop": 3,
+      "objects_dynamic": 3
+    },
+    "teacher_choices": {
+      "v5_public": 16
+    },
+    "rechecked_layouts": 9,
+    "paired_signal": {
+      "mpc": {
+        "samples": 44,
+        "strict_gain": 3,
+        "strict_loss": 4,
+        "wrong_branch_increase": 0
+      },
+      "equal_time_hold": {
+        "samples": 40,
+        "strict_gain": 2,
+        "strict_loss": 2,
+        "wrong_branch_increase": 0
+      },
+      "v5_public": {
+        "samples": 50,
+        "strict_gain": 0,
+        "strict_loss": 0,
+        "wrong_branch_increase": 0
+      },
+      "objects_dynamic": {
+        "samples": 38,
+        "strict_gain": 2,
+        "strict_loss": 1,
+        "wrong_branch_increase": 0
+      },
+      "objects_stop": {
+        "samples": 42,
+        "strict_gain": 1,
+        "strict_loss": 0,
+        "wrong_branch_increase": 0
+      }
+    }
+  },
+  "groin_to_distal_calf": {
+    "layout_count": 32,
+    "pre_update_student_strict": 18,
+    "student_choices": {
+      "objects_stop": 3,
+      "mpc": 7,
+      "equal_time_hold": 10,
+      "objects_dynamic": 6,
+      "v5_public": 6
+    },
+    "teacher_choices": {
+      "v5_public": 32
+    },
+    "rechecked_layouts": 16,
+    "paired_signal": {
+      "mpc": {
+        "samples": 82,
+        "strict_gain": 3,
+        "strict_loss": 8,
+        "wrong_branch_increase": 7
+      },
+      "equal_time_hold": {
+        "samples": 80,
+        "strict_gain": 9,
+        "strict_loss": 7,
+        "wrong_branch_increase": 6
+      },
+      "v5_public": {
+        "samples": 96,
+        "strict_gain": 0,
+        "strict_loss": 0,
+        "wrong_branch_increase": 0
+      },
+      "objects_dynamic": {
+        "samples": 72,
+        "strict_gain": 5,
+        "strict_loss": 2,
+        "wrong_branch_increase": 4
+      },
+      "objects_stop": {
+        "samples": 86,
+        "strict_gain": 8,
+        "strict_loss": 8,
+        "wrong_branch_increase": 8
+      }
+    }
+  }
+}

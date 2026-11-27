@@ -1,0 +1,19 @@
+{
+  "schema": "dird_repair_sealed_v1",
+  "remaining_blocker": "native original binary rail anomaly not localized; no executable certificate or new continuous B claim",
+  "files_sha256": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/REPORT.txt": "f1d2bafcf21d031579bf7e1cea962f2c01a08757f03fd0ab7c39b58618e632d9",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/SUMMARY.json": "6e7053766943cb21259baa3314da0d70f7cfa309c93661b9ea995cfddeaa9d7e",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/COMMANDS.txt": "9c9cf39f024f6797ce5f71734b559a166bea5cab07fcfda8369a9e75d6bfa1f0",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/QP_API.txt": "4e7372f5e993b43ef6af737b3cd3b968c760c6f8a60dfc9dbf661c8c37d20477",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py": "0ed30e40c55ea57f72a2858c4de022b75db26ddf5d90281079bb797b84365fda",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/run_checks.sh": "7e1b01a228c45745f5e96f3ffc1caee45ba1fda8ae3db206b632e71af58bf7c5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/retrain.py": "a91b28d239441d84a1902b201ed5b3e23ee9a779ad96a4440c73000cf2ef349e",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/selected.pt": "32f9fc6483e502141a8b5b094b7741f094de38c3c2c1058bdbd333754d86b90e",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/train.yaml": "c1e4d61ae6b16c3e66150e4bc2da438def526d1b546e5794fc904c9945469c95",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/conformal.json": "49530501246b16933fbb16bad6840638bb63cdf2299811cbb9c5e76543dde60f",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/candidate/eval_report.json": "48a7475a1779594568d13dba04991b9e6a1d928929606aba01728dbcd13123b0",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/native_rail_diagnostic/build/wbc_rt": "855f6aa3397c355b1a5e8ef7255769308fcc45c276a85fe9266841eefb339508",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/native_rail_diagnostic/source/native/wbc_rt/src/inner.cpp": "12074fb44eb377cde70d0d99cd898b93530a35ce8d0ba0fc995bb3c93e282028"
+  }
+}

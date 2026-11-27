@@ -1,0 +1,100 @@
+Adaptive native motion integration
+==================================
+
+This experiment uses the reviewed native QP replay through
+``robot_motion.NativeMotionEnvironment``.  The trajectory layer is the
+integral-basis SE(3) ProDMP in ``robot_motion._SE3ProDMPReference``.  The
+replay result is explicitly labelled ``ProDMPIntegralBasisReference``;
+inherited ``WorldPoseSplineReference`` metadata is not used for this run.
+
+Public adapter API
+------------------
+
+``NativeAdapter(index, mode, output, backend="native", reuse_checked=False)``
+
+* ``start`` is the root ``EpisodeState``.  A continuation must pass the
+  previous event's ``output`` unchanged.
+* ``actions`` contains exactly 14 canonical ids: four bases
+  (``side_left``, ``side_right``, ``fork_minus``, ``fork_plus``) crossed with
+  ``single_dwell`` values ``0.15``, ``0.30`` and ``0.60`` seconds, plus the
+  shared terminal ids ``left`` and ``right``.  For example,
+  ``fork_minus__single_dwell_0.15``.
+* ``checked(state, action_id)`` runs one deterministic checked planning
+  request.  The returned ``AdapterEvent`` has both attribute and mapping
+  access and includes ``feasible``, ``action``/``action_id``, ``output``,
+  ``actual_output``, ``elapsed_s`` (total elapsed time), ``duration_s`` (the
+  event increment), ``margin`` (dIRD calibrated margin), ``route_id``,
+  ``trajectory_records`` and verification/execution counters.
+* ``execute(state, action_id)`` performs the actual native replay from the
+  supplied complete state.  The default re-executes the path.  With
+  ``reuse_checked=True`` it may use a checkpoint only when the complete input
+  fingerprint matches, including q, qdot, acceleration and the replay
+  snapshot.  A q-only reset is never accepted.
+* ``motion.propose(state, action_id)`` (also available directly as
+  ``propose``) is a pure public mechanical prediction.  It reuses the finite
+  ``MotionRollouts.candidates`` route library and one batched baked-dIRD
+  query, returning all route candidates, geometric status, travel+dwell,
+  mean calibrated margin, goal pose and a predicted output clock/pose.  Every
+  route and predicted output is marked ``predicted_unknown`` and
+  ``native_checked=False``; dIRD margin is not converted to a success
+  probability.  A predicted output has only a declared ``q_proxy`` for the
+  dIRD coordinate and never has actual q/qdot/history.  It may be passed to
+  another ``propose`` call for state-dependent route/cost prediction, but
+  only a measured actual state may enter ``checked``/``execute``.
+* ``measured_frame`` is the public contact frame used to decode all motion;
+  ``address`` is the public material address.  ``physical_frame`` exists only
+  for the private acoustic renderer and is never sent to motion or serialized
+  in public events.
+
+Execution accounting and files
+-------------------------------
+
+When ``output`` is supplied, planning and execution traces are independent:
+
+``planning/``
+    checked routes, NPZ traces, ``MOTION.json`` and complete-state JSON
+    checkpoints.
+
+``execution/``
+    actual replay traces and ``MOTION.json``.  A reused checkpoint writes an
+    explicit ``reuse_*.json`` pointer and copies immutable selected NPZ traces
+    when present.
+
+``ADAPTER.json`` records proposal calls/cache hits/dIRD queries, planning/
+verification calls, execution calls, the backend, frame policy, and the
+no-deadline contract.  Route rows separately
+record native verification/execution details, q/qdot entry and exit values,
+entry/exit snapshots, same-tick 2 mm/2 degree checks, and numerical jerk
+excesses.  Native velocity/acceleration/jerk limits and configured soft
+posture preferences remain the controller's limits; a small numerical jerk
+margin below zero is recorded and does not silently become a new hard gate.
+The adapter does not add a 140-degree J1 wall (or any other experiment-only
+posture wall); the native profile's actual URDF limits and soft preferences are
+the only posture constraints.
+
+The adaptive action set has no fixed diagnostic pair.  A caller may interrupt
+after every single probe, choose another side and dwell, commit to either
+terminal, or stop for a task-level reason.  No task deadline is passed to the
+adapter and no elapsed-time cutoff is consulted.
+
+Closed-loop smoke
+-----------------
+
+The opt-in test preserves one real continuation chain:
+
+``fork_minus__single_dwell_0.15`` -> ``fork_plus__single_dwell_0.60`` ->
+``left`` -> ``right``.
+
+It checks that each event's actual entry q/qdot equals the preceding native
+exit, that the complete replay snapshot is present, that same-tick tracking
+stays within 2 mm/2 degrees, and that every replay result carries the
+ProDMP label.  The saved ``native_smoke_20261111`` run made four public
+proposals (four dIRD queries, zero proposal cache hits) and four selected
+native executions; proposal outputs remain ``predicted_unknown`` and are not
+counted as native checks.  Run with:
+
+``RUN_NATIVE_ADAPTER_SMOKE=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python -m pytest -q test_native_adapter.py``
+
+The smoke is motion/controller evidence only.  It does not use acoustic
+outcomes to choose a route and it does not expose the private physical frame
+to the planner.

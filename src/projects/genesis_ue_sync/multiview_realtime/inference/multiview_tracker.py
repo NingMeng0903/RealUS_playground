@@ -9,6 +9,10 @@ import numpy as np
 
 from projects.genesis_ue_sync.multiview_realtime.config import MultiviewRealtimeConfig
 from projects.genesis_ue_sync.multiview_realtime.ingress.camera_stream import SyncedMultiviewFrame
+from projects.genesis_ue_sync.multiview_realtime.ingress.camera_metadata import (
+    is_ue_source_profile,
+    normalize_frame_for_source,
+)
 from projects.genesis_ue_sync.tracking.calibration import load_calibration_bundle
 from projects.genesis_ue_sync.tracking.debug_runtime import append_cursor_debug_log
 from projects.genesis_ue_sync.tracking.dwpose_triangulation_backend import DwposeTriangulationBackend
@@ -174,12 +178,20 @@ class MultiviewTrackerSession:
         return {str(k): dict(v or {}) for k, v in dict(raw).items()}
 
     def track_synced_frame(self, synced: SyncedMultiviewFrame) -> MultiviewTrackFrame:
+        calibration = self.calibration
+        if bool(self.config.ingress.metadata_intrinsics) or is_ue_source_profile(self.config.ingress.source_profile):
+            synced, calibration, _metadata_report = normalize_frame_for_source(
+                synced,
+                calibration,
+                list(self.config.camera_ids),
+                source_profile=str(self.config.ingress.source_profile),
+            )
         views_rgb = synced.views_rgb
         view_corrections: dict[str, Any] = {}
         if self._should_precorrect_views_rgb():
             views_rgb, view_corrections = correct_views_rgb_for_calibration(
                 views_rgb,
-                calibration=self.calibration,
+                calibration=calibration,
                 camera_ids=list(self.config.camera_ids),
                 mode=self._image_correction_mode(),
                 overrides=self._image_correction_overrides(),
@@ -241,7 +253,7 @@ class MultiviewTrackerSession:
         pose_frame = self.pose_backend.infer_multiview_rgb_frame(
             frame_index=int(synced.frame_index),
             views_rgb=views_rgb,
-            calibration=self.calibration,
+            calibration=calibration,
             timestamp_ns=int(synced.timestamp_ns),
             camera_ids=list(self.config.camera_ids),
         )
@@ -292,7 +304,7 @@ class MultiviewTrackerSession:
             fit_res = _body_fitter.fit(
                 keypoints3d=keypoints3d,
                 keypoints2d_by_camera=kp2d,
-                calibration=self.calibration,
+                calibration=calibration,
                 camera_ids=list(self.config.camera_ids),
                 views_rgb=views_rgb,
                 pose_init_aa=pose_init_aa,

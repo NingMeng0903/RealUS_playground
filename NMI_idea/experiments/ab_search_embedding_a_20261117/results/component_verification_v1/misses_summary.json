@@ -1,0 +1,27 @@
+{
+  "pooled": {
+    "failed_trials": 40,
+    "missing_raw_target_in_at_least_one_bin": 20,
+    "missed_endpoint": 0,
+    "has_hard_budget_first_action_to_complete": 40,
+    "has_execution_only_matched_first_action_to_complete": 0,
+    "has_matched_cost_first_action_to_complete": 0
+  },
+  "connection": {
+    "failed_trials": 40,
+    "missing_raw_target_in_at_least_one_bin": 20,
+    "missed_endpoint": 0,
+    "has_hard_budget_first_action_to_complete": 40,
+    "has_execution_only_matched_first_action_to_complete": 0,
+    "has_matched_cost_first_action_to_complete": 0
+  },
+  "parallel": {
+    "failed_trials": 0,
+    "missing_raw_target_in_at_least_one_bin": 0,
+    "missed_endpoint": 0,
+    "has_hard_budget_first_action_to_complete": 0,
+    "has_execution_only_matched_first_action_to_complete": 0,
+    "has_matched_cost_first_action_to_complete": 0
+  },
+  "selection_archive_sha256": "fb7109728d082bb9117c0c1abfa98396b4d1d7b0752f790e7fb1417daac6928f"
+}

@@ -1,0 +1,24 @@
+{
+  "domain": "One registered Blender anatomy, fixed MPC paths; original posterior spread 8 mm",
+  "raw_inputs_sha256": {
+    "geometry.npz": "d0f3b98dd03fb0bb5a9eb9dd2a15a42fc952748c4fc221102e27967659ba079d",
+    "test_observations.jsonl.gz": "7b7d135edae556dccc44d6621635868594b479980a94b9fc9a20df7d95e14b87",
+    "test_evaluator_labels.jsonl.gz": "31302981923691ded7f600bf680052d3745467bb407c51c86e93a56546447732",
+    "summary.json": "6a37320eddc1c7eb571df4a8ba567844a4358055ec144f703b9ace26ff4ed890"
+  },
+  "outputs_sha256": {
+    "mpc_witnesses.json": "961b323c11a93801ea70ea1608159c94b64481cc3211053ca80b17b3c6febbb2",
+    "mpc_funnel_regions.csv": "2f1e1fec7e77596529ea83c4541b3edec4599ea11dcaa2bda7159e862d37bcf5",
+    "mpc_funnel_by_task.json": "384cf97fd7ca07fd5ca268376545a93f50a0be68b2008a3af0673bfd49f841f1",
+    "mpc_funnel.py": "3d764147b7d973810dd7f5378c7596d59095ef0cb521ca792001b4467bada54d"
+  },
+  "public_only_replay_without_label_file_identical": true,
+  "original_aggregate_reproduced": {
+    "correct_regions": 34,
+    "wrong_regions": 91,
+    "no_result_regions": 835,
+    "captured_regions": 763
+  },
+  "episodes": 160,
+  "regions": 960
+}

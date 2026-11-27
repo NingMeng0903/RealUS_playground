@@ -723,7 +723,13 @@ class ContactQpOuter:
             # Consume the accepted source's real LP/HP measurement once even
             # if computation used up its remaining send age. Commands roll
             # back; measurement history does not.
-            if self.nominal.tilt.needs_normal_retract:
+            # An angle stop already zeros further rocking in that direction.
+            # figure8/008 reached it with a live regional deficit, then recovery
+            # wrote alpha 0 and the quality commit rejected that 0. Holding the
+            # stop keeps the path moving. Freeze and stall still recover.
+            angle_hold=bool(self.nominal.tilt.tilt_capped and not self.nominal.tilt.tilt_frozen
+                            and not self.nominal.tilt.tilt_stalled)
+            if self.nominal.tilt.needs_normal_retract and not angle_hold:
                 timeout=float(self.nominal.tilt.cfg.recovery_timeout_s)
                 if self._recovery_started_s is None:
                     self._recovery_started_s=now
@@ -790,12 +796,22 @@ class ContactQpOuter:
                     progress_loss_gain=self.solver.config.progress_loss_gain,
                     alpha_min=self.solver.config.alpha_min,
                     alpha_min_at_quality=self.solver.config.alpha_min_at_quality,
-                    max_request_rad_s=self.solver.config.max_visual_omega_rad_s)
+                    max_request_rad_s=self.solver.config.max_visual_omega_rad_s,
+                    deficit_mode=self.solver.config.deficit_mode,
+                    balance_deadband=self.solver.config.differential_repair.balance_deadband,
+                    relative_alpha_span=self.solver.config.relative_alpha_span,
+                    relative_spread_floor=self.solver.config.relative_spread_floor)
                 request=region_task.request_rad_s;alpha_des=region_task.alpha_preferred
-                if self._quality_intervals is not None:
+                # An even frame is not a hole. The interval gate still compares
+                # each region with the phantom c_min, so on tissue it stays open
+                # and would otherwise pin α at alpha_hold and keep a leftover rock.
+                balanced=self.solver.config.deficit_mode=='relative' and region_task.reason=='all_regions_sufficient'
+                if self._quality_intervals is not None and not balanced:
                     request,alpha_des=self._quality_intervals.apply_escalation(
                         request,alpha_des,repair_speed_m_s=self.solver.config.repair_speed_m_s,
                         now_s=now)
+                    if self.solver.config.deficit_mode=='relative':
+                        alpha_des=region_task.alpha_preferred
                 if path_done:request=0.
                 self._pending_alpha_target=self._pending_alpha_preferred=alpha_des
                 # Existing control wrench is tool-on-environment. Convert all
@@ -1177,7 +1193,11 @@ class ContactQpOuter:
         # remain in energy/progress accounting and logs; they cannot become
         # nominal or outer command-slew history in a different space.
         if self._quality_progress is not None:
-            self._quality_progress.commit(self._pending_alpha_preferred)
+            # Recovery intentionally publishes alpha 0. That value is not a
+            # quality-slew state; committing it raises invalid quality alpha
+            # and faults before the retract can run.
+            if self._recovery_started_s is None:
+                self._quality_progress.commit(self._pending_alpha_preferred)
             if self._rocking.time_s is None:self._rocking.seed(np.zeros(3),now_s-self.pending_actual_dt)
             rocking_final=twist_tcp_to_face(self.geometry) @ final if self._delayed else final
             rocking_rotation=(self.pending_rotation_base_tcp @ self.geometry.T_tcp_face[:3,:3]

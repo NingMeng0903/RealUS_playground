@@ -1,0 +1,37 @@
+{
+  "source": {
+    "experiment_v14.py": "9bbd83d4d491676491876bb4f9bf4345e3e34d9b53b6e5090a561f981d0ecfeb",
+    "fit_v14.py": "58b34d4a4e036ca480eabd1e9f9ed2c35b2d2ae9122132a76052d363f4f000b3",
+    "relations_v14.py": "8cc024d4357a2004a357b9f65fe0c7f65877267b8c521f3394ffaeee9718a92c"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "v13_test_freeze_sha256": "a3ab1b9c302b0fb04d914bafe146b45952172d9ec9eb60fbdfc25a1291c14072",
+  "v13_reader_freeze_sha256": "b3bc76be6697b7533290938ee7bd6cd6f88c396cf6d83b9fa23d5740e58c0cc5",
+  "v13_data_freeze_sha256": "06d5bf75c3ad0e535a057e89940b389d1ee4a3895cf2991f3b73796e942c978e",
+  "gpu_preflight_sha256": "9abd72222fb6f517d16914cc4228c3d59bfd39cee96ecee714e5d14fdf609ea8",
+  "seed": 26112614,
+  "archive_splits": {
+    "fit": 1024,
+    "cal": 64,
+    "dev": 72
+  },
+  "relative_location_basis": "Observed displacements between different echoes at a common station and frame",
+  "position_limit": 1.15,
+  "tested_current_scans": 108,
+  "test_bands": [
+    [
+      "actual",
+      null
+    ],
+    [
+      "proof_0",
+      226208173
+    ],
+    [
+      "proof_1",
+      226249871
+    ]
+  ],
+  "declared_named_junctions_sha256": null,
+  "declared_named_junction_count": 0
+}

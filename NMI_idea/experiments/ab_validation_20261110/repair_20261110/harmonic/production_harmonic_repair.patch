@@ -1,0 +1,1409 @@
+diff --git a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py
+index 05194cc..e54d016 100644
+--- a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py
++++ b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py
+@@ -290,14 +290,64 @@ def _theta_for_points(points: np.ndarray, atlas: LegVolumeAtlas | None, *, side:
+ 
+ 
+ def _remap_faces(faces: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+-    full_idx = np.flatnonzero(mask).astype(np.int32)
++    tri_mask = np.all(mask[np.asarray(faces, dtype=np.int32)], axis=1)
++    retained_faces = np.asarray(faces, dtype=np.int32)[tri_mask]
++    full_idx = np.unique(retained_faces).astype(np.int32)
+     local = np.full(mask.shape[0], -1, dtype=np.int32)
+     local[full_idx] = np.arange(full_idx.shape[0], dtype=np.int32)
+-    tri_mask = np.all(mask[np.asarray(faces, dtype=np.int32)], axis=1)
+-    local_faces = local[np.asarray(faces, dtype=np.int32)[tri_mask]]
++    local_faces = local[retained_faces]
+     return full_idx, local_faces.astype(np.int32)
+ 
+ 
++def _leg_chain_indices(skeleton: dict[str, object], side: LegSide) -> list[int]:
++    names = [str(name) for name in skeleton["joint_names"]]  # type: ignore[index]
++    return [names.index(f"{side}_{joint}") for joint in ("hip", "knee", "ankle", "foot") if f"{side}_{joint}" in names]
++
++
++def _side_face_ownership(
++    faces: np.ndarray, weights: np.ndarray, skeleton: dict[str, object], side: LegSide,
++) -> tuple[np.ndarray, dict[str, object]]:
++    """Assign whole native faces by mean leg-chain LBS mass, preserving xyz."""
++    other: LegSide = "left" if side == "right" else "right"
++    own, opposite = _leg_chain_indices(skeleton, side), _leg_chain_indices(skeleton, other)
++    if not own or not opposite:
++        raise ValueError("Side-aware leg extraction requires named left/right leg-chain joints")
++    weights = np.asarray(weights, dtype=np.float64)
++    if weights.ndim != 2 or weights.shape[1] <= max(own + opposite) or not np.isfinite(weights).all() or np.any(weights < 0.0):
++        raise ValueError("Invalid canonical LBS weights for side-aware leg extraction")
++    own_mass = np.sum(weights[:, own], axis=1)[faces].mean(axis=1)
++    opposite_mass = np.sum(weights[:, opposite], axis=1)[faces].mean(axis=1)
++    retained = (own_mass >= opposite_mass) & (own_mass + opposite_mass > 1.0e-10)
++    return retained, {
++        "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
++        "ipsilateral_joint_indices": own,
++        "contralateral_joint_indices": opposite,
++        "joint_chain": ["hip", "knee", "ankle", "foot"],
++        "coordinates_modified": False,
++    }
++
++
++def _largest_skin_component(vertices: np.ndarray, full_idx: np.ndarray, faces: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
++    from scipy.sparse import coo_matrix
++    from scipy.sparse.csgraph import connected_components
++
++    if not len(faces):
++        raise ValueError("Leg ROI contains no skin faces")
++    edges = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
++    graph = coo_matrix((np.ones(len(edges)), (edges[:, 0], edges[:, 1])), shape=(len(full_idx), len(full_idx))).tocsr()
++    count, labels = connected_components(graph, directed=False)
++    if count == 1:
++        return full_idx, faces
++    triangles = np.asarray(vertices)[full_idx[faces]]
++    areas = np.linalg.norm(np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0]), axis=1)
++    mass = np.bincount(labels[faces[:, 0]], weights=areas, minlength=count)
++    retained = faces[labels[faces[:, 0]] == int(np.argmax(mass))]
++    used = np.unique(retained)
++    remap = np.full(len(full_idx), -1, dtype=np.int32)
++    remap[used] = np.arange(len(used), dtype=np.int32)
++    return full_idx[used], remap[retained]
++
++
+ def _compute_vertex_normals(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
+     verts = np.asarray(vertices, dtype=np.float32).reshape(-1, 3)
+     tris = np.asarray(faces, dtype=np.int32).reshape(-1, 3)
+@@ -345,6 +395,7 @@ def _build_side_atlas(
+     *,
+     side: LegSide,
+     config: LegVolumeConfig,
++    lbs_weights: np.ndarray | None = None,
+ ) -> LegVolumeAtlas:
+     from .harmonic import LegHarmonicFields, sample_volume_xi_points, solve_leg_harmonic_fields
+ 
+@@ -355,13 +406,27 @@ def _build_side_atlas(
+     station, axis_pts = _piecewise_station(vertices, hip, knee, ankle)
+     station_for_cut = _piecewise_station_unclipped(vertices, hip, knee, ankle)
+     radial = np.linalg.norm(vertices - axis_pts, axis=1)
+-    sign_mask = (vertices[:, 0] - float(pelvis[0])) * _side_sign(side) >= -0.015
++    # The historical 15 mm overlap mixed opposite-leg facets near the groin.
++    # With LBS available it is only a broad geometric prefilter; final ownership
++    # is assigned per face. Legacy callers use a strict midline instead.
++    tolerance = -0.015 if lbs_weights is not None else 0.0
++    sign_mask = (vertices[:, 0] - float(pelvis[0])) * _side_sign(side) >= tolerance
+     station_mask = (station_for_cut >= float(config.proximal_station)) & (station_for_cut <= float(config.distal_station))
+     candidate = sign_mask & station_mask & (radial <= float(config.max_radius_m))
+     if np.count_nonzero(candidate) > 16:
+         radius_limit = min(float(config.max_radius_m), float(np.quantile(radial[candidate], float(config.radial_quantile))))
+         candidate &= radial <= radius_limit
+-    full_idx, local_faces = _remap_faces(faces, candidate)
++    ownership: dict[str, object] = {"rule": "strict_midline_fallback_no_lbs_weights"}
++    side_faces = faces
++    candidate_faces = np.all(candidate[np.asarray(faces, dtype=np.int32)], axis=1)
++    if lbs_weights is not None:
++        if len(lbs_weights) != len(vertices):
++            raise ValueError("Canonical LBS weights must match canonical vertex count")
++        retained, ownership = _side_face_ownership(faces, lbs_weights, skeleton, side)
++        ownership["contralateral_candidate_faces_removed"] = int(np.sum(candidate_faces & ~retained))
++        side_faces = faces[retained]
++    full_idx, local_faces = _remap_faces(side_faces, candidate)
++    full_idx, local_faces = _largest_skin_component(vertices, full_idx, local_faces)
+     skin_vertices = vertices[full_idx].astype(np.float32)
+     skin_station, skin_core = _piecewise_station(skin_vertices, hip, knee, ankle)
+     skin_station = skin_station.astype(np.float32)
+@@ -411,6 +476,7 @@ def _build_side_atlas(
+     )
+ 
+     metadata: dict[str, object] = {
++        "side_face_ownership": ownership,
+         "method": "harmonic_dirichlet_tet_fem",
+         "topology": "single_leg_cylindrical_chart_without_foot",
+         "proximal_station": float(config.proximal_station),
+@@ -457,57 +523,75 @@ def bake_leg_volume_atlases(
+ ) -> dict[str, LegVolumeAtlas]:
+     cfg = config or LegVolumeConfig()
+     vertices, faces, skeleton = load_canonical_smpl(canonical_dir)
++    root = Path(canonical_dir)
++    weights_path = root / "smpl_canonical_weights.npz"
++    manifest_path = root / "source_manifest.json"
++    if manifest_path.is_file():
++        weights_path = Path(str(json.loads(manifest_path.read_text(encoding="utf-8")).get("weights_npz", weights_path)))
++    weights = None
++    if weights_path.is_file():
++        with np.load(weights_path, allow_pickle=False) as payload:
++            if "lbs_weights" in payload.files:
++                weights = np.asarray(payload["lbs_weights"], dtype=np.float32)
+     return {
+-        "left": _build_side_atlas(vertices, faces, skeleton, side="left", config=cfg),
+-        "right": _build_side_atlas(vertices, faces, skeleton, side="right", config=cfg),
++        "left": _build_side_atlas(vertices, faces, skeleton, side="left", config=cfg, lbs_weights=weights),
++        "right": _build_side_atlas(vertices, faces, skeleton, side="right", config=cfg, lbs_weights=weights),
+     }
+ 
+ 
+-def query_atlas_coordinates(atlas: LegVolumeAtlas, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+-    """Return xi and nearest skin projection for arbitrary points in canonical space."""
+-    from .harmonic import HarmonicVolumeMesh, LegHarmonicFields, interpolate_volume_field, medial_point_at_station
+-
+-    pts = np.asarray(points, dtype=np.float32).reshape(-1, 3)
++def query_atlas_coordinates(
++    atlas: LegVolumeAtlas,
++    points: np.ndarray,
++    *,
++    depth_mode: Literal["distance_ratio", "baked"] | None = None,
++    outside: Literal["raise", "nearest"] = "raise",
++) -> tuple[np.ndarray, np.ndarray]:
++    """Return xi and the nearest skin sample in (theta,h) chart space.
++
++    Legacy assets default to the continuous skin/core distance ratio. Versioned
++    assets may declare ``default_depth_mode='baked'`` in metadata. The distance
++    ratio is distinct from harmonic_d. ``depth_mode='baked'`` evaluates
++    stored h/theta/d on native tetrahedra; its inner/outer shells can differ from
++    the supplied core/skin, and out-of-domain points raise unless extrapolation
++    is explicitly requested with ``outside='nearest'``. All queries, including
++    exact stored nodes, reject conflicting overlapping tetrahedra. Skin distance
++    includes retained isolated vertices.
++    """
++    from .harmonic import HarmonicVolumeMesh, LegHarmonicFields, compute_volume_d_distance_ratio, interpolate_volume_field
++
++    if depth_mode is None:
++        depth_mode = str(atlas.metadata.get("default_depth_mode", "distance_ratio"))  # type: ignore[assignment]
++    pts = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+     if atlas.harmonic_vertices.size and atlas.harmonic_tets.size:
+         fields = LegHarmonicFields(
+-            skin_h=atlas.skin_h.astype(np.float32),
+-            skin_theta=atlas.skin_theta.astype(np.float32),
+-            skin_d=atlas.skin_d.astype(np.float32),
+-            vol_h=atlas.harmonic_h.astype(np.float32),
+-            vol_theta=atlas.harmonic_theta.astype(np.float32),
+-            vol_d=atlas.harmonic_d.astype(np.float32),
++            skin_h=atlas.skin_h.astype(np.float32, copy=False),
++            skin_theta=atlas.skin_theta.astype(np.float32, copy=False),
++            skin_d=atlas.skin_d.astype(np.float32, copy=False),
++            vol_h=atlas.harmonic_h.astype(np.float32, copy=False),
++            vol_theta=atlas.harmonic_theta.astype(np.float32, copy=False),
++            vol_d=atlas.harmonic_d.astype(np.float32, copy=False),
+             volume_mesh=HarmonicVolumeMesh(
+-                vertices=atlas.harmonic_vertices.astype(np.float32),
+-                tets=atlas.harmonic_tets.astype(np.int32),
+-                skin_vertex_indices=np.arange(int(atlas.skin_vertices.shape[0]), dtype=np.int32),
+-                medial_vertex_indices=np.zeros(0, dtype=np.int32),
++                vertices=atlas.harmonic_vertices.astype(np.float32, copy=False),
++                tets=atlas.harmonic_tets.astype(np.int32, copy=False),
++                skin_vertex_indices=np.flatnonzero(atlas.harmonic_d == 0.0).astype(np.int32),
++                medial_vertex_indices=np.flatnonzero(atlas.harmonic_d == 1.0).astype(np.int32),
+             ),
+             medial_curve_h=atlas.core_h.astype(np.float32),
+             medial_curve_points=atlas.core_points.astype(np.float32),
+             metadata={"atlas_id": id(atlas), "side": atlas.side},
++            skin_vertices=atlas.skin_vertices,
++            skin_faces=atlas.skin_faces,
+         )
+-        h, theta, d = interpolate_volume_field(fields, pts)
++        h, theta, d = interpolate_volume_field(fields, pts, depth_mode=depth_mode, outside=outside)
+         xi = np.stack([theta, h, d], axis=1).astype(np.float32)
+     else:
++        if depth_mode == "baked":
++            raise ValueError("depth_mode='baked' requires stored harmonic vertices and tetrahedra")
++        if depth_mode != "distance_ratio":
++            raise ValueError("depth_mode must be 'distance_ratio' or 'baked'")
+         h, _axis_core = _piecewise_station(pts, atlas.hip, atlas.knee, atlas.ankle)
+-        core = np.stack(
+-            [medial_point_at_station(atlas.core_h, atlas.core_points, float(hi)) for hi in h.tolist()],
+-            axis=0,
+-        ).astype(np.float32)
+         theta = _theta_for_points(pts, atlas, side=atlas.side, hip=atlas.hip, knee=atlas.knee, ankle=atlas.ankle, pelvis=atlas.pelvis)
+-        query = np.stack([np.cos(theta), np.sin(theta), h], axis=1)
+-        skin_feat = np.stack([np.cos(atlas.skin_theta), np.sin(atlas.skin_theta), atlas.skin_h], axis=1)
+-        try:
+-            from scipy.spatial import cKDTree
+-
+-            _dist, idx = cKDTree(skin_feat).query(query, k=1)
+-        except Exception:
+-            dist = np.linalg.norm(skin_feat[:, None, :] - query[None, :, :], axis=2).T
+-            idx = np.argmin(dist, axis=1)
+-        p_skin = atlas.skin_vertices[np.asarray(idx, dtype=np.int64)]
+-        dist_to_core = np.linalg.norm(pts - core, axis=1)
+-        dist_skin_to_core = np.linalg.norm(p_skin - core, axis=1)
+-        d = 1.0 - dist_to_core / np.maximum(dist_skin_to_core, 1.0e-8)
++        d = compute_volume_d_distance_ratio(pts, atlas.skin_vertices, atlas.core_points, skin_faces=atlas.skin_faces)
+         xi = np.stack([theta, h, np.clip(d, 0.0, 1.0)], axis=1).astype(np.float32)
+     query = np.stack([np.cos(xi[:, 0]), np.sin(xi[:, 0]), xi[:, 1]], axis=1)
+     skin_feat = np.stack([np.cos(atlas.skin_theta), np.sin(atlas.skin_theta), atlas.skin_h], axis=1)
+diff --git a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py
+index df5ce7c..312192c 100644
+--- a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py
++++ b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py
+@@ -49,6 +49,9 @@ class LegHarmonicFields:
+     medial_curve_h: np.ndarray
+     medial_curve_points: np.ndarray
+     metadata: dict[str, object]
++    # Exported skin and volume meshes can have different vertices/orderings.
++    skin_vertices: np.ndarray | None = None
++    skin_faces: np.ndarray | None = None
+ 
+ 
+ def _cotangent(a: np.ndarray, b: np.ndarray, max_abs: float) -> float:
+@@ -526,14 +529,100 @@ def _distance_to_skin_vertices(points: np.ndarray, skin_vertices: np.ndarray) ->
+         return np.min(dist, axis=0)
+ 
+ 
++def _point_triangle_distances(points: np.ndarray, triangles: np.ndarray) -> np.ndarray:
++    """Euclidean distances for paired points/triangles, including degenerate faces."""
++    a, b, c = np.moveaxis(np.asarray(triangles, dtype=np.float64), 1, 0)
++    p = np.asarray(points, dtype=np.float64)
++    ab, ac, ap = b - a, c - a, p - a
++    normal = np.cross(ab, ac)
++    n2 = np.einsum("ij,ij->i", normal, normal)
++    signed = np.einsum("ij,ij->i", ap, normal)
++    projected = p - (signed / np.maximum(n2, 1.0e-30))[:, None] * normal
++    v = projected - a
++    aa = np.einsum("ij,ij->i", ab, ab)
++    bb = np.einsum("ij,ij->i", ac, ac)
++    cc = np.einsum("ij,ij->i", ab, ac)
++    av = np.einsum("ij,ij->i", ab, v)
++    cv = np.einsum("ij,ij->i", ac, v)
++    denom = aa * bb - cc * cc
++    u = (bb * av - cc * cv) / np.maximum(denom, 1.0e-30)
++    w = (aa * cv - cc * av) / np.maximum(denom, 1.0e-30)
++    inside = (n2 > 1.0e-30) & (u >= -1.0e-12) & (w >= -1.0e-12) & (u + w <= 1.0 + 1.0e-12)
++    dist2 = np.full(len(p), np.inf)
++    for first, last in ((a, b), (b, c), (c, a)):
++        edge = last - first
++        t = np.clip(np.einsum("ij,ij->i", p - first, edge) / np.maximum(np.einsum("ij,ij->i", edge, edge), 1.0e-30), 0.0, 1.0)
++        delta = p - first - t[:, None] * edge
++        dist2 = np.minimum(dist2, np.einsum("ij,ij->i", delta, delta))
++    dist2[inside] = signed[inside] ** 2 / n2[inside]
++    return np.sqrt(np.maximum(dist2, 0.0))
++
++
++class _TriangleSurfaceDistance:
++    def __init__(self, vertices: np.ndarray, faces: np.ndarray) -> None:
++        from scipy.spatial import cKDTree
++
++        # Keep source arrays alive: their addresses form the cache identity.
++        self.vertices, self.faces = vertices, faces
++        self.triangles = np.asarray(vertices, dtype=np.float64)[np.asarray(faces, dtype=np.int64)]
++        self.centers = self.triangles.mean(axis=1)
++        self.max_radius = float(np.linalg.norm(self.triangles - self.centers[:, None], axis=2).max())
++        self.tree = cKDTree(self.centers)
++        self.vertex_tree = cKDTree(np.asarray(vertices, dtype=np.float64))
++
++    def query(self, points: np.ndarray) -> np.ndarray:
++        points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
++        result = np.empty(len(points), dtype=np.float64)
++        for start in range(0, len(points), 256):
++            batch = points[start:start + 256]
++            _, closest = self.tree.query(batch)
++            upper = _point_triangle_distances(batch, self.triangles[closest])
++            # Any closer triangle has its centroid within upper + its radius.
++            # This radius search makes the result exact, unlike fixed k-nearest faces.
++            candidates = self.tree.query_ball_point(batch, upper + self.max_radius + 1.0e-12)
++            counts = np.asarray([len(row) for row in candidates], dtype=np.int64)
++            ids = np.concatenate(candidates).astype(np.int64)
++            distances = _point_triangle_distances(np.repeat(batch, counts, axis=0), self.triangles[ids])
++            result[start:start + len(batch)] = np.minimum.reduceat(distances, np.r_[0, np.cumsum(counts)[:-1]])
++        # Some exported meshes retain isolated vertices. Their distance is part
++        # of the skin vertex contract even though they belong to no triangle.
++        vertex_distances, _ = self.vertex_tree.query(points)
++        return np.minimum(result, vertex_distances)
++
++
++_SKIN_SURFACE_CACHE: dict[tuple[int, int], _TriangleSurfaceDistance] = {}
++
++
++def _distance_to_skin_surface(points: np.ndarray, vertices: np.ndarray, faces: np.ndarray | None = None) -> np.ndarray:
++    if faces is None or not np.asarray(faces).size:
++        return _distance_to_skin_vertices(points, vertices)
++    vertices, faces = np.asarray(vertices), np.asarray(faces)
++    key = (int(vertices.ctypes.data), int(faces.ctypes.data))
++    surface = _SKIN_SURFACE_CACHE.get(key)
++    if surface is None:
++        surface = _TriangleSurfaceDistance(vertices, faces)
++        if len(_SKIN_SURFACE_CACHE) >= 4:
++            _SKIN_SURFACE_CACHE.pop(next(iter(_SKIN_SURFACE_CACHE)))
++        _SKIN_SURFACE_CACHE[key] = surface
++    return surface.query(points)
++
++
+ def compute_volume_d_distance_ratio(
+     volume_vertices: np.ndarray,
+     skin_vertices: np.ndarray,
+     medial_curve_points: np.ndarray,
++    *,
++    skin_faces: np.ndarray | None = None,
+ ) -> np.ndarray:
+-    """Normalized distance from skin toward shrink medial core: d=0 skin, d=1 core."""
++    """Analytic distance ratio, distinct from a baked graph/FEM depth solution.
++
++    With faces, use the union of triangles and retained skin vertices (including
++    isolated vertices); without faces the legacy point-cloud distance remains.
++    The medial boundary is the core polyline. This unsigned distance ratio does
++    not certify inside/outside membership or global monotonicity along a ray.
++    """
+     verts = np.asarray(volume_vertices, dtype=np.float64).reshape(-1, 3)
+-    d_skin = _distance_to_skin_vertices(verts, skin_vertices)
++    d_skin = _distance_to_skin_surface(verts, skin_vertices, skin_faces)
+     d_medial = _point_to_polyline_distance(verts, medial_curve_points)
+     return np.clip(d_skin / np.maximum(d_skin + d_medial, 1.0e-8), 0.0, 1.0).astype(np.float64)
+ 
+@@ -1011,6 +1100,8 @@ def solve_leg_harmonic_fields(
+         medial_curve_h=medial_curve_h.astype(np.float32),
+         medial_curve_points=medial_curve_points.astype(np.float32),
+         metadata=metadata,
++        skin_vertices=skin,
++        skin_faces=np.asarray(skin_faces, dtype=np.int32),
+     )
+ 
+ 
+@@ -1046,22 +1137,22 @@ def sample_volume_xi_points(
+     return np.vstack(points).astype(np.float32), np.vstack(xi).astype(np.float32)
+ 
+ 
+-_VOLUME_INTERP_CACHE: dict[tuple[int | str, ...], tuple[object, object, object, object]] = {}
++_VOLUME_INTERP_CACHE: dict[tuple[int | str, ...], tuple[LegHarmonicFields, tuple[object, object, object, object]]] = {}
+ 
+ 
+ def _volume_interp_cache_key(fields: LegHarmonicFields) -> tuple[int | str, ...]:
+-    atlas_id = fields.metadata.get("atlas_id")
+-    if atlas_id is not None:
+-        side = str(fields.metadata.get("side", ""))
+-        return ("atlas", side, int(atlas_id))
+     return (
+         int(fields.volume_mesh.vertices.ctypes.data),
++        int(fields.volume_mesh.tets.ctypes.data),
+         int(fields.vol_h.ctypes.data),
+         int(fields.vol_theta.ctypes.data),
++        int(fields.vol_d.ctypes.data),
+     )
+ 
+ 
+ def _skin_vertices_from_fields(fields: LegHarmonicFields) -> np.ndarray:
++    if fields.skin_vertices is not None:
++        return np.asarray(fields.skin_vertices)
+     verts = np.asarray(fields.volume_mesh.vertices, dtype=np.float64)
+     idx = np.asarray(fields.volume_mesh.skin_vertex_indices, dtype=np.int64)
+     if idx.size:
+@@ -1076,7 +1167,7 @@ def _volume_interpolators(fields: LegHarmonicFields) -> tuple[object, object, ob
+     key = _volume_interp_cache_key(fields)
+     cached = _VOLUME_INTERP_CACHE.get(key)
+     if cached is not None:
+-        return cached
++        return cached[1]
+     verts = np.asarray(fields.volume_mesh.vertices, dtype=np.float64)
+     theta = np.asarray(fields.vol_theta, dtype=np.float64)
+     cached = (
+@@ -1085,17 +1176,151 @@ def _volume_interpolators(fields: LegHarmonicFields) -> tuple[object, object, ob
+         LinearNDInterpolator(verts, np.sin(theta)),
+         cKDTree(verts),
+     )
+-    _VOLUME_INTERP_CACHE[key] = cached
++    if len(_VOLUME_INTERP_CACHE) >= 2:
++        _VOLUME_INTERP_CACHE.pop(next(iter(_VOLUME_INTERP_CACHE)))
++    _VOLUME_INTERP_CACHE[key] = (fields, cached)
+     return cached
+ 
+ 
++class _BakedTetInterpolator:
++    """Evaluate baked nodal fields on their original tetrahedra, without rebaking."""
++
++    def __init__(self, fields: LegHarmonicFields) -> None:
++        from scipy.spatial import cKDTree
++
++        self.fields = fields
++        self.vertices = np.asarray(fields.volume_mesh.vertices, dtype=np.float64)
++        self.tets = np.asarray(fields.volume_mesh.tets, dtype=np.int32)
++        self.h = np.asarray(fields.vol_h, dtype=np.float64)
++        self.theta = np.asarray(fields.vol_theta, dtype=np.float64)
++        self.d = np.asarray(fields.vol_d, dtype=np.float64)
++        self.node_tree = cKDTree(self.vertices)
++        tetrahedra = self.vertices[self.tets]
++        centers = tetrahedra.mean(axis=1)
++        self.tet_tree = cKDTree(centers)
++        self.max_radius = float(np.linalg.norm(tetrahedra - centers[:, None], axis=2).max())
++        self.lower = tetrahedra.min(axis=1)
++        self.upper = tetrahedra.max(axis=1)
++        self.scale = max(float(np.ptp(self.vertices, axis=0).max()), 1.0)
++
++    def _weights(self, point: np.ndarray, ids: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
++        tetrahedra = self.vertices[self.tets[ids]]
++        matrices = np.moveaxis(tetrahedra[:, 1:] - tetrahedra[:, :1], 1, 2)
++        determinants = np.linalg.det(matrices)
++        valid = np.abs(determinants) > 1.0e-24
++        ids, matrices, tetrahedra = ids[valid], matrices[valid], tetrahedra[valid]
++        if not len(ids):
++            return ids, np.empty((0, 4))
++        rhs = np.broadcast_to(point, (len(ids), 3)) - tetrahedra[:, 0]
++        local = np.linalg.solve(matrices, rhs[..., None])[..., 0]
++        weights = np.column_stack([1.0 - local.sum(axis=1), local])
++        inside = np.all(weights >= -1.0e-8, axis=1) & np.all(weights <= 1.0 + 1.0e-8, axis=1)
++        return ids[inside], weights[inside]
++
++    def query(self, points: np.ndarray, *, outside: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
++        if outside not in {"raise", "nearest"}:
++            raise ValueError("outside must be 'raise' or 'nearest'")
++        points = np.asarray(points, dtype=np.float64).reshape(-1, 3)
++        distances, nearest = self.node_tree.query(points)
++        h = self.h[nearest].copy()
++        theta = self.theta[nearest].copy()
++        d = self.d[nearest].copy()
++        missing: list[int] = []
++        for row in range(len(points)):
++            point = points[row]
++            eps = 1.0e-10 * self.scale
++            # A containing tet's centroid is within its vertex radius. Search
++            # all such candidates, so overlapping nonadjacent tets cannot be
++            # silently resolved by whichever centroid happens to be nearest.
++            candidates = np.asarray(self.tet_tree.query_ball_point(point, self.max_radius + eps), dtype=np.int64)
++            candidates = candidates[np.all(point >= self.lower[candidates] - eps, axis=1) & np.all(point <= self.upper[candidates] + eps, axis=1)]
++            found, weights = self._weights(point, candidates)
++            if not len(found):
++                missing.append(int(row))
++                continue
++            ids = self.tets[found]
++            angles = self.theta[ids]
++            hs = np.sum(weights * self.h[ids], axis=1)
++            ts = np.mod(np.arctan2(np.sum(weights * np.sin(angles), axis=1), np.sum(weights * np.cos(angles), axis=1)), 2.0 * np.pi)
++            ds = np.sum(weights * self.d[ids], axis=1)
++            angular_error = np.abs((ts - ts[0] + np.pi) % (2.0 * np.pi) - np.pi)
++            conflict = (angular_error > 1.0e-5) | (np.abs(hs - hs[0]) > 1.0e-6) | (np.abs(ds - ds[0]) > 1.0e-6)
++            if np.any(conflict):
++                other = int(np.flatnonzero(conflict)[0])
++                raise ValueError(
++                    f"Ambiguous baked tetrahedral domain at input index {row}: overlapping tets "
++                    f"{int(found[0])} and {int(found[other])} assign different (theta,h,d) values "
++                    f"{(float(ts[0]), float(hs[0]), float(ds[0]))} and "
++                    f"{(float(ts[other]), float(hs[other]), float(ds[other]))}. "
++                    "Repair/rebake the noninjective volume mesh before using this baked address."
++                )
++            h[row], theta[row], d[row] = hs[0], ts[0], ds[0]
++        if missing and outside == "raise":
++            raise ValueError(
++                f"{len(missing)} query points lie outside the baked tetrahedral depth domain "
++                f"(first input indices: {missing[:8]}). The baked inner/outer shells are not "
++                "necessarily the atlas core polyline/skin mesh. Use depth_mode='distance_ratio' "
++                "for that separate field, or explicitly request outside='nearest' nodal extrapolation."
++            )
++        return np.clip(h, 0.0, 1.0).astype(np.float32), np.mod(theta, 2.0 * np.pi).astype(np.float32), np.clip(d, 0.0, 1.0).astype(np.float32)
++
++
++_BAKED_TET_CACHE: dict[tuple[int | str, ...], _BakedTetInterpolator] = {}
++
++
++def locate_baked_tetrahedra(fields: LegHarmonicFields, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
++    """Locate unambiguous native cells for material-preserving FEM transport.
++
++    Returns cell indices and barycentric weights. Every point is subjected to
++    the same strict domain/overlap checks as a baked forward query.
++    """
++    key = _volume_interp_cache_key(fields)
++    interp = _BAKED_TET_CACHE.get(key)
++    if interp is None:
++        interp = _BakedTetInterpolator(fields)
++        if len(_BAKED_TET_CACHE) >= 2:
++            _BAKED_TET_CACHE.pop(next(iter(_BAKED_TET_CACHE)))
++        _BAKED_TET_CACHE[key] = interp
++    pts = np.asarray(points, float).reshape(-1, 3)
++    interp.query(pts, outside="raise")
++    cells, barycentric = np.empty(len(pts), np.int32), np.empty((len(pts), 4), float)
++    for row, point in enumerate(pts):
++        eps = 1.e-10 * interp.scale
++        candidates = np.asarray(interp.tet_tree.query_ball_point(point, interp.max_radius + eps), np.int64)
++        candidates = candidates[np.all(point >= interp.lower[candidates] - eps, axis=1) & np.all(point <= interp.upper[candidates] + eps, axis=1)]
++        found, weights = interp._weights(point, candidates)
++        cells[row], barycentric[row] = found[0], weights[0]
++    return cells, barycentric
++
++
+ def interpolate_volume_field(
+     fields: LegHarmonicFields,
+     points: np.ndarray,
+     *,
+     _interps: tuple[object, object, object, object] | None = None,
++    depth_mode: str = "distance_ratio",
++    outside: str = "raise",
+ ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
++    """Query two distinct depth fields, never silently replacing one with the other.
++
++    ``distance_ratio`` preserves the historical runtime depth definition, using
++    the actual skin surface when supplied. Its h/theta retain the historical
++    scattered interpolation and nearest-node continuation outside its hull.
++    ``baked`` interpolates all stored coordinates on native tetrahedra and
++    rejects points outside that mesh unless nearest-node extrapolation is explicit.
++    """
+     pts = np.asarray(points, dtype=np.float64).reshape(-1, 3)
++    if depth_mode == "baked":
++        key = _volume_interp_cache_key(fields)
++        interp = _BAKED_TET_CACHE.get(key)
++        if interp is None:
++            interp = _BakedTetInterpolator(fields)
++            if len(_BAKED_TET_CACHE) >= 2:
++                _BAKED_TET_CACHE.pop(next(iter(_BAKED_TET_CACHE)))
++            _BAKED_TET_CACHE[key] = interp
++        return interp.query(pts, outside=outside)
++    if depth_mode != "distance_ratio":
++        raise ValueError("depth_mode must be 'distance_ratio' or 'baked'")
+     h_interp, cos_interp, sin_interp, nearest_tree = _interps or _volume_interpolators(fields)
+     h_out = np.asarray(h_interp(pts), dtype=np.float64)
+     cos_out = np.asarray(cos_interp(pts), dtype=np.float64)
+@@ -1109,7 +1334,7 @@ def interpolate_volume_field(
+         cos_out[invalid] = np.cos(theta[idx])
+         sin_out[invalid] = np.sin(theta[idx])
+     t_out = np.mod(np.arctan2(sin_out, cos_out), 2.0 * np.pi)
+-    d_out = compute_volume_d_distance_ratio(pts, _skin_vertices_from_fields(fields), fields.medial_curve_points)
++    d_out = compute_volume_d_distance_ratio(pts, _skin_vertices_from_fields(fields), fields.medial_curve_points, skin_faces=fields.skin_faces)
+     h_out = np.clip(np.nan_to_num(h_out, nan=0.0, posinf=1.0, neginf=0.0), 0.0, 1.0)
+     t_out = np.nan_to_num(t_out, nan=0.0)
+     d_out = np.clip(np.nan_to_num(d_out, nan=0.0, posinf=1.0, neginf=0.0), 0.0, 1.0)
+@@ -1127,12 +1352,12 @@ def grad_d_at(
+     skin = _skin_vertices_from_fields(fields)
+     medial = fields.medial_curve_points
+     grad = np.zeros(3, dtype=np.float64)
+-    d0 = float(compute_volume_d_distance_ratio(p.reshape(1, 3), skin, medial)[0])
++    d0 = float(compute_volume_d_distance_ratio(p.reshape(1, 3), skin, medial, skin_faces=fields.skin_faces)[0])
+     for axis in range(3):
+         step = np.zeros(3, dtype=np.float64)
+         step[axis] = float(eps)
+-        dp = float(compute_volume_d_distance_ratio((p + step).reshape(1, 3), skin, medial)[0])
+-        dm = float(compute_volume_d_distance_ratio((p - step).reshape(1, 3), skin, medial)[0])
++        dp = float(compute_volume_d_distance_ratio((p + step).reshape(1, 3), skin, medial, skin_faces=fields.skin_faces)[0])
++        dm = float(compute_volume_d_distance_ratio((p - step).reshape(1, 3), skin, medial, skin_faces=fields.skin_faces)[0])
+         grad[axis] = (dp - dm) / (2.0 * float(eps))
+     if not np.isfinite(d0):
+         return np.zeros(3, dtype=np.float32)
+diff --git a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/visualize.py b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/visualize.py
+index faeadd4..d15c5a2 100644
+--- a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/visualize.py
++++ b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/visualize.py
+@@ -62,12 +62,14 @@ def _atlas_harmonic_fields(atlas: LegVolumeAtlas) -> LegHarmonicFields | None:
+         volume_mesh=HarmonicVolumeMesh(
+             vertices=atlas.harmonic_vertices.astype(np.float32),
+             tets=atlas.harmonic_tets.astype(np.int32),
+-            skin_vertex_indices=np.arange(int(atlas.skin_vertices.shape[0]), dtype=np.int32),
+-            medial_vertex_indices=np.zeros(0, dtype=np.int32),
++            skin_vertex_indices=np.flatnonzero(atlas.harmonic_d == 0.0).astype(np.int32),
++            medial_vertex_indices=np.flatnonzero(atlas.harmonic_d == 1.0).astype(np.int32),
+         ),
+         medial_curve_h=atlas.core_h.astype(np.float32),
+         medial_curve_points=atlas.core_points.astype(np.float32),
+         metadata={},
++        skin_vertices=atlas.skin_vertices,
++        skin_faces=atlas.skin_faces,
+     )
+ 
+ 
+diff --git a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py
+index aad98c2..b6febd0 100644
+--- a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py
++++ b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py
+@@ -37,7 +37,13 @@ def _clip_barycentric(weights: np.ndarray) -> np.ndarray:
+ 
+ @dataclass
+ class VolumeTetRefiner:
+-    """High-precision volume map backed by the harmonic tetrahedral atlas."""
++    """Precision map for the baked tetrahedral domain only.
++
++    Both directions use stored harmonic_d, not the separate skin/core distance
++    ratio returned by the primary atlas query by default. Forward queries reject
++    points outside the mesh or in conflicting overlapping tetrahedra, including
++    exact node coordinates. A valid inverse requires a locally injective chart.
++    """
+ 
+     vertices: np.ndarray
+     tets: np.ndarray
+@@ -63,8 +69,8 @@ class VolumeTetRefiner:
+         mesh = HarmonicVolumeMesh(
+             vertices=np.asarray(atlas.harmonic_vertices, dtype=np.float32).reshape(-1, 3),
+             tets=np.asarray(atlas.harmonic_tets, dtype=np.int32).reshape(-1, 4),
+-            skin_vertex_indices=np.arange(int(atlas.skin_vertices.shape[0]), dtype=np.int32),
+-            medial_vertex_indices=np.zeros(0, dtype=np.int32),
++            skin_vertex_indices=np.flatnonzero(atlas.harmonic_d == 0.0).astype(np.int32),
++            medial_vertex_indices=np.flatnonzero(atlas.harmonic_d == 1.0).astype(np.int32),
+         )
+         fields = LegHarmonicFields(
+             skin_h=np.asarray(atlas.skin_h, dtype=np.float32),
+@@ -77,6 +83,8 @@ class VolumeTetRefiner:
+             medial_curve_h=np.asarray(atlas.core_h, dtype=np.float32),
+             medial_curve_points=np.asarray(atlas.core_points, dtype=np.float32),
+             metadata={},
++            skin_vertices=atlas.skin_vertices,
++            skin_faces=atlas.skin_faces,
+         )
+         return cls(
+             vertices=mesh.vertices,
+@@ -90,62 +98,70 @@ class VolumeTetRefiner:
+             finite_diff_eps=float(finite_diff_eps),
+         )
+ 
+-    def p_to_xi(self, points_can: np.ndarray) -> np.ndarray:
+-        points = np.asarray(points_can, dtype=np.float32).reshape(-1, 3)
+-        h, theta, d = interpolate_volume_field(self.fields, points)
++    def p_to_xi(self, points_can: np.ndarray, *, outside: str = "raise") -> np.ndarray:
++        """Evaluate the baked field used by xi_to_p, on its native tet domain."""
++        points = np.asarray(points_can, dtype=np.float64).reshape(-1, 3)
++        h, theta, d = interpolate_volume_field(self.fields, points, depth_mode="baked", outside=outside)
+         return np.stack([theta, h, d], axis=1).astype(np.float32)
+ 
+     def xi_to_p(self, xi_radians: np.ndarray, reference_points: np.ndarray | None = None) -> np.ndarray:
++        """Invert valid baked addresses; never clamp an invalid address to skin.
++
++        Theta is periodic. h/d must lie in an actual tetrahedral chart image,
++        not merely its bounding box. References cannot bypass this check.
++        """
+         xi = np.asarray(xi_radians, dtype=np.float32).reshape(-1, 3)
+-        refs = None if reference_points is None else np.asarray(reference_points, dtype=np.float32).reshape(-1, 3)
++        if not np.isfinite(xi).all():
++            raise ValueError("Baked material coordinates must be finite")
++        refs = None if reference_points is None else np.asarray(reference_points, dtype=np.float64).reshape(-1, 3)
+         if refs is not None and refs.shape[0] != xi.shape[0]:
+             raise ValueError("reference_points must have the same length as xi_radians.")
+-        initial = refs.copy() if refs is not None else self._initial_points_from_xi(xi, None)
++        initial = self._initial_points_from_xi(xi, refs)
+         out = np.empty_like(initial)
+         for idx, (target, start) in enumerate(zip(xi, initial, strict=True)):
+             ref = None if refs is None else refs[idx]
+             out[idx] = self._newton_refine(target, start, reference_point=ref)
+-        return out.astype(np.float32)
++        return out.astype(np.float64)
+ 
+     def _initial_points_from_xi(self, xi: np.ndarray, refs: np.ndarray | None) -> np.ndarray:
+-        centroids = self._xi_centroids()
+-        query = self._xi_feature(xi)
+-        try:
+-            from scipy.spatial import cKDTree
+-
+-            _dist, candidates = cKDTree(centroids).query(query, k=min(int(self.candidate_k), self.tets.shape[0]))
+-            candidates = np.asarray(candidates, dtype=np.int64).reshape(xi.shape[0], -1)
+-        except Exception:
+-            dist = np.linalg.norm(centroids[:, None, :] - query[None, :, :], axis=2).T
+-            candidates = np.argsort(dist, axis=1)[:, : min(int(self.candidate_k), self.tets.shape[0])]
+-        if refs is not None:
+-            p_candidates = self._p_candidates(refs)
+-            candidates = np.asarray(
+-                [np.unique(np.concatenate([a, b])).astype(np.int64) for a, b in zip(candidates, p_candidates, strict=True)],
+-                dtype=object,
+-            )
+-
+-        points = np.empty((xi.shape[0], 3), dtype=np.float32)
++        # Complete scalar bounds avoid both missed skinny cells and returning
++        # a clipped approximation when no containing material tetrahedron exists.
++        h_tet, d_tet = self.h[self.tets], self.d[self.tets]
++        h_lo, h_hi = h_tet.min(axis=1), h_tet.max(axis=1)
++        d_lo, d_hi = d_tet.min(axis=1), d_tet.max(axis=1)
++        points = np.empty((xi.shape[0], 3), dtype=np.float64)
+         for row, target in enumerate(xi):
+-            ref = None if refs is None else refs[row]
+-            row_candidates = np.asarray(candidates[row], dtype=np.int64).reshape(-1)
+-            best_point = ref.copy() if ref is not None else self.vertices[self.tets[row_candidates[0]]].mean(axis=0)
+-            best_score = float("inf")
++            row_candidates = np.flatnonzero(
++                (target[1] >= h_lo) & (target[1] <= h_hi) &
++                (target[2] >= d_lo) & (target[2] <= d_hi))
++            if len(row_candidates):
++                sine = np.sin(self.theta[self.tets[row_candidates]].astype(np.float64) - float(target[0]))
++                row_candidates = row_candidates[(sine.min(axis=1) <= 1.e-12) & (sine.max(axis=1) >= -1.e-12)]
++            found_points: list[np.ndarray] = []
++            found_tets: list[int] = []
+             for tet_idx in row_candidates:
+                 tet = self.tets[int(tet_idx)]
+-                xi_tet = self._unwrapped_tet_xi(tet, float(target[0]))
+-                bary = _barycentric_tet(np.asarray([target[0], target[1], target[2]], dtype=np.float32), xi_tet)
++                # The forward chart interpolates cos(theta), sin(theta).
++                # Its target bearing has sum_i w_i sin(theta_i-target)=0,
++                # a linear constraint in barycentric weights. Interpolating
++                # unwrapped theta instead would use a different field.
++                angle_delta = self.theta[tet].astype(np.float64) - float(target[0])
++                xi_tet = np.stack([np.sin(angle_delta), self.h[tet], self.d[tet]], axis=1)
++                bary = _barycentric_tet(np.asarray([0.0, target[1], target[2]], dtype=np.float32), xi_tet)
+                 if bary is None:
+                     continue
+-                inside_penalty = float(np.sum(np.square(np.minimum(bary, 0.0))))
+-                weights = bary if inside_penalty <= 1.0e-10 else _clip_barycentric(bary)
+-                point = (weights @ self.vertices[tet]).astype(np.float32)
+-                ref_score = 0.0 if ref is None else float(np.sum(np.square(point - ref)))
+-                score = inside_penalty * 1.0e6 + ref_score
+-                if score < best_score:
+-                    best_score = score
+-                    best_point = point
+-            points[row] = best_point
++                if float(bary @ np.cos(angle_delta)) <= 0.0:
++                    continue
++                if np.min(bary) < -1.e-8 or np.max(bary) > 1 + 1.e-8:
++                    continue
++                found_points.append(bary @ self.vertices[tet].astype(np.float64))
++                found_tets.append(int(tet_idx))
++            if not found_points:
++                raise ValueError(f"Material coordinate at input index {row} lies outside the baked coordinate domain: {target.tolist()}")
++            positions = np.asarray(found_points)
++            if np.any(np.linalg.norm(positions - positions[0], axis=1) > 1.e-6):
++                raise ValueError(f"Ambiguous baked material coordinate at input index {row}: tetrahedra {found_tets[:8]} map it to different positions")
++            points[row] = positions[0]
+         return points
+ 
+     def _p_candidates(self, refs: np.ndarray) -> np.ndarray:
+@@ -167,7 +183,7 @@ class VolumeTetRefiner:
+         ref = None if reference_point is None else np.asarray(reference_point, dtype=np.float64).reshape(3)
+         target = np.asarray(xi_target, dtype=np.float64).reshape(3)
+         for _ in range(max(0, int(self.newton_steps))):
+-            current = self.p_to_xi(p.reshape(1, 3))[0].astype(np.float64)
++            current = self.p_to_xi(p.reshape(1, 3), outside="nearest")[0].astype(np.float64)
+             residual = np.asarray(
+                 [
+                     float(wrap_angle_delta(current[0], target[0])),
+@@ -195,7 +211,7 @@ class VolumeTetRefiner:
+             best_norm = float(np.linalg.norm(residual))
+             for scale in (1.0, 0.5, 0.25, 0.1):
+                 trial = p - scale * step
+-                trial_xi = self.p_to_xi(trial.reshape(1, 3))[0].astype(np.float64)
++                trial_xi = self.p_to_xi(trial.reshape(1, 3), outside="nearest")[0].astype(np.float64)
+                 trial_res = np.asarray(
+                     [
+                         float(wrap_angle_delta(trial_xi[0], target[0])),
+@@ -214,7 +230,7 @@ class VolumeTetRefiner:
+             if np.allclose(best_p, p):
+                 break
+             p = best_p
+-        return p.astype(np.float32)
++        return p.astype(np.float64)
+ 
+     def _finite_difference_jacobian(self, point: np.ndarray) -> np.ndarray:
+         p = np.asarray(point, dtype=np.float64).reshape(3)
+@@ -223,8 +239,8 @@ class VolumeTetRefiner:
+         for axis in range(3):
+             delta = np.zeros(3, dtype=np.float64)
+             delta[axis] = eps
+-            plus = self.p_to_xi((p + delta).reshape(1, 3))[0].astype(np.float64)
+-            minus = self.p_to_xi((p - delta).reshape(1, 3))[0].astype(np.float64)
++            plus = self.p_to_xi((p + delta).reshape(1, 3), outside="nearest")[0].astype(np.float64)
++            minus = self.p_to_xi((p - delta).reshape(1, 3), outside="nearest")[0].astype(np.float64)
+             jac[:, axis] = np.asarray(
+                 [
+                     float(wrap_angle_delta(plus[0], minus[0])) / (2.0 * eps),
+@@ -235,10 +251,6 @@ class VolumeTetRefiner:
+             )
+         return jac
+ 
+-    def _unwrapped_tet_xi(self, tet: np.ndarray, query_theta: float) -> np.ndarray:
+-        theta = float(query_theta) + wrap_angle_delta(self.theta[tet], float(query_theta))
+-        return np.stack([theta, self.h[tet], self.d[tet]], axis=1).astype(np.float32)
+-
+     def _xi_feature(self, xi: np.ndarray) -> np.ndarray:
+         arr = np.asarray(xi, dtype=np.float32).reshape(-1, 3)
+         return np.stack([np.cos(arr[:, 0]), np.sin(arr[:, 0]), arr[:, 1], arr[:, 2]], axis=1).astype(np.float32)
+diff --git a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/shaft_rebuild.py b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/shaft_rebuild.py
+new file mode 100644
+index 0000000..b90f6ad
+--- /dev/null
++++ b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/shaft_rebuild.py
+@@ -0,0 +1,196 @@
++"""Rebuild a validated shaft ROI from true skin-plane intersections.
++
++This is a restricted chart, not a replacement for the whole-leg PLC domain.
++Geometry validity, scalar harmonicity, and coordinate injectivity are separate
++checks. Fixed SMPL-X attachments are returned for pose validation.
++"""
++from __future__ import annotations
++from dataclasses import replace
++import numpy as np
++from .atlas import LegVolumeAtlas, _compute_vertex_normals
++
++
++def parallel_transport_frames(tangents: np.ndarray, reference: np.ndarray) -> np.ndarray:
++    t = np.asarray(tangents, float)
++    t = t / np.linalg.norm(t, axis=1)[:, None]
++    a = np.asarray(reference, float) - t[0] * (reference @ t[0])
++    a /= np.linalg.norm(a)
++    result = []
++    for i, direction in enumerate(t):
++        if i:
++            cross = np.cross(t[i - 1], direction)
++            sine, cosine = np.linalg.norm(cross), t[i - 1] @ direction
++            if sine > 1.e-14:
++                axis = cross / sine
++                a = a * cosine + np.cross(axis, a) * sine + axis * (axis @ a) * (1 - cosine)
++            a -= direction * (a @ direction)
++            a /= np.linalg.norm(a)
++        result.append(np.stack([a, np.cross(direction, a), direction], axis=1))
++    return np.asarray(result)
++
++
++def ray_segment_hits(lines: np.ndarray, angle: float) -> tuple[np.ndarray, np.ndarray]:
++    direction = np.array([np.cos(angle), np.sin(angle)])
++    a, edge = lines[:, 0], lines[:, 1] - lines[:, 0]
++    cross = lambda x, y: x[..., 0] * y[..., 1] - x[..., 1] * y[..., 0]
++    denominator = cross(direction, edge)
++    good = abs(denominator) > 1.e-14
++    radius, u = np.full(len(a), np.inf), np.full(len(a), np.inf)
++    radius[good] = cross(a[good], edge[good]) / denominator[good]
++    u[good] = cross(a[good], direction) / denominator[good]
++    candidates = np.flatnonzero(good & (radius > 1.e-8) & (u >= -1.e-8) & (u <= 1 + 1.e-8))
++    candidates = candidates[np.argsort(radius[candidates])]
++    unique = []
++    for index in candidates:
++        if not unique or abs(radius[index] - radius[unique[-1]]) > 1.e-7:
++            unique.append(index)
++    return np.asarray(unique, int), radius
++
++
++def tet_determinants(vertices: np.ndarray, tets: np.ndarray) -> np.ndarray:
++    corners = np.asarray(vertices, float)[tets]
++    return np.linalg.det(np.moveaxis(corners[:, 1:] - corners[:, :1], 1, 2))
++
++
++def native_boundary_surface(tets: np.ndarray, boundary_vertices: np.ndarray, vertex_count: int) -> np.ndarray:
++    """Extract oriented faces from the actual positive-oriented native tets."""
++    on_surface = np.zeros(vertex_count, bool)
++    on_surface[boundary_vertices] = True
++    near = tets[np.sum(on_surface[tets], axis=1) >= 3]
++    # Outward face orientations for a positive tetrahedron.
++    faces = np.concatenate([near[:, indices] for indices in ([1, 2, 3], [0, 3, 2], [0, 1, 3], [0, 2, 1])])
++    faces = faces[np.all(on_surface[faces], axis=1)]
++    _, first, count = np.unique(np.sort(faces, axis=1), axis=0, return_index=True, return_counts=True)
++    faces = faces[first[count == 1]]
++    local = np.full(vertex_count, -1, np.int32)
++    local[boundary_vertices] = np.arange(len(boundary_vertices))
++    return local[faces].astype(np.int32)
++
++
++def graph_laplacian(vertices: np.ndarray, tets: np.ndarray):
++    from scipy import sparse
++    edges = np.concatenate([tets[:, pair] for pair in ([0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3])])
++    edges = np.unique(np.sort(edges, axis=1), axis=0)
++    delta = np.asarray(vertices, float)[edges[:, 0]] - np.asarray(vertices, float)[edges[:, 1]]
++    weight = 1. / np.maximum(np.einsum('ij,ij->i', delta, delta), 1.e-20)
++    a, b = edges.T
++    degree = np.bincount(a, weights=weight, minlength=len(vertices)) + np.bincount(b, weights=weight, minlength=len(vertices))
++    return sparse.coo_matrix((np.r_[-weight, -weight, degree],
++        (np.r_[a, b, np.arange(len(vertices))], np.r_[b, a, np.arange(len(vertices))])),
++        shape=(len(vertices), len(vertices))).tocsr()
++
++
++def build_shaft_roi(atlas: LegVolumeAtlas, surface_weights: np.ndarray, *, h_min: float = .14,
++    h_max: float = .94, station_count: int = 48, theta_count: int = 72, radial_count: int = 8,
++    inner_frac: float = .04, smoothing: float = 1.e-4) -> tuple[LegVolumeAtlas, dict[str, np.ndarray], dict[str, object]]:
++    import trimesh
++    from scipy.interpolate import splprep, splev
++    from scipy.sparse.linalg import spsolve
++
++    if not (0 < inner_frac < 1 and h_min < h_max and radial_count >= 3):
++        raise ValueError('Invalid shaft ROI bounds/resolution')
++    w = np.asarray(surface_weights, float)
++    if len(w) != len(atlas.skin_vertices) or np.min(w) < -1.e-12 or not np.isfinite(w).all():
++        raise ValueError('Surface attachments must be finite, nonnegative, and match source skin')
++    w = w / w.sum(axis=1)[:, None]
++    mesh = trimesh.Trimesh(atlas.skin_vertices, atlas.skin_faces, process=False)
++    stations = np.linspace(h_min, h_max, station_count)
++    angles = np.linspace(0, 2 * np.pi, theta_count, endpoint=False)
++    fractions = np.linspace(inner_frac, 1., radial_count)
++    spline, _ = splprep(np.asarray(atlas.core_points, float).T, u=atlas.core_h, s=smoothing, k=3)
++    centers = np.asarray(splev(stations, spline)).T
++    tangent = np.asarray(splev(stations, spline, der=1)).T
++    frames = parallel_transport_frames(tangent, np.asarray(atlas.pelvis - atlas.hip, float))
++    outer = np.zeros((station_count, theta_count, 3))
++    outer_w = np.zeros((station_count, theta_count, w.shape[1]))
++    face_ids = np.empty((station_count, theta_count), int)
++    barycentric = np.empty((station_count, theta_count, 3))
++    hit_counts = np.zeros((station_count, theta_count), int)
++    radii = np.zeros_like(hit_counts, float)
++    for si, (center, frame) in enumerate(zip(centers, frames)):
++        lines, source_faces = trimesh.intersections.mesh_plane(mesh, frame[:, 2], center, return_faces=True)
++        uv = (lines - center) @ frame[:, :2]
++        _, degrees = np.unique(np.round(uv.reshape(-1, 2) / 1.e-7).astype(np.int64), axis=0, return_counts=True)
++        if not len(lines) or np.any(degrees != 2):
++            raise ValueError(f'Open/nonmanifold geometric skin section at h={stations[si]:.8f}')
++        for ti, angle in enumerate(angles):
++            hits, distance = ray_segment_hits(uv, float(angle))
++            hit_counts[si, ti] = len(hits)
++            if len(hits) != 1:
++                raise ValueError(f'Non-star-shaped section h={stations[si]:.8f}, theta={angle:.8f}: {len(hits)} hits')
++            hit = hits[0]
++            point = center + distance[hit] * (np.cos(angle) * frame[:, 0] + np.sin(angle) * frame[:, 1])
++            face = int(source_faces[hit])
++            bary = trimesh.triangles.points_to_barycentric(np.asarray(atlas.skin_vertices[atlas.skin_faces[[face]]], float), point[None])[0]
++            if np.min(bary) < -1.e-6:
++                raise ValueError('Skin intersection escaped its source triangle')
++            bary = np.maximum(bary, 0); bary /= bary.sum()
++            outer[si, ti], face_ids[si, ti], barycentric[si, ti] = point, face, bary
++            outer_w[si, ti] = bary @ w[atlas.skin_faces[face]]
++            radii[si, ti] = distance[hit]
++    vertices = (centers[:, None, None, :] + fractions[None, :, None, None] * (outer[:, None] - centers[:, None, None, :])).reshape(-1, 3)
++    core_w = outer_w.mean(axis=1)
++    volume_w = (fractions[None, :, None, None] * outer_w[:, None] + (1 - fractions[None, :, None, None]) * core_w[:, None, None]).reshape(-1, w.shape[1])
++    grid = np.arange(len(vertices)).reshape(station_count, radial_count, theta_count)
++    a = grid[:-1, :-1]; b = np.roll(a, -1, axis=2); c = grid[:-1, 1:]; d = np.roll(c, -1, axis=2)
++    e = grid[1:, :-1]; f = np.roll(e, -1, axis=2); g = grid[1:, 1:]; k = np.roll(g, -1, axis=2)
++    tets = np.stack([np.stack(z, axis=-1) for z in ((a,b,d,k),(a,d,c,k),(a,c,g,k),(a,g,e,k),(a,e,f,k),(a,f,b,k))], axis=-2).reshape(-1, 4).astype(np.int32)
++    # One global orientation convention for (h,r,theta); never flip bad cells.
++    tets[:, [0, 1]] = tets[:, [1, 0]]
++    vertices = vertices.astype(np.float32)
++    determinant = tet_determinants(vertices, tets)
++    if np.any(determinant <= 0):
++        raise ValueError(f'ROI geometry rejected: {int(sum(determinant <= 0))} nonpositive tetrahedra after float32 serialization')
++    inner, skin_ids = grid[:, 0].ravel(), grid[:, -1].ravel()
++    lap = graph_laplacian(vertices, tets)
++    fixed = np.r_[inner, skin_ids]
++    fixed_values = np.r_[np.ones(len(inner)), np.zeros(len(skin_ids))]
++    free = np.setdiff1d(np.arange(len(vertices)), fixed)
++    depth = np.zeros(len(vertices)); depth[fixed] = fixed_values
++    depth[free] = spsolve(lap[free][:, free], -(lap[free][:, fixed] @ fixed_values))
++    if np.min(depth) < -1.e-7 or np.max(depth) > 1 + 1.e-7:
++        raise ValueError('Discrete harmonic depth violates its maximum principle')
++    depth = np.clip(depth, 0, 1).astype(np.float32)
++    hh = np.broadcast_to(stations[:, None, None], grid.shape).ravel().astype(np.float32)
++    theta = np.broadcast_to(angles[None, None], grid.shape).ravel().astype(np.float32)
++    xi = np.column_stack([theta, hh, depth])
++    material = xi[tets].astype(float)
++    material[:, :, 0] = material[:, :1, 0] + (material[:, :, 0] - material[:, :1, 0] + np.pi) % (2 * np.pi) - np.pi
++    material_j = np.linalg.det(np.moveaxis(material[:, 1:] - material[:, :1], 1, 2)) / determinant
++    if np.any(material_j >= -1.e-8):
++        raise ValueError(f'ROI address map rejected: {int(sum(material_j >= -1.e-8))} material folds/degeneracies')
++    # Surface connectivity from the same native outer shell as the volume.
++    faces = native_boundary_surface(tets, skin_ids, len(vertices))
++    skin = vertices[skin_ids]
++    native_ids = atlas.full_vertex_indices[atlas.skin_faces[face_ids.ravel()][np.arange(len(skin_ids)), np.argmax(barycentric.reshape(-1,3),axis=1)]]
++    # Source fields describe a different bake; retain them only as provenance,
++    # never as solver/layout declarations for this rebuilt chart.
++    meta = {'source_surface_metadata': dict(atlas.metadata)}
++    ownership = dict(atlas.metadata.get('side_face_ownership', {}))
++    ownership.pop('candidate_only', None)
++    ownership.pop('volume_arrays_are_old_and_invalid', None)
++    meta.update(method='shaft_roi_radial_transport_graph_harmonic_depth',
++        mesh_type='geometric_section_shaft_roi', coordinate_domain='shaft_roi', default_depth_mode='baked',
++        domain_h_range=[h_min,h_max], station_count=station_count,theta_count=theta_count,radial_count=radial_count,
++        inner_fraction=inner_frac, centerline_method='cubic_smoothing_spline',frame_method='parallel_transport',
++        surface_method='true_triangle_plane_intersection_single_ray_hit',depth_method='positive_edge_weight_graph_laplace_dirichlet',
++        h_method='transported_centerline_station',theta_method='parallel_transport_periodic_angle',
++        volume_vertex_count=len(vertices),volume_tet_count=len(tets),volume_sample_count=len(vertices),
++        skin_vertex_count=len(skin),skin_face_count=len(faces),
++        depth_one_boundary='inner_shell_at_radial_fraction; centerline_is_outside_annular_domain',
++        material_coordinate_orientation=-1,full_vertex_indices_semantics='dominant_source_triangle_vertex_diagnostic_only',
++        scope='restricted_shaft_roi_not_whole_leg',side_face_ownership=ownership)
++    rebuilt = replace(atlas,skin_vertices=skin,skin_faces=faces,skin_h=hh[skin_ids],skin_theta=theta[skin_ids],skin_d=depth[skin_ids],
++        skin_normals=_compute_vertex_normals(skin,faces),full_vertex_indices=native_ids,core_h=stations.astype(np.float32),core_points=centers.astype(np.float32),
++        harmonic_vertices=vertices,harmonic_tets=tets,harmonic_h=hh,harmonic_theta=theta,harmonic_d=depth,
++        volume_points=vertices,volume_xi=xi,metadata=meta)
++    residual = lap[free] @ depth.astype(float)
++    curvature = np.linalg.norm(np.cross(tangent, np.asarray(splev(stations,spline,der=2)).T),axis=1) / np.linalg.norm(tangent,axis=1)**3
++    metrics = dict(vertices=len(vertices),tets=len(tets),det_min=float(determinant.min()),det_max=float(determinant.max()),
++        material_J_min=float(material_j.min()),material_J_max=float(material_j.max()),nonpositive_tets=0,material_fold_tets=0,
++        max_curvature_times_radius=float(np.max(curvature * radii.max(axis=1))),ray_hit_count_min=int(hit_counts.min()),ray_hit_count_max=int(hit_counts.max()),
++        harmonic_relative_residual=float(np.linalg.norm(residual)/max(np.linalg.norm(lap[free][:,fixed]@fixed_values),1.e-30)))
++    attachment = dict(volume_lbs_weights=volume_w.astype(np.float32),surface_lbs_weights=outer_w.reshape(-1,w.shape[1]).astype(np.float32),
++        core_lbs_weights=core_w.astype(np.float32),source_surface_face_indices=face_ids.ravel(),source_surface_barycentric=barycentric.reshape(-1,3),
++        radial_fractions=fractions,grid_shape=np.array(grid.shape),frames=frames,ray_hit_counts=hit_counts,material_jacobians=material_j)
++    return rebuilt, attachment, metrics
+diff --git a/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/SHAFT_ROI_USAGE.md b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/SHAFT_ROI_USAGE.md
+new file mode 100644
+index 0000000..1fd8a50
+--- /dev/null
++++ b/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/SHAFT_ROI_USAGE.md
+@@ -0,0 +1,80 @@
++# Shaft ROI v2 coordinate contract
++
++The accepted bundle is a bounded annular shaft chart, with **h ∈ [0.14, 0.94]**,
++periodic theta in radians, and d ∈ [0, 1]. d=0 is the actual outer boundary
++of the stored tetrahedra; d=1 is the inner shell at radial fraction 0.04.
++The centerline and the two excluded end regions are outside this chart.
++
++Only d solves a positive-edge-weight **discrete graph Laplace** problem.
++h is a transported centerline station label and theta is a periodic angle in
++parallel-transport frames. This is not a theorem about a three-scalar harmonic
++map, and a scalar maximum principle does not imply coordinate injectivity.
++The released bundle passed separate spatial and material-domain audits.
++
++## Load, query, invert
++
++Use the frozen `shaft_roi_v2/atlas_right.npz` or `atlas_left.npz` and its matching
++`attachments_{side}.npz`; paths and hashes are in the bundle manifest.
++
++```python
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.atlas import (
++    load_leg_volume_atlas, query_atlas_coordinates,
++)
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.volume_refine import VolumeTetRefiner
++
++atlas = load_leg_volume_atlas(atlas_path)
++refiner = VolumeTetRefiner.from_atlas(atlas)
++point_can = refiner.xi_to_p([[1.2, 0.5, 0.5]])
++xi, skin_chart_sample = query_atlas_coordinates(atlas, point_can)
++```
++
++The v2 asset declares baked native-tetrahedral queries as its default. Both
++forward and inverse reject unsupported positions/addresses and ambiguous
++cells. Theta wraps periodically; invalid h/d are never clipped to a boundary.
++Physical point inputs and inverse outputs retain float64 so valid triangle
++interiors remain on the actual boundary. Scalar fields and stored vertices
++retain the existing float32 atlas format.
++
++Legacy assets without a declared default continue to use the separately named
++skin/core distance-ratio depth field. It is not the baked graph solution.
++
++## DMP integration entry
++
++Run from the Among_US repository:
++
++```bash
++python -m DMP_playground.run_volume_coordinate_query \
++  --config DMP_playground/configs/shaft_roi_v2_20261110.json \
++  --xi 1.2 0.5 0.5 --knee-deg 60
++```
++
++The explicit configuration selects the new coordinate bundle and verifies its
++asset/attachment hashes. It uses the actual DMP configuration and canonical
++SMPL-X bundle loaders, evaluates fixed node attachments, and transports the
++point through its native tetrahedron before querying the posed chart.
++
++`volume_lbs_weights` is fixed across poses. Outer attachments inherit the
++retained original production skin stencil through source-triangle barycentric
++weights. Core weights are station-ring means and interior weights are radial
++convex combinations. Interior transport is piecewise linear between the posed
++nodes; it is not a new tissue simulation. `full_vertex_indices` in v2 is only a
++diagnostic dominant source ID; do not use it in place of the attachment arrays.
++
++This entry does not migrate a blood-vessel projection or run the servo. The old
++projection NPZ contains old material addresses and must not be reused with v2.
++The ordinary DMP defaults and original production files remain unchanged.
++The complete point entry includes bundle loading/full node deformation and is
++not certified as a real-time servo cycle.
++
++## Verified scope
++
++Both legs have 62,208 nodes and 322,056 tetrahedra. Independent audits checked
++all spatial tetrahedra, all unwrapped material tetrahedra including periodic
++copies, all 15,336 outer faces, and boundary roundtrips. A fixed-subject SMPL-X
++knee sweep at 0, 15, 30, 45, 60, 75, and 90 degrees passed spatial intersection,
++volume orientation, material-label and layer-order checks. These finite tests
++are not a guarantee for arbitrary body shapes or poses.
++
++The old complete vessel chain is not covered or migrated: its legacy h labels
++include proximal/distal samples outside this numerical range. The endpoint
++expansion trials and full-leg PLC candidates are separate exploratory artifacts.
+diff --git a/tests/test_leg_volume_depth_contract.py b/tests/test_leg_volume_depth_contract.py
+new file mode 100644
+index 0000000..9cbb127
+--- /dev/null
++++ b/tests/test_leg_volume_depth_contract.py
+@@ -0,0 +1,220 @@
++"""Depth definitions, independent skin topology, and native tetrahedral domains."""
++from __future__ import annotations
++
++from dataclasses import replace
++from pathlib import Path
++import sys
++import unittest
++
++import numpy as np
++
++REPO = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(REPO / 'src'))
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.atlas import (
++    LegVolumeAtlas, query_atlas_coordinates, _side_face_ownership, _remap_faces,
++)
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.harmonic import (
++    HarmonicVolumeMesh, LegHarmonicFields, _distance_to_skin_surface,
++    _point_triangle_distances, interpolate_volume_field,
++)
++
++
++def atlas_fixture() -> LegVolumeAtlas:
++    # The actual skin is a square and is NOT the first N tetrahedral vertices.
++    skin = np.array([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]], np.float32)
++    vertices = np.array([[0., 0., 1.], [1., 0., 0.], [0., 1., 0.], [0., 0., 0.]], np.float32)
++    return LegVolumeAtlas(
++        side='right', skin_vertices=skin, skin_faces=np.array([[0, 1, 2], [0, 2, 3]], np.int32),
++        full_vertex_indices=np.arange(4, dtype=np.int32), skin_theta=np.array([6.25, .1, .15, 6.2], np.float32),
++        skin_h=np.array([.1, .2, .8, .6], np.float32), skin_d=np.zeros(4, np.float32),
++        skin_normals=np.tile([0., 0., 1.], (4, 1)).astype(np.float32),
++        core_points=np.array([[.25, .25, .75]], np.float32), core_h=np.array([.5], np.float32),
++        volume_points=vertices, volume_xi=np.zeros((4, 3), np.float32),
++        hip=np.array([0., 0., 1.], np.float32), knee=np.array([0., 0., .5], np.float32),
++        ankle=np.zeros(3, np.float32), pelvis=np.array([-1., 0., 1.], np.float32), seam_theta=0.,
++        harmonic_vertices=vertices, harmonic_tets=np.array([[0, 1, 2, 3]], np.int32),
++        harmonic_h=np.array([.6, .2, .8, .1], np.float32),
++        harmonic_theta=np.array([6.2, .1, .15, 6.25], np.float32),
++        harmonic_d=np.array([1., .2, .3, 0.], np.float32), metadata={},
++    )
++
++
++class DepthFieldContractTest(unittest.TestCase):
++    def test_true_rotated_boundary_interiors_and_inverse_preserve_float64(self) -> None:
++        from scipy.spatial.transform import Rotation
++        from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.volume_refine import VolumeTetRefiner
++        a = atlas_fixture()
++        rotation = Rotation.from_rotvec([.2, -.3, .5]).as_matrix()
++        vertices = (a.harmonic_vertices @ rotation.T + [.31, -.4, .2]).astype(np.float32)
++        ids = np.array([1, 2, 3])
++        a = replace(a, harmonic_vertices=vertices, harmonic_d=np.array([1., 0., 0., 0.], np.float32),
++            skin_vertices=vertices[ids], skin_faces=np.array([[0, 1, 2]], np.int32),
++            skin_h=a.harmonic_h[ids], skin_theta=a.harmonic_theta[ids], skin_d=np.zeros(3, np.float32),
++            full_vertex_indices=ids, metadata={'default_depth_mode': 'baked'})
++        weights = np.random.default_rng(19954).dirichlet(np.ones(3), 128)
++        points = weights @ a.skin_vertices.astype(np.float64)
++        xi = query_atlas_coordinates(a, points)[0]
++        np.testing.assert_allclose(xi[:, 2], 0., atol=1.e-12)
++        xi[:, 2] = 0.
++        refiner = VolumeTetRefiner.from_atlas(a)
++        decoded = refiner.xi_to_p(xi)
++        self.assertEqual(decoded.dtype, np.float64)
++        np.testing.assert_allclose(refiner.p_to_xi(decoded)[:, 2], 0., atol=1.e-12)
++        normal = np.cross(a.skin_vertices[1]-a.skin_vertices[0], a.skin_vertices[2]-a.skin_vertices[0]).astype(float)
++        normal /= np.linalg.norm(normal)
++        if normal @ (vertices[0]-points[0]) > 0:
++            normal *= -1
++        with self.assertRaisesRegex(ValueError, 'outside the baked tetrahedral'):
++            query_atlas_coordinates(a, points[:1] + 1.e-5 * normal)
++
++    def test_leg_roi_assigns_whole_faces_by_mean_ipsilateral_lbs_mass(self) -> None:
++        skeleton = {'joint_names': ['pelvis', 'left_hip', 'right_hip', 'left_knee', 'right_knee', 'left_ankle', 'right_ankle']}
++        faces = np.arange(6).reshape(2, 3)
++        weights = np.zeros((6, 7))
++        weights[:, 1] = [.9, .1, .1, .9, .8, .7]
++        weights[:, 2] = 1. - weights[:, 1]
++        right, meta = _side_face_ownership(faces, weights, skeleton, 'right')
++        left, _ = _side_face_ownership(faces, weights, skeleton, 'left')
++        np.testing.assert_array_equal(right, [True, False])
++        np.testing.assert_array_equal(left, [False, True])
++        # A face with one opposite-dominated vertex is kept when its mean
++        # ownership is correct, rather than overcropping at each vertex.
++        self.assertEqual(meta['ipsilateral_joint_indices'], [2, 4, 6])
++
++    def test_skin_remap_drops_vertices_without_any_retained_face(self) -> None:
++        ids, faces = _remap_faces(np.array([[0, 1, 2]], np.int32), np.ones(4, bool))
++        np.testing.assert_array_equal(ids, [0, 1, 2])
++        np.testing.assert_array_equal(faces, [[0, 1, 2]])
++
++    def test_actual_skin_vertices_and_triangle_interiors_have_zero_depth(self) -> None:
++        atlas = atlas_fixture()
++        points = np.vstack([atlas.skin_vertices, [[.2, .4, 0.], [.7, .2, 0.]], atlas.core_points])
++        xi, _ = query_atlas_coordinates(atlas, points)
++        np.testing.assert_allclose(xi[:-1, 2], 0., atol=1.e-7)
++        np.testing.assert_allclose(xi[-1, 2], 1., atol=1.e-7)
++        self.assertTrue(np.all((xi[:, 1:] >= 0.) & (xi[:, 1:] <= 1.)))
++        self.assertTrue(np.all((xi[:, 0] >= 0.) & (xi[:, 0] < 2 * np.pi)))
++
++    def test_near_skin_depth_is_continuous_and_matches_independent_ratio(self) -> None:
++        atlas = atlas_fixture()
++        offsets = np.array([0., 1.e-6, 1.e-4, 1.e-3, 1.e-2], np.float32)
++        points = np.column_stack([np.full(len(offsets), .2), np.full(len(offsets), .3), offsets])
++        xi, _ = query_atlas_coordinates(atlas, points)
++        medial_distance = np.linalg.norm(points - atlas.core_points[0], axis=1)
++        expected = offsets / (offsets + medial_distance)
++        np.testing.assert_allclose(xi[:, 2], expected, atol=1.e-7)
++        self.assertTrue(np.all(np.diff(xi[:, 2]) > 0.))
++        self.assertLess(xi[1, 2], 2.e-6)
++
++    def test_retained_isolated_skin_vertex_is_an_explicit_boundary_point(self) -> None:
++        atlas = atlas_fixture()
++        atlas = replace(atlas, skin_vertices=np.vstack([atlas.skin_vertices, [[2., 2., 0.]]]).astype(np.float32),
++            skin_theta=np.r_[atlas.skin_theta, .5].astype(np.float32), skin_h=np.r_[atlas.skin_h, .5].astype(np.float32),
++            skin_d=np.zeros(5, np.float32))
++        points = np.array([[2., 2., 0.], [2., 2., .001]], np.float32)
++        xi, _ = query_atlas_coordinates(atlas, points)
++        self.assertEqual(xi[0, 2], 0.)
++        expected = .001 / (.001 + np.linalg.norm(points[1] - atlas.core_points[0]))
++        self.assertAlmostEqual(float(xi[1, 2]), expected, places=7)
++
++    def test_baked_nodes_and_native_barycentric_values_are_preserved(self) -> None:
++        atlas = atlas_fixture()
++        xi, _ = query_atlas_coordinates(atlas, atlas.harmonic_vertices, depth_mode='baked')
++        np.testing.assert_allclose(xi[:, 1], atlas.harmonic_h, atol=1.e-7)
++        np.testing.assert_allclose(xi[:, 2], atlas.harmonic_d, atol=1.e-7)
++        np.testing.assert_allclose((xi[:, 0] - atlas.harmonic_theta + np.pi) % (2 * np.pi) - np.pi, 0., atol=1.e-6)
++        bary = np.array([.1, .2, .3, .4])
++        point = bary @ atlas.harmonic_vertices
++        result, _ = query_atlas_coordinates(atlas, point[None], depth_mode='baked')
++        expected_theta = np.arctan2(bary @ np.sin(atlas.harmonic_theta.astype(float)), bary @ np.cos(atlas.harmonic_theta.astype(float))) % (2 * np.pi)
++        np.testing.assert_allclose(result[0], [expected_theta, bary @ atlas.harmonic_h, bary @ atlas.harmonic_d], atol=2.e-7)
++        ratio, _ = query_atlas_coordinates(atlas, point[None])
++        self.assertGreater(abs(float(result[0, 2] - ratio[0, 2])), .01)
++
++    def test_baked_domain_is_closed_and_nearest_extrapolation_is_explicit(self) -> None:
++        atlas = atlas_fixture()
++        point = np.array([[.9, .9, .2]], np.float32)
++        with self.assertRaisesRegex(ValueError, 'outside the baked tetrahedral'):
++            query_atlas_coordinates(atlas, point, depth_mode='baked')
++        extrapolated, _ = query_atlas_coordinates(atlas, point, depth_mode='baked', outside='nearest')
++        nearest = np.argmin(np.linalg.norm(atlas.harmonic_vertices - point, axis=1))
++        self.assertEqual(extrapolated[0, 2], atlas.harmonic_d[nearest])
++        with self.assertRaisesRegex(ValueError, 'depth_mode'):
++            query_atlas_coordinates(atlas, point, depth_mode='unknown')
++        empty = replace(atlas, harmonic_tets=np.empty((0, 4), np.int32))
++        with self.assertRaisesRegex(ValueError, 'requires stored'):
++            query_atlas_coordinates(empty, point, depth_mode='baked')
++
++    def test_native_tets_do_not_fill_a_gap_in_the_convex_hull(self) -> None:
++        atlas = atlas_fixture()
++        verts = np.vstack([atlas.harmonic_vertices, atlas.harmonic_vertices + [3., 0., 0.]]).astype(np.float32)
++        fields = LegHarmonicFields(
++            skin_h=atlas.skin_h, skin_theta=atlas.skin_theta, skin_d=atlas.skin_d,
++            vol_h=np.tile(atlas.harmonic_h, 2), vol_theta=np.tile(atlas.harmonic_theta, 2), vol_d=np.tile(atlas.harmonic_d, 2),
++            volume_mesh=HarmonicVolumeMesh(verts, np.array([[0, 1, 2, 3], [4, 5, 6, 7]], np.int32), np.array([3, 7]), np.array([0, 4])),
++            medial_curve_h=atlas.core_h, medial_curve_points=atlas.core_points, metadata={},
++        )
++        with self.assertRaisesRegex(ValueError, 'outside the baked tetrahedral'):
++            interpolate_volume_field(fields, np.array([[2., .1, .1]]), depth_mode='baked')
++
++    def test_volume_precision_layer_uses_the_same_baked_depth_as_its_inverse(self) -> None:
++        from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.volume_refine import VolumeTetRefiner
++        atlas = atlas_fixture()
++        refiner = VolumeTetRefiner.from_atlas(atlas)
++        self.assertIsNotNone(refiner)
++        xi = refiner.p_to_xi(atlas.harmonic_vertices)
++        np.testing.assert_allclose(xi[:, 2], atlas.harmonic_d, atol=1.e-7)
++        bary = np.array([[.1, .2, .3, .4], [.3, .4, .2, .1]], np.float32)
++        points = bary @ atlas.harmonic_vertices
++        decoded = refiner.xi_to_p(refiner.p_to_xi(points))
++        np.testing.assert_allclose(decoded, points, atol=2.e-6)
++        with self.assertRaisesRegex(ValueError, 'outside the baked tetrahedral'):
++            refiner.p_to_xi(np.array([[.9, .9, .2]], np.float32))
++        for invalid in ([.1, -.1, .5], [.1, .9, .5], [.1, .3, 1.1], [3., .3, .5]):
++            with self.assertRaisesRegex(ValueError, 'outside the baked coordinate domain'):
++                refiner.xi_to_p(np.asarray([invalid], np.float32))
++            with self.assertRaisesRegex(ValueError, 'outside the baked coordinate domain'):
++                refiner.xi_to_p(np.asarray([invalid], np.float32), reference_points=points[:1])
++
++    def test_conflicting_overlapping_tetrahedra_fail_closed(self) -> None:
++        atlas = atlas_fixture()
++        verts = np.vstack([atlas.harmonic_vertices, atlas.harmonic_vertices + [.05, 0., 0.]]).astype(np.float32)
++        atlas = replace(atlas, harmonic_vertices=verts, harmonic_tets=np.array([[0, 1, 2, 3], [4, 5, 6, 7]], np.int32),
++            harmonic_h=np.tile(atlas.harmonic_h, 2), harmonic_theta=np.tile(atlas.harmonic_theta, 2),
++            harmonic_d=np.r_[atlas.harmonic_d, atlas.harmonic_d * .5].astype(np.float32))
++        point = np.array([[.2, .2, .2]], np.float32)
++        for outside in ('raise', 'nearest'):
++            with self.assertRaisesRegex(ValueError, 'Ambiguous baked tetrahedral domain'):
++                query_atlas_coordinates(atlas, point, depth_mode='baked', outside=outside)
++            with self.assertRaisesRegex(ValueError, 'Ambiguous baked tetrahedral domain'):
++                query_atlas_coordinates(atlas, atlas.harmonic_vertices[[1]], depth_mode='baked', outside=outside)
++        # The independently defined runtime ratio still has a unique value.
++        runtime, _ = query_atlas_coordinates(atlas, point)
++        self.assertTrue(np.isfinite(runtime).all())
++
++    def test_surface_distance_search_matches_exhaustive_triangles(self) -> None:
++        rng = np.random.default_rng(12)
++        vertices = rng.normal(size=(60, 3))
++        faces = np.arange(60).reshape(-1, 3)
++        points = rng.normal(size=(40, 3))
++        triangles = vertices[faces]
++        expected = np.array([_point_triangle_distances(np.repeat(p[None], len(faces), axis=0), triangles).min() for p in points])
++        np.testing.assert_allclose(_distance_to_skin_surface(points, vertices, faces), expected, atol=1.e-12)
++
++    def test_distance_ratio_is_invariant_under_common_rigid_motion(self) -> None:
++        from scipy.spatial.transform import Rotation
++        atlas = atlas_fixture()
++        points = np.array([[.2, .3, .001], [.3, .2, .02], [.25, .25, .75]], np.float32)
++        rotation = Rotation.from_rotvec([.2, -.5, .3]).as_matrix()
++        translation = np.array([.4, -.7, .1])
++        moved = replace(atlas,
++            skin_vertices=(atlas.skin_vertices @ rotation.T + translation).astype(np.float32),
++            core_points=(atlas.core_points @ rotation.T + translation).astype(np.float32),
++            harmonic_vertices=(atlas.harmonic_vertices @ rotation.T + translation).astype(np.float32))
++        before, _ = query_atlas_coordinates(atlas, points)
++        after, _ = query_atlas_coordinates(moved, points @ rotation.T + translation)
++        np.testing.assert_allclose(before[:, 2], after[:, 2], atol=2.e-7)
++
++
++if __name__ == '__main__':
++    unittest.main()
+diff --git a/DMP_playground/run_volume_coordinate_query.py b/DMP_playground/run_volume_coordinate_query.py
+new file mode 100644
+index 0000000..c458ef8
+--- /dev/null
++++ b/DMP_playground/run_volume_coordinate_query.py
+@@ -0,0 +1,84 @@
++"""Explicit shaft ROI query/transport entry, independent of cached vessel projections."""
++from __future__ import annotations
++from dataclasses import replace
++from pathlib import Path
++import argparse
++import hashlib
++import json
++import sys
++import numpy as np
++
++REPO = Path(__file__).resolve().parents[1]
++sys.path[:0] = [str(REPO), str(REPO / 'src')]
++from DMP_playground.configs.load_config import load_playground_config
++from DMP_playground.core_algorithms.patch_binding import load_canonical_bundle
++from projects.genesis_ue_sync.anatomy_retarget.anatomy_lbs import joint_global_transforms
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.atlas import load_leg_volume_atlas, query_atlas_coordinates
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.volume_refine import VolumeTetRefiner
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.harmonic import locate_baked_tetrahedra
++from projects.genesis_ue_sync.anatomy_retarget.leg_volume_coordinates.lbs_bridge import blend_lbs_transforms
++
++
++def query_and_transport(config_path: Path | str, *, xi: np.ndarray | None = None,
++                        point: np.ndarray | None = None, knee_deg: float = 60.) -> dict[str, object]:
++    config = load_playground_config(config_path)['volume_coordinates']
++    atlas_path, weights_path = Path(config['atlas_path']), Path(config['attachments_path'])
++    atlas = load_leg_volume_atlas(atlas_path)
++    manifest = json.loads(Path(config['asset_hashes_path']).read_text())
++    for path, role in ((atlas_path, f'atlas_{atlas.side}.npz'), (weights_path, f'attachments_{atlas.side}.npz')):
++        if hashlib.sha256(path.read_bytes()).hexdigest() != manifest[role]:
++            raise ValueError(f'Coordinate bundle hash/side mismatch: {path}')
++    attachment = np.load(weights_path, allow_pickle=False)
++    weights = attachment['volume_lbs_weights']
++    if len(weights) != len(atlas.harmonic_vertices) or np.min(weights) < 0 or np.max(abs(weights.sum(1) - 1)) > 1.e-5:
++        raise ValueError('Invalid fixed volume attachment weights')
++    refiner = VolumeTetRefiner.from_atlas(atlas)
++    if xi is not None:
++        canonical_point = refiner.xi_to_p(np.asarray(xi).reshape(1, 3))
++    elif point is not None:
++        canonical_point = np.asarray(point, np.float64).reshape(1, 3)
++    else:
++        raise ValueError('Provide exactly one canonical point or material address')
++    canonical_xi = query_atlas_coordinates(atlas, canonical_point)[0]
++    inverse = refiner.xi_to_p(canonical_xi)
++    cells, bary = locate_baked_tetrahedra(refiner.fields, canonical_point)
++    canonical = load_canonical_bundle(config['canonical_dir'])
++    joint_names = [str(x) for x in canonical['joint_names']]
++    pose = np.zeros((len(joint_names), 3), np.float32)
++    pose[joint_names.index(f'{atlas.side}_knee'), 0] = np.deg2rad(knee_deg)
++    global_transforms = joint_global_transforms(pose_axis_angle=pose.ravel(), rest_joints=canonical['rest_joints'], parents=canonical['parents'])
++    transforms = global_transforms @ canonical['inverse_bind']
++    blended = blend_lbs_transforms(weights, transforms)
++    vertices = np.einsum('nij,nj->ni', blended, np.column_stack([atlas.harmonic_vertices, np.ones(len(weights), np.float32)]))[:, :3].astype(np.float32)
++    posed_point = np.einsum('ni,nij->nj', bary, vertices[atlas.harmonic_tets[cells]])
++    grid = np.arange(len(vertices)).reshape(tuple(attachment['grid_shape']))
++    posed_atlas = replace(atlas, harmonic_vertices=vertices, skin_vertices=vertices[grid[:, -1].ravel()])
++    posed_xi = query_atlas_coordinates(posed_atlas, posed_point)[0]
++    difference = posed_xi - canonical_xi
++    difference[:, 0] = (difference[:, 0] + np.pi) % (2 * np.pi) - np.pi
++    return dict(scope='shaft ROI point query and piecewise-linear tetra transport; no vessel or servo claim',
++        atlas_path=str(atlas_path), attachments_path=str(weights_path), domain_h_range=atlas.metadata['domain_h_range'],
++        side=atlas.side, knee_deg=knee_deg, canonical_point_m=canonical_point[0].tolist(), material_xi=canonical_xi[0].tolist(),
++        inverse_error_m=float(np.linalg.norm(inverse-canonical_point)), native_tet_index=int(cells[0]), barycentric=bary[0].tolist(),
++        posed_point_m=posed_point[0].tolist(), posed_material_xi=posed_xi[0].tolist(), material_transport_abs_error=abs(difference[0]).tolist())
++
++
++def main() -> None:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--config', type=Path, required=True)
++    choice = parser.add_mutually_exclusive_group(required=True)
++    choice.add_argument('--xi', nargs=3, type=float, metavar=('THETA', 'H', 'D'))
++    choice.add_argument('--point', nargs=3, type=float, metavar=('X', 'Y', 'Z'))
++    parser.add_argument('--knee-deg', type=float, default=60.)
++    parser.add_argument('--output', type=Path)
++    args = parser.parse_args()
++    result = query_and_transport(args.config, xi=args.xi, point=args.point, knee_deg=args.knee_deg)
++    payload = json.dumps(result, indent=2)
++    if args.output:
++        args.output.parent.mkdir(parents=True, exist_ok=True)
++        args.output.write_text(payload)
++    print(payload)
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/DMP_playground/configs/shaft_roi_v2_20261110.json b/DMP_playground/configs/shaft_roi_v2_20261110.json
+new file mode 100644
+index 0000000..c803ce3
+--- /dev/null
++++ b/DMP_playground/configs/shaft_roi_v2_20261110.json
+@@ -0,0 +1,10 @@
++{
++  "includes": ["smplx_recovered_20261108.json"],
++  "volume_coordinates": {
++    "scope": "explicit_shaft_roi_point_query_only",
++    "atlas_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
++    "attachments_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/attachments_right.npz",
++    "asset_hashes_path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/asset_hashes.json",
++    "canonical_dir": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108"
++  }
++}

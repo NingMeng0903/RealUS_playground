@@ -1,0 +1,134 @@
+{
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/continuous_smc.py",
+  "sha_before": "a65c01d2828f2b03e065ddb7920c153468f3ce9185ae9a4d991c6e96ecb8e7eb",
+  "sha_after": "a65c01d2828f2b03e065ddb7920c153468f3ce9185ae9a4d991c6e96ecb8e7eb",
+  "source_unchanged": true,
+  "tests": {
+    "check_cess": {
+      "passed": true,
+      "result": {
+        "max_direct_formula_error": 2.6645352591003757e-15,
+        "nonuniform_delta0_equals_N": true,
+        "constant_likelihood_equals_N": true
+      }
+    },
+    "check_scheduler": {
+      "passed": true,
+      "result": {
+        "independent_beta": 0.04094278944527605,
+        "implementation_beta": 0.04094278944527604,
+        "cess": 4.199999999999999,
+        "hard_zero_positive_step": 1e-06,
+        "hard_zero_cess": 1.0
+      }
+    },
+    "check_exact_weight_and_logz": {
+      "passed": true,
+      "result": {
+        "first_logZ": 2.2422647875989434,
+        "joint_logZ": -0.3365788392505682,
+        "first_stages": 4,
+        "second_stages": 4,
+        "exact_telescoping_and_weights": true
+      }
+    },
+    "check_full_history_mh": {
+      "passed": true,
+      "result": {
+        "full_prior_plus_history_plus_beta_block_acceptance": 0.75,
+        "expected_states": [
+          1,
+          0,
+          0,
+          0
+        ],
+        "weighted_move_preserves_weights": true,
+        "two_state_invariance_error": 0.0
+      }
+    },
+    "check_endpoint_commit": {
+      "passed": true,
+      "result": {
+        "near_one_beta_still_uncommitted": 0.9999999995
+      }
+    },
+    "check_proposal": {
+      "passed": true,
+      "result": {
+        "all_7_blocks_roundtrip_max_point_error_m": 3.469446951953614e-18,
+        "input_world_immutable": true,
+        "unclipped_depth_proposal_rejected_by_prior": true,
+        "source_review": "Gaussian zero-mean increments and symmetric sign flips, state-independent block/source selection; no truncation/resampling of invalid proposals."
+      }
+    },
+    "check_geometry_likelihood": {
+      "passed": true,
+      "result": {
+        "ten_public_frames_two_poses_max_loglike_error": 0.0,
+        "fresh_particle_geometry_cache_checked": true
+      }
+    },
+    "check_wrapper_history_transaction": {
+      "passed": true,
+      "result": {
+        "unique_frame_count": 5,
+        "duplicate_calls_skipped": true,
+        "full_old_history_and_new_block_separate": true,
+        "uncommitted_state_rolled_back": true,
+        "hard_zero_support_returns_failed_uncommitted_diagnostic": true
+      }
+    },
+    "check_sequential_gaussian": {
+      "passed": true,
+      "result": {
+        "analytic_mean": 0.6925207756232685,
+        "analytic_variance": 0.0997229916897507,
+        "analytic_logZ": -3.7144097497934565,
+        "four_seeds": [
+          {
+            "seed": 720995,
+            "mean": 0.6918310174520668,
+            "variance": 0.0992734434524129,
+            "logZ": -3.7528227842101263
+          },
+          {
+            "seed": 720996,
+            "mean": 0.6873598162780834,
+            "variance": 0.09706977738967365,
+            "logZ": -3.704267896717366
+          },
+          {
+            "seed": 720997,
+            "mean": 0.6862916725521624,
+            "variance": 0.09810942327553973,
+            "logZ": -3.7096244185378753
+          },
+          {
+            "seed": 720998,
+            "mean": 0.6885680292534264,
+            "variance": 0.09814718049614357,
+            "logZ": -3.694246774522373
+          }
+        ],
+        "interpretation": "Monte Carlo agreement, not exact finite-N evidence or coverage proof."
+      }
+    },
+    "check_cuda_predictor": {
+      "passed": true,
+      "result": {
+        "predictor_field_max_errors": {
+          "means": 5.551115123125783e-14,
+          "p_source": 1.1102230246251565e-16,
+          "p_visible": 1.1102230246251565e-16,
+          "contact": 0.0,
+          "geometric_length": 1.734723475976807e-18,
+          "angle_audit": 1.1102230246251565e-16
+        },
+        "max_public_frame_loglike_error": 5.258016244624741e-12,
+        "gpu_source_sha": "0a5761c0b4b47e81b242a708db938584f0f8b7321b3bfdea98f3f505d34fc653"
+      }
+    }
+  },
+  "all_passed": true,
+  "scope": "No locked 720913 cohort, no native execution; fixed DEV only for likelihood API."
+}

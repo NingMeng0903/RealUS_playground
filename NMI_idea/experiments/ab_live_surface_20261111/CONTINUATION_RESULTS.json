@@ -1,0 +1,644 @@
+{
+  "scope": "Exactly enumerated abstract timing and observation model. No robot or acoustic evidence.",
+  "objective": "P(fresh correct acquisition before deadline) - 0.05 * mean elapsed seconds",
+  "results": {
+    "constrained": {
+      "deadline_seconds": 2.0,
+      "visibility": 0.8,
+      "accuracy_when_visible": 0.8,
+      "information_bits_for_each_probe": 0.22245752409011016,
+      "methods": {
+        "I0_F0": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I0_F1": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I1_F0": {
+          "first": "restricted",
+          "predicted": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 1.8,
+            "objective": 0.65
+          },
+          "realized": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "L",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.8,
+            "objective": 0.41
+          }
+        },
+        "I1_F1": {
+          "first": "branching",
+          "predicted": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 2.0,
+            "objective": 0.64
+          },
+          "realized": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 2.0,
+            "objective": 0.64
+          }
+        }
+      },
+      "fixed_first_baselines": {
+        "direct": {
+          "selection_by_event": {
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.0,
+          "objective": 0.45
+        },
+        "restricted": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "L",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.8,
+          "objective": 0.41
+        },
+        "branching": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "R",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.74,
+          "mean_seconds": 2.0,
+          "objective": 0.64
+        }
+      },
+      "fixed_first_success_increment_from_observation": {
+        "restricted": 0.0,
+        "branching": 0.24
+      }
+    },
+    "open_exit": {
+      "deadline_seconds": 2.0,
+      "visibility": 0.8,
+      "accuracy_when_visible": 0.8,
+      "information_bits_for_each_probe": 0.22245752409011016,
+      "methods": {
+        "I0_F0": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I0_F1": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I1_F0": {
+          "first": "restricted",
+          "predicted": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 1.8,
+            "objective": 0.65
+          },
+          "realized": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 1.8,
+            "objective": 0.65
+          }
+        },
+        "I1_F1": {
+          "first": "restricted",
+          "predicted": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 1.8,
+            "objective": 0.65
+          },
+          "realized": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 1.8,
+            "objective": 0.65
+          }
+        }
+      },
+      "fixed_first_baselines": {
+        "direct": {
+          "selection_by_event": {
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.0,
+          "objective": 0.45
+        },
+        "restricted": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "R",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.74,
+          "mean_seconds": 1.8,
+          "objective": 0.65
+        },
+        "branching": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "R",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.74,
+          "mean_seconds": 2.0,
+          "objective": 0.64
+        }
+      },
+      "fixed_first_success_increment_from_observation": {
+        "restricted": 0.24,
+        "branching": 0.24
+      }
+    },
+    "longer_deadline": {
+      "deadline_seconds": 3.0,
+      "visibility": 0.8,
+      "accuracy_when_visible": 0.8,
+      "information_bits_for_each_probe": 0.22245752409011016,
+      "methods": {
+        "I0_F0": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I0_F1": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I1_F0": {
+          "first": "restricted",
+          "predicted": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 1.8,
+            "objective": 0.65
+          },
+          "realized": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 2.2,
+            "objective": 0.63
+          }
+        },
+        "I1_F1": {
+          "first": "branching",
+          "predicted": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 2.0,
+            "objective": 0.64
+          },
+          "realized": {
+            "selection_by_event": {
+              "L": "L",
+              "R": "R",
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.74,
+            "mean_seconds": 2.0,
+            "objective": 0.64
+          }
+        }
+      },
+      "fixed_first_baselines": {
+        "direct": {
+          "selection_by_event": {
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.0,
+          "objective": 0.45
+        },
+        "restricted": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "R",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.74,
+          "mean_seconds": 2.2,
+          "objective": 0.63
+        },
+        "branching": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "R",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.74,
+          "mean_seconds": 2.0,
+          "objective": 0.64
+        }
+      },
+      "fixed_first_success_increment_from_observation": {
+        "restricted": 0.24,
+        "branching": 0.24
+      }
+    },
+    "no_information": {
+      "deadline_seconds": 2.0,
+      "visibility": 0.8,
+      "accuracy_when_visible": 0.5,
+      "information_bits_for_each_probe": 0.0,
+      "methods": {
+        "I0_F0": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I0_F1": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I1_F0": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I1_F1": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        }
+      },
+      "fixed_first_baselines": {
+        "direct": {
+          "selection_by_event": {
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.0,
+          "objective": 0.45
+        },
+        "restricted": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "L",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.8,
+          "objective": 0.41
+        },
+        "branching": {
+          "selection_by_event": {
+            "L": "L",
+            "R": "L",
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 2.0,
+          "objective": 0.4
+        }
+      },
+      "fixed_first_success_increment_from_observation": {
+        "restricted": 0.0,
+        "branching": 0.0
+      }
+    },
+    "always_missing": {
+      "deadline_seconds": 2.0,
+      "visibility": 0.0,
+      "accuracy_when_visible": 0.8,
+      "information_bits_for_each_probe": 0.0,
+      "methods": {
+        "I0_F0": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I0_F1": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I1_F0": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        },
+        "I1_F1": {
+          "first": "direct",
+          "predicted": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          },
+          "realized": {
+            "selection_by_event": {
+              "missing": "L"
+            },
+            "successful_by_deadline": 0.5,
+            "mean_seconds": 1.0,
+            "objective": 0.45
+          }
+        }
+      },
+      "fixed_first_baselines": {
+        "direct": {
+          "selection_by_event": {
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.0,
+          "objective": 0.45
+        },
+        "restricted": {
+          "selection_by_event": {
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 1.8,
+          "objective": 0.41
+        },
+        "branching": {
+          "selection_by_event": {
+            "missing": "L"
+          },
+          "successful_by_deadline": 0.5,
+          "mean_seconds": 2.0,
+          "objective": 0.4
+        }
+      },
+      "fixed_first_success_increment_from_observation": {
+        "restricted": 0.0,
+        "branching": 0.0
+      }
+    }
+  },
+  "joint_timing_diagnostic": {
+    "correct_frames_can_arrive_early": {
+      "weights": [
+        0.5,
+        0.25,
+        0.0,
+        0.25
+      ],
+      "image_accuracy": 0.75,
+      "probability_of_timely_exit": 0.5,
+      "probability_each_label_and_timely_exit": 0.25,
+      "correct_completion_using_joint": 0.5,
+      "predicted_completion_if_factorized": 0.375
+    },
+    "correct_frames_arrive_late": {
+      "weights": [
+        0.25,
+        0.5,
+        0.25,
+        0.0
+      ],
+      "image_accuracy": 0.75,
+      "probability_of_timely_exit": 0.5,
+      "probability_each_label_and_timely_exit": 0.25,
+      "correct_completion_using_joint": 0.25,
+      "predicted_completion_if_factorized": 0.375
+    }
+  }
+}

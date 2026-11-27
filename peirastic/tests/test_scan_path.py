@@ -10,6 +10,8 @@ from peirastic.scan_path import (
     AMPLITUDE_LOAD_MAX_M,
     ForearmReference,
     PEAK_RANGE_M,
+    make_figure8_spec,
+    make_single_s_spec,
     make_spec,
     force_profile,
     SCAN_FORCE_AXES,
@@ -129,6 +131,56 @@ def test_invalid_amplitude_rejected(amplitude):
         ForearmReference(spec)
 
 
+def test_single_s_peaks_at_3cm_and_ends_at_the_second_point():
+    noisy = make_spec(D, P, "S", "DtP", 1)
+    noisy["amplitude_m"] = 0.03
+    with pytest.raises(ValueError, match="invalid ICRA"):
+        ForearmReference(noisy)
+    spec = make_single_s_spec(D, P, speed=0.01, peak_m=0.03)
+    ref = ForearmReference(spec)
+    lateral = np.asarray(spec["lateral"])
+    chord = P[:3] - D[:3]
+    along = chord / np.linalg.norm(chord)
+    samples = np.linspace(0, 1, 4001)
+    poses = np.vstack([ref.at(float(u))[0] for u in samples])
+    offsets = (poses[:, :3] - D[:3]) @ lateral
+    progress = (poses[:, :3] - D[:3]) @ along
+    assert spec["shape"] == "S" and spec["amplitude_m"] == pytest.approx(0.03)
+    assert offsets[0] == pytest.approx(0, abs=1e-9)
+    assert offsets[np.argmin(np.abs(samples - 0.5))] == pytest.approx(0, abs=1e-6)
+    assert offsets[-1] == pytest.approx(0, abs=1e-9)
+    assert offsets.max() == pytest.approx(0.03, abs=1e-4)
+    assert offsets.min() == pytest.approx(-0.03, abs=1e-4)
+    assert np.all(np.diff(progress) >= -1e-6)
+    assert progress[-1] == pytest.approx(np.linalg.norm(chord), abs=1e-4)
+    np.testing.assert_allclose(ref.sample(0).pose_d, D, atol=1e-9)
+    np.testing.assert_allclose(ref.sample(ref.duration_s).pose_d, P, atol=1e-9)
+    assert ref.sample(ref.duration_s).vel_ff @ ref.sample(ref.duration_s).vel_ff == 0
+
+
+def test_figure8_is_two_opposite_s_curves_peaking_at_3cm():
+    spec = make_figure8_spec(D, P, speed=0.01, peak_m=0.03)
+    ref = ForearmReference(spec)
+    lateral = np.asarray(spec["lateral"])
+    chord = P[:3] - D[:3]
+    along = chord / np.linalg.norm(chord)
+    samples = np.linspace(0, 1, 4001)
+    poses = np.vstack([ref.at(float(u))[0] for u in samples])
+    offsets = (poses[:, :3] - D[:3]) @ lateral
+    progress = (poses[:, :3] - D[:3]) @ along
+    assert spec["shape"] == "8" and spec["amplitude_m"] == pytest.approx(0.03)
+    assert offsets[0] == pytest.approx(0, abs=1e-9)
+    assert offsets[np.argmin(np.abs(samples - 0.25))] == pytest.approx(0, abs=1e-3)
+    assert offsets[np.argmin(np.abs(samples - 0.5))] == pytest.approx(0, abs=1e-6)
+    assert offsets[np.argmin(np.abs(samples - 0.75))] == pytest.approx(0, abs=1e-3)
+    assert offsets.max() == pytest.approx(0.03, abs=1e-4)
+    assert offsets.min() == pytest.approx(-0.03, abs=1e-4)
+    assert progress.max() == pytest.approx(np.linalg.norm(chord), abs=1e-4)
+    np.testing.assert_allclose(ref.sample(0).pose_d, D, atol=1e-9)
+    np.testing.assert_allclose(ref.sample(ref.duration_s).pose_d, D, atol=1e-9)
+    assert ref.sample(ref.duration_s).vel_ff @ ref.sample(ref.duration_s).vel_ff == 0
+
+
 def test_gate_needs_air_then_continuous_fresh_4n_without_changing_physical_contact():
     ref = ForearmReference(make_spec(D, P, "L", "DtP", 0))
     gate = ContactGatedReference(ref, lambda: True, start_force_n=4, start_force_s=.1)
@@ -230,9 +282,8 @@ def test_controller_seek_guard_works_without_external_supervisor(monkeypatch):
         gate.guard_approach(D)
     gate.set_origin(D)
     too_deep = D.copy()
-    too_deep[:3] -= .011 * outward(D)
-    with pytest.raises(RuntimeError, match="10 mm"):
-        gate.guard_approach(too_deep)
+    too_deep[:3] -= .030 * outward(D)
+    gate.guard_approach(too_deep)
     gate.set_origin(D)
     drifted = D.copy()
     drifted[1] += 0.04

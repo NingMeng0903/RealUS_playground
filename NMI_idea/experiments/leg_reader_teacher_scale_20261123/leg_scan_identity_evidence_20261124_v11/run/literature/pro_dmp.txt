@@ -1,0 +1,869 @@
+                                                ProDMPs: A Unified Perspective on Dynamic and Probabilistic
+                                                                  Movement Primitives
+                                                  Ge Li1 , Zeqi Jin1 , Michael Volpp1 , Fabian Otto2,3 , Rudolf Lioutikov1 , and Gerhard Neumann1
+
+
+                                           Abstract— Movement Primitives (MPs) are a well-known                integration from acceleration to position has to be applied
+                                        concept to represent and generate modular trajectories. MPs            to formulate the trajectory, which constitutes an additional
+                                        can be broadly categorized into two types: (a) dynamics-based          workload and makes the estimation of the trajectory statistics
+                                        approaches that generate smooth trajectories from any ini-
+                                        tial state, e. g., Dynamic Movement Primitives (DMPs), and             difficult [15]. Probabilistic methods, such as Probabilistic
+                                        (b) probabilistic approaches that capture higher-order statis-         Movement Primitive (ProMP), are able to acquire such
+arXiv:2210.01531v1 [cs.RO] 4 Oct 2022
+
+
+
+
+                                        tics of the motion, e. g., Probabilistic Movement Primitives           statistics, thus making them the key enablers for acquiring
+                                        (ProMPs). To date, however, there is no method that unifies            variable-stiffness controllers and the trajectory’s temporal
+                                        both, i. e. that can generate smooth trajectories from an arbi-        and DoFs correlation. These methods further perform as gen-
+                                        trary initial state while capturing higher-order statistics. In this
+                                        paper, we introduce a unified perspective of both approaches by        erative models, facilitating the sampling of new trajectories.
+                                        solving the ODE underlying the DMPs. We convert expensive              However, the lack of internal dynamics of these approaches
+                                        online numerical integration of DMPs into basis functions that         suffers from discontinuities in position and velocity between
+                                        can be computed offline. These basis functions can be used             old and new trajectories in the case of replanning.
+                                        to represent trajectories or trajectory distributions similar to          In this work, we propose Probabilistic Dynamic Movement
+                                        ProMPs while maintaining all the properties of dynamical
+                                        systems. Since we inherit the properties of both methodologies,        Primitives (ProDMPs) which unify both methodologies. We
+                                        we call our proposed model Probabilistic Dynamic Movement              show that the trajectory of a DMP, obtained by integrating
+                                        Primitives (ProDMPs). Additionally, we embed ProDMPs in                its second-order dynamical system, can be expressed by a
+                                        deep neural network architecture and propose a new cost                linear basis function model that depends on the parameters
+                                        function for efficient end-to-end learning of higher-order trajec-     of the DMP, i. e., the weights of the forcing function and the
+                                        tory statistics. To this end, we leverage Bayesian Aggregation
+                                        for non-linear iterative conditioning on sensory inputs. Our           goal attractor. The linear basis functions can be obtained by
+                                        proposed model achieves smooth trajectory generation, goal-            integrating the original basis functions used in the DMP - an
+                                        attractor convergence, correlation analysis, non-linear condi-         operation that only needs to be performed once offline in the
+                                        tioning, and online re-planing in one framework.                       ProDMPs. Recently, MP research has been extended to deep
+                                                                                                               neural network (NN) architectures [10, 11, 13] that enable
+                                                                 I. I NTRODUCTION
+                                                                                                               conditioning the trajectory generation on high-dimensional
+                                           Movement Primitives (MPs) are a prominent tool for                  context variables, such as images. Following these ideas, we
+                                        motion representation and synthesis in robotics. They serve            integrate our representation into a deep neural architecture
+                                        as basic movement elements, modulate the motion behavior,              that allows non-linear conditioning on a varying number
+                                        and form more complex movements through combination                    of conditioning events. These events are aggregated using
+                                        or concatenation. This work focuses on trajectory-based                Bayesian Aggregation (BA) into a latent probabilistic repre-
+                                        movement representations [1, 2]. Given a parameter vector,             sentation [16] which is mapped to a Gaussian distribution
+                                        such representations generate desired trajectories for the             in the parameter space of the ProDMPs. We summarize
+                                        robot to follow. These methods have gained much popularity             the contributions of this paper as: (a) We unify ProMPs
+                                        in imitation and reinforcement learning (IL, RL) [3–7] due             and DMPs into one consistent framework that inherits the
+                                        to their concise parametrization and flexibility to modulate           benefits of both formulations. (b) We enable to compute
+                                        movement. Current methods can be roughly classified into               distributions and to capture correlations of DMPs trajectories,
+                                        approaches based on dynamical systems [1, 8–11] and prob-              while (c) the robot’s current state can be inscribed into the
+                                        abilistic approaches [2, 12, 13], with both types offering their       trajectory distribution through boundary conditions, allowing
+                                        own advantages. The dynamical systems-based approaches,                for smooth replanning. (d) Moreover, the offline integration
+                                        such as Dynamic Movement Primitives (DMPs), guarantee                  of the basis functions significantly facilitates the integration
+                                        that the generated trajectories start precisely at the current         into neural network architectures, reducing the computation
+                                        position and velocity of the robot, which allows for smooth            time by a factor of 10. (e) Hence, we embed ProDMPs in
+                                        trajectory replanning i. e., changing the parameters of the            a deep encoder-decoder architecture that allows non-linear
+                                        MPs during motion execution [11, 14]. However, since DMPs              conditioning on a set of high-dimensional observations with
+                                        represent the trajectory via the forcing term instead of a             varying information levels. We evaluate our method on three
+                                        direct representation of the trajectory position, numerical            digit-writing tasks using images as inputs, a simulated robot
+                                          1 Karlsruhe Institute of Technology, Germany. ge.li@kit.edu          pushing task with a complex physical interaction, and a real
+                                          2 Bosch Center for Artificial Intelligence, Germany.                 robot picking task with shifting object positions. We compare
+                                          3 University of Tübingen, Germany.                                  our model with state-of-the-art NN-based DMPs [9–11] and
+the NN-based probabilistic method [13].                                 III. A U NIFIED P ERSPECTIVE ON DYNAMIC AND
+                                                                             P ROBABILISTIC M OVEMENT P RIMITIVES
+                    II. R ELATED W ORK                               We first briefly cover the fundamental aspects of DMPs.
+                                                                   Then, we derive the analytical solution of the DMPs’ ODE to
+   Paraschos et al. [2] established ProMPs to model MPs as
+                                                                   develop our new ProDMPs representation. For convenience,
+a trajectory distribution that captures temporal correlation
+                                                                   we introduce our approach through a 1-DoF dynamical
+and correlations between the DoFs. ProMPs maintain a
+                                                                   system and later extend it to a high-DoFs system.
+Gaussian distribution over the parameters and can map it to
+the corresponding trajectory distribution using a linear basis     A. Solving DMPs’ Ordinary Differential Equation
+function model. In contrast, such a distribution mapping is
+not allowed for the DMP-based approaches, as the trajectory           For a single movement execution as a trajectory λ =
+is integrated numerically from the forcing function. Previous      [yt ]t=0:T , Schaal [1] and Ijspeert et al. [8] model it as
+methods, like GMM/GMR-DMPs [17, 18] used Gaussian                  a second-order linear dynamical system with a non-linear
+Mixture Models to cover the trajectories’ domain. Yet, this        forcing function f ,
+                                                                                                                 P
+does not capture temporal correlation nor does it provide           2                                              ϕi (x)wi
+                                                                   τ ÿ = α(β(g−y)−τ ẏ)+f (x),         f (x) = x P         = xϕ|x w,
+a generative approach to trajectories. Other methods which                                                          ϕi (x)
+                                                                                                                                   (1)
+have learned distributions over DMP weights [19, 20], do not
+connect the weights distribution to the trajectory distribution,   where y = y(t), ẏ = dy/dt, ÿ = d2 y/dt2 represent the
+as trajectories can only be obtained by integration. Hence, it     position, velocity, and acceleration of the system at time
+is also hard to learn the weights distribution reversely from      step t, respectively. Here, we use the original formulation
+trajectories in an end-to-end manner.                              of DMPs in [1] without any extensions. α and β are
+                                                                   spring-damper constants, g is a goal attractor, and τ is a
+   To learn DMP parameters from high-dimensional sensory
+                                                                   time constant which can be used to adapt the execution
+inputs, Gams et al. [9] and Ridge et al. [10] designed an
+                                                                   speed of the resulting trajectory. To this end, DMPs define
+encoder-decoder architecture to learn the weights of a single
+                                                                   the forcing function over an exponentially decaying phase
+DMP from digit images, and derive the gradient of the
+                                                                   variable x(t) = exp(−αx /τ t), where ϕi (x) represents the
+trajectory with respect to the learnable parameters. Bahl et al.
+                                                                   (unnormalized) basis functions and wi ∈ w, i = 1...N are
+[11] propose Neural Dynamic Policies (NDP) that allow
+                                                                   the corresponding weights. The trajectory of the motion λ
+replanning the DMP parameters throughout the execution
+                                                                   is obtained by integrating the dynamical system, or more
+of the trajectory which has also been extended to the RL
+                                                                   specifically, numerical integration from starting time to the
+setting. The learning objective of these two methods for IL
+                                                                   target time point. The dynamical system defined in Eq. (1) is
+is to optimize the mean squared error (MSE) between the
+                                                                   a second-order linear non-homogeneous ordinary differential
+predicted and the ground-truth trajectories using backpropa-
+                                                                   equation (ODE) with constant coefficients, whose closed-
+gation. However, to formulate a trajectory, DMPs must apply
+                                                                   form solution can be derived analytically. We rewrite the
+numerical integration during the NN training procedure,
+                                                                   ODE and its homogeneous counterpart in standard form as
+which significantly increases the computational workload
+in both forward and backward propagation, rendering these                          α     αβ    f (x) αβ
+                                                                    DMPs’ ODE: ÿ +  ẏ + 2 y = 2 + 2 g ≡ F (x, g), (2)
+approaches cumbersome to use. Additionally, the integration-                       τ     τ      τ    τ
+                                                                                   α     αβ
+based trajectory representation limits the use of probabilistic     Homo. ODE: ÿ + ẏ + 2 y = 0,                   (3)
+                                                                                   τ     τ
+methods and hence these NN-DMPs approaches cannot be
+trained using a probabilistic log-likelihood (LL) loss.            where F denotes some function of x and g. Using the method
+   Probabilistic MPs approaches have also been extended            of variation of constants [22], the closed-form solution of the
+with deep NN architectures. Seker et al. [13] directly use         second-order ODE in Eq. (2), i. e. , the trajectory position, is
+                                                                                                    Z                  Z
+a Conditional Neural Processes model [21] as a trajectory                                               y2 F               y1 F
+                                                                           y = c1 y1 + c2 y2 − y1            dt + y2            dt,   (4)
+generator, i.e. Conditional Neural Movement Primitives (CN-                                              Y                  Y
+MPs), to predict the trajectory distribution with an encoder-      where y1 , y2 are two linearly independent complementary
+decoder NNs model. While such an architecture enables non-         functions of the homogeneous ODE given in Eq. (3). c1 ,
+linear conditioning on high-dimensional inputs, it can only        c2 are two constants which are determined by the boundary
+predict an isotropic trajectory variance at each time step. The    conditions (BCs) of the ODE, and Y = y1 ẏ2 − ẏ1 y2 . Both
+temporal and DoFs correlations are missing, which makes            integrals in Eq. (4) are indefinite. With appropriate values
+sampling consistently in time and DoFs infeasible. Besides,        β = α/4 [1, 8], the system is critically damped, and the
+both ProMPs and CNMPs neglect dynamics, i. e. , when               corresponding characteristic equation of the homogeneous
+changing trajectory parameters during trajectory execution,        ODE, i. e. ∆ = (α2 − 4αβ)/τ 2 will be 0. Consequently, y1 ,
+the newly generated trajectory will contain discontinuities        y2 will take the form
+                                                                                      α                       α 
+at the replanning time point. To execute such trajectories,         y1 = y1 (t) = exp − t , y2 = y2 (t) = t exp − t . (5)
+a heuristic controller is used to freeze the time and catch                            2τ                        2τ
+up with the jump [13]. However, such a waiting mechanism           Using this result, the term Y can also be simplified to
+does not scale to time-sensitive motions and tasks.                Y = exp (−αt/τ ) 6= 0. To get y, we need to solve the two
+indefinite integrals in Eq. (4) as                                               1e−3
+                      Z               Z                                                                                            1.00
+                   y2 F            α                                     1.5
+        I1 (t) =        dt = t exp     t F (x, g)dt,                                                                               0.75
+                    Y               2τ                                     1.0
+                 Z          Z                                        (6)                                                           0.50
+                   y1 F          α 
+        I2 (t) =        dt = exp      t F (x, g)dt.                        0.5                                                     0.25
+                    Y              2τ
+                                                                           0.0                                                     0.00
+Applying the Fundamental Theorem of Calculus, i. e. ,                            0.0     0.2   0.4   0.6    0.8     1.0                   0.0      0.2       0.4     0.6      0.8   1.0
+            Rt
+  h(t)dt = 0 h(t0 )dt0 +c, c ∈ R, together with the definition
+R
+                                                                                       (a) Weights’ basis                                       (b) Goal’s basis
+of the forcing function f in Eq. (1) and F (x, g) in Eq. (2),
+                                                                           Fig. 1: The basis functions Φ of the ProDMPs can be computed
+I1 (t) can be expressed as                                                 offline and later used in online trajectory generation.
+                 Z t
+            1                   α
+ I1 (t) =               t0 exp
+                           t0 x(t0 )ϕ|x wdt0
+            τ2
+             0          2τ                                                  Online:
+                            Z t        α  α2                (7)
+                         +       0
+                                t exp       t 0        0
+                                                    gdt + c3                 DNN                wg              f         ÿ              ẏ             y            MSE Loss
+                             0           2τ       4
+           Z t                           
+         1             α 0                                               (a) NN + DMPs couple the numerical integration and the learning.
+       = 2      t0 exp     t x(t0 )ϕ|x dt0 w
+        τ    0          2τ
+                                                            (8)         Offline, computed once:                             Φ
+                          α            α 
+                     +      t − 1 exp           t + 1 g + c3 ,
+                         2τ               2τ                               Online:
+where c3 is a constant fixed by the BCs. From Eq. (7)                                                 wg or                               λ or                             MSE or
+                                                                            DNN                       p(wg )                              p(λ)
+to Eq. (8), we move the time-independent parameters w                                                                                                                      LL Loss
+and g out of their corresponding integrals. Notice that the                (b) NN + ProDMPs decouple the numerical integration from the
+remaining part of the second integral has an analytical                    learning pipeline and can also model trajectory distributions.
+solution. The remaining part of the first integral, however,               Fig. 2: Comparison of trajectory generation pipelines between
+has no closed-form solution because the basis functions ϕx                 (a) NN-based DMPs [9–11] and (b) ProDMPs. The node DNN
+may be arbitrarily complex. Denoting these integrals as                    represents arbitrary deep neural network architecture. The blue
+                           1
+                              Z t        α                               arrows denote the learning pipeline while the red arrows the nu-
+             p1 (t) ≡       2
+                                  t0 exp     t0 x(t0 )ϕ|x dt0 ,            merical integration. Our method transforms the expensive numerical
+                          τ 0             2τ                         (9)
+                          α              α                             integration as basis functions computed offline which speeds up the
+                 q1 (t) ≡      t − 1 exp        t + 1,                     trajectory computation and allows trajectory distribution prediction.
+                            2τ               2τ
+where p1 is a N-dim vector and q1 a scalar, we can express
+                                                                           TABLE I: Computation time of both pipelines. Here a 2-DoFs, 6-
+I1 (t) = p1 (t)| w +q1 (t)g +c3 . Following the same steps, we             seconds long, 1000 Hz trajectory is generated from a 22-dim wg
+can obtain a similar solution for I2 , i. e. , I2 (t) = p2 (t)| w +        parameter vector. We tested both forward pass (FP) and backward
+q2 (t)g + c4 , where we present p2 (t) and q2 (t) in Eq. (10).             pass (BP). A 3-layer fully connected (FC) network with [10, 128,
+                            1
+                               Z t     α                                 22] neurons on input, hidden and output layers respectively are
+                 p2 (t) =    2
+                                   exp      t0 x(t0 )ϕ|x dt0 ,             used to simulate the learning procedure. The keyword +BC are
+                           τ 0           2τ
+                                                                  (10)   the settings where the boundary conditions are renewed so that
+                           α         α 
+                                                                           the coefficients c1 and c2 need to be recomputed. Otherwise,
+                  q2 (t) =       exp     t −1
+                           2τ         2τ                                   they remain unchanged. The result shows that our model is 200-
+                                                                           4600 times faster than the NN-DMPs in different settings. We
+B. DMPs’ Linear Basis Functions Representation.                            use a Nvidia® RTX-3080Ti GPU for our test. In a full learning
+  Substituting the two integrals I1 and I2 in Eq. (4) by their             experiment with NN architectures, this speed difference translates
+                                                                           into a speed-up of around 10 times (see experiments).
+derived form, the constants c3 and c4 can then be merged into
+c1 and c2 , respectively. We can now express the position of                            Pipelines          FP        FP + BC                     BP            BP + BC
+DMPs in Eq. (4) as a summation of complementary functions                              NN-DMPs        0.6057 s        0.6145 s                 1.5261 s            1.5737 s
+y1 and y2 , plus a linear basis function representation of the
+                                                                                        ProDMPs      0.00013 s        0.0027 s             0.00105 s               0.0039 s
+weights w and the goal attractor g
+                                                                                      Speed-up      × 4659              × 227                × 1453              × 403
+                                                             w
+   y = c1 y1 + c2 y2 + y2 p2 − y1 p1           y2 q2 − y1 q1
+                                                               g    (11)
+     ≡ c1 y1 + c2 y2 + Φ| wg ,
+                                                                              In contrast to previous NN-DMPs methods [9–11], our
+where wg is a N+1-dim vector containing the weights w                      model separates the learnable parameters from the numerical
+and the goal g. The resulting basis functions for w and g                  integrals which are transformed as basis functions. These
+are represented by Φ(t), which can be solved numerically,                  basis functions are shared by all trajectories to be generated
+cf. Fig. 1. The constants c1 and c2 are determined by solving              during learning procedure. Hence, we can pre-compute these
+a boundary condition problem where we use the current                      basis functions once offline at first and use them as constants
+position and velocity of the robot to inscribe where the                   in online trajectory generation. Consequently, we exclude
+trajectory should start.                                                   numerical integrals from forward and backward propagation
+of NN pipelines, and significantly increase the trajectory                       D. Probability Distribution of Multi DoFs DMPs
+generation speed. We present a pipeline comparison and                              The linear basis function representation of ProDMPs takes
+corresponding speed test between previous methods and our                        the same form of ProMPs. Hence, our model can also
+ProDMPs in Fig. 2 and TABLE I.                                                   be extended to multi-DoFs systems y = [y 1 , ..., y D ]| ,
+                                                                                 where D denotes the system’s DoFs. Similar to [2], we
+C. Solving the Boundary Condition Problem                                        extend the basis functions Φ, Φ̇, as well as their boundary
+                                                                                 values Φb , Φ̇b to block-diagonal matrices Ψ, Ψ̇, Ψb , Ψ̇b and
+   To compute the coefficients c1 and c2 , we need to first ob-
+                                                                                 concatenate each DoF’s boundary conditions into a vector,
+tain the velocity representation by computing the derivative
+                                                                                 e. g. , yb1 , ..., ybD → yb = [yb1 , ..., ybD ]| . Additionally, we
+of Eq. (4) w.r.t. time. The resulting equation reads
+                                      Z                   Z                      note that the coefficient constants c1 and c2 of each DoF
+                                          y2 F                 y1 F              can be solved independently. As a consequence, we have the
+         ẏ = c1 ẏ1 + c2 ẏ2 − ẏ1            dt + ẏ2             dt.   (12)
+                                           Y                    Y                multi-DoFs trajectory as
+Note that Eq. (4) and Eq. (12) share a similar structure using
+                                                                                           y = ξ1 yb + ξ2 ẏb + [ξ3 Ψb + ξ4 Ψ̇b + Ψ]| wg ,     (16)
+the same constants c1 and c2 , as well as the two indefinite
+integrals in Eq. (6). The only difference is that the two                           Extending Eq. (16) from a single time step to the entire
+complementary functions y1 and y2 are replaced by their                          trajectory Λ = [yt ]t=0:T , we can now express the trajectory
+derivatives ẏ1 and ẏ2 . By reusing the derivation of Eq. (6, 8                 distribution similarly to ProMPs. We consider a system
+,9, 10), the trajectory velocity is ultimately represented
+                                                   " #      by                   where the current robot state yb , ẏb can be acquired precisely,
+                          h                               i                      which is universal in most robotic systems. In this case, the
+    ẏ = c1 ẏ1 + c2 ẏ2 + ẏ2 p2 − ẏ1 p1 ẏ2 q2 − ẏ1 q1 w
+                                                            g             (13)   trajectory’s variability is only caused by the variability of
+                              |                                                  the weights wg plus the observation white noise y . Similar
+       ≡ c1 ẏ1 + c2 ẏ2 + Φ̇ wg ,
+                                                                                 to ProMPs, assuming the weights wg follows a multivariate
+where Φ̇(t) represents the basis functions of the velocity. The                  normal distribution wg ∼ N (wg |µwg , Σwg ), we can com-
+position and velocity in Eq. (11, 13) share the same linear                      pute the trajectory distribution with full covariance over all
+model structure, coefficients c1 , c2 , and the parameters wg .                  time steps 0 : T and all DoFs 1 : D as
+   We need two boundary conditions to solve c1 and c2 . The-                               p(Λ; µwg , Σwg , yb , ẏb ) = N (Λ| µΛ , ΣΛ ),      (17)
+oretically, there are three options, (a) two boundary position                                                                 |
+                                                                                                    µΛ = ξ1 yb + ξ2 ẏb + H0:T   µwg ,
+values at two time steps, i. e. y(tb1 ), y(tb2 ), tb1 6= tb2 ,                                             |
+                                                                                                     ΣΛ = H0:T Σwg H0:T + σn2 I,
+(b) two boundary velocity values at two time steps, i. e.
+                                                                                             with H0:T = ξ3 Ψb + ξ4 Ψ̇b + Ψ0:T
+ẏ(tb1 ), ẏ(tb2 ), tb1 6= tb2 , and (c) one boundary position
+value plus one boundary velocity value y(tb1 ), ẏ(tb2 ), where                  where ξk = [ξk (t)]t=0:T . In a summary, ProDMPs unify
+tb1 and tb2 are typically identical. The third option allows us                  DMPs and ProMPs in a consistent framework, inheriting the
+to naturally integrate the current position and velocity of a                    properties and advantages of both methodologies. In Fig. 3,
+robot as boundary conditions of a trajectory to be generated.                    we illustrate a few examples to highlight the properties. We
+We denote the boundary conditions as a position and velocity                     show that ProDMPs using linear basis functions can generate
+pair (yb , ẏb ) at time step tb . The values of the complementary               an identical trajectory as DMPs, and enforce the predicted
+functions in Eq. (5) and their corresponding derivatives at tb                   trajectory distribution adheres the given boundary conditions.
+are denoted by y1b , y2b , ẏ1b ẏ2b . The value of the position                 The newly generated trajectories are guaranteed to have a
+basis and velocity basis at tb are denoted as Φb , Φ̇b . By                      smooth transition to the previous trajectory at the replanning
+substituting these terms into Eq. (11, 13), we can solve                         time step. Furthermore, ProDMPs inherit all the probabilistic
+                                                                                 operations of ProMPs, such as combination and blending. For
+                                         y2b Φ̇|           |
+                                                                
+                      ẏ2b yb −y2b ẏb          b −ẏ2b Φb
+       " #
+                              −y       +          −y         w g                 the exact formulations of these operations, we refer to the
+         c1          y   ẏ
+                   1b 2b 2b 1b     ẏ   y   ẏ
+                                           1b 2b        ẏ
+                                                     2b 1b
+               =                                                . (14)         original ProMPs paper [2], as they remain unaltered.
+                                                                 
+         c2           y1b ẏb −ẏ1b yb   ẏ1b Φ|  −y 1b Φ̇ |
+
+                     y1 ẏ2 −y2 ẏ1    +        b
+                                         y1 ẏ2 −y2 ẏ1
+                                                           b
+                                                             w g                  IV. E MBED P RO DMP S IN A DEEP ARCHITECTURE USING
+                     b   b    b   b         b   b     b    b
+
+Substituting Eq. (14) into Eq. (11), we can express the                                            BAYESIAN S ET E NCODERS
+trajectory position as                                                              We extend ProDMPs with a deep NN architecture that
+                                                                                 allows for conditioning the trajectory distribution on a set
+           y = ξ1 yb + ξ2 ẏb + [ξ3 Φb + ξ4 Φ̇b + Φ]| wg ,                (15)
+                                                                                 of high-dimensional (time-stamped) sensory observations,
+where                                                                            such as images. Similar to recent MP architectures [13, 23],
+               ẏ2b y1 − ẏ1b y2                          y1b y2 − y2b y1        we treat such observations as set-inputs [24, 25], i. e. , our
+ξ1 = ξ1 (t) =                     ,        ξ2 = ξ2 (t) =                     ,
+              y1b ẏ2b − y2b ẏ1b                        y1b ẏ2b − y2b ẏ1b     architecture is invariant to the order of these observations.
+               ẏ1b y2 − ẏ2b y1                          y2b y1 − y1b y2           Architecture. The architecture contains four major parts:
+ξ3 = ξ3 (t) =                     ,        ξ4 = ξ4 (t) =                     .
+              y1b ẏ2b − y2b ẏ1b                        y1b ẏ2b − y2b ẏ1b
+                                                                                 encoder, aggregator, decoder, and the ProDMPs layer, cf.
+Eq. (15) shows that the trajectory position y is fully deter-                    Fig. 4. The Encoders Eµ and Eσ2 of each sensor input
+mined by the boundary position yb , and velocity ẏb at the                      type, e. g. images, compute for each observation om ∈ O a
+time step tb , as well as the learnable weights wg .                             corresponding latent observation rm and an uncertainty σr2m ,
+                                           1.2
+ 1.0                                                                                                          Demo1                                                         Demo1
+                             Demo                                                               4                                                               4
+                                           1.0
+                                                                                                              Demo2                                                         Demo2
+                             DMPs                                                               2                                                               2
+ 0.5                                       0.8                                                                Combination                                                   Blending
+                             ProDMPs                                                            0                                                               0
+                                           0.6
+ 0.0                         ProMPs        1.2                                                 −2                                                              −2
+
+−0.5                                       1.0
+                                                    Previous Traj.                              1                                                               1
+                                           0.8                                                                                                      a1                                                        a1
+                                                    Replan Time                                                                                     a2                                                        a2
+−1.0                                                                                            0                                                               0
+                                           0.6
+       0        1        2            3      0.85   0.90   0.95    1.00   1.05   1.10   1.15     0.0      0.5    1.0        1.5        2.0    2.5        3.0     0.0     0.5     1.0        1.5   2.0   2.5        3.0
+
+
+   (a) Fit BC in reproduction                     (b) Fit BC in distribution                                  (c) Combination                                                   (d) Blending
+Fig. 3: Illustration of ProDMPs’ properties inherited from DMPs and ProMPs. (a) Given a demonstrated trajectory, ProDMPs can reproduce
+it and mathematically guarantee a fit of the boundary condition (BC), which cannot be guaranteed by ProMPs. Besides, ProDMPs reproduce
+the identical trajectory of DMPs’, given the same parameters wg . As our method uses the linear basis functions rather than online numerical
+integration, it is thus much faster. (b) ProDMPs (upper) can model trajectory distributions and guarantee that all newly sampled trajectories
+follow the given boundary conditions, i.e. smooth online replanning. In the contrast, ProMPs’ samples (lower) cannot fit the boundary
+condition well, which often results in a jump in the case of replanning. (c) + (d) ProDMPs support probabilistic operations of ProMPs,
+e.g. combination and blending [2] of two demonstrated trajectory distributions (blue and red) into one resulting distribution (green).
+
+
+                                                                                                                                                                                       {t}, yb , ẏb
+measuring how informative this observation is. Different
+                                                                                                                                  {rm }                  µz                     µwg                           µΛ
+types of sensor inputs, e. g. , images and robot states, are                                                         Eµ                                             Dµ
+
+mapped via different types of encoders, e. g. , CNN encoders                                    {om }                                         A                                            ProDMPs
+and MLP encoders, into the same latent space. The Bayesian                                                           Eσ2                                            DL          Lwg
+                                                                                                                                  {σr2m }                σz2                                                  ΣΛ
+Aggregation [16] A is a parameter-free operator used to
+aggregate a set of latent observations {rm } and the corre-                                    Fig. 4: Architecture and pipeline of our deep ProDMPs model.
+sponding uncertainties {σr2m } into a latent state posterior                                   The encoders, aggregator and decoders are denoted by E, A, and
+p(z|O) which is given by a factorized multivariate Gaussian                                    D respectively. Yellow nodes denote deep neural networks, while
+distribution N (z|µz , σz2 ). The resulting aggregation is                                     gray nodes denote operations without learnable parameters.
+
+                                          M
+                     "                                     #
+                                                                                                    0.5
+                                          X
+            2           2
+           σz|o 1:M
+                    = (σz,0 )       +         (σr2m )          ,
+                                        m=1                                                         0.0
+                                                                                    (18)
+                                          M
+                                          X
+           µz|o1:M = µz,0 + σz2                  (rm − µz,0 )        σr2m ,                     −0.5
+
+                                          m=1                                                             0     25     50         75    100    0         25    50      75      100     0     25    50   75         100
+
+where , , and denote element-wise inversion, product,                                          Fig. 5: Illustration of learning trajectory’s temporal correlation
+and division, respectively. The parameters of the latent                                       using two time steps. Left: Trajectories in a dataset containing
+                                                2                                              temporal correlation, which can be learned through two randomly
+variable’s prior distribution are µz,0 and σz,0   . Intuitively,
+BA takes the uncertainty of the different conditioning events                                  selected time steps (triangle markers). Middle: Using two time steps
+                                                                                               jointly in Eq.(19) captures the temporal correlation correctly in the
+into account which typically leads to better results than the                                  inference result. Right: Maximizing the likelihood of one single
+mean aggregation [16]. Hence, we adopt this approach for                                       time step’s value cannot learn the temporal correlation properly.
+our architecture. The Decoders Dµ , DL predict the mean
+µwg and the Cholesky decomposition Lwg of the covariance
+Σwg of the weights distribution. Similar to Volpp et al. [16],                                 of the whole time sequence, but only compute the covariance
+we do not sample from the latent posterior p(z|O) but use                                      of a pair of time steps, which limits the size of covariance
+its mean µz and variance σz2 to predict µwg and Lwg ,                                          matrices to 2D × 2D. We randomly select J such time pairs
+respectively. Given the query time steps {t} and the current                                   {(t, t0 )j }j=1,...,J , where t, t0 ∈ {0, ..., T }, and predict the
+robot position yb and velocity ẏb as boundary conditions, the                                 joint distribution on each of these pairs. As such random
+ProDMPs layer computes the parameters µΛ and ΣΛ of the                                         selection is executed in every training batch, we can still
+trajectory distribution as a multivariate Gaussian distribution.                               learn the correlation between time steps while keeping the
+                                                                                               cost of matrix inversion manageable. Given the boundary
+   Loss Function. In this paper, we focus on Imitation Learn-
+                                                                                               conditions yb , ẏb and a set of observations O, the loss
+ing tasks and minimize the negative log-likelihood of the
+                                                                                               function is thus defined as the mean negative log-likelhood
+conditional trajectory distribution, i. e. , − log N (Λ|µΛ , ΣΛ ).
+                                                                                               of J random pairs of trajectory values y(t,t0 )j as
+Here, Λ = {yt }t=0...T is the trajectory ground truth, and                                                                                           J
+µΛ , ΣΛ the mean and covariance of the predicted trajectory                                                                                   1X
+                                                                                                    Lθ (Λ, yb , ẏb , O) = −                        log N (y(t,t0 )j |µ(t,t0 )j , Σ(t,t0 )j ),
+distribution conditioned on a set of observations O. Yet,                                                                                     J j=1
+predicting a trajectory’s full covariance matrix ΣΛ demands                                                                                                                                 (19)
+high computational resources. The T D × T D covariance                                         where µ(t,t0 )j and Σ(t,t0 )j denote the mean and covariance
+matrix has to be inverted in the loss computation. To keep the                                 of the joint distribution at the j-th paired time points which
+computation manageable, we never compute the distribution                                      are obtained from the ProDMPs decoder depicted in Figure
+4. In Fig. 5, we illustrate that our loss function can capture
+the temporal correlation. Further, an ablation study that only
+computes the likelihood of single-time steps results in a
+degenerated estimate of the temporal correlation.
+                                                                               CNMP     NN-                      CNMP     NN-
+                      V. E XPERIMENTS                                 Input    sample   DMPs Ours        Input   sample   DMPs Ours
+
+   We highlight the advantages of our model and distinguish         Fig. 6: The trajectories generated by different MP models. Only our
+                                                                    model captures the temporal and DoF correlations.
+it from other methods through three experiments, which
+answer the following questions: (a) Does our model pro-
+duce high-quality trajectory distributions and samples using
+non-linear conditioning on high dimensional observations?
+(b) Does it support online replanning and predicting a
+smooth trajectory distribution from the current robot state?
+(c) Can we condition on several partial observations and
+obtain a trajectory distribution that leverages the aggregated
+information? We compare our method with state-of-the-art
+CNMPs [13] and NN-based DMPs models [9–11] on three
+digit-writing tasks using images as inputs, one simulated
+robot pushing task with complex physical interaction, and
+a real robot picking task with shifting object positions.
+
+A. Learning Trajectory Distributions of the MNIST Digits
+   We use a synthetic-MNIST dataset [10] to showcase
+several properties of our method and advantages over the
+other approaches. The dataset contains 20, 000 digit images          Origin    Up to 3 noisy images      ProDMPs sampled trajectories
+in ten groups (0-9) and as prediction targets 3 seconds             Fig. 7: Given up to three noisy images, our ProDMPs model
+trajectories with 2 DoFs each. In our settings, we choose           aggregated the information and refined its prediction.
+to use 25 basis functions per DoF and predict a 52-dim
+multivariate Gaussian distribution over ProDMPs parameters
+(25 weights and 1 goal for each DoF). A 2-dim vector for the
+starting point of the trajectory is also predicted. We analyse
+our experiments based on three subtasks and show the spatial
+writing trajectories, i. e. , the x- and y-axis are spatial DoFs.
+   Comparison of Generative Models. As first task, we
+consider the prediction of trajectories using different methods     Fig. 8: Write a digit in 3 steps. Our model received the first noisy
+                                                                    image at the beginning while receiving the second and third at
+given one image input. For CNMPs and ProDMPs, we                    25% and 50% of the execution time respectively. The trajectory
+initially predict a distribution and then sample trajectories       gets replanned (blue → green → red) and executed accordingly.
+from it. As shown in Fig. 6, CNMPs only model the mean              The dashed lines indicate the remaining, not executed trajectories.
+and the isotropic variance per time step and thus fail to
+model correlations across time steps and dimensions. The
+NN-DMPs instead predicted a smooth trajectory, but do not           pixels visible. Our model successfully aggregated the infor-
+learn any statistics over the trajectories and cannot generate      mation contained in the different observations and provided
+samples. Our model, however, not only captures the correct          a trajectory distribution refinement over the predicted digit.
+shape of the trajectory but can also be used as a generative        Fig. 7 shows that the trajectories appear random without
+model to sample temporal and DoFs consistent trajectories.          sufficient information about the digit, but become refined
+To evaluate the speed of a full learning experiment, we             once more information is added.
+replace the numerical integration of the NN-DMPs with our              Online Replanning. Finally, we show how our method
+linear basis function model and keep the network architecture       benefits from its dynamical system in online replanning
+and MSE loss unchanged. The whole training time is reduced          once new information is provided. To this end, we provide
+from 105 minutes to 10 minutes, which is approximately a            new observations to the method during the execution of
+speed-up by a factor of 10.                                         the trajectory. The same noisy images as in the previous
+   Conditioning on Partial Observations. For the second             experiment of the target digit are provided at 0%, 25%,
+task, we show how our model leverages Bayesian Aggrega-             and 50% of the execution time. For illustration purposes,
+tion to deal with multiple partial observations. We repeatedly      we trained the models only on images containing one type
+add synthetic noise to each original image such that we             of digit. As shown in Fig. 8, each additional observation
+obtain three noisy images for each digit. The random noise          increases the accuracy of the trajectory, while the new
+masks occlude most of the image, leaving only a few original        trajectories transition smoothly at the replanning points.
+B. Pushing and Replanning with Complex Contact
+   We conduct a simulated robot experiment to prove that
+our approach can deal with rich physical interactions and
+online conditioning on environmental variables. We use a
+Franka Panda robot in Mujoco [26] to push a box with
+its end-effector (cf. Fig. 9). The box has a square shape
+and is empty. The end-effector is equipped with a peg and
+                                                                   Fig. 9: Pushing an empty box (red) from a randomized initial state
+starts in the box. Using a simple teleoperation interface, we
+                                                                   to a given target position and orientation (green) in Mujoco [26].
+control the end-effector’s x and y position with a mouse,
+which is then translated into the joint angles using inverse
+                                                                   TABLE II: Evaluation of different settings using (a) Mean and std
+kinematics (IK). We collected 225 demos, each 3 seconds
+                                                                   of the absolute error (x-/y-position and orientation along z-axis) of
+long, moving the box from a random initial state to a desired      the final box state to its target state, as well as (b) the average
+target location and orientation. The box is hard to control,       squared acceleration (ASA) as smoothness metric. Each model is
+especially the orientation, due to the non-linear interaction      trained 20 times using different random seeds.
+of its walls and corners with the peg. The learning procedure
+                                                                                       Replan           x (mm)              y (mm)        z-ori. (deg)       ASA
+is as follows. At each iteration, we randomly choose a
+                                                                     Demos                -            4.2 ± 2.9           4.8 ± 3.4      1.76 ± 1.28             -
+replanning time point and use the recorded box position,
+                                                                    ProDMP              mean           9.2 ± 8.2           7.1 ± 7.2          4.3 ± 5.7          3.3
+orientation, as well as the actual position and velocity of the
+                                                                     CNMP               mean           9.5 ± 9.2           7.5 ± 9.7          4.7 ± 9.0     800.5
+robot end-effector in the past 0.1s as observations. We predict
+                                                                    ProDMP             sample         19.0 ± 31.3         17.6 ± 20.1     12.1 ± 21.1        13.1
+a desired end-effector trajectory distribution in the next
+                                                                     CNMP              sample         72.4 ± 13.7         80.8 ± 21.5     20.8 ± 14.4        2.7e4
+0.5s, using ProDMPs with 25 basis functions per DoF, and
+                                                                    ProDMP               ×            62.0 ± 53.9         55.9 ± 38.8     33.6 ± 28.4            0.3
+maximize the log-likelihood of the demonstrated trajectory.
+                                                                      B. C.            per step       35.8 ± 34.0         94.9 ± 14.2     21.2 ± 24.0            7.1
+In the inference phase, our model directly interacts with the
+simulator, pushing a box from an unseen initial state. We
+                                                                     0.4
+executed either the mean or the sampled trajectory of the
+predicted trajectory distribution. We compare our method             0.2
+
+with (a) CNMPs only using the mean, (b) CNMPs with                   0.0
+
+sampling, (c) ablated ProDMPs without replanning, and (d) a        −0.2
+
+vanilla behavior cloning network mapping observations to                   0.0   0.5     1.0    1.5    2.0   2.5    3.0     0.0   0.5   1.0    1.5   2.0   2.5        3.0
+actions at each time step.
+   We evaluate the error between the final and target states of              (a) ProDMPs’ mean                                    (b) CNMPs’ mean
+the box, as well as the average squared acceleration (ASA,         Fig. 10: Replanning trajectories comparison of robot pushing. x-
+the smaller the better) as a trajectory smoothness metric. The     axis: time [s], y-axis: end-effector y position [m]. Each trajectory
+                                                                   is a concatenation of 6 replanning segments, 0.5 second long each.
+result is shown in Table II. Our model can reproduce the           Our model is smooth at the replanning time steps (vertical lines),
+box-pushing task with similar accuracy as the demos and            while the CNMPs are discontinuous when replanning.
+achieves excellent levels of smoothness. The performance
+of the CNMPs’ mean prediction yields a similar pushing
+result to our model. However, the trajectory samples are,          (cf. Fig. 11a). During execution, the object shifts to a new
+as expected, unable to solve the task. In addition, CNMPs          position, and the robot must plan a new trajectory from its
+exhibit noticeable jumps and significant accelerations at the      current position to pick up the object without interruption.
+transition points of the trajectory. The sampled trajectories      We collected 100 human demos, each 4 seconds long, using
+are lacking temporal and DoFs correlation, leading to an           the same teleoperation interface as in Section V-B. In each
+extremely low level of smoothness. The ablated case of             demo, the human moves the robot end-effector to the object
+our model cannot solve the task properly, indicating that          and adjusts the movement when the object shifts. The demon-
+replanning is crucial to adjust the movement in such a             strated joint trajectory is computed using IK. After each sec-
+contact-rich scenario. The comparably high smoothness is           ond, the actual object position and the robot state are given to
+achieved by the lack of replanning in the trajectory. The state-   ProDMPs to replan a trajectory distribution starting from the
+action-based behavioral cloning using an MSE loss cannot           current robot state. We evaluated the picking success rate of
+capture the temporal correlation between the box and the           our model using the (a) mean prediction, and (b) trajectory
+robot’s movement, and thus performs poorly. It is worth            samples in a simulated and a real setup. The box position
+mentioning that using NN-based DMPs in the current task is         in the real setup is captured by a camera system using
+equivalent to training our model with the MSE loss, which          ArUco ROS [27]. Our model learns picking and replanning
+will lead to the same result but a faster speed.                   movement directly from the data and achieves a high success
+                                                                   rate in simulation, as shown in TABLE III. Due to the camera
+C. Object Picking with Dynamic Positional Shift                    delay in the real setup, the performance decreases slightly.
+  Finally, we learn an object-picking task in a 7-DoFs joint       Fig. 11b shows four predicted trajectory distributions in one
+space. A Franka Panda robot picks an object in its workspace       sequence. Our model predicts the trajectory distribution with
+                                                                                   [4]   Y. Zhou, J. Gao, and T. Asfour. “Learning via-point movement prim-
+                                                                                         itives with inter-and extrapolation capabilities”. In: 2019 IEEE/RSJ
+                                                                                         International Conference on Intelligent Robots and Systems (IROS).
+                                                                                         IEEE. 2019, pp. 4301–4308.
+                                                                                   [5]   O. Celik, D. Zhou, G. Li, P. Becker, and G. Neumann. “Specializing
+                                                                                         Versatile Skill Libraries using Local Mixture of Experts”. In:
+                                                                                         Conference on Robot Learning. PMLR. 2022, pp. 1423–1433.
+                                                                                   [6]   G. Maeda, M. Ewerton, G. Neumann, R. Lioutikov, and J. Peters.
+                                                                                         “Phase estimation for fast action recognition and trajectory gener-
+                                                                                         ation in human–robot collaboration”. In: The International Journal
+                                                                                         of Robotics Research 36.13-14 (2017), pp. 1579–1594.
+                                                                                   [7]   F. Otto, O. Celik, H. Zhou, H. Ziesche, V. A. Ngo, and G. Neu-
+                                                                                         mann. “Deep Black-Box Reinforcement Learning with Movement
+           (a) Real Setup                       (b) The 3rd joint position               Primitives”. In: 6th Annual Conference on Robot Learning.
+                                                                                   [8]   A. J. Ijspeert, J. Nakanishi, H. Hoffmann, P. Pastor, and S. Schaal.
+Fig. 11: (a) The robot is picking an object initialized on the left.                     “Dynamical movement primitives: learning attractor models for
+During the movement, the object was shifted to the right, and the                        motor behaviors”. In: Neural computation 25.2 (2013), pp. 328–373.
+robot replanned a new trajectory from its current state to the new                 [9]   A. Gams, A. Ude, J. Morimoto, et al. “Deep encoder-decoder
+object position without interruption. (b) For each episode, every                        networks for mapping raw images to dynamic movement primi-
+1 second our model predicts a new distribution using its current                         tives”. In: 2018 IEEE International Conference on Robotics and
+                                                                                         Automation (ICRA). IEEE. 2018, pp. 5863–5868.
+state and the latest box position. Before the shift (vertical line),              [10]   B. Ridge, A. Gams, J. Morimoto, A. Ude, et al. “Training of
+the predictions contain high variance. After the shift, the variance                     deep neural networks for the generation of dynamic movement
+decreases intensely. The dashed line denotes the human’s demo.                           primitives”. In: Neural Networks 127 (2020), pp. 121–131.
+                                                                                  [11]   S. Bahl, M. Mukadam, A. Gupta, and D. Pathak. “Neural dynamic
+        TABLE III: Success rate and shift distance of 100 picks                          policies for end-to-end sensorimotor learning”. In: Advances in
+                                                                                         Neural Information Processing Systems 33 (2020), pp. 5058–5069.
+    100 picks of     Sim+mean      Sim+sample     Real+mean    Real+sample        [12]   A. Paraschos, C. Daniel, J. Peters, and G. Neumann. “Using
+                                                                                         probabilistic movement primitives in robotics”. In: Autonomous
+   Success rate         99%           82%            87%           75%
+                                                                                         Robots 42.3 (2018), pp. 529–551.
+   Shift distance             22.8 ±5.6           21.7 ±9.7      21.0 ±8.0        [13]   M. Y. Seker, M. Imre, J. H. Piater, and E. Ugur. “Conditional Neural
+                                                                                         Movement Primitives.” In: Robotics: Science and Systems. Vol. 10.
+                                                                                         2019.
+                                                                                  [14]   F. Brandherm, J. Peters, G. Neumann, and R. Akrour. “Learning
+a high variance at the beginning and decreases the predicted                             replanning policies with direct policy search”. In: IEEE Robotics
+variance once it observes the shift of the object.                                       and Automation Letters 4.2 (2019), pp. 2196–2203.
+                                                                                  [15]   M. Saveriano, F. J. Abu-Dakka, A. Kramberger, and L. Peternel.
+                      VI. C ONCLUSION                                                    “Dynamic movement primitives in robotics: A tutorial survey”. In:
+                                                                                         arXiv preprint arXiv:2102.03861 (2021).
+   We presented ProDMPs, a unified framework fusing dy-                           [16]   M. Volpp, F. Flürenbrock, L. Grossberger, C. Daniel, and G.
+namic and probabilistic movement primitives. ProDMPs re-                                 Neumann. “Bayesian context aggregation for neural processes”. In:
+covered a linear basis-function representation for the trajecto-                         International Conference on Learning Representations. 2020.
+                                                                                  [17]   S. Calinon, Z. Li, T. Alizadeh, N. G. Tsagarakis, and D. G.
+ries by solving the ODE of the dynamical system. This way,                               Caldwell. “Statistical dynamical systems for skills acquisition in
+we can easily represent trajectory distributions that adhere                             humanoids”. In: 2012 12th IEEE-RAS International Conference on
+to boundary conditions defined by the current robot position                             Humanoid Robots (Humanoids 2012). IEEE. 2012, pp. 323–329.
+                                                                                  [18]   C. Yang, C. Chen, W. He, R. Cui, and Z. Li. “Robot learning
+and velocity as well as generate smooth trajectories when                                system based on adaptive neural control and dynamic movement
+replanning. Further, we built a neural aggregation model                                 primitives”. In: IEEE transactions on neural networks and learning
+for non-linear iterative conditioning and found a solution to                            systems 30.3 (2018), pp. 777–787.
+                                                                                  [19]   F. Meier and S. Schaal. “A probabilistic representation for dynamic
+learn full trajectory covariances with fewer resources. Our                              movement primitives”. In: arXiv preprint arXiv:1612.05932 (2016).
+deep embedded ProDMPs achieved smoothness, goal conver-                           [20]   H. B. Amor, G. Neumann, S. Kamthe, O. Kroemer, and J. Peters.
+gence, trajectory correlation modeling, non-linear trajectory                            “Interaction primitives for human-robot cooperation tasks”. In: 2014
+                                                                                         IEEE international conference on robotics and automation (ICRA).
+conditioning, and online replanning in one model. For future                             IEEE. 2014, pp. 2831–2837.
+work, we will extend our approach to reinforcement learning,                      [21]   M. Garnelo et al. “Conditional neural processes”. In: International
+also considering force profiles that need to be applied.                                 Conference on Machine Learning. PMLR. 2018, pp. 1704–1713.
+                                                                                  [22]   G. Teschl. Ordinary differential equations and dynamical systems.
+               VII. ACKNOWLEDGEMENT                                                      Vol. 140. American Mathematical Soc., 2012.
+                                                                                  [23]   M. Akbulut, E. Oztop, M. Y. Seker, X. Hh, A. Tekden, and
+ The authors acknowledge support by the state of Baden-                                  E. Ugur. “Acnmp: Skill transfer and task extrapolation through
+Württemberg through bwHPC.                                                              learning from demonstration and reinforcement learning via rep-
+                                                                                         resentation sharing”. In: Conference on Robot Learning. PMLR.
+                               R EFERENCES                                               2021, pp. 1896–1907.
+                                                                                  [24]   M. Zaheer, S. Kottur, S. Ravanbakhsh, B. Poczos, R. R. Salakhut-
+  [1]     S. Schaal. “Dynamic movement primitives-a framework for motor                  dinov, and A. J. Smola. “Deep sets”. In: Advances in neural
+          control in humans and humanoid robotics”. In: Adaptive motion of               information processing systems 30 (2017).
+          animals and machines. Springer, 2006, pp. 261–280.                      [25]   M. Garnelo et al. “Neural processes”. In: arXiv preprint
+  [2]     A. Paraschos, C. Daniel, J. R. Peters, and G. Neumann. “Proba-                 arXiv:1807.01622 (2018).
+          bilistic movement primitives”. In: Advances in neural information       [26]   E. Todorov, T. Erez, and Y. Tassa. “Mujoco: A physics engine for
+          processing systems 26 (2013).                                                  model-based control”. In: 2012 IEEE/RSJ international conference
+  [3]     G. J. Maeda, G. Neumann, M. Ewerton, R. Lioutikov, O. Kroemer,                 on intelligent robots and systems. IEEE. 2012, pp. 5026–5033.
+          and J. Peters. “Probabilistic movement primitives for coordination of   [27]   R. Salinas and B. Magyar. ArUco ROS library. 2015.
+          multiple human–robot collaborative tasks”. In: Autonomous Robots
+          41.3 (2017), pp. 593–612.
+                        A PPENDIX I                                      their predicted trajectory distribution cannot sample time and
+       I LLUSTRATION OF T RAJECTORY C OVARIANCE                          DoFs-consistent new trajectories without further smoothness,
+                        P REDICTION                                      which explains the reason for the noisy samples in Fig. 6.
+   We present two intuitive examples to illustrate (a) how do            B. Make Full Covariance Learning Affordable
+different approaches model trajectory covariance, (b) how
+                                                                            As briefly introduced in Section IV, learning all time steps’
+does our model learn covariance in an affordable way.
+                                                                         covariance whose size is T D × T D, requires a high resource
+A. Modeling Trajectory Covariance                                        demand. Such a high resource demand is often not feasible
+   We follow the definition of trajectory covariance used in             for a deep NN model, where multiple trajectories are often
+the ProMPs [2], i. e., trajectory values of different DoFs at            learned in a batched manner, and the computational graph
+different time steps are coupled and modeled in one multi-               shall be stored for back-propagation usage. Therefore, to
+variate distribution, which differs from the mixture models,             make the learning feasible, we randomly select a group of
+such as GMM/GMR-DMP [17, 18], where multiple Gaussian                    paired time steps, each pair having a 2D × 2D covariance,
+distribution components are used to cover the demonstrated               and optimize the trajectory values’ joint distribution. As
+trajectories’ domain. We illustrate an element-wise trajectory           illustrated in Fig. 13, learning a distribution of paired time
+distribution example in Fig. 12. The diagonal elements of                steps is equivalent to learning a sub-vector and a sub-matrix
+the covariance matrix (colored in red) indicate the isotropic            of the original ones. As such time pairs are randomly selected
+variance of the trajectory, while the remaining elements                 in different mini-batches, the original covariance matrix will
+represent the covariance between time-steps and between                  be learned eventually.
+different DoFs. The original ProMPs and our ProDMPs use
+                                                                                               A PPENDIX II
+a linear basis function model and can model the entire
+                                                                                E XPERIMENT H YPER - PARAMETERS S ETTINGS
+covariance matrix given p(wg ) ∼ N (wg | µwg , Σwg ). Recent
+approaches such as CNMPs [13] and NDPs [11] (RL part),                      The hyper-parameters of our experiments and neural net-
+however, can only model the isotropic trajectory variance                work architectures are listed in TABLE IV - VIII respec-
+(elements in red shadow in Fig. 12). The correlation between             tively.
+different DoFs, and between time steps is missing. Therefore,
+
+
+
+
+                                                         DoF 1               DoF 2              DoF 3
+                                                    t1     t2    t3     t1    t2     t3    t1     t2     t3
+                                                                                                           
+             t1    µ1                      t1    σ1,1 σ1,2 σ1,3 σ1,4 σ1,5 σ1,6 σ1,7 σ1,8 σ1,9
+                                                                                               
+                    µ2                            σ2,1 σ2,2 σ2,3 σ2,4 σ2,5 σ2,6 σ2,7 σ2,8 σ2,9 
+                                                                                             
+  DoF 1      t2 
+                               DoF 1      t2 
+                                                                                               
+                    µ3                            σ3,1 σ3,2 σ3,3 σ3,4 σ3,5 σ3,6 σ3,7 σ3,8 σ3,9 
+                                                                                             
+             t3 
+                                          t3 
+                                                                                                                  ProDMPs:
+                    µ4                            σ4,1 σ4,2 σ4,3 σ4,4 σ4,5 σ4,6 σ4,7 σ4,8 σ4,9 
+                                                                                             
+             t1 
+                                          t1 
+                                                                                               
+                    µ5                            σ5,1 σ5,2 σ5,3 σ5,4 σ5,5 σ5,6 σ5,7 σ5,8 σ5,9 
+                                                                                             
+  DoF 2      t2 
+                               DoF 2      t2 
+                                                                                               
+                    µ6                            σ6,1 σ6,2 σ6,3 σ6,4 σ6,5 σ6,6 σ6,7 σ6,8 σ6,9 
+                                                                                             
+             t3 
+                                          t3 
+                                                                                                                  CNMPs, NDPs:
+                    µ7                            σ7,1 σ7,2 σ7,3 σ7,4 σ7,5 σ7,6 σ7,7 σ7,8 σ7,9 
+                                                                                             
+             t1 
+                                          t1 
+                                                                                               
+                    µ8                            σ8,1 σ8,2 σ8,3 σ8,4 σ8,5 σ8,6 σ8,7 σ8,8 σ8,9 
+                                                                                             
+  DoF 3      t2 
+                               DoF 3      t2 
+                                                                                               
+                    µ9                             σ9,1 σ9,2 σ9,3 σ9,4 σ9,5 σ9,6 σ9,7 σ9,8 σ9,9
+                                                                                             
+             t3                             t3
+
+
+Fig. 12: Element-wise representation of a multi-variant Gaussian distributed trajectory. This example trajectory has coupled 3 time steps
+and 3 DoFs. Left: the trajectory mean vector. Right: the trajectory covariance matrix. We add time steps labels (t1 , t2 , t3 ) and DoFs labels
+(DoF1, DoF2, DoF3) to indicate each element’s meaning, e.g. µ5 is the trajectory mean value of the 2nd DoF at the 2nd time step, and
+σ1,9 represents the covariance between the trajectory value of the 1st DoF at the 1st time step and the trajectory value of the 3rd DoF
+at the 3rd time step. Our method learns the entire trajectory covariance matrix (elements in light blue), while the other method [11, 13]
+learns only the isotropic variance (elements red).
+                                                                              
+                  µ1            σ1,1 σ1,2 σ1,3              σ1,4 σ1,5 σ1,6
+                                                                                                                                        
+                  µ2          σ2,1 σ2,2 σ2,3              σ2,4 σ2,5 σ2,6                             µ1          σ1,1 σ1,2 σ1,4 σ1,5
+                                                                        
+              
+                                                                                                                                        
+                  µ3          σ3,1 σ3,2 σ3,3              σ3,4 σ3,5 σ3,6                       µ2          σ2,1 σ2,2 σ2,4 σ2,5
+                                                                                                                                        
+                                                                                                                                              
+                                                                                                                                        
+                  µ4          σ4,1 σ4,2 σ4,3              σ4,4 σ4,5 σ4,6                       µ4          σ4,1 σ4,2 σ4,4 σ4,5
+                                                                                                                                        
+                                                                                                                                              
+                                                                                                                                        
+                  µ5          σ5,1 σ5,2 σ5,3              σ5,4 σ5,5 σ5,6                        µ5            σ5,1 σ5,2 σ5,4 σ5,5
+                                                                                                                                        
+              
+                                                                        
+                  µ6            σ6,1 σ6,2 σ6,3              σ6,4 σ6,5 σ6,6
+                                                                        
+
+
+Fig. 13: An illustration of learning full covariance through paired time steps. Left: This example trajectory has coupled 3 time steps and
+2 DoFs. Here we omit the time-step and DoF labels for simplicity. Right: We randomly select 2 time steps, e.g. t1 , t2 , form up a pair,
+and learn their joint distribution, which is equivalent to learn a sub-vector and a sub-matrix of the original ones.
+
+
+
+
+                                    TABLE IV: Experiment settings of writing digit given one original image.
+                        Settings                    CNMPs                 NN-based DMPs                             ProDMPs
+                       Input obs.                                      One original digit image, size: 40 × 40
+                        Predict                Traj. mean and std      DMPs weights + goal              Mean + cov of ProDMPs weights
+                        Form up
+                                                       -                Numerical integration          Use linear basis function in Eq. (11)
+                       trajectory
+                       Loss func.                  Traj. NLL                 Traj. MSE                       Traj. LL-loss in Eq. (19)
+                                                                                                              First sample weights
+                   Traj. sampling         From traj. distribution                ×
+                                                                                                     then use linear basis function Eq. (11)
+                    No. of Basis                       -                     25 per DoF                  25 +1 (weights + goal) per DoF
+                    No. of DoFs                                                      2 in task space
+                   Type of Basis                       -                        RBF                                    RBF
+                                                             Optimizer: [Adam, learning rate: 2e-4, weights decay: 5e-5]
+                   Hyper-params.
+                                                                Dim of latent obs.: 128. DMPs: [αx : 2, α: 25, τ : 3]
+                                                          { CNN: [kernel: 5, stride: 1, channel in: 1, channel out: 10]
+                    Obs. encoder                       Max pooling: [kernel: 2, stride: 2, channel in: 10, channel out: 10]
+                    Unc. encoder                     CNN: [kernel: 5, stride: 1, channel in: 10, channel: out: 20, dropout: 0.5]
+                     in Fig. 4                         Max pooling: [kernel: 2, stride: 2, channel in: 20, channel out: 20]
+                                                       MLP: [input neurons: 980, hidden: [128, 128, 128], output: 128]          }
+                                                      ProDMPs Mean: MLP[input: 128, hidden: [128, 128, 128], output: 54]
+                       Mean. dec.
+                                                   ProDMPs Cov: MLP[input: 128, hidden: [256, 256, 256, 256], output: 1485]
+                       Unc. dec.
+                                                      CNMPs Mean: MLP[input: 128 + 1, hidden: [128, 128, 128], output: 2]
+                        in Fig. 4
+                                                      NN-DMPs Mean: MLP[input: 128, hidden: [128, 128, 128], output: 54]
+
+
+
+
+                                   TABLE V: Experiment setting of writing digit given at most 3 noisy images.
+                                    Settings                                               ProDMPs
+                              Input observation            One, two, or three noisy digit images generated from the original image
+                                    Predict                              Mean and covariance of ProDMPs weights
+                            Form up trajectory                              Use linear basis function in Eq. (11)
+                              Loss func. Traj.                                        LL-loss in Eq. (19)
+                               Traj. sampling                   First sample weights, then use linear basis function Eq. (11)
+                          No. of Basis and DoFs                      25 + 1 per DoF, 2 DoFs in task space, type: RBF
+                                                                 Optimizer: [Adam, learning rate: 2e-4, weights decay: 5e-5]
+                               Hyper-params.                                    Gradient clipping norm: 20.
+                                                                    Dim of latent obs.: 128. DMPs: [αx : 2, α: 25, τ : 3]
+                         Encoders and Decoders                                         Same as Table IV
+                            TABLE VI: Experiment setting of writing digit in 3 steps.
+               Settings                       ProDMPs using sub-datasets containing 1 type of digit
+           Input observation         One, two, or three noisy digit images generated from the original image
+                Predict                               Mean and covariance of ProDMPs weights
+                                                        Use linear basis function in Eq. (11)
+                Form up
+                                                     Use the execution of the previous prediction
+               trajectory
+                                               at 0%, 25% and 50% respectively as boundary condition
+           Loss func. Traj.                                        LL-loss in Eq. (19)
+             No. of Basis                                           25 + 1 per DoF
+             No. of DoFs                                             2 in task space
+             Type of Basis                                                RBF
+                                              Optimizer: [Adam, learning rate: 2e-4, weights decay: 5e-5]
+            Hyper-params.                                    Gradient clipping norm: 20.
+                                                 Dim of latent obs.: 128. DMPs: [αx : 2, α: 25, τ : 3]
+     Encoders and Decoders                                         Same as Table IV
+
+
+
+
+                             TABLE VII: Experiment settings of robot pushing task.
+
+      Settings                        CNMPs                                            ProDMPs
+      Input obs.                          The box and robot’s actual state in the past 0.1 second
+       Predict            Traj. mean and std of next 0.5s       Mean + cov of ProDMPs weights in the next 0.5s
+      Form up
+                                          -                            Use linear basis function in Eq. (11)
+      trajectory
+     Loss func.                      Traj. NLL                               Traj. LL-loss in Eq. (19)
+                                                                                  First sample weights
+   Traj. sampling              From traj. distribution
+                                                                      then use linear basis function Eq. (11)
+    No. of Basis                          -                                         25 + 1 per DoF
+    No. of DoFs                                                 2 in task space
+    Type of Basis                         -                                              RBF
+                                       Optimizer: [Adam, learning rate: 2e-4, weights decay: 5e-5]
+   Hyper-params.
+                                         Dim of latent obs.: 128. DMPs: [αx : 0.5, α: 25, τ : 0.5]
+  Settings                         ProDMPs no replanning                                    Behaviour Cloning
+  Input obs.                     The initial box and robot state                   The latest actual box and robot state
+   Predict          Mean + cov of ProDMPs weights of the entire traj.               Robot’s desired one-step trajectory
+  Form up
+                              Use linear basis function in Eq. (11)                                  -
+  trajectory
+ Loss func.                         Traj. LL-loss in Eq. (19)                                    MSE loss
+No. of Basis                            25 + 1 per DoF                                               -
+No. of DoFs                                                     2 in task space
+Type of Basis                                   RBF                                                  -
+                                       Optimizer: [Adam, learning rate: 2e-4, weights decay: 5e-5]
+Hyper-params.
+                                                         DMPs: [αx : 3, α: 25, τ : 3]
+                          ProDMPs Obs./Unc. enc.: MLP[input neuron: 8, hidden:[128, 128, 128], output: 128]
+                              CNMPs Obs. enc.: MLP[input neuron: 8, hidden:[128, 128, 128], output: 128]
+  Encoders,
+                            ProDMPs Mean. dec.: MLP[input neuron: 128, hidden:[128, 128, 128], output: 52]
+  decoders,
+                            ProDMPs Cov. dec.: MLP[input neuron: 128, hidden:[128, 128, 128], output: 1326]
+     and
+                          CNMPs Mean/Std dec.: MLP[input neuron: 128+1, hidden:[128, 128, 128], output: 2]
+ other NNs
+                            Behaviour Cloning Net: MLP[input neuron: 6∗ , hidden:[128, 128, 128], output: 2]
+                       ∗ We found that not offering the robot actual velocity (2-dim) increases the performance.
+                    TABLE VIII: Experiment settings of robot picking task.
+
+    Settings                                           ProDMPs
+Input observation                 The object and robot state at the 0, 1, 2, 3 seconds
+     Predict                           Mean and covariance of ProDMPs weights
+  Post-process                            Use linear basis function in Eq. (11)
+Loss func. Traj.                                  LL-loss in Eq. (19)
+                                                  First sample weights
+ Traj. sampling
+                                         then use linear basis function Eq. (11)
+  No. of Basis                                       9 + 1 per DoF
+  No. of DoFs                                       7 in joint space
+ Type of Basis                                            RBF
+                              Optimizer: [Adam, learning rate: 2e-4, weights decay: 5e-5]
+ Hyper-params.
+                                  Dim of latent obs.: 128. DMPs: [αx : 3, α: 25, τ : 4]
+    Encoders           Obs./Unc. encoder: MLP[input neurons: 4, hidden: [64, 64, 64], output: 64]
+                           ProDMPs Mean: MLP[input: 64, hidden: [64, 64, 64], output: 70]
+   Decoders
+                           ProDMPs Cov: MLP[input: 64, hidden: [64, 64, 64], output: 2415]
+

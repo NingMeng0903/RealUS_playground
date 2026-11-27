@@ -1,0 +1,3115 @@
+{
+  "complete_stacks": {
+    "pooled": {
+      "worlds": 64,
+      "replicas_per_world": 8,
+      "means": {
+        "mpc": {
+          "corrected_complete": 0.861328125,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.0234375,
+          "tcp_mm": 37.213013487726556,
+          "turn_degs": 6.68837707171018,
+          "seconds": 6.126953125,
+          "frames": 62.26953125,
+          "ever_wrong": 0.0234375,
+          "feedback_revisions": 19.28515625,
+          "centered_complete": 0.08203125,
+          "first_interval_recaptured": 0.875,
+          "both_vessels_observed": 1.0
+        },
+        "stock": {
+          "corrected_complete": 0.865234375,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.013671875,
+          "tcp_mm": 36.392765574652536,
+          "turn_degs": 6.577507872598135,
+          "seconds": 6.1015625,
+          "frames": 62.015625,
+          "ever_wrong": 0.013671875,
+          "feedback_revisions": 18.361328125,
+          "centered_complete": 0.07421875,
+          "first_interval_recaptured": 0.869140625,
+          "both_vessels_observed": 1.0
+        },
+        "random_randomfit": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.93622691851736,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.28125,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_cemfit": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.93622691851736,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.28125,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "stock": {
+          "corrected_complete": {
+            "delta": 0.00390625,
+            "ci95": [
+              -0.0234375,
+              0.03125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.009765625,
+            "ci95": [
+              -0.02734375,
+              0.00390625
+            ]
+          },
+          "tcp_mm": {
+            "delta": -0.8202479130740201,
+            "ci95": [
+              -1.683350592132319,
+              -0.0982585212707859
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.11086919911204518,
+            "ci95": [
+              -0.24788880118190373,
+              0.002488850942343535
+            ]
+          },
+          "seconds": {
+            "delta": -0.025390625,
+            "ci95": [
+              -0.099609375,
+              0.041015625
+            ]
+          },
+          "frames": {
+            "delta": -0.25390625,
+            "ci95": [
+              -0.99609375,
+              0.41015625
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.009765625,
+            "ci95": [
+              -0.02734375,
+              0.00390625
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.923828125,
+            "ci95": [
+              -1.615234375,
+              -0.337890625
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.015625,
+              -0.001953125
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.02734375,
+              0.01171875
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "random_randomfit": {
+          "corrected_complete": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.03125,
+              0.017578125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.02734375,
+              0.005859375
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.276786569209193,
+            "ci95": [
+              -2.086045773687627,
+              -0.6124292760816903
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.10194475267153535,
+            "ci95": [
+              -0.267794391716896,
+              0.05799118579700456
+            ]
+          },
+          "seconds": {
+            "delta": 0.009765625,
+            "ci95": [
+              -0.068359375,
+              0.08984375
+            ]
+          },
+          "frames": {
+            "delta": 0.09765625,
+            "ci95": [
+              -0.68359375,
+              0.8984375
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.02734375,
+              0.005859375
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -1.00390625,
+            "ci95": [
+              -1.763720703125,
+              -0.3319824218750007
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.009765625,
+            "ci95": [
+              -0.01953125,
+              -0.001953125
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.041015625,
+              0.005859375
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "cem_cemfit": {
+          "corrected_complete": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.03125,
+              0.017578125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.02734375,
+              0.005859375
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.276786569209193,
+            "ci95": [
+              -2.086045773687627,
+              -0.6124292760816903
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.10194475267153535,
+            "ci95": [
+              -0.267794391716896,
+              0.05799118579700456
+            ]
+          },
+          "seconds": {
+            "delta": 0.009765625,
+            "ci95": [
+              -0.068359375,
+              0.08984375
+            ]
+          },
+          "frames": {
+            "delta": 0.09765625,
+            "ci95": [
+              -0.68359375,
+              0.8984375
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.02734375,
+              0.005859375
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -1.00390625,
+            "ci95": [
+              -1.763720703125,
+              -0.3319824218750007
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.009765625,
+            "ci95": [
+              -0.01953125,
+              -0.001953125
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.041015625,
+              0.005859375
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "mpc": {
+          "corrected_complete": 441,
+          "final_wrong": 1,
+          "new_identity_mistake": 12,
+          "ever_wrong": 12
+        },
+        "stock": {
+          "corrected_complete": 443,
+          "final_wrong": 1,
+          "new_identity_mistake": 7,
+          "ever_wrong": 7
+        },
+        "random_randomfit": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        },
+        "cem_cemfit": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        }
+      },
+      "contrast_checks": {
+        "stock": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "random_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": false
+        },
+        "cem_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": false
+        }
+      }
+    },
+    "connection": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "mpc": {
+          "corrected_complete": 0.97265625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.0234375,
+          "tcp_mm": 37.88409968145565,
+          "turn_degs": 6.982498726486326,
+          "seconds": 5.96484375,
+          "frames": 60.6484375,
+          "ever_wrong": 0.0234375,
+          "feedback_revisions": 19.52734375,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 1.0,
+          "both_vessels_observed": 1.0
+        },
+        "stock": {
+          "corrected_complete": 0.9921875,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.0078125,
+          "tcp_mm": 37.2008733175587,
+          "turn_degs": 6.873388724733286,
+          "seconds": 5.91796875,
+          "frames": 60.1796875,
+          "ever_wrong": 0.0078125,
+          "feedback_revisions": 18.515625,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 1.0,
+          "both_vessels_observed": 1.0
+        },
+        "random_randomfit": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.5381807104459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.1953125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_cemfit": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.5381807104459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.1953125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "stock": {
+          "corrected_complete": {
+            "delta": 0.01953125,
+            "ci95": [
+              0.0,
+              0.05859375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.046875,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": -0.6832263638969494,
+            "ci95": [
+              -2.2396250513652767,
+              0.5993243541533475
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.10911000175303975,
+            "ci95": [
+              -0.36592156952560695,
+              0.10389416069284563
+            ]
+          },
+          "seconds": {
+            "delta": -0.046875,
+            "ci95": [
+              -0.171875,
+              0.0625
+            ]
+          },
+          "frames": {
+            "delta": -0.46875,
+            "ci95": [
+              -1.71875,
+              0.625
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.046875,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -1.01171875,
+            "ci95": [
+              -2.14453125,
+              -0.09375
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "random_randomfit": {
+          "corrected_complete": {
+            "delta": 0.00390625,
+            "ci95": [
+              -0.0234375,
+              0.03515625
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.046875,
+              0.01171875
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.3459189710097519,
+            "ci95": [
+              -2.736631955302401,
+              -0.31921496051589027
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.16051203908389944,
+            "ci95": [
+              -0.4562130216334061,
+              0.12050757052746393
+            ]
+          },
+          "seconds": {
+            "delta": -0.03125,
+            "ci95": [
+              -0.1484375,
+              0.078125
+            ]
+          },
+          "frames": {
+            "delta": -0.3125,
+            "ci95": [
+              -1.484375,
+              0.78125
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.046875,
+              0.01171875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -1.33203125,
+            "ci95": [
+              -2.63681640625,
+              -0.23828125
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.0390625,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "cem_cemfit": {
+          "corrected_complete": {
+            "delta": 0.00390625,
+            "ci95": [
+              -0.0234375,
+              0.03515625
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.046875,
+              0.01171875
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.3459189710097519,
+            "ci95": [
+              -2.736631955302401,
+              -0.31921496051589027
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.16051203908389944,
+            "ci95": [
+              -0.4562130216334061,
+              0.12050757052746393
+            ]
+          },
+          "seconds": {
+            "delta": -0.03125,
+            "ci95": [
+              -0.1484375,
+              0.078125
+            ]
+          },
+          "frames": {
+            "delta": -0.3125,
+            "ci95": [
+              -1.484375,
+              0.78125
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.046875,
+              0.01171875
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -1.33203125,
+            "ci95": [
+              -2.63681640625,
+              -0.23828125
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.0390625,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "mpc": {
+          "corrected_complete": 249,
+          "final_wrong": 0,
+          "new_identity_mistake": 6,
+          "ever_wrong": 6
+        },
+        "stock": {
+          "corrected_complete": 254,
+          "final_wrong": 0,
+          "new_identity_mistake": 2,
+          "ever_wrong": 2
+        },
+        "random_randomfit": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        },
+        "cem_cemfit": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        }
+      },
+      "contrast_checks": {
+        "stock": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": false
+        },
+        "random_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": false
+        },
+        "cem_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": false
+        }
+      }
+    },
+    "parallel": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "mpc": {
+          "corrected_complete": 0.75,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.0234375,
+          "tcp_mm": 36.541927293997475,
+          "turn_degs": 6.3942554169340315,
+          "seconds": 6.2890625,
+          "frames": 63.890625,
+          "ever_wrong": 0.0234375,
+          "feedback_revisions": 19.04296875,
+          "centered_complete": 0.06640625,
+          "first_interval_recaptured": 0.75,
+          "both_vessels_observed": 1.0
+        },
+        "stock": {
+          "corrected_complete": 0.73828125,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.58465783174639,
+          "turn_degs": 6.281627020462984,
+          "seconds": 6.28515625,
+          "frames": 63.8515625,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.20703125,
+          "centered_complete": 0.05078125,
+          "first_interval_recaptured": 0.73828125,
+          "both_vessels_observed": 1.0
+        },
+        "random_randomfit": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.33427312658886,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.3671875,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_cemfit": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.33427312658886,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.3671875,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "stock": {
+          "corrected_complete": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.0546875,
+              0.0234375
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01953125,
+              0.0078125
+            ]
+          },
+          "tcp_mm": {
+            "delta": -0.9572694622510838,
+            "ci95": [
+              -1.6683334263576293,
+              -0.3464782636192498
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.11262839647104794,
+            "ci95": [
+              -0.21164299576316448,
+              -0.02823597295217231
+            ]
+          },
+          "seconds": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.08203125,
+              0.06640625
+            ]
+          },
+          "frames": {
+            "delta": -0.0390625,
+            "ci95": [
+              -0.8203125,
+              0.6640625
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01953125,
+              0.0078125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.8359375,
+            "ci95": [
+              -1.59765625,
+              -0.14443359375000142
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.03125,
+              -0.00390625
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.01171875,
+            "ci95": [
+              -0.0546875,
+              0.0234375
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "random_randomfit": {
+          "corrected_complete": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.05859375,
+              0.01953125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01953125,
+              0.0078125
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.207654167408613,
+            "ci95": [
+              -2.0054179580394016,
+              -0.44793761744201316
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.04337746625916861,
+            "ci95": [
+              -0.18855424579827912,
+              0.13811292862834454
+            ]
+          },
+          "seconds": {
+            "delta": 0.05078125,
+            "ci95": [
+              -0.05078125,
+              0.16796875
+            ]
+          },
+          "frames": {
+            "delta": 0.5078125,
+            "ci95": [
+              -0.5078125,
+              1.6796875
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01953125,
+              0.0078125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.67578125,
+            "ci95": [
+              -1.40634765625,
+              0.04296875
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.01953125,
+            "ci95": [
+              -0.03515625,
+              -0.00390625
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.05859375,
+              0.01953125
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "cem_cemfit": {
+          "corrected_complete": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.05859375,
+              0.01953125
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01953125,
+              0.0078125
+            ]
+          },
+          "tcp_mm": {
+            "delta": -1.207654167408613,
+            "ci95": [
+              -2.0054179580394016,
+              -0.44793761744201316
+            ]
+          },
+          "turn_degs": {
+            "delta": -0.04337746625916861,
+            "ci95": [
+              -0.18855424579827912,
+              0.13811292862834454
+            ]
+          },
+          "seconds": {
+            "delta": 0.05078125,
+            "ci95": [
+              -0.05078125,
+              0.16796875
+            ]
+          },
+          "frames": {
+            "delta": 0.5078125,
+            "ci95": [
+              -0.5078125,
+              1.6796875
+            ]
+          },
+          "ever_wrong": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01953125,
+              0.0078125
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.67578125,
+            "ci95": [
+              -1.40634765625,
+              0.04296875
+            ]
+          },
+          "centered_complete": {
+            "delta": -0.01953125,
+            "ci95": [
+              -0.03515625,
+              -0.00390625
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": -0.015625,
+            "ci95": [
+              -0.05859375,
+              0.01953125
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "mpc": {
+          "corrected_complete": 192,
+          "final_wrong": 1,
+          "new_identity_mistake": 6,
+          "ever_wrong": 6
+        },
+        "stock": {
+          "corrected_complete": 189,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        },
+        "random_randomfit": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        },
+        "cem_cemfit": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        }
+      },
+      "contrast_checks": {
+        "stock": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "random_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": false,
+          "execution_equivalent": false
+        },
+        "cem_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": false,
+          "execution_equivalent": false
+        }
+      }
+    }
+  },
+  "candidate_source_fixed_renderer": {
+    "pooled": {
+      "worlds": 64,
+      "replicas_per_world": 8,
+      "means": {
+        "random_analytic": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.9338421639858,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.287109375,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_analytic": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.9338421639858,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.287109375,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "cem_analytic": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "random_analytic": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        },
+        "cem_analytic": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        }
+      },
+      "contrast_checks": {
+        "cem_analytic": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    },
+    "connection": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "random_analytic": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.536621782459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.203125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_analytic": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.536621782459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.203125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "cem_analytic": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "random_analytic": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        },
+        "cem_analytic": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        }
+      },
+      "contrast_checks": {
+        "cem_analytic": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    },
+    "parallel": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "random_analytic": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.331062545512616,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.37109375,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_analytic": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.331062545512616,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.37109375,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "cem_analytic": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "random_analytic": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        },
+        "cem_analytic": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        }
+      },
+      "contrast_checks": {
+        "cem_analytic": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    }
+  },
+  "random_menu_same_request": {
+    "pooled": {
+      "worlds": 64,
+      "replicas_per_world": 8,
+      "means": {
+        "random_analytic": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.9338421639858,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.287109375,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        },
+        "random_randomfit": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.93622691851736,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.28125,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        },
+        "random_cemfit": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.93622691851736,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.28125,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "random_randomfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.002384754531561839,
+            "ci95": [
+              -0.00483257010278641,
+              0.007727507276716314
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.015625,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "random_cemfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.002384754531561839,
+            "ci95": [
+              -0.00483257010278641,
+              0.007727507276716314
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.015625,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "random_analytic": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        },
+        "random_randomfit": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        },
+        "random_cemfit": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        }
+      },
+      "contrast_checks": {
+        "random_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "random_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    },
+    "connection": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "random_analytic": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.536621782459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.203125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        },
+        "random_randomfit": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.5381807104459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.1953125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        },
+        "random_cemfit": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.5381807104459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.1953125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "random_randomfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.0015589279868990502,
+            "ci95": [
+              -0.012259669439828324,
+              0.011863429348739327
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.0234375,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "random_cemfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.0015589279868990502,
+            "ci95": [
+              -0.012259669439828324,
+              0.011863429348739327
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.0234375,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "random_analytic": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        },
+        "random_randomfit": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        },
+        "random_cemfit": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        }
+      },
+      "contrast_checks": {
+        "random_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "random_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    },
+    "parallel": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "random_analytic": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.331062545512616,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.37109375,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        },
+        "random_randomfit": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.33427312658886,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.3671875,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        },
+        "random_cemfit": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.33427312658886,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.3671875,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "random_randomfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.003210581076245944,
+            "ci95": [
+              0.0009393568720468259,
+              0.0059502831393716425
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01171875,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "random_cemfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.003210581076245944,
+            "ci95": [
+              0.0009393568720468259,
+              0.0059502831393716425
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01171875,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "random_analytic": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        },
+        "random_randomfit": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        },
+        "random_cemfit": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        }
+      },
+      "contrast_checks": {
+        "random_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "random_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    }
+  },
+  "cem_menu_same_request": {
+    "pooled": {
+      "worlds": 64,
+      "replicas_per_world": 8,
+      "means": {
+        "cem_analytic": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.9338421639858,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.287109375,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_randomfit": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.93622691851736,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.28125,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_cemfit": {
+          "corrected_complete": 0.85546875,
+          "final_wrong": 0.001953125,
+          "new_identity_mistake": 0.015625,
+          "tcp_mm": 35.93622691851736,
+          "turn_degs": 6.586432319038645,
+          "seconds": 6.13671875,
+          "frames": 62.3671875,
+          "ever_wrong": 0.015625,
+          "feedback_revisions": 18.28125,
+          "centered_complete": 0.072265625,
+          "first_interval_recaptured": 0.859375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "cem_randomfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.002384754531561839,
+            "ci95": [
+              -0.00483257010278641,
+              0.007727507276716314
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.015625,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "cem_cemfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.002384754531561839,
+            "ci95": [
+              -0.00483257010278641,
+              0.007727507276716314
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.005859375,
+            "ci95": [
+              -0.015625,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "cem_analytic": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        },
+        "cem_randomfit": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        },
+        "cem_cemfit": {
+          "corrected_complete": 438,
+          "final_wrong": 1,
+          "new_identity_mistake": 8,
+          "ever_wrong": 8
+        }
+      },
+      "contrast_checks": {
+        "cem_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "cem_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    },
+    "connection": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "cem_analytic": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.536621782459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.203125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_randomfit": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.5381807104459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.1953125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_cemfit": {
+          "corrected_complete": 0.9765625,
+          "final_wrong": 0.0,
+          "new_identity_mistake": 0.01171875,
+          "tcp_mm": 36.5381807104459,
+          "turn_degs": 6.821986687402426,
+          "seconds": 5.93359375,
+          "frames": 60.3359375,
+          "ever_wrong": 0.01171875,
+          "feedback_revisions": 18.1953125,
+          "centered_complete": 0.09765625,
+          "first_interval_recaptured": 0.984375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "cem_randomfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.0015589279868990502,
+            "ci95": [
+              -0.012259669439828324,
+              0.011863429348739327
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.0234375,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "cem_cemfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.0015589279868990502,
+            "ci95": [
+              -0.012259669439828324,
+              0.011863429348739327
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.0078125,
+            "ci95": [
+              -0.0234375,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "cem_analytic": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        },
+        "cem_randomfit": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        },
+        "cem_cemfit": {
+          "corrected_complete": 250,
+          "final_wrong": 0,
+          "new_identity_mistake": 3,
+          "ever_wrong": 3
+        }
+      },
+      "contrast_checks": {
+        "cem_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "cem_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    },
+    "parallel": {
+      "worlds": 32,
+      "replicas_per_world": 8,
+      "means": {
+        "cem_analytic": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.331062545512616,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.37109375,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_randomfit": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.33427312658886,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.3671875,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        },
+        "cem_cemfit": {
+          "corrected_complete": 0.734375,
+          "final_wrong": 0.00390625,
+          "new_identity_mistake": 0.01953125,
+          "tcp_mm": 35.33427312658886,
+          "turn_degs": 6.350877950674863,
+          "seconds": 6.33984375,
+          "frames": 64.3984375,
+          "ever_wrong": 0.01953125,
+          "feedback_revisions": 18.3671875,
+          "centered_complete": 0.046875,
+          "first_interval_recaptured": 0.734375,
+          "both_vessels_observed": 1.0
+        }
+      },
+      "vs_reference": {
+        "cem_randomfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.003210581076245944,
+            "ci95": [
+              0.0009393568720468259,
+              0.0059502831393716425
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01171875,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        },
+        "cem_cemfit": {
+          "corrected_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "final_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "new_identity_mistake": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "tcp_mm": {
+            "delta": 0.003210581076245944,
+            "ci95": [
+              0.0009393568720468259,
+              0.0059502831393716425
+            ]
+          },
+          "turn_degs": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "seconds": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "frames": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "ever_wrong": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "feedback_revisions": {
+            "delta": -0.00390625,
+            "ci95": [
+              -0.01171875,
+              0.0
+            ]
+          },
+          "centered_complete": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "first_interval_recaptured": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          },
+          "both_vessels_observed": {
+            "delta": 0.0,
+            "ci95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "counts": {
+        "cem_analytic": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        },
+        "cem_randomfit": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        },
+        "cem_cemfit": {
+          "corrected_complete": 188,
+          "final_wrong": 1,
+          "new_identity_mistake": 5,
+          "ever_wrong": 5
+        }
+      },
+      "contrast_checks": {
+        "cem_randomfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        },
+        "cem_cemfit": {
+          "completion": false,
+          "mistakes_within_margin": true,
+          "execution_within_upper_margins": true,
+          "execution_equivalent": true
+        }
+      }
+    }
+  },
+  "rendering": {
+    "mpc": {
+      "original": 64
+    },
+    "stock": {
+      "original": 64
+    },
+    "random_analytic": {
+      "original": 64
+    },
+    "random_randomfit": {
+      "original": 48,
+      "randomfit": 16
+    },
+    "random_cemfit": {
+      "original": 48,
+      "cemfit": 16
+    },
+    "cem_analytic": {
+      "original": 64
+    },
+    "cem_randomfit": {
+      "original": 48,
+      "randomfit": 16
+    },
+    "cem_cemfit": {
+      "original": 48,
+      "cemfit": 16
+    }
+  },
+  "maximum_direct_fit_position_error_mm": 0.11273444537072663,
+  "bundle_sha256": "35e1299ec848b6e543d3f4696fe8c182f3cf55f927667c36ec31b0ca035f5f71",
+  "holdout_archive_sha256": "ccc8941561a2195e224227d310687775699efb174226b0b3d7751ebdfb09b529"
+}

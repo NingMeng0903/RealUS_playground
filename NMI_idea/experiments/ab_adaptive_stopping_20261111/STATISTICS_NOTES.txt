@@ -1,0 +1,103 @@
+ADAPTIVE STOPPING B — READ-ONLY SUMMARY CONTRACT
+===============================================
+
+This note belongs to summarize_adaptive.py.  It does not change the frozen
+experiment contract in DESIGN_PROTOCOL.txt and does not run or retrain a
+policy.  The script only reads runner output and writes a new summary/
+subdirectory.
+
+1. Input interface agreed with run_adaptive.py
+----------------------------------------------
+
+The current runner writes one RESULT.json per
+(case_id, fixture_index/mode, arm).  The reader accepts that layout, JSONL
+one-record-per-line, and wrappers containing records/results/runs/rows.  A
+canonical future line may be:
+
+  {"schema":"adaptive_stopping_runner_record_v1",
+   "stage":"test", "object_id":"...", "mirror":"constrained_0",
+   "arm":"B_H1", "result": {
+       "correct_complete":false, "false_complete":false,
+       "ever_qualified":false, "committed":true,
+       "commit_prediction":{"raw_p":0.93,"calibrated_p":0.91,
+                             "risk_score":0.91},
+       "events":[], "decisions":[], "privateeval":[]}}
+
+The current result form is also read: case_id is the object ID, fixture_index
+is preferred as the mirror key (mode is only a fallback), and result fields
+remain top-level.  sourceprimaryconfig/frozen config metadata may name the
+frozen B, strong-A, and complete-pair arms.  The reader does not choose the
+old single ``A`` by default: if a runner emits A_task/A_info, metadata or an
+explicit --a-arm must identify the frozen strong A.  A two-constrained-mirror
+runner can use fixture_index 0/1 or any two explicit mirror IDs; no
+index-1-open assumption is made.
+
+2. Outcome and denominator
+--------------------------
+
+Each record is classified into exactly one of correct_complete,
+false_complete, no_complete, withdraw, or watchdog.  An explicit
+false_complete/private_false/wrong stop overrides every earlier qualification.
+everqualified is retained as a separate descriptive field and can never turn
+a false stop into primary success.  no_complete is residual non-withdraw,
+non-watchdog non-success; undecided = no_complete + withdraw + watchdog.
+
+All mirror records are retained for execution counts.  The all-subject
+denominator and primary rates use object/subject clusters.  For an object with
+two mirrors, the binary outcome is averaged over those two records; the object
+then contributes one cluster value.  Thus the estimate can be fractional when
+mirrors disagree, while the bootstrap sample size remains the number of
+objects, never 256 independent patients.
+
+3. Primary effect and gate
+--------------------------
+
+For each required comparison, the contrast is B minus the frozen strong A or
+the actually completed fixed pair.  Paired object IDs are resampled with
+replacement 10,000 times using seed 721505.  Every draw carries all mirror
+records belonging to that object.  The reported interval is the two-sided
+97.5% percentile interval (quantiles 0.0125 and 0.9875).  A numerical primary
+effect requires estimate >= 0.10 and lower CI bound > 0 for both comparisons.
+
+Missing any primary method/object/mirror record, duplicate primary key, or
+object/mirror identity is explicit incomplete.  The research gate is not
+reported as passed unless primary records are complete, the committed risk
+gate has evidence, and guard/cap/shadow controls are complete.  A negative
+effect is reported as negative only after these data are complete; otherwise
+the status is incomplete.
+
+4. Commit calibration
+----------------------
+
+Calibration rows are selected only when the record actually committed (or a
+commit decision/terminal option is present).  The final correct_complete
+outcome is aligned to that commit prediction.  Probe scores and high
+confidence exploratory packets are excluded.  Raw, calibrated, and risk/gate
+predictions each get Brier score and ten-bin reliability rows.  If a committed
+row has no aligned prediction it is reported as missing evidence.
+
+5. Required secondary summaries
+-------------------------------
+
+The summary keeps per-arm mirror counts, object-cluster counts/rates,
+false/no-complete/withdraw/watchdog, commit coverage, committed failure rate,
+everqualified, probes, dwell histogram, motion/simulation time, planning wall
+time, loss-to-reacquisition event/time, native failures, and cache hits/misses.
+Guard 8 vs continuation 12, common observation caps 2/4/6/8, and first-32
+subject shadow caps 2/4 are discovered from explicit fields/labels.  If a
+control was not run, its entry is explicitly incomplete; no failures or
+undecided rows are removed.
+
+6. Calling convention
+---------------------
+
+From the experiment directory:
+
+  python summarize_adaptive.py RUN_ROOT
+
+This writes RUN_ROOT/summary/SUMMARY.json and, when matplotlib is available,
+RUN_ROOT/summary/adaptive_outcomes.png.  Useful overrides are --stage test,
+--b-arm NAME, --a-arm A_task (or A_info), --pair-arm complete_pair,
+--expected-subjects 128, --expected-mirrors 2, and --no-plot.  Before data are
+available, run ``python summarize_adaptive.py --self-test`` or
+``python -m unittest test_summary.py``.

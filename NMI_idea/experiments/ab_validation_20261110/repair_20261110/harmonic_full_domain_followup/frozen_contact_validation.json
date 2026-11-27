@@ -1,0 +1,21 @@
+{
+  "seed": 20261111,
+  "random_face_samples": 1024,
+  "poses_deg": [
+    0,
+    15,
+    30,
+    45,
+    60,
+    75,
+    90
+  ],
+  "template_role": "authorized old/coarse template prior or independent coverage; no held-out patient truth used",
+  "tests": [
+    "all charts positive local rank",
+    "all within-chart material triangle overlap",
+    "all raw/posed surface CGAL",
+    "random query/inverse and exact overlapping-chart transition",
+    "all prior projected point rebindings with error and original face provenance"
+  ]
+}

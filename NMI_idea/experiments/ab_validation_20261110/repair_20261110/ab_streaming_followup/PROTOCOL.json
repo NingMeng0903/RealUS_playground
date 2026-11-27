@@ -1,0 +1,161 @@
+{
+  "schema": "L0_synthetic_streaming_A_v1_parent_approved_with_amendments",
+  "status": "parent_approved_before_test_world_run",
+  "scope": "Single chart station, synthetic B-mode feature generator and actual DMP short pose commands. Tests learned A local response with five-frame public LA gate; no real B-mode, SMPL-X production atlas, QP/dIRD, or B planning claim.",
+  "source_refs": {
+    "paper": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/ideas/Anatomical_GPS_V9.3.tex",
+    "response_core": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/core/a_response.py",
+    "prior_factorial": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/core/prior_response_factorial.py",
+    "parent_protocol": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/NO_PRESCAN_FOLLOWUP_PROTOCOL.txt",
+    "DMP": "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/dmp.py"
+  },
+  "information_boundary": {
+    "public": "Generic one-station chart template, manually specified four-mode plus broad-tail prior with correlated five-control curve residuals, public body surface context c, current probe pose, commanded DMP, unique timestamped noisy image frames and posterior.",
+    "private": "Held-out patient mode, correlated curve controls, individual response E, true vessel/false-source identity, future images and audit LA.",
+    "trained_response_input": "Only public c and commanded pose difference, plus visible source-world before/after image measurements in training. No hidden target position, true J, E, future frame or test world ID.",
+    "policy_counterfactual": "With same public history, prior, pose and frozen model, changing hidden patient gives identical next action. Different legal prior weights may change action."
+  },
+  "splits": {
+    "train": {
+      "seed": 931101,
+      "worlds": 512,
+      "pairs_per_world_attempted": 16
+    },
+    "validation": {
+      "seed": 931102,
+      "worlds": 128
+    },
+    "test": {
+      "seed": 931103,
+      "worlds": 256
+    },
+    "shift": {
+      "seed": 931104,
+      "worlds": 128
+    },
+    "G_exact_negative": {
+      "seed": 931105,
+      "worlds": 128
+    },
+    "bootstrap_seed": 931106,
+    "bootstrap_resamples": 2000,
+    "no_world_or_noise_key_overlap": true,
+    "G_exact_train": {
+      "seed": 931107,
+      "worlds": 512,
+      "pairs_per_world_attempted": 16
+    }
+  },
+  "template_prior": {
+    "station_s": 0.5,
+    "station_x_m": 0.1,
+    "four_modes": "target lane +-0.022m times tangent +-0.17rad",
+    "mode_weights": [
+      0.24,
+      0.24,
+      0.24,
+      0.24,
+      0.04
+    ],
+    "fifth_broad_mode": "zero-mean location/angle, SD 0.035m/0.25rad, coherent curve not pointwise white noise",
+    "five_control_curve": "correlated Gaussian residual controls at chart s=[0.3,0.4,0.5,0.6,0.7], SD=0.003m, adjacent correlation=0.65; shared registration SD=0.002m; piecewise cubic Hermite at station; no test-specific anchor",
+    "patient_source": "independent split world sampling; public template frozen before world generation",
+    "limitation": "only one station queried, so not a whole-leg atlas or 15mm longitudinal navigation coverage"
+  },
+  "response": {
+    "public_context_c": "three exogenous visible body/surface features each Uniform[-1,1] in train/test; shift Uniform[-1.3,1.3]",
+    "normalized_command_q": "[lateral y/0.020m, yaw/0.17rad]",
+    "normalized_image_z": "[measured center/0.020m, measured angle_error/0.17rad]",
+    "truth": "z=z0-J(c,E)q; J=I+0.45[[c0,0.5c1],[-0.35c1,c2]]+E, hidden E~Normal(0,0.04) entrywise (shift SD 0.08); G_exact uses J=I",
+    "analytic_baseline": "J=I",
+    "learned_residual": "ridge reg 0.001 on interactions c_j*delta_q and delta_q, trained on public visible-before/after differences; frozen before test; no hidden labels",
+    "online_jacobian": "Broyden rank-one update from two successive publicly detected image blocks, starts I, no extra probes; all action/observation/time budgets same",
+    "test_metrics": [
+      "held-out response RMSE on observable transitions",
+      "selected-action ranking disagreement",
+      "first public detection time",
+      "first independent LA time",
+      "correct public stop",
+      "false public stop",
+      "no find",
+      "motion/hold/compute time"
+    ],
+    "negative_control": "G_exact uses J=I and independent worlds/noise; learned advantage should vanish or reverse",
+    "constant_jacobian_baseline": "same visible source-world pairs and ridge 0.001, fit a constant 2x2 J without public c; held-out action value tests conditional benefit"
+  },
+  "actions": {
+    "family": "1 generic center survey + 4 template lane/tangent branches x lateral offsets [-0.010,0,+0.010]m x yaw offsets [-0.10,0,+0.10]rad; 37 unique candidate poses at fixed chart station",
+    "DMP": "fit_discrete_dmp and rollout 21 returned motion samples from current actual command endpoint to candidate; render at actual final DMP sample, not desired endpoint",
+    "speed_max_m_s": 0.02,
+    "yaw_speed_max_rad_s": 0.5,
+    "duration": "from peak sampled step speed limits, not mean length",
+    "max_actions_per_episode": 6,
+    "deadline_s": 60.0,
+    "repeat_action": "disallowed unless all candidates exhausted; same rule all methods",
+    "known_reference_velocity": "finite derivative of chosen commanded DMP pose only; hidden vessel velocity never given"
+  },
+  "image_stream": {
+    "frames_per_action": 5,
+    "hold_frame_offsets_s": [
+      0.0,
+      0.125,
+      0.25,
+      0.375,
+      0.5
+    ],
+    "unique_evidence_id": "cohort/world/action_ordinal/frame_index",
+    "visible_target_p_if_in_fov": 0.98,
+    "false_detection_p_if_outside": 0.01,
+    "fov_halfwidth_m": 0.032,
+    "u_noise_sd_m": 0.0006,
+    "angle_noise_sd_rad": 0.025,
+    "visible_length_noise_sd_m": 0.001,
+    "depth_noise_sd_m": 0.001,
+    "target_identity_beta": [
+      20,
+      2
+    ],
+    "false_identity_beta": [
+      2,
+      20
+    ],
+    "true_visible_length_m": "0.024 * scale_world * exp(-(center/0.012)^2 -(angle/0.32)^2), scale_world Uniform[0.7,1.1]",
+    "contact_truth": "abs(probe_y)<=0.030m; public contact has 1% bit flip",
+    "missing_contract": "If not detected, center/angle/length/depth/identity all null; no hidden crop",
+    "scope_note": "visible_length is a declared synthetic image feature proxy; not actual 3D visible tube segment or B-mode image"
+  },
+  "public_LA_verifier": {
+    "requires": "five consecutive new timestamped frames spanning >=0.5s; each visible, segment length>=0.015m, abs center<=0.002m, abs axial angle<=10deg, identity score>=0.75, contact true",
+    "frame_reuse": "none across attempts",
+    "stop": "public verifier only; audit failure does not trigger retry"
+  },
+  "independent_audit": {
+    "requires": "same five physical frames with true target source, true geometric segment length>=0.015m, true abs center<=0.002m, true abs axial angle<=10deg, true contact and acquisition visible; hidden world only used here and renderer",
+    "not_controller_input": true,
+    "scope_note": "independent hidden-geometry check of the synthetic feature proxy; no real image/3D tube verifier"
+  },
+  "policy": {
+    "methods": [
+      "analytic_geometry_A",
+      "constant_jacobian_A",
+      "trained_residual_A",
+      "online_broyden_A"
+    ],
+    "same_budget": "same 37 candidates, 6 action and 30 frame maximum, same 60s cap, motion/hold/planning charged",
+    "decision": "myopic predicted probability of public LA with small detection coverage term and nominal motion cost; posterior updated per unique frame, fixed particle prior common across methods",
+    "belief": "80 frozen generic correlated-curve particles (16 per mode incl broad) each retain sampled persistent 2x2 E nuisance and z0 offset; unique frame likelihood updates. Finite-particle and response-model mismatch remain; no posterior coverage/calibration claim.",
+    "B_status": "deferred until learned A interface passes honest checks"
+  },
+  "predeclared_checks": {
+    "causal_hidden_world_noninterference": true,
+    "public_prior_sensitivity": true,
+    "no_duplicate_evidence": true,
+    "likelihood_normalization": true,
+    "DMP_peak_speed_and_actual_endpoint": true,
+    "response_model_changes_candidate_scores": true,
+    "no_test_fit_or_threshold_tuning": true,
+    "constant_vs_conditional_response": true,
+    "separate_true_LA_from_public_correct_stop": true
+  },
+  "reporting": "Paired world counts and bootstrap descriptive 95% CI; all failures retained. L0 synthetic only; no model/LA result claimed before independent run."
+}

@@ -1,0 +1,2307 @@
+{
+  "freeze_sha256": "98a9aa483156890b2251d04dbf529e3ba76b788035a8d10d56ded37cc75f35d9",
+  "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da",
+  "scores": {
+    "femoral": {
+      "MPC_old": {
+        "layouts": 53,
+        "strict": 27,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 38,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 53,
+            "correct": 47,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 6
+          },
+          {
+            "region": 6,
+            "acquired": 38,
+            "correct": 31,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 7
+          }
+        ],
+        "correct_regions": 289,
+        "wrong_regions": 1,
+        "correct_mm": 135.33038733140478,
+        "longest_mm": 57.75810018575417,
+        "time_s": 8.837735849056603,
+        "travel_mm": 242.18116993495858,
+        "decisions": 636,
+        "actions": {
+          "continue": 583,
+          "finish": 53
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "MPC_new": {
+        "layouts": 53,
+        "strict": 32,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 38,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 2,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 4,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 53,
+            "correct": 51,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 6,
+            "acquired": 38,
+            "correct": 34,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 3
+          }
+        ],
+        "correct_regions": 293,
+        "wrong_regions": 4,
+        "correct_mm": 136.52660571404223,
+        "longest_mm": 55.2279360789173,
+        "time_s": 8.837735849056603,
+        "travel_mm": 242.18116993495858,
+        "decisions": 636,
+        "actions": {
+          "continue": 583,
+          "finish": 53
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0,
+        "paired": {
+          "MPC_old": {
+            "strict": {
+              "actual": [
+                0.09433962264150944,
+                -0.018867924528301886,
+                0.20754716981132076
+              ],
+              "added": 7,
+              "lost": 2,
+              "proof_layout_ci95": [
+                0.018867924528301886,
+                -0.04716981132075472,
+                0.09433962264150944
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.07547169811320754,
+                -0.05660377358490566,
+                0.22641509433962265
+              ],
+              "added": 8,
+              "lost": 5,
+              "proof_layout_ci95": [
+                0.11320754716981132,
+                -0.009433962264150943,
+                0.2641509433962264
+              ]
+            },
+            "mm": {
+              "actual": [
+                1.1962183826374557,
+                -0.44357609658871056,
+                2.7598114589475236
+              ],
+              "added": 19,
+              "lost": 12,
+              "proof_layout_ci95": [
+                2.0905132653578273,
+                0.7149010874190421,
+                3.569508554350655
+              ]
+            },
+            "time_s": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "student_old": {
+        "layouts": 53,
+        "strict": 23,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 36,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 53,
+            "correct": 49,
+            "wrong_branch": 0,
+            "artifact": 2,
+            "seen_but_rejected": 2
+          },
+          {
+            "region": 6,
+            "acquired": 36,
+            "correct": 27,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 9
+          }
+        ],
+        "correct_regions": 285,
+        "wrong_regions": 5,
+        "correct_mm": 135.15041797565965,
+        "longest_mm": 54.4661718404518,
+        "time_s": 13.028301886792455,
+        "travel_mm": 326.23451900991887,
+        "decisions": 652,
+        "actions": {
+          "continue": 452,
+          "revisit_left": 37,
+          "revisit_right": 40,
+          "shift_right": 29,
+          "finish": 53,
+          "shift_left": 17,
+          "hold": 24
+        },
+        "episodes_intervening": 50,
+        "episodes_multiple_interventions": 42,
+        "paired": {
+          "MPC_old": {
+            "strict": {
+              "actual": [
+                -0.07547169811320754,
+                -0.20754716981132076,
+                0.05660377358490566
+              ],
+              "added": 4,
+              "lost": 8,
+              "proof_layout_ci95": [
+                -0.009433962264150943,
+                -0.11320754716981132,
+                0.09433962264150944
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                -0.07547169811320754,
+                -0.24528301886792453,
+                0.09433962264150944
+              ],
+              "added": 7,
+              "lost": 10,
+              "proof_layout_ci95": [
+                0.09433962264150944,
+                -0.0660377358490566,
+                0.2641509433962264
+              ]
+            },
+            "mm": {
+              "actual": [
+                -0.17996935574513562,
+                -4.101964425140957,
+                3.5797323730756663
+              ],
+              "added": 21,
+              "lost": 25,
+              "proof_layout_ci95": [
+                1.9925329100410893,
+                -1.040172749645305,
+                4.875585471459154
+              ]
+            },
+            "time_s": {
+              "actual": [
+                4.190566037735849,
+                3.388679245283019,
+                5.016084905660377
+              ],
+              "added": 49,
+              "lost": 0,
+              "proof_layout_ci95": [
+                4.197169811320754,
+                3.400400943396226,
+                5.013254716981132
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                84.05334907496021,
+                67.4699750998942,
+                100.75030097524086
+              ],
+              "added": 47,
+              "lost": 1,
+              "proof_layout_ci95": [
+                83.82853280715206,
+                67.61940249507036,
+                100.14166716313912
+              ]
+            }
+          },
+          "PPO_only_old": {
+            "strict": {
+              "actual": [
+                -0.03773584905660377,
+                -0.1320754716981132,
+                0.05660377358490566
+              ],
+              "added": 3,
+              "lost": 5,
+              "proof_layout_ci95": [
+                -0.07547169811320754,
+                -0.1792452830188679,
+                0.018867924528301886
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.018867924528301886,
+                -0.05660377358490566,
+                0.0
+              ],
+              "added": 0,
+              "lost": 1,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                -0.07547169811320754,
+                -0.22641509433962265,
+                0.07547169811320754
+              ],
+              "added": 3,
+              "lost": 7,
+              "proof_layout_ci95": [
+                -0.07547169811320754,
+                -0.19811320754716982,
+                0.04716981132075472
+              ]
+            },
+            "mm": {
+              "actual": [
+                -0.6513846055516657,
+                -3.277242757689278,
+                1.8886886488716566
+              ],
+              "added": 18,
+              "lost": 19,
+              "proof_layout_ci95": [
+                -0.021326892780807783,
+                -2.57487649737664,
+                2.4491103910050303
+              ]
+            },
+            "time_s": {
+              "actual": [
+                1.1735849056603773,
+                0.6971226415094339,
+                1.6528301886792454
+              ],
+              "added": 34,
+              "lost": 10,
+              "proof_layout_ci95": [
+                1.1735849056603773,
+                0.6956367924528303,
+                1.6495518867924528
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                20.20045308504495,
+                9.035604703947396,
+                31.041995503308996
+              ],
+              "added": 37,
+              "lost": 9,
+              "proof_layout_ci95": [
+                19.99841935802029,
+                9.032024736273744,
+                30.632049322630873
+              ]
+            }
+          }
+        }
+      },
+      "student_new": {
+        "layouts": 53,
+        "strict": 28,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 36,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 4,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 5,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 6,
+            "acquired": 36,
+            "correct": 31,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 5
+          }
+        ],
+        "correct_regions": 292,
+        "wrong_regions": 2,
+        "correct_mm": 136.42124017679467,
+        "longest_mm": 53.620709707152166,
+        "time_s": 12.979245283018871,
+        "travel_mm": 324.80075732311354,
+        "decisions": 652,
+        "actions": {
+          "continue": 452,
+          "revisit_left": 36,
+          "revisit_right": 40,
+          "shift_right": 28,
+          "hold": 26,
+          "finish": 53,
+          "shift_left": 17
+        },
+        "episodes_intervening": 50,
+        "episodes_multiple_interventions": 42,
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "actual": [
+                -0.07547169811320754,
+                -0.20754716981132076,
+                0.05660377358490566
+              ],
+              "added": 4,
+              "lost": 8,
+              "proof_layout_ci95": [
+                -0.018867924528301886,
+                -0.1320754716981132,
+                0.09433962264150944
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                -0.018867924528301886,
+                -0.16981132075471697,
+                0.1320754716981132
+              ],
+              "added": 8,
+              "lost": 9,
+              "proof_layout_ci95": [
+                0.018867924528301886,
+                -0.11320754716981132,
+                0.16037735849056603
+              ]
+            },
+            "mm": {
+              "actual": [
+                -0.10536553724756781,
+                -3.9696228171294585,
+                3.7113665346829405
+              ],
+              "added": 24,
+              "lost": 25,
+              "proof_layout_ci95": [
+                2.1629187385990933,
+                -0.8407731236151929,
+                5.21911218211336
+              ]
+            },
+            "time_s": {
+              "actual": [
+                4.1415094339622645,
+                3.3565094339622648,
+                4.938726415094339
+              ],
+              "added": 49,
+              "lost": 0,
+              "proof_layout_ci95": [
+                4.1745283018867925,
+                3.388679245283018,
+                4.978844339622642
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                82.6195873881549,
+                66.44157445793431,
+                98.37616493234347
+              ],
+              "added": 47,
+              "lost": 1,
+              "proof_layout_ci95": [
+                83.028875763983,
+                67.11329899745002,
+                99.09941589526578
+              ]
+            }
+          },
+          "student_old": {
+            "strict": {
+              "actual": [
+                0.09433962264150944,
+                -0.018867924528301886,
+                0.20754716981132076
+              ],
+              "added": 7,
+              "lost": 2,
+              "proof_layout_ci95": [
+                0.009433962264150943,
+                -0.08490566037735849,
+                0.11320754716981132
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.1320754716981132,
+                0.0,
+                0.2641509433962264
+              ],
+              "added": 8,
+              "lost": 2,
+              "proof_layout_ci95": [
+                0.03773584905660377,
+                -0.07547169811320754,
+                0.1509433962264151
+              ]
+            },
+            "mm": {
+              "actual": [
+                1.2708222011350236,
+                -0.11668934012359043,
+                2.831142087252635
+              ],
+              "added": 18,
+              "lost": 10,
+              "proof_layout_ci95": [
+                2.2608990939158313,
+                1.1309278182263645,
+                3.445865760659272
+              ]
+            },
+            "time_s": {
+              "actual": [
+                -0.0490566037735849,
+                -0.14150943396226415,
+                0.0
+              ],
+              "added": 0,
+              "lost": 2,
+              "proof_layout_ci95": [
+                -0.022641509433962252,
+                -0.07641509433962262,
+                0.009433962264150943
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                -1.4337616868053067,
+                -3.6921332427591724,
+                0.0
+              ],
+              "added": 0,
+              "lost": 2,
+              "proof_layout_ci95": [
+                -0.7996570431690679,
+                -2.4237122866473353,
+                0.4511288468911838
+              ]
+            }
+          },
+          "PPO_only_new": {
+            "strict": {
+              "actual": [
+                -0.09433962264150944,
+                -0.20754716981132076,
+                0.018867924528301886
+              ],
+              "added": 3,
+              "lost": 8,
+              "proof_layout_ci95": [
+                -0.09433962264150944,
+                -0.19811320754716982,
+                0.009433962264150943
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.018867924528301886,
+                -0.05660377358490566,
+                0.0
+              ],
+              "added": 0,
+              "lost": 1,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                -0.09433962264150944,
+                -0.22641509433962265,
+                0.03773584905660377
+              ],
+              "added": 4,
+              "lost": 9,
+              "proof_layout_ci95": [
+                -0.0660377358490566,
+                -0.18867924528301888,
+                0.05660377358490566
+              ]
+            },
+            "mm": {
+              "actual": [
+                -0.9621518692880306,
+                -3.7478227291467054,
+                1.8337529776231305
+              ],
+              "added": 20,
+              "lost": 18,
+              "proof_layout_ci95": [
+                -0.23052258761423938,
+                -2.7421387096620955,
+                2.11045563715809
+              ]
+            },
+            "time_s": {
+              "actual": [
+                1.1226415094339623,
+                0.6602830188679245,
+                1.5773584905660376
+              ],
+              "added": 34,
+              "lost": 10,
+              "proof_layout_ci95": [
+                1.150943396226415,
+                0.6839622641509435,
+                1.6160849056603777
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                18.940571199601724,
+                8.067923130379421,
+                29.13641707275817
+              ],
+              "added": 37,
+              "lost": 9,
+              "proof_layout_ci95": [
+                19.338846330542413,
+                8.461664519892702,
+                29.578592619208035
+              ]
+            }
+          }
+        }
+      },
+      "PPO_only_old": {
+        "layouts": 53,
+        "strict": 25,
+        "wrong_branch": 1,
+        "acquisition_ceiling": 42,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 53,
+            "correct": 51,
+            "wrong_branch": 1,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 53,
+            "correct": 49,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 3
+          },
+          {
+            "region": 6,
+            "acquired": 42,
+            "correct": 30,
+            "wrong_branch": 0,
+            "artifact": 2,
+            "seen_but_rejected": 10
+          }
+        ],
+        "correct_regions": 289,
+        "wrong_regions": 5,
+        "correct_mm": 135.80180258121132,
+        "longest_mm": 55.47499699862498,
+        "time_s": 11.854716981132079,
+        "travel_mm": 306.03406592487386,
+        "decisions": 647,
+        "actions": {
+          "continue": 473,
+          "hold": 23,
+          "revisit_right": 27,
+          "shift_left": 26,
+          "shift_right": 21,
+          "finish": 53,
+          "revisit_left": 24
+        },
+        "episodes_intervening": 47,
+        "episodes_multiple_interventions": 35,
+        "paired": {
+          "MPC_old": {
+            "strict": {
+              "actual": [
+                -0.03773584905660377,
+                -0.1509433962264151,
+                0.07547169811320754
+              ],
+              "added": 4,
+              "lost": 6,
+              "proof_layout_ci95": [
+                0.0660377358490566,
+                -0.009433962264150943,
+                0.14150943396226415
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                0.018867924528301886,
+                0.0,
+                0.05660377358490566
+              ],
+              "added": 1,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.0,
+                -0.1509433962264151,
+                0.1509433962264151
+              ],
+              "added": 7,
+              "lost": 6,
+              "proof_layout_ci95": [
+                0.16981132075471697,
+                0.02830188679245283,
+                0.32075471698113206
+              ]
+            },
+            "mm": {
+              "actual": [
+                0.47141524980653005,
+                -2.670040749603847,
+                3.728920439954074
+              ],
+              "added": 21,
+              "lost": 21,
+              "proof_layout_ci95": [
+                2.013859802821897,
+                -0.3430424096449366,
+                4.3595979996447305
+              ]
+            },
+            "time_s": {
+              "actual": [
+                3.016981132075472,
+                2.4358490566037734,
+                3.6075471698113204
+              ],
+              "added": 46,
+              "lost": 0,
+              "proof_layout_ci95": [
+                3.0235849056603774,
+                2.4457311320754713,
+                3.61186320754717
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                63.8528959899153,
+                51.71541127754184,
+                75.93302799012856
+              ],
+              "added": 44,
+              "lost": 0,
+              "proof_layout_ci95": [
+                63.83011344913178,
+                51.78739842584066,
+                75.80091902778076
+              ]
+            }
+          }
+        }
+      },
+      "PPO_only_new": {
+        "layouts": 53,
+        "strict": 33,
+        "wrong_branch": 1,
+        "acquisition_ceiling": 42,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 53,
+            "correct": 51,
+            "wrong_branch": 1,
+            "artifact": 0,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 4,
+            "acquired": 53,
+            "correct": 52,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 5,
+            "acquired": 53,
+            "correct": 53,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 6,
+            "acquired": 42,
+            "correct": 35,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 6
+          }
+        ],
+        "correct_regions": 297,
+        "wrong_regions": 2,
+        "correct_mm": 137.3833920460827,
+        "longest_mm": 53.33972401888865,
+        "time_s": 11.856603773584908,
+        "travel_mm": 305.8601861235118,
+        "decisions": 647,
+        "actions": {
+          "continue": 476,
+          "hold": 23,
+          "revisit_right": 27,
+          "shift_left": 23,
+          "shift_right": 21,
+          "finish": 53,
+          "revisit_left": 24
+        },
+        "episodes_intervening": 47,
+        "episodes_multiple_interventions": 34,
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "actual": [
+                0.018867924528301886,
+                -0.1320754716981132,
+                0.16981132075471697
+              ],
+              "added": 8,
+              "lost": 7,
+              "proof_layout_ci95": [
+                0.07547169811320754,
+                0.0,
+                0.1509433962264151
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                0.018867924528301886,
+                0.0,
+                0.05660377358490566
+              ],
+              "added": 1,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.07547169811320754,
+                -0.11320754716981132,
+                0.24528301886792453
+              ],
+              "added": 11,
+              "lost": 7,
+              "proof_layout_ci95": [
+                0.08490566037735849,
+                -0.02830188679245283,
+                0.20754716981132076
+              ]
+            },
+            "mm": {
+              "actual": [
+                0.8567863320404628,
+                -1.9764672657228866,
+                3.7496866478110267
+              ],
+              "added": 26,
+              "lost": 18,
+              "proof_layout_ci95": [
+                2.393441326213333,
+                0.0970227493430084,
+                4.678122973891924
+              ]
+            },
+            "time_s": {
+              "actual": [
+                3.018867924528302,
+                2.4377358490566037,
+                3.609528301886792
+              ],
+              "added": 46,
+              "lost": 0,
+              "proof_layout_ci95": [
+                3.023584905660377,
+                2.4452830188679244,
+                3.6113679245283015
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                63.679016188553206,
+                51.474480038947256,
+                75.70173853189371
+              ],
+              "added": 44,
+              "lost": 0,
+              "proof_layout_ci95": [
+                63.690029433440586,
+                51.598809289410546,
+                75.73485227059625
+              ]
+            }
+          }
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "MPC_old": {
+        "layouts": 107,
+        "strict": 46,
+        "wrong_branch": 30,
+        "acquisition_ceiling": 107,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 107,
+            "correct": 106,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 107,
+            "correct": 106,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 107,
+            "correct": 103,
+            "wrong_branch": 1,
+            "artifact": 3,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 107,
+            "correct": 85,
+            "wrong_branch": 5,
+            "artifact": 12,
+            "seen_but_rejected": 5
+          },
+          {
+            "region": 5,
+            "acquired": 107,
+            "correct": 68,
+            "wrong_branch": 17,
+            "artifact": 3,
+            "seen_but_rejected": 19
+          },
+          {
+            "region": 6,
+            "acquired": 107,
+            "correct": 76,
+            "wrong_branch": 12,
+            "artifact": 4,
+            "seen_but_rejected": 15
+          }
+        ],
+        "correct_regions": 544,
+        "wrong_regions": 59,
+        "correct_mm": 320.6708495238117,
+        "longest_mm": 60.139090333029486,
+        "time_s": 33.47476635514018,
+        "travel_mm": 948.1958983989413,
+        "decisions": 3317,
+        "actions": {
+          "continue": 3210,
+          "finish": 107
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "MPC_new": {
+        "layouts": 107,
+        "strict": 55,
+        "wrong_branch": 18,
+        "acquisition_ceiling": 107,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 107,
+            "correct": 107,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 107,
+            "correct": 105,
+            "wrong_branch": 0,
+            "artifact": 2,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 107,
+            "correct": 106,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 107,
+            "correct": 95,
+            "wrong_branch": 3,
+            "artifact": 7,
+            "seen_but_rejected": 2
+          },
+          {
+            "region": 5,
+            "acquired": 107,
+            "correct": 77,
+            "wrong_branch": 6,
+            "artifact": 3,
+            "seen_but_rejected": 21
+          },
+          {
+            "region": 6,
+            "acquired": 107,
+            "correct": 81,
+            "wrong_branch": 10,
+            "artifact": 8,
+            "seen_but_rejected": 8
+          }
+        ],
+        "correct_regions": 571,
+        "wrong_regions": 40,
+        "correct_mm": 348.3470543121623,
+        "longest_mm": 62.22980870041892,
+        "time_s": 33.47476635514018,
+        "travel_mm": 948.1958983989413,
+        "decisions": 3317,
+        "actions": {
+          "continue": 3210,
+          "finish": 107
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0,
+        "paired": {
+          "MPC_old": {
+            "strict": {
+              "actual": [
+                0.08411214953271028,
+                0.0,
+                0.17757009345794392
+              ],
+              "added": 17,
+              "lost": 8,
+              "proof_layout_ci95": [
+                0.09813084112149532,
+                0.037383177570093455,
+                0.1588785046728972
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.11214953271028037,
+                -0.205607476635514,
+                -0.018691588785046728
+              ],
+              "added": 8,
+              "lost": 20,
+              "proof_layout_ci95": [
+                -0.07009345794392523,
+                -0.1308411214953271,
+                -0.009345794392523364
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.2523364485981308,
+                0.11214953271028037,
+                0.3925233644859813
+              ],
+              "added": 35,
+              "lost": 13,
+              "proof_layout_ci95": [
+                0.21962616822429906,
+                0.1261682242990654,
+                0.3177570093457944
+              ]
+            },
+            "mm": {
+              "actual": [
+                27.676204788350613,
+                23.09290828526577,
+                32.37942358355656
+              ],
+              "added": 92,
+              "lost": 14,
+              "proof_layout_ci95": [
+                25.163576999557353,
+                20.95646743596157,
+                29.52592728160252
+              ]
+            },
+            "time_s": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "added": 0,
+              "lost": 0,
+              "proof_layout_ci95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "student_old": {
+        "layouts": 107,
+        "strict": 53,
+        "wrong_branch": 21,
+        "acquisition_ceiling": 101,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 107,
+            "correct": 105,
+            "wrong_branch": 0,
+            "artifact": 2,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 107,
+            "correct": 106,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 101,
+            "correct": 98,
+            "wrong_branch": 0,
+            "artifact": 3,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 107,
+            "correct": 93,
+            "wrong_branch": 4,
+            "artifact": 7,
+            "seen_but_rejected": 3
+          },
+          {
+            "region": 5,
+            "acquired": 107,
+            "correct": 78,
+            "wrong_branch": 7,
+            "artifact": 6,
+            "seen_but_rejected": 16
+          },
+          {
+            "region": 6,
+            "acquired": 107,
+            "correct": 79,
+            "wrong_branch": 11,
+            "artifact": 3,
+            "seen_but_rejected": 14
+          }
+        ],
+        "correct_regions": 559,
+        "wrong_regions": 44,
+        "correct_mm": 321.34582505270697,
+        "longest_mm": 59.13646789800341,
+        "time_s": 40.28130841121496,
+        "travel_mm": 1073.1678364049296,
+        "decisions": 3331,
+        "actions": {
+          "continue": 2614,
+          "shift_right": 100,
+          "hold": 145,
+          "revisit_right": 143,
+          "finish": 107,
+          "revisit_left": 122,
+          "shift_left": 100
+        },
+        "episodes_intervening": 107,
+        "episodes_multiple_interventions": 107,
+        "paired": {
+          "MPC_old": {
+            "strict": {
+              "actual": [
+                0.06542056074766354,
+                -0.028037383177570093,
+                0.16822429906542055
+              ],
+              "added": 18,
+              "lost": 11,
+              "proof_layout_ci95": [
+                0.014018691588785047,
+                -0.07009345794392523,
+                0.09345794392523364
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.08411214953271028,
+                -0.18691588785046728,
+                0.009345794392523364
+              ],
+              "added": 10,
+              "lost": 19,
+              "proof_layout_ci95": [
+                -0.004672897196261682,
+                -0.07721962616822425,
+                0.07009345794392523
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.14018691588785046,
+                -0.028037383177570093,
+                0.29906542056074764
+              ],
+              "added": 33,
+              "lost": 21,
+              "proof_layout_ci95": [
+                -0.014018691588785047,
+                -0.1542056074766355,
+                0.1308411214953271
+              ]
+            },
+            "mm": {
+              "actual": [
+                0.6749755288952979,
+                -6.3320279451174155,
+                7.510051331564646
+              ],
+              "added": 52,
+              "lost": 55,
+              "proof_layout_ci95": [
+                1.5957613080461448,
+                -4.072322392686505,
+                6.907831921087247
+              ]
+            },
+            "time_s": {
+              "actual": [
+                6.806542056074768,
+                6.317266355140188,
+                7.3093457943925255
+              ],
+              "added": 107,
+              "lost": 0,
+              "proof_layout_ci95": [
+                6.816355140186917,
+                6.330771028037384,
+                7.314731308411215
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                124.97193800598824,
+                114.16500078415538,
+                135.91869237317044
+              ],
+              "added": 104,
+              "lost": 3,
+              "proof_layout_ci95": [
+                125.3563867564598,
+                114.6440690280806,
+                136.4705214531309
+              ]
+            }
+          },
+          "PPO_only_old": {
+            "strict": {
+              "actual": [
+                0.028037383177570093,
+                -0.06542056074766354,
+                0.12149532710280374
+              ],
+              "added": 15,
+              "lost": 12,
+              "proof_layout_ci95": [
+                0.0,
+                -0.07721962616822425,
+                0.0794392523364486
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.028037383177570093,
+                -0.12149532710280374,
+                0.06542056074766354
+              ],
+              "added": 11,
+              "lost": 14,
+              "proof_layout_ci95": [
+                0.009345794392523364,
+                -0.06542056074766354,
+                0.0794392523364486
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.056074766355140186,
+                -0.12149532710280374,
+                0.2336448598130841
+              ],
+              "added": 26,
+              "lost": 18,
+              "proof_layout_ci95": [
+                -0.014018691588785047,
+                -0.14953271028037382,
+                0.1261682242990654
+              ]
+            },
+            "mm": {
+              "actual": [
+                -3.11751221273547,
+                -10.244929832387193,
+                4.413016969912523
+              ],
+              "added": 41,
+              "lost": 61,
+              "proof_layout_ci95": [
+                -1.420481744213639,
+                -6.873354770981263,
+                4.488581322286732
+              ]
+            },
+            "time_s": {
+              "actual": [
+                1.448598130841122,
+                1.0499766355140185,
+                1.8687149532710285
+              ],
+              "added": 76,
+              "lost": 27,
+              "proof_layout_ci95": [
+                1.463084112149533,
+                1.0742990654205604,
+                1.8736098130841123
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                26.302215725999005,
+                16.88535235749586,
+                36.28759878189354
+              ],
+              "added": 72,
+              "lost": 32,
+              "proof_layout_ci95": [
+                26.10865078678762,
+                16.943996215633664,
+                35.91685522913394
+              ]
+            }
+          }
+        }
+      },
+      "student_new": {
+        "layouts": 107,
+        "strict": 61,
+        "wrong_branch": 12,
+        "acquisition_ceiling": 101,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 107,
+            "correct": 106,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 107,
+            "correct": 107,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 101,
+            "correct": 99,
+            "wrong_branch": 0,
+            "artifact": 2,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 107,
+            "correct": 98,
+            "wrong_branch": 3,
+            "artifact": 4,
+            "seen_but_rejected": 2
+          },
+          {
+            "region": 5,
+            "acquired": 107,
+            "correct": 75,
+            "wrong_branch": 5,
+            "artifact": 6,
+            "seen_but_rejected": 21
+          },
+          {
+            "region": 6,
+            "acquired": 107,
+            "correct": 82,
+            "wrong_branch": 6,
+            "artifact": 7,
+            "seen_but_rejected": 12
+          }
+        ],
+        "correct_regions": 567,
+        "wrong_regions": 34,
+        "correct_mm": 339.94695688408115,
+        "longest_mm": 59.811049612883096,
+        "time_s": 40.26635514018692,
+        "travel_mm": 1072.774144455309,
+        "decisions": 3331,
+        "actions": {
+          "continue": 2616,
+          "shift_right": 99,
+          "hold": 144,
+          "revisit_right": 144,
+          "finish": 107,
+          "revisit_left": 121,
+          "shift_left": 100
+        },
+        "episodes_intervening": 107,
+        "episodes_multiple_interventions": 107,
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "actual": [
+                0.056074766355140186,
+                -0.056074766355140186,
+                0.1588785046728972
+              ],
+              "added": 20,
+              "lost": 14,
+              "proof_layout_ci95": [
+                -0.037383177570093455,
+                -0.11682242990654206,
+                0.037383177570093455
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.056074766355140186,
+                -0.14953271028037382,
+                0.028037383177570093
+              ],
+              "added": 8,
+              "lost": 14,
+              "proof_layout_ci95": [
+                0.014018691588785047,
+                -0.0514018691588785,
+                0.0794392523364486
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                -0.037383177570093455,
+                -0.205607476635514,
+                0.12149532710280374
+              ],
+              "added": 27,
+              "lost": 27,
+              "proof_layout_ci95": [
+                -0.13551401869158877,
+                -0.2803738317757009,
+                0.004672897196261682
+              ]
+            },
+            "mm": {
+              "actual": [
+                -8.400097428081192,
+                -15.788294979345018,
+                -1.312413206724363
+              ],
+              "added": 47,
+              "lost": 59,
+              "proof_layout_ci95": [
+                -1.6639277377975321,
+                -8.25879454211654,
+                4.395213957813301
+              ]
+            },
+            "time_s": {
+              "actual": [
+                6.791588785046731,
+                6.30605140186916,
+                7.2990654205607495
+              ],
+              "added": 107,
+              "lost": 0,
+              "proof_layout_ci95": [
+                6.806542056074767,
+                6.315151869158879,
+                7.3075
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                124.57824605636756,
+                113.8347344870804,
+                135.4922025316928
+              ],
+              "added": 104,
+              "lost": 3,
+              "proof_layout_ci95": [
+                124.90312811319595,
+                114.10064979585142,
+                136.00520339247524
+              ]
+            }
+          },
+          "student_old": {
+            "strict": {
+              "actual": [
+                0.07476635514018691,
+                0.0,
+                0.1588785046728972
+              ],
+              "added": 14,
+              "lost": 6,
+              "proof_layout_ci95": [
+                0.04672897196261682,
+                -0.009345794392523364,
+                0.102803738317757
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.08411214953271028,
+                -0.1588785046728972,
+                -0.018691588785046728
+              ],
+              "added": 3,
+              "lost": 12,
+              "proof_layout_ci95": [
+                -0.0514018691588785,
+                -0.11682242990654206,
+                0.014018691588785047
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.07476635514018691,
+                -0.06542056074766354,
+                0.219859813084113
+              ],
+              "added": 23,
+              "lost": 17,
+              "proof_layout_ci95": [
+                0.09813084112149532,
+                -0.004672897196261682,
+                0.20093457943925233
+              ]
+            },
+            "mm": {
+              "actual": [
+                18.601131831374122,
+                14.252491606952988,
+                22.77775972312856
+              ],
+              "added": 85,
+              "lost": 20,
+              "proof_layout_ci95": [
+                21.903887953713674,
+                18.019354634864307,
+                25.72704177036464
+              ]
+            },
+            "time_s": {
+              "actual": [
+                -0.014953271028037464,
+                -0.066355140186916,
+                0.02056074766355136
+              ],
+              "added": 3,
+              "lost": 4,
+              "proof_layout_ci95": [
+                -0.009813084112149506,
+                -0.02803738317756998,
+                0.006320093457943921
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                -0.39369194962065857,
+                -1.2915724891854263,
+                0.06827018195948441
+              ],
+              "added": 3,
+              "lost": 5,
+              "proof_layout_ci95": [
+                -0.45325864326385223,
+                -1.0780426993961365,
+                0.06619465777784392
+              ]
+            }
+          },
+          "PPO_only_new": {
+            "strict": {
+              "actual": [
+                0.037383177570093455,
+                -0.056074766355140186,
+                0.1308411214953271
+              ],
+              "added": 16,
+              "lost": 12,
+              "proof_layout_ci95": [
+                -0.009345794392523364,
+                -0.0794392523364486,
+                0.06542056074766354
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.028037383177570093,
+                -0.08411214953271028,
+                0.028037383177570093
+              ],
+              "added": 4,
+              "lost": 7,
+              "proof_layout_ci95": [
+                -0.009345794392523364,
+                -0.07476635514018691,
+                0.0514018691588785
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.0,
+                -0.16822429906542055,
+                0.16822429906542055
+              ],
+              "added": 21,
+              "lost": 23,
+              "proof_layout_ci95": [
+                -0.0794392523364486,
+                -0.21495327102803738,
+                0.056074766355140186
+              ]
+            },
+            "mm": {
+              "actual": [
+                -5.742465224221488,
+                -13.353945110000181,
+                2.1564799709854845
+              ],
+              "added": 46,
+              "lost": 54,
+              "proof_layout_ci95": [
+                -2.081284781482732,
+                -7.960027716092974,
+                4.066360044033728
+              ]
+            },
+            "time_s": {
+              "actual": [
+                1.4401869158878506,
+                1.0480607476635515,
+                1.8570560747663556
+              ],
+              "added": 77,
+              "lost": 26,
+              "proof_layout_ci95": [
+                1.414018691588785,
+                1.02589953271028,
+                1.826191588785047
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                26.099850142212023,
+                16.82424074414379,
+                36.197139462673555
+              ],
+              "added": 73,
+              "lost": 31,
+              "proof_layout_ci95": [
+                24.796297791624948,
+                15.789719836335186,
+                34.666058820495486
+              ]
+            }
+          }
+        }
+      },
+      "PPO_only_old": {
+        "layouts": 107,
+        "strict": 50,
+        "wrong_branch": 24,
+        "acquisition_ceiling": 102,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 107,
+            "correct": 105,
+            "wrong_branch": 0,
+            "artifact": 2,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 107,
+            "correct": 106,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 102,
+            "correct": 100,
+            "wrong_branch": 0,
+            "artifact": 2,
+            "seen_but_rejected": 1
+          },
+          {
+            "region": 4,
+            "acquired": 106,
+            "correct": 89,
+            "wrong_branch": 4,
+            "artifact": 8,
+            "seen_but_rejected": 5
+          },
+          {
+            "region": 5,
+            "acquired": 107,
+            "correct": 77,
+            "wrong_branch": 10,
+            "artifact": 3,
+            "seen_but_rejected": 17
+          },
+          {
+            "region": 6,
+            "acquired": 107,
+            "correct": 76,
+            "wrong_branch": 14,
+            "artifact": 3,
+            "seen_but_rejected": 14
+          }
+        ],
+        "correct_regions": 553,
+        "wrong_regions": 47,
+        "correct_mm": 324.4633372654425,
+        "longest_mm": 59.180284598163354,
+        "time_s": 38.83271028037384,
+        "travel_mm": 1046.8656206789306,
+        "decisions": 3324,
+        "actions": {
+          "continue": 2713,
+          "shift_left": 79,
+          "shift_right": 96,
+          "revisit_right": 111,
+          "hold": 123,
+          "finish": 107,
+          "revisit_left": 95
+        },
+        "episodes_intervening": 107,
+        "episodes_multiple_interventions": 106,
+        "paired": {
+          "MPC_old": {
+            "strict": {
+              "actual": [
+                0.037383177570093455,
+                -0.056074766355140186,
+                0.12149532710280374
+              ],
+              "added": 13,
+              "lost": 9,
+              "proof_layout_ci95": [
+                0.014018691588785047,
+                -0.07476635514018691,
+                0.09813084112149532
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.056074766355140186,
+                -0.14953271028037382,
+                0.037383177570093455
+              ],
+              "added": 10,
+              "lost": 16,
+              "proof_layout_ci95": [
+                -0.014018691588785047,
+                -0.08878504672897196,
+                0.06074766355140187
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                0.08411214953271028,
+                -0.07476635514018691,
+                0.24299065420560748
+              ],
+              "added": 26,
+              "lost": 22,
+              "proof_layout_ci95": [
+                0.0,
+                -0.14953271028037382,
+                0.13551401869158877
+              ]
+            },
+            "mm": {
+              "actual": [
+                3.7924877416307683,
+                -2.8363437973450276,
+                10.509871887492245
+              ],
+              "added": 58,
+              "lost": 47,
+              "proof_layout_ci95": [
+                3.016243052259784,
+                -2.4411974951485607,
+                8.16271766947809
+              ]
+            },
+            "time_s": {
+              "actual": [
+                5.357943925233647,
+                4.800443925233647,
+                5.909836448598132
+              ],
+              "added": 105,
+              "lost": 1,
+              "proof_layout_ci95": [
+                5.353271028037385,
+                4.806051401869159,
+                5.903294392523366
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                98.6697222799892,
+                87.65088317215394,
+                109.56602496134167
+              ],
+              "added": 103,
+              "lost": 4,
+              "proof_layout_ci95": [
+                99.24773596967218,
+                87.61927279463427,
+                110.3835743207388
+              ]
+            }
+          }
+        }
+      },
+      "PPO_only_new": {
+        "layouts": 107,
+        "strict": 57,
+        "wrong_branch": 15,
+        "acquisition_ceiling": 102,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 107,
+            "correct": 107,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 107,
+            "correct": 107,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 102,
+            "correct": 102,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 106,
+            "correct": 92,
+            "wrong_branch": 4,
+            "artifact": 8,
+            "seen_but_rejected": 2
+          },
+          {
+            "region": 5,
+            "acquired": 107,
+            "correct": 82,
+            "wrong_branch": 3,
+            "artifact": 6,
+            "seen_but_rejected": 16
+          },
+          {
+            "region": 6,
+            "acquired": 107,
+            "correct": 77,
+            "wrong_branch": 10,
+            "artifact": 5,
+            "seen_but_rejected": 15
+          }
+        ],
+        "correct_regions": 567,
+        "wrong_regions": 36,
+        "correct_mm": 345.6894221083026,
+        "longest_mm": 62.4967327741819,
+        "time_s": 38.82616822429907,
+        "travel_mm": 1046.6742943130969,
+        "decisions": 3324,
+        "actions": {
+          "continue": 2720,
+          "shift_left": 76,
+          "shift_right": 94,
+          "revisit_right": 110,
+          "hold": 121,
+          "finish": 107,
+          "revisit_left": 96
+        },
+        "episodes_intervening": 107,
+        "episodes_multiple_interventions": 106,
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "actual": [
+                0.018691588785046728,
+                -0.08411214953271028,
+                0.12149532710280374
+              ],
+              "added": 17,
+              "lost": 15,
+              "proof_layout_ci95": [
+                -0.028037383177570093,
+                -0.09813084112149532,
+                0.037383177570093455
+              ]
+            },
+            "wrong_branch": {
+              "actual": [
+                -0.028037383177570093,
+                -0.12149532710280374,
+                0.056074766355140186
+              ],
+              "added": 10,
+              "lost": 13,
+              "proof_layout_ci95": [
+                0.02336448598130841,
+                -0.04205607476635514,
+                0.09345794392523364
+              ]
+            },
+            "correct_regions": {
+              "actual": [
+                -0.037383177570093455,
+                -0.205607476635514,
+                0.1308411214953271
+              ],
+              "added": 23,
+              "lost": 23,
+              "proof_layout_ci95": [
+                -0.056074766355140186,
+                -0.198714953271028,
+                0.07476635514018691
+              ]
+            },
+            "mm": {
+              "actual": [
+                -2.657632203859704,
+                -9.518828803802204,
+                3.7197821697342066
+              ],
+              "added": 51,
+              "lost": 55,
+              "proof_layout_ci95": [
+                0.41735704368520005,
+                -5.21479502704656,
+                5.588824019030991
+              ]
+            },
+            "time_s": {
+              "actual": [
+                5.35140186915888,
+                4.794345794392525,
+                5.905607476635515
+              ],
+              "added": 105,
+              "lost": 1,
+              "proof_layout_ci95": [
+                5.392523364485982,
+                4.840829439252337,
+                5.940210280373834
+              ]
+            },
+            "travel_mm": {
+              "actual": [
+                98.47839591415554,
+                87.15423129970252,
+                109.6306778864206
+              ],
+              "added": 103,
+              "lost": 4,
+              "proof_layout_ci95": [
+                100.106830321571,
+                88.73866165148576,
+                111.29349102804136
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "student_complete": {
+    "ppo_only": 1152,
+    "teacher": 1152
+  },
+  "heldout_layouts": 160,
+  "deploy": {
+    "ppo_only": {
+      "development_key": [
+        20,
+        -4,
+        10,
+        0,
+        -37.896875
+      ],
+      "checkpoint": "002",
+      "source_actor_sha256": "a24195f83e8f7b66d03f5dd16f37d72e2c3210b80893d60328f92113486e4ed9",
+      "actor_only_sha256": "ac60f29e4d3ee1b8112fbc37524b4d825e8f5f462e1cf0bc36ee4191791f71d6",
+      "action_rule": "sample"
+    },
+    "teacher": {
+      "development_key": [
+        22,
+        -5,
+        8,
+        0,
+        -40.246875
+      ],
+      "checkpoint": "005",
+      "source_actor_sha256": "b38d43a378d465615d143a68ca12e991e3f4706c218fa48074c9c30a7241c4a4",
+      "actor_only_sha256": "9d156c121b369d918ce0162354de639030c625b43fa9f790640be330baf92896",
+      "action_rule": "sample"
+    }
+  }
+}

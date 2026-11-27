@@ -52,6 +52,7 @@ class SignedTrainConfig:
     fourier_bands: int = 3
     softplus_beta: float = 20.0
     seed: int = 47
+    initialization_seed: int | None = None
     device: str = "cuda"
     epochs: int = 30
     batch_size: int = 4096
@@ -108,6 +109,11 @@ def load_signed_train_config(path: str | Path, *, root: Path | None = None) -> S
         fourier_bands=int(model.get("fourier_bands", 3)),
         softplus_beta=float(model.get("softplus_beta", 20.0)),
         seed=int(train.get("seed", 47)),
+        initialization_seed=(
+            None
+            if train.get("initialization_seed") in (None, "null", "")
+            else int(train["initialization_seed"])
+        ),
         device=str(train.get("device", "cuda")),
         epochs=int(train.get("epochs", 30)),
         batch_size=int(train.get("batch_size", 4096)),
@@ -334,7 +340,18 @@ def paired_epoch_batches(
     boundary_rows = tr[bid[tr] >= 0]
     groups = np.unique(bid[boundary_rows])
     rng.shuffle(groups)
-    rows_by_group = {int(group): boundary_rows[bid[boundary_rows] == group] for group in groups}
+    # Stable sorting preserves each group's original row order without scanning
+    # every boundary row once per group. The shuffled group/RNG order is unchanged.
+    row_order = np.argsort(bid[boundary_rows], kind="stable")
+    sorted_rows = boundary_rows[row_order]
+    sorted_groups, starts, counts = np.unique(
+        bid[sorted_rows], return_index=True, return_counts=True
+    )
+    group_slices = {
+        int(group): sorted_rows[start : start + count]
+        for group, start, count in zip(sorted_groups, starts, counts, strict=True)
+    }
+    rows_by_group = {int(group): group_slices[int(group)] for group in groups}
     for group, rows in rows_by_group.items():
         if not ((y[rows] > 0.5).any() and (y[rows] < 0.5).any()):
             raise ValueError(f"boundary group {group} lacks a positive/negative pair")
@@ -603,7 +620,9 @@ def train_signed_field(cfg: SignedTrainConfig) -> dict:
     tr_idx, va_idx = splits["train"], splits["selection"]
     input_center, input_scale = _resolve_input_normalization(arrays, tr_idx)
     device = torch.device(cfg.device)
-    torch.manual_seed(cfg.seed)
+    # Keep data partitions/minibatch order fixed when auditing independent
+    # initializations; changing the split seed would contaminate comparisons.
+    torch.manual_seed(cfg.seed if cfg.initialization_seed is None else cfg.initialization_seed)
     rng = np.random.default_rng(cfg.seed)
     tool = None
     contract = dataset_meta.get("robot_contract") if isinstance(dataset_meta, dict) else None

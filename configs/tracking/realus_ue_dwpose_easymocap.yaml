@@ -1,0 +1,213 @@
+calibration_path: configs/calibration/realus_realsense/cameras.yaml
+scene_spec_path: configs/scenes/realus_bed_rail_scene.yaml
+auto_camera_ids: false
+auto_scale_triangulation: true
+camera_ids:
+- cam1
+- cam2
+- cam3
+- cam4
+primary_camera_id: cam1
+ingress:
+  # UE capture mux runs on the parallel endpoint so a physical RealSense
+  # publisher can remain connected to the legacy 17356 endpoint.
+  connect: tcp://127.0.0.1:17366
+  topic: amongus_camera_frame_v1
+  recv_timeout_ms: 250
+  sync_tolerance_frames: 2
+  max_buffer_per_camera: 8
+  source_profile: ue
+  metadata_intrinsics: true
+  sync_mode: frame_index
+  max_hardware_spread_ms: 33
+pose_backend:
+  type: dwpose_triangulation
+  primary_camera_id: cam1
+  precorrect_views_rgb: false
+  image_correction_mode: none
+  scale_intrinsics_to_ingress: true
+  dwpose:
+    repo_root: ref_code_library/DWPose/ControlNet-v1-1-nightly
+    detector_onnx_path: ref_code_library/DWPose/ControlNet-v1-1-nightly/annotator/ckpts/yolox_s.onnx
+    pose_onnx_path: ref_code_library/DWPose/ControlNet-v1-1-nightly/annotator/ckpts/dw-ll_ucoco_384.onnx
+    device: cuda
+    confidence_threshold: 0.15
+    batch_pose: true
+    batch_yolo: true
+    execution_provider: tensorrt
+    trt_opt_batch: 4
+    trt_max_batch: 6
+    retain_simcc: true
+    simcc_topk: 5
+  triangulation:
+    confidence_threshold: 0.3
+    min_conf: 0.12
+    # Adaptive policy: central joints plus elbows/knees need 3 views; wrists,
+    # ankles, toes, heels and hand joints retain a geometrically valid pair at
+    # low confidence. Never use a global N-1 gate.
+    adaptive_views: true
+    min_view: 2
+    core_min_view: 3
+    min_joints: 5
+    dist_max_px: 22.0
+    two_view_max_reproj_px: 12.0
+    two_view_min_ray_angle_deg: 3.0
+    low_view_confidence_scale: 0.5
+    # Robust hypotheses are compared on the same observed-camera support.
+    # View count is used only when these normalized costs are effectively tied.
+    simcc_probability_weight: 0.05
+    simcc_uncertainty_weight: 0.05
+    detector_confidence_weight: 0.05
+    hypothesis_cost_tie: 0.01
+    simcc_pair_hypotheses: 5
+    thres_outlier_view: 0.35
+    thres_outlier_joint: 0.35
+  easymocap_fit:
+    body_focus: false
+    zero_hand_keypoints: false
+    # Raw DWPose inliers; green triangulation reprojection is debug only.
+    fit_2d_source: raw_inlier_2d
+    # Publication gate requested for the four-camera burst pipeline.  This is
+    # separate from EasyMocap's internal per-observation outlier threshold.
+    final_smplx_reprojection_max_px: 50.0
+    # Delayed EasyMocap owns these weights/limits. Low-view endpoint quality is
+    # already encoded in fused 3D confidence and is applied linearly here.
+    opts:
+      k3d: 1.0
+      k3d_hand: 5.0
+      k3d_face: 2.0
+      k2d: 1.0e-4
+      reg_poses_zero: 1.0e-2
+      smooth_body: 5.0e-1
+      smooth_poses: 1.0e-1
+      smooth_hand: 1.0e-3
+      reg_hand: 1.0e-4
+      reg_expr: 1.0e-2
+      reg_head: 1.0e-2
+      s3d: 1.0
+      reg_shapes: 5.0e-3
+      body25_robust_sigma_m: 0.10
+      shape_retry_threshold_m: 0.02
+      shape_retry_max_passes: 1
+      final_outer_max_iter: 100
+      final_lbfgs_max_iter: 20
+    write_debug_images: true
+    write_easymocap_smpl_json: false
+    export_canonical_tpose: true
+    canonical_staging_dir: outputs/anatomy_retarget/latest_canonical
+    bed_sdf: true
+    bed_sdf_weight: 4.0
+    bed_sdf_max_iter: 4
+    publish_genesis: true
+    publish_duration_s: 3.0
+    publish_rate_hz: 5.0
+  frame_quality:
+    reject_on_hand3d: false
+    reject_on_2d_capture: false
+    capture:
+      min_valid_body25_per_cam: 16
+      min_cameras_passing: 4
+      confidence_threshold: 0.22
+    shape3d:
+      min_valid_body25: 14
+      min_core_body25: 5
+      min_valid_shape_limbs: 6
+      confidence_threshold: 0.28
+  # Realtime tracker only. The 0.5 s delayed SMPL-X capture does not read this
+  # block; its resolved weights and iteration caps come from easymocap_fit.
+  smpl_fit:
+    enable: true
+    smpl_model_dir: dataset/intermediate/humans/body_models/smpl
+    body25_regressor_path: ref_code_library/EasyMocap/data/smplx/J_regressor_body25.npy
+    betas_path: ''
+    device: cuda
+    iterations: 8
+    lr: 0.05
+    root_stage_iterations: 5
+    root_stage_warm_start_iterations: 1
+    root_stage_lr: 0.08
+    k3d_weight: 20.0
+    bone3d_weight: 3.0
+    pelvis_weight: 12.0
+    k2d_weight: 1.0e-06
+    reg_poses_zero_weight: 0.2
+    reg_poses_weight: 0.03
+    smooth_poses_weight: 8.0
+    zero_pose_smpl_joints:
+    - 10
+    - 11
+    - 15
+    - 22
+    - 23
+    huber_delta_m: 0.12
+    optimize_body_pose: true
+    dropout_hold_frames: 2
+    min_valid_joints: 7
+    min_valid_body25_joints: 10
+    dropout_reset_after: 20
+    recovery_cold_start_after: 15
+    recovery_rms_hold_m: 0.25
+    max_fit_rms_m: 0.3
+    temporal_jump_reset_m: 0.75
+    temporal_reset_cooldown_frames: 2
+    cold_start_use_ik: true
+    lbfgs_enable: true
+    lbfgs_max_iter: 8
+    lbfgs_lr: 0.5
+    lbfgs_adaptive: true
+    lbfgs_warm_start_every_n: 3
+    lbfgs_force_rms_m: 0.45
+    lbfgs_min_improve_m: 0.01
+    lbfgs_skip_after_small_improve_frames: 2
+    vposer:
+      enable: false
+      weight: 0.08
+  ik:
+    enable: false
+    smpl_model_dir: dataset/intermediate/humans/body_models/smpl
+    max_iters: 12
+    tol_m: 0.025
+    damping: 0.12
+world_reconstruction:
+  enable: false
+  live_translation_mode: backend_world_keypoints
+  apply_triangulated_root_orient: false
+  enable_smpl_refine: false
+robot_kinematic_mask:
+  enable: false
+  fill_value: 0
+  margin_px: 2
+  face_stride: 8
+  image_correction_mode: metadata
+  precorrect_views_rgb: false
+  canonical_connect: tcp://127.0.0.1:5599
+  canonical_topic: amongus_canonical_v1
+  robot_entity_name: robot_main
+  occlusion:
+    enable: false
+    heatmap_protect:
+      enable: false
+  export:
+    enable: false
+    output_root: outputs/tracking_debug/dwpose_triangulation/robot_mask
+    max_frames: 32
+    save_original: true
+    save_overlay: true
+    save_masked: true
+    save_mask_binary: true
+    save_tiled: true
+    log_paths: true
+genesis:
+  backend: cuda
+  show_viewer: true
+  show_fps: true
+  spawn_bed: true
+  spawn_robot: false
+  track_mesh_rgba:
+  - 250
+  - 122
+  - 31
+  - 235
+  inference_every_n_synced_frames: 1
+  max_track_fps: 0.0
+  track_subscribe: tcp://127.0.0.1:5598

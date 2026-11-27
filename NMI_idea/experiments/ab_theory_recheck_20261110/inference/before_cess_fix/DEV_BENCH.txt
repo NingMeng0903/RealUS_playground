@@ -1,0 +1,31 @@
+DEV-only continuous SMC smoke evidence
+========================================
+
+This is a local geometric smoke bench, not a closed-loop result and not a
+held-out performance claim.  It uses only sample_prior(720901, 128) and
+sample_worlds(720902, 1), with eight MH sweeps per tempering stage.
+
+Single block, pose [0, 0, 0]
+---------------------------
+Both DEV worlds generated five invisible public frames.  Each update reached
+beta=1 in one stage, retained 128 unique geometries, and ended with raw ESS
+101.711 (acceptance 0.872) for the first world and 101.711 (0.887) for the
+second.  The block log evidence was -0.2325746832 in both runs.
+
+Five fixed probe poses [0, y, 0], y=-.02,-.01,0,.01,.02
+--------------------------------------------------------
+The first DEV world was rendered once and assimilated sequentially.  A row is
+committed only when beta reaches one; an unfinished row leaves the prior
+history and particles untouched.
+
+  y       public visibility       beta/stages  pre ESS  post ESS  accepted  history
+ -0.02    11111                   1.000 / 17  128.000    98.638    0.710       5
+ -0.01    11111                   1.000 / 13   98.638   124.808    0.567      10
+  0.00    00000                   1.000 /  1  124.808   124.808    0.563      15
+ +0.01    11110                   0.458 / 20  124.808   128.000    0.473      15 (unfinished)
+ +0.02    11011                   0.847 / 20  124.808   128.000    0.474      15 (unfinished)
+
+The last two rows are intentionally recorded as unfinished rather than
+reported as posterior updates.  They expose the max-20 tempering contract on
+contradictory/zero-likelihood public evidence; they do not use audit truth to
+force completion.

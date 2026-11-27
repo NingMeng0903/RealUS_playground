@@ -1,0 +1,10 @@
+{
+  "scope": "independent arithmetic on sealed operator arrays, no task rollout",
+  "alias_pairs": 32,
+  "best_probe_changes": 28,
+  "full_decision_changes": 0,
+  "plus_probe_chosen": 0,
+  "minus_probe_chosen": 0,
+  "min_probe_minus_direct_gap": 0.246602140391893,
+  "max_current_risk_residual": 5.684341886080802e-14
+}

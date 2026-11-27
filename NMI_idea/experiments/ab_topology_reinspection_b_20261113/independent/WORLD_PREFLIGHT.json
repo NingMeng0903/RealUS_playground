@@ -1,0 +1,62 @@
+{
+  "clock_cadence_s": 1.6,
+  "edge_count": 264,
+  "held_shape": {
+    "family_counts": [
+      128,
+      43,
+      43,
+      42
+    ],
+    "median_far_lateral_separation_mm": 8.515020370483398,
+    "median_near_lateral_separation_mm": 4.406802177429199,
+    "n": 256,
+    "near_separation_under_1_5_mm": 3,
+    "target_label_counts": [
+      128,
+      38,
+      32,
+      26,
+      32
+    ]
+  },
+  "nominal": {
+    "family_counts": [
+      128,
+      43,
+      43,
+      42
+    ],
+    "median_far_lateral_separation_mm": 8.358078002929688,
+    "median_near_lateral_separation_mm": 4.828693151473999,
+    "n": 256,
+    "near_separation_under_1_5_mm": 0,
+    "target_label_counts": [
+      128,
+      39,
+      27,
+      33,
+      29
+    ]
+  },
+  "stress": {
+    "family_counts": [
+      128,
+      43,
+      43,
+      42
+    ],
+    "median_far_lateral_separation_mm": 9.20369815826416,
+    "median_near_lateral_separation_mm": 5.4302239418029785,
+    "n": 256,
+    "near_separation_under_1_5_mm": 0,
+    "target_label_counts": [
+      128,
+      34,
+      40,
+      23,
+      31
+    ]
+  },
+  "world_sha256": "c7f95ce9edabc3d4184a6957e4041d07093c954286bb8ebbe38414a998aebf88"
+}

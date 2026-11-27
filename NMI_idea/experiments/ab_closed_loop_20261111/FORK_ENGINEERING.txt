@@ -1,0 +1,48 @@
+Public native fork engineering smoke
+2026-11-11
+
+Scope
+
+Deterministic native RM75 QP replay only. The public q2_+1 seed and audited
+anchor from public_prior_layout/SELECTED.json were used. The current measured
+anchor was the contact frame. Each target used the full SE(3) scalar-phase
+ProDMP, with tilt about contact-frame local x. No acoustic truth, image label,
+private anatomy, or gate relaxation entered the run.
+
+Central grid
+
+The broad diagnostic window was x,y in [-45,45] mm. This was a tracking and
+reachability smoke, not the final obstacle-corridor acceptance check.
+
+Eight independent moves were run from the public seed. Goals were
+
+  x in {-8,-6,+6,+8} mm
+  y in {-4,-2} mm for the selected rows
+  tilt alpha in {-0.075,+0.075} rad
+  durations in {0.8,1.1} s in the full grid
+
+The 8 recorded representative rows all passed the whole-segment gate. They
+had no solver failures or task pauses, position p95 0.063--0.511 mm,
+orientation p95 0.028--0.035 degrees, and simulated durations 0.86 or 1.16 s.
+
+Four reversal tests were then run. Each first move went from the public seed
+to (x,-4 mm,+0.075 rad), then the second move continued from the complete
+native exit state to (-x,-4 mm,-0.075 rad), with x in {-8,-6,+6,+8} mm and
+1.1 s per segment. All first and second segments passed. Prefix restoration
+errors for q, qdot and acceleration were exactly zero. Second-segment position
+p95 was 0.190--0.945 mm and orientation p95 was 0.052--0.081 degrees.
+
+Terminal endpoints
+
+Four independent direct endpoint tests used x in {-16,+16} mm, y=+18 mm,
+tilt alpha in {-0.075,+0.075} rad, and duration 2.8 s. Every endpoint passed
+the native whole-segment gate with no failures or pauses. Position p95 was
+0.094--0.098 mm, orientation p95 0.0136--0.0138 degrees, and simulated
+duration 2.855 s.
+
+The representative central 1.16 s segment plus a 2.855 s terminal segment is
+4.015 s of simulated motion before any observation dwell. This is below the
+5.45 s crossover timing reported by the fixture owner. It does not certify the
+final obstacle map, acoustic visibility, or a full two-route task. The final
+planner must apply its own per-sample forbidden-region callback to every
+trace, because the broad diagnostic window used here contains no obstacle.

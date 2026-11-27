@@ -1,0 +1,370 @@
+{
+  "retained": {
+    "A_task": {
+      "recoverable": {
+        "n": 320,
+        "correct": 318,
+        "wrong_stop": 2,
+        "unresolved": 0,
+        "frames": 1503,
+        "returns": 36,
+        "retreats": 81,
+        "switches": 219,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "switches": 339,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "A_fixed_goal": {
+      "recoverable": {
+        "n": 320,
+        "correct": 318,
+        "wrong_stop": 2,
+        "unresolved": 0,
+        "frames": 1468,
+        "returns": 27,
+        "retreats": 77,
+        "switches": 209,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 1,
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 227,
+        "retreats": 291,
+        "switches": 291,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "B_actual": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1341,
+        "returns": 28,
+        "retreats": 71,
+        "switches": 208,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 250,
+        "retreats": 314,
+        "switches": 314,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "B_nominal": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1618,
+        "returns": 71,
+        "retreats": 128,
+        "switches": 291,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 4,
+        "unresolved": 60,
+        "frames": 3874,
+        "returns": 302,
+        "retreats": 366,
+        "switches": 366,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "B_no_lookahead": {
+      "recoverable": {
+        "n": 320,
+        "correct": 318,
+        "wrong_stop": 2,
+        "unresolved": 0,
+        "frames": 1503,
+        "returns": 36,
+        "retreats": 81,
+        "switches": 219,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "switches": 339,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "B_MAP": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1343,
+        "returns": 28,
+        "retreats": 71,
+        "switches": 208,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 244,
+        "retreats": 308,
+        "switches": 308,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "A_legacy": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1373,
+        "returns": 14,
+        "retreats": 70,
+        "switches": 180,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 1,
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 959,
+        "retreats": 1044,
+        "switches": 1023,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    }
+  },
+  "released": {
+    "A_task": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1447,
+        "returns": 48,
+        "retreats": 81,
+        "switches": 236,
+        "releases": 99,
+        "episodes_with_release": 86
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "switches": 339,
+        "releases": 1,
+        "episodes_with_release": 1
+      }
+    },
+    "A_fixed_goal": {
+      "recoverable": {
+        "n": 320,
+        "correct": 318,
+        "wrong_stop": 2,
+        "unresolved": 0,
+        "frames": 1476,
+        "returns": 27,
+        "retreats": 77,
+        "switches": 209,
+        "releases": 2,
+        "episodes_with_release": 2
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 1,
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 227,
+        "retreats": 291,
+        "switches": 291,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "B_actual": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1348,
+        "returns": 29,
+        "retreats": 71,
+        "switches": 210,
+        "releases": 4,
+        "episodes_with_release": 4
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 250,
+        "retreats": 314,
+        "switches": 314,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "B_nominal": {
+      "recoverable": {
+        "n": 320,
+        "correct": 316,
+        "wrong_stop": 4,
+        "unresolved": 0,
+        "frames": 1588,
+        "returns": 57,
+        "retreats": 92,
+        "switches": 259,
+        "releases": 74,
+        "episodes_with_release": 74
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 4,
+        "unresolved": 60,
+        "frames": 3874,
+        "returns": 302,
+        "retreats": 366,
+        "switches": 366,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "B_no_lookahead": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1447,
+        "returns": 48,
+        "retreats": 81,
+        "switches": 236,
+        "releases": 99,
+        "episodes_with_release": 86
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 275,
+        "retreats": 339,
+        "switches": 339,
+        "releases": 1,
+        "episodes_with_release": 1
+      }
+    },
+    "B_MAP": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1350,
+        "returns": 29,
+        "retreats": 71,
+        "switches": 210,
+        "releases": 4,
+        "episodes_with_release": 4
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 2,
+        "unresolved": 62,
+        "frames": 3986,
+        "returns": 244,
+        "retreats": 308,
+        "switches": 308,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    },
+    "A_legacy": {
+      "recoverable": {
+        "n": 320,
+        "correct": 317,
+        "wrong_stop": 3,
+        "unresolved": 0,
+        "frames": 1373,
+        "returns": 14,
+        "retreats": 70,
+        "switches": 180,
+        "releases": 0,
+        "episodes_with_release": 0
+      },
+      "permanent": {
+        "n": 64,
+        "correct": 0,
+        "wrong_stop": 1,
+        "unresolved": 63,
+        "frames": 4039,
+        "returns": 959,
+        "retreats": 1044,
+        "switches": 1023,
+        "releases": 0,
+        "episodes_with_release": 0
+      }
+    }
+  }
+}

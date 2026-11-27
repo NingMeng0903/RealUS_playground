@@ -129,6 +129,13 @@ qp:
   repair_speed_m_s: 0.090
   alpha_min: 0.25
   alpha_min_at_quality: 0.93
+  # Compare a region with this frame's brighter half, not with 0.97.
+  # figure8/008 sat near q25 0.91 on both halves while the probe was coupled,
+  # and the absolute law held α at 0.25. An even map stays at 1. A one-sided
+  # gap still slows the path and rocks.
+  deficit_mode: relative
+  relative_alpha_span: 0.15
+  relative_spread_floor: 0.12
   # Session 013 held alpha at the image-law floor for 11.0 s, but 6.6 s of that
   # carried no measurable B-mode gap: the recover hysteresis, not a live defect.
   # A separate open-interval clamp keeps 0.25 for a real deficit and releases the
@@ -136,12 +143,12 @@ qp:
   alpha_hold: 0.45
   # Rocking one edge in unloads the other. Session 011 pinned ω at the old
   # 6.25*repair floor through recovered dips and pushed the far region to 0.68,
-  # so cap the request and keep the stalled-interval floor well below it. The
-  # cap bound 40% of the >=4 mm shadow frames in 018 while the deep holes were
-  # the ones still open after a second, so 0.14 rad/s (8 deg/s) closes the 9.2
-  # deg they need in 1.15 s. That is still half of 011's 0.295 rad/s peak, and
-  # unlike 011 it only applies while the image moment itself asks for it.
-  max_visual_omega_rad_s: 0.14
+  # so the request stays capped and the stalled-interval floor stays below it.
+  # 0.14 rad/s closed a 9 deg sweep in about 1.2 s, but figure8/009 sat on that
+  # cap for 1.3 s, integrated only 8.6 deg, and the dark side went 0.76 to 0.68
+  # while the far side stayed at 0.95. 0.20 rad/s (11.5 deg/s) reaches the 15 deg
+  # sweep from session 016 in 1.3 s, and still only while the image moment asks.
+  max_visual_omega_rad_s: 0.20
   escalation_omega_rad_s: 0.05
   # Measured on 013: once a region climbs back to 0.97 a >=1 mm true gap still
   # returns within 0.5 s in 43% of cases, against 22% at 0.985. Relaxing this

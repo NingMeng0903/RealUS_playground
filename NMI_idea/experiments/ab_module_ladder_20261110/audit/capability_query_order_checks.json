@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "scope": "Independent saved-order/count verification; no new endpoint search/native run",
+  "candidates": 86,
+  "found": 53,
+  "search_unresolved": 33,
+  "budget_counts": {
+    "dird": {
+      "1": 1,
+      "2": 2,
+      "4": 4,
+      "8": 8,
+      "16": 16,
+      "32": 32
+    },
+    "geometry_only": {
+      "1": 1,
+      "2": 2,
+      "4": 4,
+      "8": 8,
+      "16": 16,
+      "32": 29
+    },
+    "uniform": {
+      "1": 1,
+      "2": 2,
+      "4": 3,
+      "8": 5,
+      "16": 10,
+      "32": 23
+    }
+  },
+  "same_first_valid_query": 1,
+  "dird_minus_geometry_at_budget32": 3,
+  "no_task_success_or_dynamic_feasibility_claim": true,
+  "source_sha256": {
+    "capability/benchmark.json": "72e22fa6ade0e3fd384a89a6cad99dc1a35654ae57f547ab8f99f4585526ff6f",
+    "capability/endpoint_checks.json": "b49b528113c251c1fa8c3241fa12e9b4dd8c27e6f02df1f7f5b1f9f982723815",
+    "capability/frozen_public/protocol.json": "a6e44532a8d8f7516abfd6af90089010ed36263f7a11277f4d95510973f7353c",
+    "capability/frozen_public/candidates.json": "d9190d73754ffece165a61b41a59b9584a7778d80254c34eb0c3ded4c127097a"
+  }
+}

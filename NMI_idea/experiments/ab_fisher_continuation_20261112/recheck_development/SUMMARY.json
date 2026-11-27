@@ -1,0 +1,86 @@
+{
+  "n": 5,
+  "cap": 80,
+  "seed_base": 1211202619,
+  "source_sha256": "fc1a6698f5f600030c5bdd2444cfee3a145a37bc6d63220b250b3e45336264e5",
+  "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "n_checked_edge_pairs": 10270,
+  "arms": {
+    "A": {
+      "complete": 3,
+      "online_stop": 3,
+      "mean_acquisitions": 51.0,
+      "mean_certified": 31.6,
+      "mean_rmse_mm": 0.6677091205970482,
+      "mean_max_band_mm": 3.1611808653258593,
+      "incorrect_count": 0,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 1,
+        "40": 3,
+        "50": 3,
+        "60": 3,
+        "70": 3,
+        "80": 3
+      }
+    },
+    "A_fisher": {
+      "complete": 4,
+      "online_stop": 4,
+      "mean_acquisitions": 42.0,
+      "mean_certified": 31.6,
+      "mean_rmse_mm": 0.6549099470989261,
+      "mean_max_band_mm": 2.9130858181075796,
+      "incorrect_count": 0,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 2,
+        "40": 4,
+        "50": 4,
+        "60": 4,
+        "70": 4,
+        "80": 4
+      }
+    },
+    "fixed": {
+      "complete": 5,
+      "online_stop": 5,
+      "mean_acquisitions": 36.4,
+      "mean_certified": 32.0,
+      "mean_rmse_mm": 0.6516056025272304,
+      "mean_max_band_mm": 2.663925399706142,
+      "incorrect_count": 0,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 1,
+        "40": 4,
+        "50": 4,
+        "60": 5,
+        "70": 5,
+        "80": 5
+      }
+    },
+    "B": {
+      "complete": 5,
+      "online_stop": 5,
+      "mean_acquisitions": 36.4,
+      "mean_certified": 32.0,
+      "mean_rmse_mm": 0.6516056025272304,
+      "mean_max_band_mm": 2.663925399706142,
+      "incorrect_count": 0,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 1,
+        "40": 4,
+        "50": 4,
+        "60": 5,
+        "70": 5,
+        "80": 5
+      }
+    }
+  }
+}

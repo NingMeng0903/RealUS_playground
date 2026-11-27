@@ -127,6 +127,90 @@ def make_spec(distal, proximal, shape, direction, seed, *, speed=0.02, side=1):
                 speed_m_s=float(speed), ramp_s=0.4, arc_m=arc[::32].tolist())
 
 
+def figure8_state(s, origin, delta, lateral, amplitude):
+    """Outward S, then the opposite S back. Parameter s is 0 at the start and 1 at the return.
+
+    The tangent is d(position)/ds. Both lobes peak at ``amplitude`` on opposite sides of the
+    line through the two taught points, and both cross that line at the ends and the middle.
+    """
+    scalar = np.ndim(s) == 0
+    s = np.asarray(s, dtype=float)
+    outbound = s <= 0.5
+    station = np.where(outbound, 2. * s, 2. - 2. * s)
+    offset, slope = _offset(station, "S", np.zeros(6), amplitude)
+    sign = np.where(outbound, 1., -1.)
+    position = np.asarray(origin, dtype=float) + station[..., None] * np.asarray(delta, dtype=float)
+    position = position + (sign * offset)[..., None] * np.asarray(lateral, dtype=float)
+    along = np.asarray(delta, dtype=float)
+    side = np.asarray(lateral, dtype=float)
+    dout = 2. * (along + slope[..., None] * side)
+    dback = -2. * (along - slope[..., None] * side)
+    tangent = np.where(outbound[..., None], dout, dback)
+    if scalar:
+        return float(np.reshape(station, ())), np.reshape(position, (3,)), np.reshape(tangent, (3,))
+    return station, position, tangent
+
+
+def make_single_s_spec(start, end, *, speed=0.01, peak_m=0.03, seed=0):
+    """One S from the first point to the second. Peak offset is 3 cm, with no return pass."""
+    poses = np.asarray([start, end], dtype=float).reshape(2, 6)
+    if not np.isfinite(poses).all():
+        raise ValueError("Invalid taught pose.")
+    delta = poses[1, :3] - poses[0, :3]
+    distance = float(np.linalg.norm(delta))
+    if not 0.01 <= distance <= 0.50:
+        raise ValueError("Point distance must be 1-50 cm. Teach again.")
+    if not math.isfinite(speed) or not 0 < speed <= 0.02:
+        raise ValueError("scan speed must be in (0, 0.02] m/s")
+    if not math.isfinite(peak_m) or not 0 < peak_m <= 0.030:
+        raise ValueError("S peak must be in (0, 0.03] m")
+    cross = np.cross(outward(poses[0]), delta / distance)
+    if np.linalg.norm(cross) < 0.3:
+        raise ValueError("Points align with probe normal. Teach again.")
+    lateral = cross / np.linalg.norm(cross)
+    coefficients = np.zeros(6)
+    grid = np.linspace(0, 1, 4097)
+    _, slope = _offset(grid, "S", coefficients, float(peak_m))
+    tangent = delta[None, :] + slope[:, None] * lateral
+    rate = np.linalg.norm(tangent, axis=1)
+    arc = np.r_[0.0, np.cumsum((rate[:-1] + rate[1:]) * (0.5 / 4096))]
+    return dict(schema="icra_path_v1", poses=poses.tolist(), shape="S", direction="DtP",
+                seed=int(seed), side=1, lateral=lateral.tolist(),
+                noise_coefficients=coefficients.tolist(), amplitude_m=float(peak_m),
+                peak_range_m=[float(peak_m), float(peak_m)],
+                peak_offsets_m=[float(peak_m), float(peak_m)],
+                speed_m_s=float(speed), ramp_s=0.4, arc_m=arc[::32].tolist())
+
+
+def make_figure8_spec(start, end, *, speed=0.01, peak_m=0.03, seed=0):
+    """One figure-8: an S to the second point, then the opposite S back. Peak offset is 3 cm."""
+    poses = np.asarray([start, end], dtype=float).reshape(2, 6)
+    if not np.isfinite(poses).all():
+        raise ValueError("Invalid taught pose.")
+    delta = poses[1, :3] - poses[0, :3]
+    distance = float(np.linalg.norm(delta))
+    if not 0.01 <= distance <= 0.50:
+        raise ValueError("Point distance must be 1-50 cm. Teach again.")
+    if not math.isfinite(speed) or not 0 < speed <= 0.02:
+        raise ValueError("scan speed must be in (0, 0.02] m/s")
+    if not math.isfinite(peak_m) or not 0 < peak_m <= 0.030:
+        raise ValueError("figure-8 peak must be in (0, 0.03] m")
+    cross = np.cross(outward(poses[0]), delta / distance)
+    if np.linalg.norm(cross) < 0.3:
+        raise ValueError("Points align with probe normal. Teach again.")
+    lateral = cross / np.linalg.norm(cross)
+    grid = np.linspace(0, 1, 4097)
+    _, _, tangent = figure8_state(grid, poses[0, :3], delta, lateral, float(peak_m))
+    rate = np.linalg.norm(tangent, axis=1)
+    arc = np.r_[0.0, np.cumsum((rate[:-1] + rate[1:]) * (0.5 / 4096))]
+    return dict(schema="icra_path_v1", poses=poses.tolist(), shape="8", direction="DtP",
+                seed=int(seed), side=1, lateral=lateral.tolist(),
+                noise_coefficients=[0., 0., 0., 0., 0., 0.], amplitude_m=float(peak_m),
+                peak_range_m=[float(peak_m), float(peak_m)],
+                peak_offsets_m=[float(peak_m), float(peak_m)],
+                speed_m_s=float(speed), ramp_s=0.4, arc_m=arc[::32].tolist())
+
+
 class ForearmReference:
     """Absolute smooth path with an arc-length clock and shortest orientation."""
     def __init__(self, spec):
@@ -146,17 +230,19 @@ class ForearmReference:
                 or not 0 < self.speed <= 0.02 or self.ramp != 0.4
                 # The coefficient factor is in [0.925, 1.075]. The stored
                 # amplitude is pre-normalization; old 20 mm specs still load.
-                or not PEAK_RANGE_M[0]/1.075 <= self.amplitude <= AMPLITUDE_LOAD_MAX_M/0.925
+                or not self._amplitude_allowed(spec)
                 or abs(np.linalg.norm(self.lateral) - 1) > 1e-6
                 or np.abs(self.coefficients).sum() > 1.000001
-                or spec["shape"] not in ("L", "C", "S")
-                or spec["direction"] not in ("DtP", "PtD")):
+                or spec["shape"] not in ("L", "C", "S", "8")
+                or spec["direction"] not in ("DtP", "PtD")
+                or (spec["shape"] == "8" and spec["direction"] != "DtP")):
             raise ValueError("invalid ICRA geometry/timing specification")
         self.delta = self.poses[1, :3] - self.poses[0, :3]
         if abs(float(self.delta @ self.lateral)) > 1e-6:
             raise ValueError("lateral must be perpendicular to D→P")
         self.length_m = float(self.arc[-1])
-        if not 0.05 <= np.linalg.norm(self.delta) <= self.length_m + 1e-6 or self.length_m > 1:
+        chord_min = 0.01 if self.spec["shape"] == "8" or self._clean_s() else 0.05
+        if not chord_min <= np.linalg.norm(self.delta) <= self.length_m + 1e-6 or self.length_m > self._length_limit():
             raise ValueError("invalid path length")
         self.duration_s = self.length_m / self.speed + self.ramp
         # Half the taught scan-axis span. Distinct from ``amplitude``, which
@@ -172,8 +258,23 @@ class ForearmReference:
     def set_origin(self, pose0, *, t_s=0.0):
         self._origin = 0.0 if t_s is None else float(t_s)
 
+    def _clean_s(self):
+        return self.spec["shape"] == "S" and float(np.abs(self.coefficients).sum()) <= 1e-9
+
+    def _amplitude_allowed(self, spec):
+        if spec["shape"] == "8" or self._clean_s():
+            return 0. < self.amplitude <= 0.030 + 1e-12
+        return PEAK_RANGE_M[0]/1.075 <= self.amplitude <= AMPLITUDE_LOAD_MAX_M/0.925
+
+    def _length_limit(self):
+        return 1.5 if self.spec["shape"] == "8" or self._clean_s() else 1.0
+
     def at(self, u):
         u = float(np.clip(u, 0, 1))
+        if self.spec["shape"] == "8":
+            station, xyz, tangent = figure8_state(u, self.poses[0, :3], self.delta, self.lateral, self.amplitude)
+            pose = np.r_[xyz, self._rot(station).as_euler("xyz")]
+            return pose, tangent
         offset, slope = _offset(u, self.spec["shape"], self.coefficients, self.amplitude)
         xyz = self.poses[0, :3] + u * self.delta + offset * self.lateral
         pose = np.r_[xyz, self._rot(u).as_euler("xyz")]
@@ -187,10 +288,13 @@ class ForearmReference:
         s = self.length_m - travelled if reverse else travelled
         u = float(np.clip(self._u(s), 0, 1))
         pose, tangent = self.at(u)
-        du_dt = float(self._du(s)) * self.speed * speed_scale * (-1 if reverse else 1)
+        ds_dt = float(self._du(s)) * self.speed * speed_scale * (-1 if reverse else 1)
+        rot_dt = ds_dt
+        if self.spec["shape"] == "8":
+            rot_dt = ds_dt * (2.0 if u <= 0.5 else -2.0)
         if t >= self.duration_s:
-            du_dt = 0.0
-            pose = self.poses[0 if reverse else 1].copy()
+            ds_dt = rot_dt = 0.0
+            pose = self.poses[0 if reverse or self.spec["shape"] == "8" else 1].copy()
         return MotionReference(pose_d=pose,
-                               vel_ff=np.r_[tangent * du_dt, self._rotation_vector_world * du_dt],
+                               vel_ff=np.r_[tangent * ds_dt, self._rotation_vector_world * rot_dt],
                                t_ref=float(t_s))

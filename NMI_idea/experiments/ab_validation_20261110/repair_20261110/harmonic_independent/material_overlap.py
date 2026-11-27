@@ -1,0 +1,7 @@
+from pathlib import Path
+import argparse,json,numpy as np
+from audit import HERE,sha,overlaps
+p=argparse.ArgumentParser();p.add_argument('--asset',type=Path,required=True);p.add_argument('--tag',required=True);a=p.parse_args();d=np.load(a.asset,allow_pickle=True);T=d['harmonic_tets'];theta=d['harmonic_theta'][T].astype(float);ht=d['harmonic_h'][T].astype(float);dep=d['harmonic_d'][T].astype(float);theta=theta[:,0,None]+np.angle(np.exp(1j*(theta-theta[:,0,None])));theta-=np.floor(theta.mean(1)/(2*np.pi))[:,None]*(2*np.pi)
+# Each tet is represented in its own angular cell; seam cells end at2pi.
+coords=np.stack((theta/(2*np.pi),ht,dep),axis=-1).reshape(-1,3);cells=np.arange(len(coords),dtype=np.uint32).reshape(-1,4);result={'asset_sha256':sha(a.asset),'angular_handling':'per-tet cell unwrap to [0,2pi]; normalized theta/(2pi), then shifted copies at +/-1','tolerance':'1e-10 in normalized material coordinates','base':overlaps(a.tag+'_material_base',coords,cells,coords[:,1])}
+VV=np.vstack((coords-np.array([1,0,0]),coords,coords+np.array([1,0,0])));TT=np.vstack((cells,cells+len(coords),cells+2*len(coords)));result['periodic_three_copies']=overlaps(a.tag+'_material_periodic',VV,TT,VV[:,1]);(HERE/(a.tag+'_material_overlap.json')).write_text(json.dumps(result,indent=2,allow_nan=False));print(a.tag,'base',result['base']['positive_interior_overlap_pairs'],'periodic',result['periodic_three_copies']['positive_interior_overlap_pairs'],flush=True)

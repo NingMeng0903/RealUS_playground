@@ -1,0 +1,131 @@
+Categorical observation channel contract
+========================================
+
+Purpose
+-------
+
+This module is a finite, synthetic stress channel for the A/B observation
+experiments.  It separates three things that were previously conflated:
+
+* the geometric response of a hypothesized world and pose;
+* a categorical detector outcome with false returns and temporary misses;
+* evaluator-only truth about whether the target geometry really satisfies the
+  stopping rule.
+
+The parameters are declared pressure-test values, not calibration from a
+physical ultrasound probe.  A physical or phantom calibration can replace
+the same API later without changing the policy/evaluator separation.
+
+API
+---
+
+``channel(worlds, poses, identity_blind=False)`` returns an
+``ObservationChannel`` with
+
+``joint``
+    shape ``[W, 2, A, 4, 61]``.  The axes are world/particle, detector mode
+    ``good,bad``, pose/action, latent source ``target,decoy,clutter,missing``,
+    and public categorical outcome.
+``likelihood``
+    ``joint.sum(source)`` with shape ``[W, 2, A, 61]``.  This is the only
+    source-marginalized channel needed by a public policy or belief update.
+``correct_joint``
+    target-source mass multiplied by the private geometric pass indicator and
+    ``PUBLIC_GATE``.  This is evaluator-only and must never be given to the
+    controller.
+``geometric_target_visible``
+    shape ``[W,A]``.  It is true when the private target polyline has a
+    connected in-FOV 3-D segment longer than 0.5 mm, before stochastic detector
+    returns.  It is not a sensor observation and is evaluator-only.
+
+The evaluator may call exactly the same function with a separately held
+private world.  No source/audit field is required by the public channel.
+
+Outcome code
+------------
+
+Outcome ``0`` is missing.  Outcomes ``1..60`` are the deterministic product
+of the following interval/binary bins, in nested order
+``u_bin, depth_bin, length_pass, identity_pass``:
+
+* ``u`` edges ``(-inf,-.010,-.002,.002,.010,inf)`` metres;
+* depth edges ``(-inf,.032,.041,inf)`` metres;
+* projected visible length ``>= .015`` metres;
+* identity score ``>= .75``.
+
+``OUTCOMES`` exposes only finite representative values for plotting and
+logging.  The outer representatives are inside the existing image FOV
+(``u`` in ``[-.025,.025]`` and depth in ``[.015,.070]``); they are not exact
+measurements.  Axis angle is deliberately ``None`` because the renderer's
+out-of-plane angle is audit-only.  Contact is ``None`` in the category and is
+obtained from the pose/robot interface separately.
+
+``PUBLIC_GATE`` is true for the centre ``u`` bin, either depth bin, passing
+length, and passing identity.  Correct geometry additionally requires contact,
+private target geometric length ``>= .015`` m, ``|u| <= .002`` m, and private
+out-of-plane angle ``<= 10`` degrees.  Thus a false positive can be visibly
+gate-like while still having zero evaluator correctness mass.
+
+Probability construction
+------------------------
+
+For each world/pose, the legacy geometry environment provides mutually
+exclusive source return probabilities ``p_0,p_1``.  In good mode the real
+source masses are ``p_0,p_1``.  In bad mode they are ``.30 p_0,.48 p_1``.
+Let ``r`` be ``.005`` in good mode and ``.25`` in bad mode.  The clutter and
+missing masses are
+
+``c = r * max(0, 1 - sum_s return_s)``
+
+``m = max(0, 1 - sum_s return_s - c)``.
+
+Real and clutter returns use products of closed-form Gaussian interval
+probabilities for the four encoded features.  Good mode uses the legacy SDS.
+Bad mode multiplies the ``u,depth,length`` standard deviations by ``2.5``;
+identity has standard deviation ``.20`` and source-specific means
+
+``.74 + .3*(mu_id,target - sigmoid(1.75))``
+
+``.75 + .3*(mu_id,decoy - sigmoid(.75))``.
+
+Clutter has mean ``(u,depth,length,id)=(0,.035,.0155,.78)`` and standard
+deviation ``(.009,.008,.005,.15)`` for the encoded features.  It has positive
+support in every finite public category.  No arbitrary likelihood floor is
+added; tiny negative interval differences are clipped only to zero for
+floating-point roundoff.
+
+Temporal persistence
+--------------------
+
+``TRANSITIONS`` contains rows ``next=(good,bad)``.  ``clean`` is always good;
+``iid`` has rows ``(.7,.3)``; ``bursty`` is
+
+``[[1-.3*.2/.7, .3*.2/.7], [.2,.8]]``.
+
+``INITIAL_MODE`` is ``[1,0]`` for clean and ``[.7,.3]`` otherwise.  Both iid
+and bursty have stationary bad marginal .3.  The parent runner should apply
+one mode per observation block.  Five frames inside one block are one
+categorical event, not five independent evidence updates.
+
+Blind identity control
+----------------------
+
+With ``identity_blind=True``, both sources use equal detector multipliers in
+each mode and the same identity distribution (mean .76; good SDS or bad .20).
+Swapping target and decoy source arrays therefore preserves the public
+source-marginal likelihood while the evaluator's target correctness mass can
+change.  This is a negative control for claims that source identity alone
+solves the task.
+
+Reproducibility
+---------------
+
+Run the focused checks with
+
+``/media/camp/EXT_DRIVE/envs/genesis/bin/python -m pytest -q -p no:dash test_sensor.py``
+
+The current checks cover shape, normalization, nonnegativity, open clutter
+support for completely off-frame worlds, stationary HMM marginals, the blind
+source-swap negative control, and deterministic repeated calls.  They are
+synthetic contract tests only; they do not claim a physical observation rate
+or a completed A/B cohort result.

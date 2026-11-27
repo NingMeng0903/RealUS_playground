@@ -1,0 +1,15 @@
+{
+  "scope": "Initial pre-test review; test release held pending resource-contract repairs; no heldout or native rollout by auditor",
+  "files": {
+    "PLANNER_PROTOCOL_REVIEW.txt": "164c3f5cefef49d1e3eaea807dcf7e9661304ec43dfa180714df4613334c29c4",
+    "check_planner_initial.py": "2a0a52a281de416cae24f3a2af2b34467305356a461c73854092dd211f6d811a",
+    "planner_initial_checks.json": "8eade6692d83e8965f3abce3e6be27e22f41575f3316a52e83b61720737a382f",
+    "planner_initial_checks.log": "8eade6692d83e8965f3abce3e6be27e22f41575f3316a52e83b61720737a382f",
+    "observation_contract_recheck.log": "7fc5f2f21d548c41100beac4e406a660cb9de1f9215153fa438389d418d8eb81",
+    "operator_alias_scope_check.json": "7145847d97b075aae08ceb46fddd36af3db4c226c3945d9a46f71de8bfab2e47",
+    "planner_review_initial/DEV_AMENDMENT_01.txt": "fe572eb0172684f33bdf25abdaedd41fbe9bd484f9a4b03deb465b7f167b39a3",
+    "planner_review_initial/PROTOCOL.json": "deaf889f86e0c9fcfe27ea8fc3d73b5e5f0f9b65723f7522d88220bafbfd0255",
+    "planner_review_initial/run_experiment.py": "bbd5d32303eda85ba7d9cfc79ca06e324b05a0327dda6bfa7654d7b2a097038d",
+    "planner_review_initial/system.py": "e3865dbe42db217b2887f6fe9046582d1ebcf521ab754d3023f3bcd40e4024de"
+  }
+}

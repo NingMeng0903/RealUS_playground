@@ -1,0 +1,222 @@
+{
+  "arms": {
+    "stationary": {
+      "n": 80,
+      "correct": 45,
+      "wrong": 5,
+      "ever": 60,
+      "ever_after_prefix": 60,
+      "strict_at_cine": 46,
+      "final_speed_nonzero": 0,
+      "repairs": 0,
+      "cases_with_redirect": 0,
+      "fraction_first_gate_off": 1.0,
+      "seconds_mean": 15.610000000000003,
+      "travel_mean": 138.73848210733726
+    },
+    "multimodal": {
+      "n": 80,
+      "correct": 19,
+      "wrong": 7,
+      "ever": 51,
+      "ever_after_prefix": 51,
+      "strict_at_cine": 21,
+      "final_speed_nonzero": 0,
+      "repairs": 0,
+      "cases_with_redirect": 0,
+      "fraction_first_gate_off": 1.0,
+      "seconds_mean": 20.928749999999997,
+      "travel_mean": 170.05957895897805
+    },
+    "hand_servo": {
+      "n": 80,
+      "correct": 54,
+      "wrong": 2,
+      "ever": 63,
+      "ever_after_prefix": 63,
+      "strict_at_cine": 58,
+      "final_speed_nonzero": 0,
+      "repairs": 156,
+      "cases_with_redirect": 67,
+      "fraction_first_gate_off": 0.0,
+      "seconds_mean": 14.472500000000002,
+      "travel_mean": 131.90058131805912
+    },
+    "reverse_only": {
+      "n": 80,
+      "correct": 45,
+      "wrong": 5,
+      "ever": 61,
+      "ever_after_prefix": 61,
+      "strict_at_cine": 47,
+      "final_speed_nonzero": 0,
+      "repairs": 276,
+      "cases_with_redirect": 70,
+      "fraction_first_gate_off": 0.0,
+      "seconds_mean": 16.7125,
+      "travel_mean": 145.3216941798196
+    },
+    "student_feedback": {
+      "n": 80,
+      "correct": 48,
+      "wrong": 8,
+      "ever": 63,
+      "ever_after_prefix": 63,
+      "strict_at_cine": 50,
+      "final_speed_nonzero": 0,
+      "repairs": 62,
+      "cases_with_redirect": 42,
+      "fraction_first_gate_off": 0.0,
+      "seconds_mean": 14.877500000000001,
+      "travel_mean": 136.78685004787843
+    },
+    "joint": {
+      "n": 80,
+      "correct": 34,
+      "wrong": 6,
+      "ever": 56,
+      "ever_after_prefix": 56,
+      "strict_at_cine": 35,
+      "final_speed_nonzero": 0,
+      "repairs": 58,
+      "cases_with_redirect": 40,
+      "fraction_first_gate_off": 0.0,
+      "seconds_mean": 18.221249999999998,
+      "travel_mean": 157.9965375689484
+    },
+    "psdp": {
+      "n": 80,
+      "correct": 49,
+      "wrong": 8,
+      "ever": 62,
+      "ever_after_prefix": 62,
+      "strict_at_cine": 51,
+      "final_speed_nonzero": 0,
+      "repairs": 47,
+      "cases_with_redirect": 34,
+      "fraction_first_gate_off": 0.6625,
+      "seconds_mean": 14.328750000000003,
+      "travel_mean": 131.63763988374404
+    }
+  },
+  "paired_correct": {
+    "multimodal_vs_stationary": {
+      "percentage_points": -32.5,
+      "paired_95ci_pp": [
+        -46.25,
+        -17.5
+      ],
+      "win": 9,
+      "loss": 35,
+      "anatomies": 40
+    },
+    "hand_servo_vs_stationary": {
+      "percentage_points": 11.25,
+      "paired_95ci_pp": [
+        0.0,
+        22.5
+      ],
+      "win": 14,
+      "loss": 5,
+      "anatomies": 40
+    },
+    "reverse_only_vs_stationary": {
+      "percentage_points": 0.0,
+      "paired_95ci_pp": [
+        -13.750000000000002,
+        12.5
+      ],
+      "win": 13,
+      "loss": 13,
+      "anatomies": 40
+    },
+    "student_feedback_vs_stationary": {
+      "percentage_points": 3.75,
+      "paired_95ci_pp": [
+        -3.75,
+        12.5
+      ],
+      "win": 7,
+      "loss": 4,
+      "anatomies": 40
+    },
+    "student_feedback_vs_reverse_only": {
+      "percentage_points": 3.75,
+      "paired_95ci_pp": [
+        -8.75,
+        17.5
+      ],
+      "win": 15,
+      "loss": 12,
+      "anatomies": 40
+    },
+    "student_feedback_vs_hand_servo": {
+      "percentage_points": -7.5,
+      "paired_95ci_pp": [
+        -20.0,
+        5.0
+      ],
+      "win": 8,
+      "loss": 14,
+      "anatomies": 40
+    },
+    "joint_vs_multimodal": {
+      "percentage_points": 18.75,
+      "paired_95ci_pp": [
+        11.25,
+        27.500000000000004
+      ],
+      "win": 15,
+      "loss": 0,
+      "anatomies": 40
+    },
+    "joint_vs_stationary": {
+      "percentage_points": -13.750000000000002,
+      "paired_95ci_pp": [
+        -28.749999999999996,
+        1.25
+      ],
+      "win": 13,
+      "loss": 24,
+      "anatomies": 40
+    },
+    "psdp_vs_stationary": {
+      "percentage_points": 5.0,
+      "paired_95ci_pp": [
+        -1.25,
+        12.5
+      ],
+      "win": 7,
+      "loss": 3,
+      "anatomies": 40
+    },
+    "psdp_vs_student_feedback": {
+      "percentage_points": 1.25,
+      "paired_95ci_pp": [
+        -2.5,
+        5.0
+      ],
+      "win": 2,
+      "loss": 1,
+      "anatomies": 40
+    }
+  },
+  "same_exit_first_eligible": {
+    "n": 77,
+    "fresh": 9,
+    "stale": 8,
+    "continue": 13,
+    "any_correct": 28,
+    "changed": 6,
+    "paired": {
+      "percentage_points": 1.2987012987012987,
+      "paired_95ci_pp": [
+        0.0,
+        4.0
+      ],
+      "win": 1,
+      "loss": 0,
+      "anatomies": 40
+    }
+  }
+}

@@ -1,0 +1,35 @@
+Native/QP witness (2026-11-11)
+
+Scope: one recorded B_rollout development case, fixture 0 / constrained / case 1,
+with the two selected events in RESULT_GUARD_16.json.  This is not a multi-case
+rollout and does not connect to a robot or network.
+
+Witness chain
+
+1. side_right__single_dwell_0.6, root -> elapsed 2.045 s,
+   route side_right__single_dwell_0.6__direct,
+   checkpoint 239763b4090bb8fcb7b196c2.json,
+   trace seg_2a41ea0b06e21c866352_0.npz.
+2. side_right__single_dwell_0.6, exact prior exit -> elapsed 3.320 s,
+   route side_right__single_dwell_0.6__side_right__single_dwell_0.6__direct,
+   checkpoint 3f24774a6736087b07962efd.json,
+   trace seg_4c68c19c31f02bc6146a_0.npz.
+
+The second checkpoint input equals the first checkpoint output byte-for-byte at
+the state fields used by the adapter: pose, q, qdot, acceleration, and the
+complete replay snapshot.  The recorded traces' final q, qdot, and actual pose
+also match their checkpoint exits exactly.  A fresh native replay of both
+segments passed whole_segment_pass and reproduced q/qdot/acceleration exactly;
+the measured wall time was about 5.7 s.
+
+The JSON records all 14 downstream public proposal actions from each exact exit,
+including route ids, durations, dIRD margins, goal poses, and state fingerprints.
+All 14 are available in this public geometry+dIRD proposal layer, with
+predicted_unknown/native_checked=false.  That set is not a native feasibility
+certificate for unselected actions; only the two selected routes above are
+recorded native checked transitions.
+
+Run with:
+
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python native_witness.py
+

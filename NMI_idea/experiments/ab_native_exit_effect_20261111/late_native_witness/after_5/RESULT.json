@@ -1,0 +1,36 @@
+{
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/3e2a64178fc712f3eaf2d325.json",
+  "prefix": 5,
+  "action": "side_left__single_dwell_0.6",
+  "entry_fingerprint": "caab7ff6a411d721f71dd35835134ac6c55f2415e52712a262100b4a536628d6",
+  "tcp_delta_mm": 1.236911038406487e-05,
+  "tcp_delta_deg": 2.3412856486916965e-07,
+  "rail_delta_mm": 0.17777796363582787,
+  "max_joint_delta_deg": 0.05436939215109005,
+  "status": "executed",
+  "passed": true,
+  "selected": "side_right__single_dwell_0.6__side_right__single_dwell_0.6__side_right__single_dwell_0.6__side_right__single_dwell_0.6__side_right__single_dwell_0.6__side_left__single_dwell_0.6__retreat_fork",
+  "output_fingerprint": "f06b2c209e23f52fe6e1acdec2f6b588774f7d412cc88383829bd1b2816085ce",
+  "attempts": [
+    {
+      "route": "round_tip",
+      "valid": false,
+      "position_max_mm": 4.054151049025294,
+      "records": [
+        "seg_7c89b8a059c7adcd8ab8_0",
+        "seg_7c89b8a059c7adcd8ab8_1",
+        "seg_7c89b8a059c7adcd8ab8_2"
+      ]
+    },
+    {
+      "route": "retreat_fork",
+      "valid": true,
+      "position_max_mm": 1.9356588240097266,
+      "records": [
+        "seg_4f146933bc2502bb2993_0",
+        "seg_4f146933bc2502bb2993_1",
+        "seg_4f146933bc2502bb2993_2"
+      ]
+    }
+  ]
+}

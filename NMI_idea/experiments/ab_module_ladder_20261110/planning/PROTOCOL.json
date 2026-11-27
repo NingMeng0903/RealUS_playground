@@ -1,0 +1,135 @@
+{
+  "schema": "geometric_public_belief_capability_B_v1",
+  "date": "2026-11-10",
+  "scope": "L0 finite-catalogue geometric sensing with real robot static endpoint queries; selected native execution is a separate L1 validation, never inferred from q_solution.",
+  "catalogue": {
+    "dev_seed": 720501,
+    "dev_n": 16,
+    "test_seed": 720502,
+    "test_n": 32,
+    "test_hidden_indices": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "selected_index_private": true,
+    "finite_support_not_continuous_generalization": true
+  },
+  "contexts": [
+    "a0_identity",
+    "a0_t2_-0.08m"
+  ],
+  "context_selection": "public nominal and body-z displacement stress, both robot-valid in frozen task-free capability manifest; no B rewards used for selection",
+  "methods": [
+    "A_myopic",
+    "A_continuous_servo",
+    "entropy",
+    "fixed_two",
+    "B_two_step",
+    "B_no_future_cap",
+    "B_frozen_belief"
+  ],
+  "shared_permissions": {
+    "continuous_public_servo": true,
+    "max_candidates": 10,
+    "same_prior": true,
+    "same_sensor": true,
+    "same_public_stop": true,
+    "exact_finite_bayes": true,
+    "no_hidden_GT_in_policy": true
+  },
+  "motion": {
+    "source": "actual DMP_playground.dmp_honest.dmp.fit_discrete_dmp + rollout, linear endpoint calibration shared by all methods",
+    "samples": 41,
+    "peak_translation_m_s": 0.02,
+    "peak_yaw_rad_s": 0.5,
+    "minimum_motion_s": 0.1,
+    "actual_endpoint_used_for_sensor": true
+  },
+  "sensor": {
+    "source": "observation/environment.py exact connected-polyline slab/FOV clipping",
+    "block_frames": 5,
+    "frame_offsets_s": [
+      0,
+      0.125,
+      0.25,
+      0.375,
+      0.5
+    ],
+    "hold_cost_s": 0.5,
+    "no_invisible_geometry": true,
+    "decoy_quality_support_overlaps": true
+  },
+  "task": {
+    "max_actions": 6,
+    "deadline_s": 60,
+    "timeout_loss": 60,
+    "false_stop_loss": 60,
+    "public_stop_primary": "same five-frame image verifier for every method; hidden audit never grants retry",
+    "correct_audit": "same frames actual target,15mm physical connected length,2mm center,10deg axis-plane,contact"
+  },
+  "planner": {
+    "horizon_B": 2,
+    "model_observation_samples_per_root": 32,
+    "branch_seed": 720503,
+    "same_latent_over_five_frames": true,
+    "posterior_against_all_particles": true,
+    "virtual_posteriors_not_committed": true,
+    "task_risk": "expected correct-public-stop probability; wrong public stop charged same60 as timeout",
+    "candidate_family_future": "compact predicted terminal family: four posterior-mode geometric summaries plus expected-image centering; actual decisions retain full common continuous servo permissions; independent full-family dev check",
+    "hard_check_now_shared": true,
+    "no_future_cap": "removes future endpoint mask AND joint-displacement time estimate; current hard endpoint execution check retained",
+    "dird": "exactly tied task values within1e-9 use larger real dIRD score; independent fixed-budget retrieval test is the primary proxy-increment test",
+    "compute_wall_charged": true,
+    "integration": "fixed stratified latent quadrature plus independent noisy five-frame model blocks; approximate sampled MPC, not exact Bellman value",
+    "risk_objective": "censored RMT: terminal remaining expected cost R-(R-c)*P(correct public stop); false stop/timeout both get remaining deadline R",
+    "resource_state": "remaining actions and remaining time included; last action uses one-step terminal, no unaffordable lookahead; late verifier cannot count success"
+  },
+  "endpoints": {
+    "static_query": "finite all-eight-branch robot FK/URDF/35-pair checks; per-pose fixed witness from public scene start seed, memoized identically for all methods",
+    "not_found": "bounded search failure, not physical impossibility",
+    "q_kin": "fixed static endpoint witness planning state only",
+    "q_out": "reserved for actual native executed continuation state",
+    "joint_time": "declared estimate from real joint displacement/vmax, compared separately to native subset",
+    "dev_amendment": "DEV_AMENDMENT_01.txt"
+  },
+  "evaluation": {
+    "main": [
+      "correct_public_stop_rate",
+      "false_stop_rate",
+      "60s_RMT",
+      "movement_observation_compute_decomposition",
+      "invalid_endpoint_attempts",
+      "posterior_logprob_true_index",
+      "branch_action_changes"
+    ],
+    "secondary": [
+      "ever_audit_quality",
+      "visibility",
+      "raw_ESS"
+    ],
+    "bootstrap_seed": 720504,
+    "bootstrap_resamples": 2000,
+    "cluster_unit": "hidden catalogue object, paired across contexts and methods"
+  },
+  "negative_controls": [
+    "known target hypothesis",
+    "uninformative sensor in exact operator tests",
+    "high observation cost in exact operator tests",
+    "no ability conflict or all endpoints found"
+  ],
+  "release": "dev runs allowed; root/audit review before test rollout; numeric changes after dev require recorded amendment before opening test"
+}

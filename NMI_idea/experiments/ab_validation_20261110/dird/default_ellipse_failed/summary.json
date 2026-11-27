@@ -1,0 +1,65 @@
+{
+  "total_seconds": 2.348376330000974,
+  "installed_dataset_hash_matches_checkpoint": true,
+  "pose_gradient_p95_relative_error_at_h1e5": 3.801834350491596e-08,
+  "common_se3_score_max_abs_error": 2.3314683517128287e-14,
+  "common_se3_gradient_max_abs_error": 3.410605131648481e-13,
+  "trajectory_gradient_p95_relative_error": 0.43921319299134426,
+  "raw_ird_separate_from_obstacle": true,
+  "methods": {
+    "initial": {
+      "n": 6,
+      "proxy_pass": 0,
+      "exact_sampled_pass": 0,
+      "obstacle_proxy_pass": 6,
+      "median_min_raw_ird": -13.581670855847655,
+      "minimum_raw_ird": -13.65820738448841,
+      "optimization_seconds": 0.0,
+      "exact_query_seconds": 0.15582335099679767,
+      "failures": [
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0"
+      ]
+    },
+    "no_dird": {
+      "n": 6,
+      "proxy_pass": 0,
+      "exact_sampled_pass": 0,
+      "obstacle_proxy_pass": 6,
+      "median_min_raw_ird": -13.581670855847655,
+      "minimum_raw_ird": -13.581670855847655,
+      "optimization_seconds": 0.2569411169988598,
+      "exact_query_seconds": 0.15293400500013377,
+      "failures": [
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0"
+      ]
+    },
+    "joint_guided": {
+      "n": 6,
+      "proxy_pass": 0,
+      "exact_sampled_pass": 0,
+      "obstacle_proxy_pass": 6,
+      "median_min_raw_ird": -13.581670855847655,
+      "minimum_raw_ird": -13.581670855847655,
+      "optimization_seconds": 0.3476547499994922,
+      "exact_query_seconds": 0.5142123639980127,
+      "failures": [
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0",
+        "SRS graph has no candidate at waypoint 0"
+      ]
+    }
+  }
+}

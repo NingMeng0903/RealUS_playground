@@ -1,0 +1,32 @@
+{
+  "schema": "smooth_reference_sealed_v1",
+  "files": {
+    "SMOOTH_REFERENCE_PROTOCOL.txt": "3887f75110f30d39c435d9ce5d176a5cc2b6706e49924fdbc998594b3ce2783d",
+    "MIDSCAN_EVALUATION_PROTOCOL.txt": "ea078b6b619765d7f3c61b22b9ef67ce38503d86a8522293ca04c20f516d40ce",
+    "SMOOTH_REFERENCE_REPORT.txt": "cc9f56df29bdf116e09cc4842618d7615eb0016e9973220339d1558e4afd8dd4",
+    "run_smooth_reference.py": "9fbfd2229d36a42e518270d48506b270e1d7ab90daca9d4c6f2506e8ffb3fbfb",
+    "evaluate_aligned_tracking.py": "5dd5fc98e583ee586ae79baf5f487513aaa20b42bf02f8bffc3bba4128db153f",
+    "smooth_reference_results.json": "54547e4bbe44be255216e3a787a49f25785ca6cfadbbec6021f1f1185973fc78",
+    "time_aligned_tracking.json": "8f9fad22b4ea905e1702dc4c8ae4bf717b91499243e0ea057dfe01ae09e4479d",
+    "scan_tracking_profile.yaml": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+    "smooth_reference.log": "e502dfa46097031674f33e8ceb4de1a9801284fe5913fd179b991489f38b0d1f",
+    "aligned_evaluation.log": "0f26fd9cb595f8f07ca490fc39032ae515152ff7f3adf8740aeb635bee9435b1",
+    "path0_smooth_baseline_aligned_errors.npz": "e881e3454b667a0479fb77af9da68039e6de085be9657000bf233b15096c16e4",
+    "path0_smooth_baseline_native_config.txt": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+    "path0_smooth_baseline_trace.npz": "be1204b1fd691e0971028bcbc6054be3b7f3e3011565f36b48b7606ae785bbfc",
+    "path0_smooth_unit_aligned_errors.npz": "7acdc42434c4589451519c83b1a026575dfe6994115d41287f5636e39862f81a",
+    "path0_smooth_unit_native_config.txt": "2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326",
+    "path0_smooth_unit_trace.npz": "7905c79f9f07eff78f7f2337b5f8472df22cae8012b7f8f70a916ca27e86b925",
+    "path1_smooth_baseline_aligned_errors.npz": "7d4c4b7d9b83aa05190de481bf215968dbcd6699d3b98cabf8a818a5d98b7ea9",
+    "path1_smooth_baseline_native_config.txt": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+    "path1_smooth_baseline_trace.npz": "ca1432e2a6a4d0c1047908b0bb7daeabc9f6e55711ef51367c522d006881bc6b",
+    "path1_smooth_unit_aligned_errors.npz": "dbc5f01bc7b8b1912e79b447589990eb4a3f451aa603f59c3020f3d93910039d",
+    "path1_smooth_unit_native_config.txt": "2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326",
+    "path1_smooth_unit_trace.npz": "01ef6fa2792ab094c90921aea1af921324dadffdcd0b552a39bb1d9f4a454bfa"
+  },
+  "external_sources": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/scan_reference.py": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/tests/test_scan_pose_reference.py": "b8c40f44ab7eddb1b6f0a1cf0e2015bb96fc1b7a97176b816b79fa80706a47df",
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07"
+  }
+}

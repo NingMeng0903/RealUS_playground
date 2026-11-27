@@ -1,0 +1,7 @@
+# Independent cost-only diagnostic
+
+The main guarded B never left MPC and the unguarded B used more motion. This follow-up tests the requested active option comparison at equivalent realized execution costs. The original frozen policy, outcome cohort and comparison stay as reported.
+
+Use 192 new paired cases, seed namespace 716906, with the shared anchor image for both daughter and trunk. Reuse the 256-atom model, motion bank and same MPC. Select the highest predicted correct-completion short option among options whose **predicted** differences in TCP travel, probe turn and sampled duration are inside ±2 mm, ±2° and ±.10 s. Rank ties by lower predicted wrong-confirmation difference. No positive-advantage or risk screen is applied in this diagnostic. Direct MPC runs when no option passes predicted cost matching. No selection uses real episode outcomes.
+
+The cached inputs are predictions for public anchor packets from the frozen model planner. They contain no real-case outcomes. Missing public states are evaluated by that same planner. Report the whole cohort and the subset triggered by the public cost screen, even if that subset is small. Test realized equivalence separately. A failure of predicted matching to transfer to sampled costs is part of the result. The timing numbers use lookup of saved forecasts when available, rather than attributing an offline precomputed search to deployment time.

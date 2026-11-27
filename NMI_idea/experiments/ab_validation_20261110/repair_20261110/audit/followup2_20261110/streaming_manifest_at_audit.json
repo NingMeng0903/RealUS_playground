@@ -1,0 +1,152 @@
+{
+  "status": "sealed_for_independent_audit",
+  "sealed_utc": "2026-11-10T09:33:08.828156+00:00",
+  "scope": "L0 synthetic one-station streaming LA feature proxy; no real B-mode/3D tube/SMPL-X production atlas/QP/dIRD/B planning",
+  "authoritative": "results.json; before_DMP_compute_accounting_fix retained only as timing-accounting correction evidence",
+  "correction": "After first frozen test run, on-demand DMP fits from actual endpoints found uncharged. Kept old source/model/results/logs; charged each fit and isolated generic caches by method, then reran same frozen worlds/seeds/actions and public verifier. W coefficients and 2048 method-world action/audit/stop outcomes identical. Only timing/accounting changed.",
+  "protocol_sha256": "aeefb4a510127aba8bcafb6fffa7a2d54ac52e0889134f977907204c9e862ed9",
+  "model_sha256": "0db867241497ca16d30562ee525398db925ce32504e5c5b737d863caf9996dcd",
+  "source_sha256": "a96f43517403961bf47dd0581da6cd5e6ab68efeba0e6c6271da9dd202c69e50",
+  "training_provenance": {
+    "positive_train_seed": 931101,
+    "positive_train_worlds": 512,
+    "positive_accepted_public_pairs": 473,
+    "positive_pair_index_sha256": "850354dcb579ff982861d43fb027b4db495fa1b4bf3a0c6b0e7f1a4815a75bc6",
+    "positive_public_feature_sha256": "223efe13a1398e31338f48737425092ad31fa4f77eda966e7a9a20fc32983035",
+    "positive_public_response_sha256": "debd370ca0788a24b5564bcb4a35b77993da385312e51e3fc5ed4f951533ccc8",
+    "G_exact_train_seed": 931107,
+    "G_exact_train_worlds": 512,
+    "G_exact_accepted_public_pairs": 613,
+    "G_exact_pair_index_sha256": "743fa6e79ed0b70bcbcbe5dca99c8dcba515aa5369840e7593b935066739c7f8",
+    "G_exact_public_feature_sha256": "09e97f4e76a6b3a2d087c4db19ed7137acc06ed40dce4c379bdff8eaba5d176a",
+    "G_exact_public_response_sha256": "056100115d4c8825d87308bf7e9a6c8902740bc1ae5449af42ef97eb17c5a486",
+    "validation_seed": 931102,
+    "test_seed": 931103,
+    "shift_seed": 931104,
+    "G_exact_test_seed": 931105,
+    "test_worlds_opened_only_after_parent_approved_protocol": true
+  },
+  "environment": {
+    "python": "3.10.12",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3"
+  },
+  "replay": {
+    "train": "python streaming_a.py train",
+    "validation": "python streaming_a.py dev",
+    "held_out": "python streaming_a.py test",
+    "contract": "python -m unittest -v test_contract"
+  },
+  "files": {
+    "report": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/REPORT.txt",
+      "bytes": 6600,
+      "sha256": "f177745b88aa79d8c1a776c0383e273b2055cb712dd5e3d793c60691204f59be"
+    },
+    "protocol": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/PROTOCOL.json",
+      "bytes": 8649,
+      "sha256": "aeefb4a510127aba8bcafb6fffa7a2d54ac52e0889134f977907204c9e862ed9"
+    },
+    "parent_approval": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/PARENT_APPROVAL.json",
+      "bytes": 321,
+      "sha256": "7097684e2c52a10272aae12ff60816c96e54a0572b21df1722659382a4e8b5b1"
+    },
+    "source": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/streaming_a.py",
+      "bytes": 28775,
+      "sha256": "a96f43517403961bf47dd0581da6cd5e6ab68efeba0e6c6271da9dd202c69e50"
+    },
+    "contract_tests": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/test_contract.py",
+      "bytes": 4570,
+      "sha256": "304fdc2bf0bb6bc570fc26c95c38aabd78216abcf2df7cb101f9fb3b75c22140"
+    },
+    "model": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/MODEL.json",
+      "bytes": 152528,
+      "sha256": "0db867241497ca16d30562ee525398db925ce32504e5c5b737d863caf9996dcd"
+    },
+    "train_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/train.log",
+      "bytes": 193,
+      "sha256": "2ade5900604643e035fb12ca1873901d5951b748a3c445c7d680e93073b05f51"
+    },
+    "development_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/dev.log",
+      "bytes": 2931,
+      "sha256": "48297562da7379e9efa3874bec62740d7107ba91e0296c9138f2a387d6e45a4a"
+    },
+    "test_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/test.log",
+      "bytes": 645,
+      "sha256": "5ba6db57efd5309ea8224771bab96480b755ff2c9d69d10b3f41455be68dea56"
+    },
+    "run_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/run.log",
+      "bytes": 8772,
+      "sha256": "88eb8966c5f22d689075fc1a271e37623ca3b66f4a2e682ad9fdd68f8b139c7c"
+    },
+    "development_results": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/dev_results.json",
+      "bytes": 9070288,
+      "sha256": "3755ede5e3661f6be9202327e927b465a8022224269e5774c0fe94e5d146a4e9"
+    },
+    "authoritative_results": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/results.json",
+      "bytes": 34527663,
+      "sha256": "5def23bb7ce7ddf36e74167d55401b0326171aee4b35d092fe3f8acd9a0bd631"
+    },
+    "superseded_source": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/before_DMP_compute_accounting_fix/streaming_a.py",
+      "bytes": 27300,
+      "sha256": "73fc12ec4a725b6d4aee8f0604461cbff2c177f682f8e5b17eae17b3d6cde448"
+    },
+    "superseded_model": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/before_DMP_compute_accounting_fix/MODEL.json",
+      "bytes": 2503,
+      "sha256": "36cd918fe0bfaa1d9af3ed9e4d66d4824e7f5971367a5f30903db212697b9f4f"
+    },
+    "superseded_results": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/before_DMP_compute_accounting_fix/results.json",
+      "bytes": 33937124,
+      "sha256": "71ae0abe26e615239e778dd66d085b21bac5b3d1e5d0f400962e9db2c995c94a"
+    },
+    "superseded_development_results": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/before_DMP_compute_accounting_fix/dev_results.json",
+      "bytes": 8916280,
+      "sha256": "c492136a9cc3e73d0c53123231deb941b67c50facb45dc09b042cdda06080c54"
+    },
+    "superseded_run_log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/ab_streaming_followup/before_DMP_compute_accounting_fix/run.log",
+      "bytes": 8778,
+      "sha256": "20f6035b58bf19e761df51162dc929b4282233b0f642c933273f6b33684d6bc5"
+    },
+    "parent_protocol": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/NO_PRESCAN_FOLLOWUP_PROTOCOL.txt",
+      "bytes": 5716,
+      "sha256": "9118d5a7084e3d65dfbbad17efb85de0c534ed5af6431cba6ffc13c268291c54"
+    },
+    "paper_v93": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/ideas/Anatomical_GPS_V9.3.tex",
+      "bytes": 83517,
+      "sha256": "6948528c426313fe9383469d5ebb0b2f4cd7a2a63291f5d098c421f74cdb0471"
+    },
+    "source_response_baseline": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/core/a_response.py",
+      "bytes": 6161,
+      "sha256": "69a36a5c064b4f9d6c7ab0cd1c71d44d7bb45209915e92b7d9702efff953de8f"
+    },
+    "source_prior_factorial": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/core/prior_response_factorial.py",
+      "bytes": 3721,
+      "sha256": "103cd34ad1a6468af7f59a55ff1f8df1eefb4368fac7db7332a42361f05d0642"
+    },
+    "DMP_source": {
+      "path": "/media/camp/EXT_DRIVE/Among_US/DMP_playground/dmp_honest/dmp.py",
+      "bytes": 4712,
+      "sha256": "c049d7e32df71c1a39038722924472a83ca8b70a90dee47877b09fe3bc9ff972"
+    }
+  }
+}

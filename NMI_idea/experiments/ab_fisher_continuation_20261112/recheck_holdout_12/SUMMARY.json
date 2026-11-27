@@ -1,0 +1,87 @@
+{
+  "n": 6,
+  "cap": 80,
+  "seed_base": 91261127,
+  "start_index": 12,
+  "source_sha256": "fc1a6698f5f600030c5bdd2444cfee3a145a37bc6d63220b250b3e45336264e5",
+  "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "n_checked_edge_pairs": 11346,
+  "arms": {
+    "A": {
+      "complete": 2,
+      "online_stop": 2,
+      "mean_acquisitions": 64.5,
+      "mean_certified": 30.666666666666668,
+      "mean_rmse_mm": 0.6096019604246015,
+      "mean_max_band_mm": 3.095654282031416,
+      "incorrect_count": 2,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 0,
+        "40": 2,
+        "50": 2,
+        "60": 2,
+        "70": 2,
+        "80": 2
+      }
+    },
+    "A_fisher": {
+      "complete": 2,
+      "online_stop": 2,
+      "mean_acquisitions": 64.33333333333333,
+      "mean_certified": 31.0,
+      "mean_rmse_mm": 0.5996465582200271,
+      "mean_max_band_mm": 3.1106653830011077,
+      "incorrect_count": 0,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 0,
+        "40": 2,
+        "50": 2,
+        "60": 2,
+        "70": 2,
+        "80": 2
+      }
+    },
+    "fixed": {
+      "complete": 5,
+      "online_stop": 6,
+      "mean_acquisitions": 35.5,
+      "mean_certified": 32.0,
+      "mean_rmse_mm": 0.6163011322541273,
+      "mean_max_band_mm": 2.7597323517456704,
+      "incorrect_count": 1,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 2,
+        "40": 4,
+        "50": 5,
+        "60": 5,
+        "70": 5,
+        "80": 5
+      }
+    },
+    "B": {
+      "complete": 5,
+      "online_stop": 6,
+      "mean_acquisitions": 35.5,
+      "mean_certified": 32.0,
+      "mean_rmse_mm": 0.6163011322541273,
+      "mean_max_band_mm": 2.7597323517456704,
+      "incorrect_count": 1,
+      "complete_by_recheck_count": {
+        "10": 0,
+        "20": 0,
+        "30": 2,
+        "40": 4,
+        "50": 5,
+        "60": 5,
+        "70": 5,
+        "80": 5
+      }
+    }
+  }
+}

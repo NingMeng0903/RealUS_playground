@@ -1502,7 +1502,7 @@ class UeBedlamRenderPipeline:
                 camera_operator_actor,
                 [],
                 frame_count,
-                payload["ue_hdri_name"],
+                payload["ue_hdri_name"] if payload["environment"]["preset"] == "inherit" else None,
                 camera_hfov=camera_hfov,
                 camera_movement_type="Default",
                 camera_animations=None,

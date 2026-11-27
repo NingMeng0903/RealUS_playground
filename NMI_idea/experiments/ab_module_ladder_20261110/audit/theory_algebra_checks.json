@@ -1,0 +1,98 @@
+{
+  "scope": "finite algebra checks, not empirical module benefit or proof of assumptions in real controller",
+  "same_public_observation_aggregation": {
+    "proper_expected_terminal_risk": 1.0,
+    "illegal_latent_branching_risk": 0.0
+  },
+  "fixed_signal_different_executable_decisions": {
+    "full": {
+      "same_perfect_signal_prior_risk": 1.0,
+      "expected_posterior_risk": 0.0,
+      "decision_information_value": 1.0
+    },
+    "only_zero": {
+      "same_perfect_signal_prior_risk": 1.0,
+      "expected_posterior_risk": 1.0,
+      "decision_information_value": 0.0
+    }
+  },
+  "compression_bound_checks": {
+    "random_models": 100,
+    "variants_each": [
+      "exact_aggregate_transition",
+      "bounded_perturbation"
+    ],
+    "horizon": 5,
+    "worst_exact_error": 1.3322676295501878e-15,
+    "maximum_value_error_over_bound": 0.31547101390552973,
+    "maximum_policy_regret_over_bound": 0.09004223220356186,
+    "examples": [
+      {
+        "case": 0,
+        "exact": true,
+        "eps_cost": 0.0,
+        "eps_terminal": 0.0,
+        "eps_kernel_TV_half_L1": 1.1102230246251565e-16,
+        "value_error": 4.440892098500626e-16,
+        "lifted_policy_regret": 0.0,
+        "value_bound_E": 1.6653345369377348e-15,
+        "policy_bound_2E": 3.3306690738754696e-15
+      },
+      {
+        "case": 0,
+        "exact": false,
+        "eps_cost": 0.019726409174613546,
+        "eps_terminal": 0.018187712498032527,
+        "eps_kernel_TV_half_L1": 0.008918810666241339,
+        "value_error": 0.051374859485923796,
+        "lifted_policy_regret": 0.000869331760407821,
+        "value_bound_E": 0.25060191836472034,
+        "policy_bound_2E": 0.5012038367294407
+      },
+      {
+        "case": 1,
+        "exact": true,
+        "eps_cost": 0.0,
+        "eps_terminal": 0.0,
+        "eps_kernel_TV_half_L1": 8.326672684688674e-17,
+        "value_error": 2.220446049250313e-16,
+        "lifted_policy_regret": 0.0,
+        "value_bound_E": 1.2490009027033011e-15,
+        "policy_bound_2E": 2.4980018054066022e-15
+      },
+      {
+        "case": 1,
+        "exact": false,
+        "eps_cost": 0.018627742529807645,
+        "eps_terminal": 0.017721001567585493,
+        "eps_kernel_TV_half_L1": 0.009559307134372058,
+        "value_error": 0.04503064443793914,
+        "lifted_policy_regret": 0.0,
+        "value_bound_E": 0.25424932123220456,
+        "policy_bound_2E": 0.5084986424644091
+      },
+      {
+        "case": 2,
+        "exact": true,
+        "eps_cost": 0.0,
+        "eps_terminal": 0.0,
+        "eps_kernel_TV_half_L1": 8.326672684688674e-17,
+        "value_error": 8.881784197001252e-16,
+        "lifted_policy_regret": 0.0,
+        "value_bound_E": 1.2490009027033011e-15,
+        "policy_bound_2E": 2.4980018054066022e-15
+      },
+      {
+        "case": 2,
+        "exact": false,
+        "eps_cost": 0.018674124882049475,
+        "eps_terminal": 0.015275843690943924,
+        "eps_kernel_TV_half_L1": 0.009948464664533474,
+        "value_error": 0.07662244952588892,
+        "lifted_policy_regret": 0.0,
+        "value_bound_E": 0.2578734380691934,
+        "policy_bound_2E": 0.5157468761383868
+      }
+    ]
+  }
+}

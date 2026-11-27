@@ -1,0 +1,16 @@
+本文件补充原封存QP_API.txt，不覆盖旧文档。
+
+query_pose_path/hold输入形式不变。连续状态现在必须为
+ultrapoc_qp_complete_history_v2，包含acceleration_exit。QPReplaySession会
+从实际上一段已接受命令的qdot和acceleration继续诊断；root静止默认二者0。
+结果新增qdot_entry、acceleration_entry、acceleration_exit；每条trace新增
+command_acceleration、command_jerk。它们与先拼接全部连续命令再差分一致。
+
+snapshot/完整prefix恢复同时校验q、qdot、acceleration，门仍1e−7。篡改
+acceleration_exit、旧v1状态或旧源码fingerprint都会拒绝。请重新生成后续
+连续图状态，不要修改旧缓存以伪造新schema。非法proposal不进入虚拟测量，
+也不推进最后合法的速度/加速度出口；invalid状态仍禁止继续。
+
+此诊断修复不解决native长路径非法rail。独立Astra已新增branch0/path0
+tick641 rail=58.282671m的拒绝案例；原12条合法计数只是一次观察。任何新B
+机械执行声明仍被native异常阻断。详见ADDENDUM_PHASE2.txt及独立PHASE2报告。

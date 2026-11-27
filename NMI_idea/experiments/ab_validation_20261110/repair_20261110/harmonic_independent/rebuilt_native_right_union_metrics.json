@@ -1,0 +1,41 @@
+{
+  "input": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_independent/rebuilt_native_right_meshfix_plc.npz",
+  "input_sha256": "d13a04088e6622f6c81cd217e2602e94f220fbb0fed1d7318269008a4556723f",
+  "method": "CGAL winding self-union with original geometric faces split; no vertex smoothing",
+  "source_face_J_saved": true,
+  "skin_area_before_m2": 0.30363963191575244,
+  "skin_area_retained_m2": 0.3034132900212381,
+  "skin_area_removed_from_boundary_m2": 0.00022634189451431252,
+  "skin_faces_losing_boundary_area_gt_1e_12": [
+    301,
+    756
+  ],
+  "topology": {
+    "vertices": 554,
+    "faces": 1104,
+    "boundary_edges": 0,
+    "boundary_components": 0,
+    "boundary_component_vertices": [],
+    "boundary_degrees_not_two": 0,
+    "nonmanifold_edges": 0,
+    "inconsistent_interior_winding": 0,
+    "unused_vertices": 0,
+    "watertight": true,
+    "boundary_vertex_ids": []
+  },
+  "cgal_intersections": {
+    "complete_detect_only": true,
+    "cgal_intersecting_face_pairs": 0,
+    "categories": {},
+    "examples": [],
+    "seconds": 0.0024597820010967553
+  },
+  "wall_seconds": 0.021039818002464017,
+  "tetgen": {
+    "nodes": 554,
+    "tets": 1714,
+    "positive": 1714,
+    "negative": 0,
+    "degenerate": 0
+  }
+}

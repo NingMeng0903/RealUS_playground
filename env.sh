@@ -6,6 +6,8 @@ export AMONGUS_PROJECT_ROOT="${REALUS_PROJECT_ROOT}"
 export REPO="${REALUS_PROJECT_ROOT}"
 export SRC="${REALUS_PROJECT_ROOT}/src"
 export PYTHONNOUSERSITE=1
+export NUMBA_CACHE_DIR="${NUMBA_CACHE_DIR:-${REALUS_PROJECT_ROOT}/outputs/cache/numba}"
+export MPLCONFIGDIR="${MPLCONFIGDIR:-${REALUS_PROJECT_ROOT}/outputs/cache/matplotlib}"
 # Repo + rm75_control so Window C gamepad can run in genesis (DWPose GPU lives here).
 export PYTHONPATH="${REALUS_PROJECT_ROOT}:${REALUS_PROJECT_ROOT}/rm75_control:${SRC}${PYTHONPATH:+:${PYTHONPATH}}"
 
@@ -36,12 +38,25 @@ if [ -n "${PY:-}" ] && ! "${PY}" -c "import pyrealsense2" 2>/dev/null; then
 fi
 
 export AMONGUS_BLENDER_BIN="${AMONGUS_BLENDER_BIN:-/media/camp/EXT_DRIVE/blender/blender-4.5.8-linux-x64/blender}"
+export AMONGUS_BLENDER="${AMONGUS_BLENDER:-${AMONGUS_BLENDER_BIN}}"
 export REALUS_BEDLAM_UNREAL_ROOT="${REALUS_BEDLAM_UNREAL_ROOT:-/media/camp/EXT_DRIVE/Among_US/assets/humans/bedlam2/unreal}"
 export REALUS_BEDLAM_RETARGET_ROOT="${REALUS_BEDLAM_RETARGET_ROOT:-/media/camp/EXT_DRIVE/Among_US/ref_code_library/bedlam2_retargeting}"
+if [ -z "${REALUS_AMASS_NPZ:-}" ]; then
+  _realus_clip="${REALUS_PROJECT_ROOT}/dataset/raw/humans/amass_hf/raw/CMU/114/114_11_poses.npz"
+  if [ ! -f "${_realus_clip}" ]; then
+    _realus_clip="/media/camp/EXT_DRIVE/Among_US/dataset/raw/humans/amass_hf/raw/CMU/114/114_11_poses.npz"
+  fi
+  export REALUS_AMASS_NPZ="${_realus_clip}"
+  unset _realus_clip
+fi
+export REALUS_SCENE_SPEC="${REALUS_SCENE_SPEC:-${REALUS_PROJECT_ROOT}/configs/scenes/realus_bed_rail_scene.yaml}"
+export REALUS_UE_CAMERA_CONNECT="${REALUS_UE_CAMERA_CONNECT:-tcp://127.0.0.1:17366}"
+export AMONGUS_UE_BENCHMARK_ACK_BIND="${AMONGUS_UE_BENCHMARK_ACK_BIND:-127.0.0.1:17367}"
 
 export SESSION_DIR="${SESSION_DIR:-${REALUS_PROJECT_ROOT}/outputs/ue_sessions/realus_fullflow_v1}"
 mkdir -p "${SESSION_DIR}"
 export AMONGUS_SESSION_DIR="${SESSION_DIR}"
+export AMONGUS_SESSION_ID="${AMONGUS_SESSION_ID:-$(basename "${SESSION_DIR}")}"
 
 export AMONGUS_GENESIS_CANONICAL_ZMQ_BIND="${AMONGUS_GENESIS_CANONICAL_ZMQ_BIND:-tcp://127.0.0.1:5599}"
 export AMONGUS_GENESIS_CANONICAL_STATE_JSONL="${AMONGUS_GENESIS_CANONICAL_STATE_JSONL:-${SESSION_DIR}/genesis_canonical.jsonl}"

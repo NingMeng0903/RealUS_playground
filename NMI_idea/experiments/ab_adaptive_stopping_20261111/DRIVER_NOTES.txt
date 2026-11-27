@@ -1,0 +1,120 @@
+ADAPTIVE STOPPING DEV STUDY DRIVER
+===================================
+
+study_driver.py is orchestration only.  It invokes the existing
+run_adaptive.py subprocess and does not change planning, risk, verifier, or
+development-selection rules.  No study is started by importing the module.
+
+Fixed matrix
+------------
+
+The matrix is exactly:
+
+  A_task, A_info, B_H1, B_H2 x fixed runner pair-dwell 0.30 s
+  pair_fixed x dwell 0.15, 0.30, 0.60 s
+  x fixture index 0, 1, both mode=constrained
+
+That is 7 configurations and 14 independent subprocess jobs.  Dwell is a
+pair_fixed development hyperparameter; repeating adaptive A/B policies at
+three pair-dwell values would be redundant because their twelve actions own
+their dwell choices.  Every job has a disjoint output
+sub-root:
+
+  OUTPUT/<arm>_dwell_<15|30|60>/fixture_<00|01>_constrained/
+
+The runner itself writes ``dev/fixture_XX_constrained`` below that root.  This
+prevents pair-dwell outputs or fixture mirrors from overwriting one another.
+The driver passes ``--resume --stage dev --count N --max-probe-frames 8`` for
+every job.  Use the same OUTPUT root for pilot 8 and later full 128: the full
+run then resumes the exact first eight case IDs and fills 8..127.  Do not
+change source/model hashes between pilot and full.
+
+Runtime and reproducibility
+---------------------------
+
+The default executable is:
+
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python
+
+Each child receives ``PYTHONHASHSEED=0`` and
+``OMP_NUM_THREADS=OPENBLAS_NUM_THREADS=MKL_NUM_THREADS=NUMEXPR_NUM_THREADS=1``.
+The default process cap is four and is controlled by ``--max-workers``.  Each
+job writes ``driver_logs/<job>/stdout.log``, ``stderr.log``, and
+``JOB_RESULT.json`` with command, return code, environment, elapsed time, and
+source hashes at start/end.  The root also receives DRIVER_MANIFEST.json,
+DRIVER_SOURCE_START.json, DRIVER_SOURCE_END.json, and DRIVER_RUN_SUMMARY.json.
+
+The source manifest hashes run_adaptive.py, all imported experiment modules,
+study_driver.py, and models/v3/MODEL.json.  A pre-existing output root without
+a driver start manifest is rejected rather than silently reused.  A changed
+hash rejects resume and marks any in-flight job invalid; no freeze can be
+written after a source change.
+
+Commands
+--------
+
+Plan only (does not start run_adaptive.py):
+
+  python study_driver.py --output-root /path/dev_matrix --count 8 --dry-run
+
+Pilot (do not interpret as a result or freeze candidate):
+
+  python study_driver.py --output-root /path/dev_matrix --count 8 \
+      --max-workers 4
+
+Full development continuation in the same root:
+
+  python study_driver.py --output-root /path/dev_matrix --count 128 \
+      --max-workers 4
+
+The driver never starts these commands automatically.  Formal launch is a
+separate user decision.
+
+Global selection and freeze
+---------------------------
+
+After a complete count=128 run, inspect without changing data:
+
+  python study_driver.py --output-root /path/dev_matrix --count 128 \
+      --select-freeze --dry-run
+
+The selection pass requires every one of the 7 configurations to contain
+exactly case IDs 0..127 at both constrained fixture indexes, with a common
+source manifest and auditable gate-protocol evidence.  A pilot count=8 or any
+missing/duplicate/extra object ID is explicitly incomplete and cannot freeze.
+
+For a complete matrix, omit ``--dry-run`` on ``--select-freeze``.  The driver
+selects A, B, and pair by the existing contract: correct completion rate first,
+mean probe count second, then deterministic ties (B_H1 before B_H2, A_task
+before A_info, shorter dwell for otherwise identical pair rows).  Commit
+coverage, committed-failure rate (with n and descriptive CI),
+wrong-declaration rate, and gate-protocol fields remain in every config summary
+for Astra's review.  A config is ``risk_qualified`` only when gate protocol
+passes, committed_n>0, and committed_failure_n/committed_n<=0.10; two terminal
+rejections and mechanical failures count as failures.  committed_n=0 is
+``risk_unassessed`` and cannot be a winner.  The CI is descriptive only and
+does not create an extra small-n gate.  Gate-protocol compliance is kept
+separate from empirical committed risk; final confirmatory eligibility is
+explicitly deferred to Astra and is not auto-claimed by this driver.  The
+strongest complete unfiltered A/B/pair rows are retained separately to reveal
+selection effects even when no risk-qualified freeze is possible.
+
+The successful freeze writes:
+
+  FREEZE_GLOBAL.json
+  FREEZE_00_constrained.json
+  FREEZE_01_constrained.json
+
+The two per-fixture files use the same global selected A/B/pair and pair dwell,
+model hash, source hash, full coverage IDs, and test arm list.  They adapt the
+runner's existing ``--freeze-file`` interface; no controller is repeated or
+reimplemented.  Test should be launched with those files and ``--arm all`` so
+only the three frozen arms run on both constrained mirrors.
+
+Tests
+-----
+
+  python -m unittest -v test_study_driver.py
+
+The tests use handcrafted result files and dry-run plans only; they do not
+start the native runner.

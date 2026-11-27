@@ -1,0 +1,6603 @@
+{
+  "scope": "true target among fixed v6 unary old winners, frozen actual revisit and equal-time observations",
+  "routes": {
+    "femoral": {
+      "after_hold": {
+        "old_target_witness_with_pair": 61,
+        "same_instance_seen_in_new_frames": 61,
+        "objects_connected_new_same_instance": 47,
+        "object_oracle_connected_new_same_instance": 59,
+        "old_fixed_role_improved_gt_0_01": 2,
+        "old_fixed_role_decreased_gt_0_01": 0
+      },
+      "after_probe": {
+        "old_target_witness_with_pair": 61,
+        "same_instance_seen_in_new_frames": 61,
+        "objects_connected_new_same_instance": 52,
+        "object_oracle_connected_new_same_instance": 60,
+        "old_fixed_role_improved_gt_0_01": 2,
+        "old_fixed_role_decreased_gt_0_01": 0
+      }
+    },
+    "groin_to_distal_calf": {
+      "after_hold": {
+        "old_target_witness_with_pair": 82,
+        "same_instance_seen_in_new_frames": 77,
+        "objects_connected_new_same_instance": 11,
+        "object_oracle_connected_new_same_instance": 65,
+        "old_fixed_role_improved_gt_0_01": 5,
+        "old_fixed_role_decreased_gt_0_01": 0
+      },
+      "after_probe": {
+        "old_target_witness_with_pair": 82,
+        "same_instance_seen_in_new_frames": 76,
+        "objects_connected_new_same_instance": 9,
+        "object_oracle_connected_new_same_instance": 64,
+        "old_fixed_role_improved_gt_0_01": 6,
+        "old_fixed_role_decreased_gt_0_01": 0
+      }
+    }
+  },
+  "per_layout": [
+    {
+      "layout_id": "atlas_v2_be18547b6e9fcf2596cd",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00000",
+      "old_candidate": [
+        55,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999566078186035,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9999558329582214
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9999563097953796
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_dc7e5cd45036f8962a1b",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00001",
+      "old_candidate": [
+        201,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9965918064117432,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9969345927238464
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9979751706123352
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_386fc6a67f010c6fe835",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00002",
+      "old_candidate": [
+        56,
+        2
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.999976396560669,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9999685287475586
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9999667406082153
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_0182ff73d83031e65c19",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00003",
+      "old_candidate": [
+        202,
+        1
+      ],
+      "truth_role": 1,
+      "object_target_before": 0.5790958404541016,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.6098604798316956
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.6459910273551941
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_bbb8726a2c3460165b41",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00004",
+      "old_candidate": [
+        55,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9997063279151917,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9996975064277649
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9997395277023315
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_bddef495e21c06b66d8e",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00005",
+      "old_candidate": [
+        170,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9968268871307373,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9966772198677063
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9941883087158203
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_671af284b0ad5f2b901c",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00006",
+      "old_candidate": [
+        59,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9990070462226868,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9997977614402771
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9996999502182007
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_fa786b5bda8688ffaf53",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00007",
+      "old_candidate": [
+        173,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9280744791030884,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9324275255203247
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9331188797950745
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_1348c09a091e2a83b974",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00008",
+      "old_candidate": [
+        56,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9998993873596191,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.999898374080658
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9998966455459595
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_a99aa4faeb564c6fe840",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00009",
+      "old_candidate": [
+        179,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9990580081939697,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9990652203559875
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9992368817329407
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_57818ed798d658943f78",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00010",
+      "old_candidate": [
+        56,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9995805025100708,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.999567449092865
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9995768070220947
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_12f36ba55e73046cf4b3",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00011",
+      "old_candidate": [
+        180,
+        2
+      ],
+      "truth_role": -2,
+      "object_target_before": 0.9762963056564331,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9885451793670654
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9911130666732788
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_a1f6ba3011a45113b035",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00012",
+      "old_candidate": [
+        58,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9990187287330627,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.998039186000824
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.998969554901123
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_94a9f0181e50552629fc",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00013",
+      "old_candidate": [
+        147,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999980330467224,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9999979138374329
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9999979138374329
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_3d192271705c31197bc7",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00014",
+      "old_candidate": [
+        58,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.998956024646759,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.999485194683075
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9995241761207581
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5cbefb578077f9d7711d",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00015",
+      "old_candidate": [
+        139,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999974370002747,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999973177909851
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999973177909851
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_d48063625dacbaa07b9d",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00016",
+      "old_candidate": [
+        56,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999398589134216,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 21
+            }
+          },
+          "object_target_after": 0.9999366998672485
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 21
+            }
+          },
+          "object_target_after": 0.9999334216117859
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_73c05463bb70d876e7dd",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00017",
+      "old_candidate": [
+        123,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.999997079372406,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            }
+          },
+          "object_target_after": 0.9999966025352478
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999969601631165
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_c0db5592bbc0d06d81bf",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00018",
+      "old_candidate": [
+        53,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999876022338867,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999865889549255
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9999839663505554
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_9080a0bbd69677a94774",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00019",
+      "old_candidate": [
+        135,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9966568946838379,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9965469241142273
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9965469241142273
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_da22cee7b017771f0dc7",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00020",
+      "old_candidate": [
+        60,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9996321201324463,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9997685551643372
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9996476769447327
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_de1d957e703f6ba8bd07",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00021",
+      "old_candidate": [
+        154,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9978744983673096,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9980558156967163
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9978946447372437
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_373111059b3a66ec6225",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00022",
+      "old_candidate": [
+        55,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9997331500053406,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 6
+            }
+          },
+          "object_target_after": 0.9997780919075012
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9998219013214111
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_85dc13f76b40ab6d9ab8",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00023",
+      "old_candidate": [
+        118,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999979138374329,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999977946281433
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999977946281433
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_be63c2426aefa82c0900",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00024",
+      "old_candidate": [
+        29,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.999950647354126,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9999492168426514
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9999540448188782
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_7268d3bf8ed90eba96da",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00025",
+      "old_candidate": [
+        198,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9911527633666992,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.9912052154541016
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.9912052154541016
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_c4b3c7fa13cb091242c5",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00026",
+      "old_candidate": [
+        29,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999487996101379,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9999707937240601
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.99994957447052
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_7a88c8b3c7df27f29f89",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00027",
+      "old_candidate": [
+        201,
+        0
+      ],
+      "truth_role": 1,
+      "object_target_before": 0.43173617124557495,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.432562917470932
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.432562917470932
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8e501a87df2b802cb6ae",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00028",
+      "old_candidate": [
+        30,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.99927818775177,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9993007779121399
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9992753863334656
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_fa2b8304b4e4a9e68083",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00029",
+      "old_candidate": [
+        174,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9978445172309875,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9977482557296753
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9977482557296753
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e72dc7aa8cc3674a1af2",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00030",
+      "old_candidate": [
+        34,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9541783332824707,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9658189415931702
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9969911575317383
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_71c70bda5c40bf2b308f",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00031",
+      "old_candidate": [
+        176,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9935823678970337,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            }
+          },
+          "object_target_after": 0.9935700297355652
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            }
+          },
+          "object_target_after": 0.9940021634101868
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_cf2f2835194ffa93c7c0",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00032",
+      "old_candidate": [
+        32,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9998020529747009,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 22
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 22
+            }
+          },
+          "object_target_after": 0.9997997879981995
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 22
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 22
+            }
+          },
+          "object_target_after": 0.9998329877853394
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e95998448023eb7cc5a4",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00033",
+      "old_candidate": [
+        185,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9796451330184937,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9849634170532227
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9848291873931885
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6792e042b54e15225217",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00034",
+      "old_candidate": [
+        29,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9998552799224854,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9998682141304016
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9998813271522522
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_05282b71f1697f4dfdf9",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00035",
+      "old_candidate": [
+        192,
+        1
+      ],
+      "truth_role": 4,
+      "object_target_before": 0.6346545219421387,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.6516246795654297
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.6882890462875366
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_536e2438d47dfbb3374b",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00036",
+      "old_candidate": [
+        28,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9992034435272217,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9990921020507812
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.999101459980011
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_33cc0bb4f960aac4c7a6",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00037",
+      "old_candidate": [
+        199,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9989724159240723,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9991209506988525
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9993388652801514
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_ba43e740fcb2fb997dd3",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00038",
+      "old_candidate": [
+        28,
+        0
+      ],
+      "truth_role": -1,
+      "object_target_before": 0.9971434473991394,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9975706934928894
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 10
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9973762631416321
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5b15dfab71c3e35e186e",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00039",
+      "old_candidate": [
+        199,
+        1
+      ],
+      "truth_role": -2,
+      "object_target_before": 0.5475375056266785,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.5587557554244995
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.571474015712738
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_7c6aad2ea2a8c26f6596",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00040",
+      "old_candidate": [
+        27,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999476075172424,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 21
+            }
+          },
+          "object_target_after": 0.9999495148658752
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 21
+            }
+          },
+          "object_target_after": 0.9999533891677856
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6ef1643e5a75a4179882",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00041",
+      "old_candidate": [
+        175,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9512597322463989,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.961660623550415
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9899718165397644
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e64fdef1242305ddae1c",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00042",
+      "old_candidate": [
+        28,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9997529983520508,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9997828602790833
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9998317360877991
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_9a5264c0711a53c9d109",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00043",
+      "old_candidate": [
+        170,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9886828064918518,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9923734664916992
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9818599820137024
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_fc857e3fde8b8d84c738",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00044",
+      "old_candidate": [
+        30,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9992148280143738,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.999197781085968
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9992667436599731
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_9857e97feb6e1f7a36bc",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00045",
+      "old_candidate": [
+        182,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9923178553581238,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9933756589889526
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9942665100097656
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e6bc584895e7e6112969",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00046",
+      "old_candidate": [
+        28,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9727585315704346,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 6
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9899488687515259
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9874414205551147
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_3e79b54a7cefdbe3fedb",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00047",
+      "old_candidate": [
+        180,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9932899475097656,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9944521188735962
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9968444108963013
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_a61158b0294069635074",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00048",
+      "old_candidate": [
+        58,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999545812606812,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            }
+          },
+          "object_target_after": 0.9999529719352722
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            }
+          },
+          "object_target_after": 0.9999535083770752
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8830b492dd66b7c8afa7",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00049",
+      "old_candidate": [
+        144,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999985694885254,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 21
+            }
+          },
+          "object_target_after": 0.9999985694885254
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999985694885254
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8b6ea4f549457da0bbfc",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00050",
+      "old_candidate": [
+        57,
+        1
+      ],
+      "truth_role": -1,
+      "object_target_before": 0.999176025390625,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9990967512130737
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9990967512130737
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_033cd47d1c2b523bdb39",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00051",
+      "old_candidate": [
+        168,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9996768236160278,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9996610879898071
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9996610879898071
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_ccf588592e4c46edfb50",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00052",
+      "old_candidate": [
+        66,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999977946281433,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9999982714653015
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9999973773956299
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_48c009c7c08091c169fd",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00053",
+      "old_candidate": [
+        125,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999985694885254,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.9999985694885254
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.9999985694885254
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_21197866cf35cc0b77eb",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00054",
+      "old_candidate": [
+        66,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9996642470359802,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9999985694885254
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9999984502792358
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5f612180b1f3b2b31047",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00055",
+      "old_candidate": [
+        122,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9981104731559753,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9980683326721191
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9980683326721191
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_42d0eb95621f76da9647",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00056",
+      "old_candidate": [
+        55,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999109506607056,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            }
+          },
+          "object_target_after": 0.9999989867210388
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            }
+          },
+          "object_target_after": 0.9999989867210388
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_c973c9d886e7c7880341",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00057",
+      "old_candidate": [
+        151,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9986251592636108,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 24
+            }
+          },
+          "object_target_after": 0.9986183047294617
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9980820417404175
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_eb4841f41f9aeb448c16",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00058",
+      "old_candidate": [
+        55,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999509453773499,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            }
+          },
+          "object_target_after": 0.9999474287033081
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            }
+          },
+          "object_target_after": 0.9999474287033081
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_bd55ee0f7e7520cbce2b",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00059",
+      "old_candidate": [
+        116,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999985098838806,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999984502792358
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999984502792358
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5d5bfb5dda565539c372",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00060",
+      "old_candidate": [
+        55,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9990794658660889,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9990599751472473
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9990599751472473
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_1c6b4c52e0560b2120aa",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00061",
+      "old_candidate": [
+        202,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9981309175491333,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9982555508613586
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9985257387161255
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_1cd7d3f0c4b0f25c507a",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00062",
+      "old_candidate": [
+        63,
+        1
+      ],
+      "truth_role": -1,
+      "object_target_before": 0.9999326467514038,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999961256980896
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.999939501285553
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_63f06a362f81e71e9f14",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00063",
+      "old_candidate": [
+        197,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9960142374038696,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9959660172462463
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9959660172462463
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8f47ab24106d1e80990f",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00064",
+      "old_candidate": [
+        55,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9997185468673706,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.9997326731681824
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 6
+            }
+          },
+          "object_target_after": 0.999762237071991
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6f7dd7430e84ae9c97e7",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00065",
+      "old_candidate": [
+        176,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9810088872909546,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9813867211341858
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.983780026435852
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_526502c4cd165cb2dd5e",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00066",
+      "old_candidate": [
+        61,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9998295903205872,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.9998201131820679
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.9998445510864258
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_ff6e742ea4dd8fcec48e",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00067",
+      "old_candidate": [
+        176,
+        2
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.990606427192688,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.9906917810440063
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.9901742339134216
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_0e3d1f93876e012c5394",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00068",
+      "old_candidate": [
+        60,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9997990727424622,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999982118606567
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999980330467224
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8dcccbd9272b2f7316d9",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00069",
+      "old_candidate": [
+        181,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9992035031318665,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9991793632507324
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9991793632507324
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6e15a43c33547e4a9d33",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00070",
+      "old_candidate": [
+        61,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9995303750038147,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9999936819076538
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.999993622303009
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_3090d20b417068deee3e",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00071",
+      "old_candidate": [
+        179,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9968671202659607,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9967993497848511
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9967993497848511
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_cf971094bbeb9155f10e",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00072",
+      "old_candidate": [
+        55,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999534487724304,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999504685401917
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999475479125977
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e6ad9770603dc8e9609e",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00073",
+      "old_candidate": [
+        198,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9995813369750977,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9996326565742493
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9997041821479797
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8653ea086694cc021b86",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00074",
+      "old_candidate": [
+        53,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999821186065674,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.999980628490448
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9994586110115051
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_da8b79abaea1237a4a6f",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00075",
+      "old_candidate": [
+        198,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9965108036994934,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9969437718391418
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.997545599937439
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_4e78a9983b834fa18991",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00076",
+      "old_candidate": [
+        57,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9991657137870789,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9998680949211121
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9997081160545349
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5e9251914bca623c71af",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00077",
+      "old_candidate": [
+        169,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9863976836204529,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 6
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9864029288291931
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9913909435272217
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_450fb5b24b51a1f9f910",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00078",
+      "old_candidate": [
+        57,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9990485906600952,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.999580442905426
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9995248913764954
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_84a1c67a58c1f3fe6e04",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00079",
+      "old_candidate": [
+        169,
+        0
+      ],
+      "truth_role": -1,
+      "object_target_before": 0.9617384076118469,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9638510346412659
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.966020405292511
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_729cb22d4d16300e4895",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00080",
+      "old_candidate": [
+        56,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.999931275844574,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9999310970306396
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9999289512634277
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_d939b7b040e2a972cc41",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00081",
+      "old_candidate": [
+        179,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9991737604141235,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9992311596870422
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9994747042655945
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_85fbb1802754c3c06c99",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00082",
+      "old_candidate": [
+        53,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999237656593323,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9999194145202637
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9998955130577087
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_69348958beacc88f36f5",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00083",
+      "old_candidate": [
+        179,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9874143004417419,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9884370565414429
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9919958710670471
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_ebe1434fa58ac38bf192",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00084",
+      "old_candidate": [
+        60,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9987976551055908,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9987911581993103
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9990626573562622
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_54bf3ae974e78b54fab6",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00085",
+      "old_candidate": [
+        143,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999982714653015,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 27
+            }
+          },
+          "object_target_after": 0.9999982118606567
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 26
+            }
+          },
+          "object_target_after": 0.9999982118606567
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_f594aa5190af49a5670b",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00086",
+      "old_candidate": [
+        60,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9961107969284058,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9968146681785583
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9983411431312561
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_fd3b177b41f12fc13b79",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00087",
+      "old_candidate": [
+        145,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999967217445374,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9999966025352478
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9999966025352478
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_bc1f9ce663880d950e92",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00088",
+      "old_candidate": [
+        56,
+        2
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.99994957447052,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9999487400054932
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9999452829360962
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5ec136a41d06caffbbdf",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00089",
+      "old_candidate": [
+        130,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9942467212677002,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9941721558570862
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9944544434547424
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_18163d523e01be1f645a",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00090",
+      "old_candidate": [
+        58,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999404549598694,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9999444484710693
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9999184012413025
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e41a59d4722822d9dd30",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00091",
+      "old_candidate": [
+        129,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9954000115394592,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            }
+          },
+          "object_target_after": 0.9953196048736572
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9953675270080566
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_66c81bc95d8d4ebf0ae2",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00092",
+      "old_candidate": [
+        56,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9997909665107727,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9998888373374939
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9998302459716797
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6ad5dca9cd7df12a40b0",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00093",
+      "old_candidate": [
+        149,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.998699426651001,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9986600875854492
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9987939596176147
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_d3801d8e369e03635ff6",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00094",
+      "old_candidate": [
+        58,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9990159869194031,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9995175004005432
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9998482465744019
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6dedf245ca8df65b0de5",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00095",
+      "old_candidate": [
+        153,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9865071773529053,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9864106774330139
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9864106774330139
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_47b427dd422caa7a094b",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00096",
+      "old_candidate": [
+        28,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999451637268066,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999470114707947
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999472498893738
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_4d3c1dc86384047995b2",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00097",
+      "old_candidate": [
+        198,
+        2
+      ],
+      "truth_role": -2,
+      "object_target_before": 0.6938909292221069,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.6963249444961548
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.6963249444961548
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_d0172849ac4f10db40f9",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00098",
+      "old_candidate": [
+        28,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9998437762260437,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9998443126678467
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9998587369918823
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8d9d2ce8e91816e6190f",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00099",
+      "old_candidate": [
+        200,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9904673099517822,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9903973937034607
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9903973937034607
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_d67e7ccf0a95dbe912a1",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00100",
+      "old_candidate": [
+        31,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9994087219238281,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9994696378707886
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9994969964027405
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_8b82cc3d757818e58646",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00101",
+      "old_candidate": [
+        176,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9951257109642029,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.995219349861145
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9962570667266846
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_7e8a7933ea3f2c3236a4",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00102",
+      "old_candidate": [
+        30,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9900342226028442,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9985443353652954
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9989024996757507
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_767398abe3a36994a8d1",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00103",
+      "old_candidate": [
+        172,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9868654608726501,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9862493872642517
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9862493872642517
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e1e860fba436b9bcfdda",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00104",
+      "old_candidate": [
+        34,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9998825192451477,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 21
+            }
+          },
+          "object_target_after": 0.9999034404754639
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 21
+            }
+          },
+          "object_target_after": 0.9999000430107117
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_63b30f172d662e514270",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00105",
+      "old_candidate": [
+        180,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9975699782371521,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9975180625915527
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9975180625915527
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_3bf528824e96c3db0ede",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00106",
+      "old_candidate": [
+        28,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.999737024307251,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9997411370277405
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.999780535697937
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_ea2f25e3423050548c8f",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00107",
+      "old_candidate": [
+        181,
+        2
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.801289975643158,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 6
+            }
+          },
+          "object_target_after": 0.8004245162010193
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.8160990476608276
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_409a076ba7913667d9e7",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00108",
+      "old_candidate": [
+        29,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9983819723129272,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.998043417930603
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9977473616600037
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_a345e5a89e5e45db36bc",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00109",
+      "old_candidate": [
+        200,
+        1
+      ],
+      "truth_role": -2,
+      "object_target_before": 0.9822381138801575,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9874430298805237
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9902397394180298
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_cc5d7bdafc766a505e45",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00110",
+      "old_candidate": [
+        28,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9972845911979675,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9963082671165466
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9946770668029785
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_2bb92613459cf761eaf1",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00111",
+      "old_candidate": [
+        198,
+        1
+      ],
+      "truth_role": 1,
+      "object_target_before": 0.9494339227676392,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9520336389541626
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9589647054672241
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_60b150ad769ba0005295",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00112",
+      "old_candidate": [
+        34,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999305009841919,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9999262690544128
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9999383687973022
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_b8b865051c33fd0b1118",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00113",
+      "old_candidate": [
+        170,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9853095412254333,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.99391108751297
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.990958571434021
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6d7c9cd033e78348452c",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00114",
+      "old_candidate": [
+        27,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999552965164185,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9999271035194397
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9999398589134216
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_9ad451014fc1b7bbccbc",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00115",
+      "old_candidate": [
+        169,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9919101595878601,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9829850792884827
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9870499968528748
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6b0f5ccc4707a7b142d6",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00116",
+      "old_candidate": [
+        32,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9995284676551819,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9994917511940002
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9994480609893799
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_4d7d6f3e5d35a35387a5",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00117",
+      "old_candidate": [
+        183,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.988320529460907,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9901930689811707
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9933609962463379
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_138786a78ade774957d2",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00118",
+      "old_candidate": [
+        29,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9973948001861572,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9968516230583191
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9967775940895081
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_80392450889b1aec68dc",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00119",
+      "old_candidate": [
+        181,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9972711801528931,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9975557327270508
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9980717897415161
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_71751243375867251707",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00120",
+      "old_candidate": [
+        56,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.999947726726532,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            }
+          },
+          "object_target_after": 0.9999459385871887
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.9999434351921082
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_aac2fbf94b0a1162f45a",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00121",
+      "old_candidate": [
+        145,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999982714653015,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9999982118606567
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9999982118606567
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_bef833875ff596770a99",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00122",
+      "old_candidate": [
+        55,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999369382858276,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999324679374695
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999324679374695
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_cf1032b9c67c7fcb81fb",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00123",
+      "old_candidate": [
+        168,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9956226944923401,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9955248236656189
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9955248236656189
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_507e57ae5c441430935a",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00124",
+      "old_candidate": [
+        67,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.999998927116394,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9999989867210388
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 17
+            }
+          },
+          "object_target_after": 0.9999988675117493
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_c641c93b942c757b6de3",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00125",
+      "old_candidate": [
+        130,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9891330003738403,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9890445470809937
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9891442060470581
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_c84b8a5260a431ff45f3",
+      "route": "femoral",
+      "case": "v6_reader_fresh_00126",
+      "old_candidate": [
+        68,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999983310699463,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9999983906745911
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 16
+            }
+          },
+          "object_target_after": 0.9999955892562866
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_00669fe16b68df5b4e56",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00127",
+      "old_candidate": [
+        131,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9941142201423645,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.993847131729126
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.993847131729126
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_1206a4ae102b4a8b512e",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00129",
+      "old_candidate": [
+        154,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.998956024646759,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9989714026451111
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9989171624183655
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_f148ef5c202688a05828",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00131",
+      "old_candidate": [
+        120,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999982714653015,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999982118606567
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999982118606567
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_21ac8b74e682f373095b",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00133",
+      "old_candidate": [
+        203,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.640685498714447,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.6471985578536987
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.7802181243896484
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5bfed8241827612f50fe",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00135",
+      "old_candidate": [
+        199,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.5991094708442688,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.6012269854545593
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.6012269854545593
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_2f07885f2abfb778a23f",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00137",
+      "old_candidate": [
+        180,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.7654503583908081,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.7884312868118286
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.7893509268760681
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_9a11ccc8ad3ef18d3994",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00139",
+      "old_candidate": [
+        171,
+        0
+      ],
+      "truth_role": 1,
+      "object_target_before": 0.9898343682289124,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9894136190414429
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9894136190414429
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_1a8ca8222f6422265818",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00141",
+      "old_candidate": [
+        179,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.998688817024231,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9986490607261658
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9986490607261658
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_88dc51180bfaacdb39f9",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00143",
+      "old_candidate": [
+        179,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9987267851829529,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            }
+          },
+          "object_target_after": 0.9986936450004578
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 4
+            }
+          },
+          "object_target_after": 0.9986936450004578
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_ef6b3d03877c25549cc2",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00145",
+      "old_candidate": [
+        197,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9994556903839111,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9994984865188599
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9995813965797424
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_7233f1e0408827a824d0",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00147",
+      "old_candidate": [
+        201,
+        1
+      ],
+      "truth_role": -2,
+      "object_target_before": 0.9781053066253662,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9803602695465088
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9884805083274841
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_e5a143ef188e9b0808c2",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00149",
+      "old_candidate": [
+        170,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9862240552902222,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 18
+            }
+          },
+          "object_target_after": 0.9899913668632507
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9906401038169861
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_80616312dfd4fe05db11",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00151",
+      "old_candidate": [
+        173,
+        1
+      ],
+      "truth_role": 1,
+      "object_target_before": 0.12861214578151703,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.13887251913547516
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.13779233396053314
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_c79fc7058fe261ca3188",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00153",
+      "old_candidate": [
+        180,
+        2
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9937838912010193,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9949899315834045
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9957464337348938
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_fdfaba9840b616b33bdc",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00155",
+      "old_candidate": [
+        184,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.968557596206665,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.9759694933891296
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 6
+            }
+          },
+          "object_target_after": 0.9801514148712158
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_21b169d1577f17ac9cda",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00157",
+      "old_candidate": [
+        146,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999985694885254,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 20
+            }
+          },
+          "object_target_after": 0.9999985694885254
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 19
+            }
+          },
+          "object_target_after": 0.9999985694885254
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_63bf9a9c09c782fc1616",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00159",
+      "old_candidate": [
+        145,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9959961771965027,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.996001124382019
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.996001124382019
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_b55af30844343f599cc1",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00161",
+      "old_candidate": [
+        128,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999985098838806,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            }
+          },
+          "object_target_after": 0.9999984502792358
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 2
+            }
+          },
+          "object_target_after": 0.9999984502792358
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6f4e541dac7e6e7f9f33",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00163",
+      "old_candidate": [
+        121,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9975648522377014,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9974898099899292
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9974898099899292
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_fad6360ba09275cf9b70",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00165",
+      "old_candidate": [
+        150,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9983260035514832,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9983324408531189
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9977430105209351
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_7cb2174f045bbb0fa4ca",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00167",
+      "old_candidate": [
+        120,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9999980926513672,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999979138374329
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9999979138374329
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_c08763f59c4192770ea4",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00169",
+      "old_candidate": [
+        200,
+        1
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.994828999042511,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9948086738586426
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.9948086738586426
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_5bd713bffa55a0a021c2",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00171",
+      "old_candidate": [
+        208,
+        0
+      ],
+      "truth_role": -1,
+      "object_target_before": 0.014069263823330402,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.020571712404489517
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.10718992352485657
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_2bd234a37a447d70a325",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00173",
+      "old_candidate": [
+        170,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9969522356987,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 14
+            }
+          },
+          "object_target_after": 0.9968903660774231
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 13
+            }
+          },
+          "object_target_after": 0.9969664216041565
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_68d2c7bc77e029b3af4e",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00175",
+      "old_candidate": [
+        171,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.98712158203125,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            }
+          },
+          "object_target_after": 0.9867022633552551
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 3
+            }
+          },
+          "object_target_after": 0.9867022633552551
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6283751e3825719aa8ff",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00177",
+      "old_candidate": [
+        185,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9524840712547302,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 10
+            }
+          },
+          "object_target_after": 0.9741116166114807
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9566923379898071
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_57fff34154e17d50bd1c",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00179",
+      "old_candidate": [
+        182,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9822439551353455,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9833987355232239
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9835710525512695
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_a8e35664a5c410957871",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00181",
+      "old_candidate": [
+        201,
+        2
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.996953547000885,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.997404932975769
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9983826279640198
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_38c5d21547045bcfc483",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00183",
+      "old_candidate": [
+        201,
+        0
+      ],
+      "truth_role": -2,
+      "object_target_before": 0.6077350974082947,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.6261773705482483
+        },
+        "after_probe": {
+          "new_same_instance_seen": false,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            }
+          },
+          "object_target_after": 0.6839749813079834
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_3561f2b683ce97a857c9",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00185",
+      "old_candidate": [
+        173,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9968897104263306,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 9
+            }
+          },
+          "object_target_after": 0.9962956309318542
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 5
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9953911900520325
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_ba6266a713e6ffce4a7d",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00187",
+      "old_candidate": [
+        171,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9797395467758179,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 15
+            }
+          },
+          "object_target_after": 0.9889817237854004
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 1
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 11
+            }
+          },
+          "object_target_after": 0.9881505966186523
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_7142f2f1ddbfb622459b",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00189",
+      "old_candidate": [
+        183,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9110889434814453,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9250193238258362
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 12
+            }
+          },
+          "object_target_after": 0.9373819231987
+        }
+      }
+    },
+    {
+      "layout_id": "atlas_v2_6b20fcdbfacc302bd20b",
+      "route": "groin_to_distal_calf",
+      "case": "v6_reader_fresh_00191",
+      "old_candidate": [
+        179,
+        0
+      ],
+      "truth_role": 0,
+      "object_target_before": 0.9220670461654663,
+      "scopes": {
+        "after_hold": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 8
+            }
+          },
+          "object_target_after": 0.9362878799438477
+        },
+        "after_probe": {
+          "new_same_instance_seen": true,
+          "matches": {
+            "objects": {
+              "any_new_same_instance_linked": false,
+              "new_supposed_members": 0
+            },
+            "object_oracle": {
+              "any_new_same_instance_linked": true,
+              "new_supposed_members": 7
+            }
+          },
+          "object_target_after": 0.9233115911483765
+        }
+      }
+    }
+  ]
+}

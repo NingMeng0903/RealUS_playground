@@ -1,0 +1,21 @@
+{
+  "scope": "Post-run diagnostic on exact existing 512 synthetic one-step centering contexts. Removing fixed candidate changes only the offline candidate subset, not trained models.",
+  "trial_count": 512,
+  "fixed_candidate_index": 0,
+  "fixed_candidate_millimetres": [
+    3.5,
+    0.0,
+    -2.5
+  ],
+  "target_plane_mm": [
+    4.0,
+    -3.0
+  ],
+  "center_threshold_mm": 2.0,
+  "analytic_selects_fixed": 424,
+  "analytic_success_all": 488,
+  "analytic_success_without_fixed": 300,
+  "fixed_alone_success": 512,
+  "oracle_success_all": 512,
+  "oracle_success_without_fixed": 421
+}

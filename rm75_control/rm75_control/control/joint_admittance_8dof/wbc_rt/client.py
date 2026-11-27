@@ -649,6 +649,11 @@ class NativeWbcClient:
                 self._last_wait_s = time.monotonic() - self._inflight_t0
                 self._last_wait_reason = "deadline"
                 return self._deadline_miss_step(twist)
+        model_time_s = kwargs.get("model_time_s")
+        if model_time_s is not None:
+            model_time_s = float(model_time_s)
+            if not np.isfinite(model_time_s) or model_time_s <= 0.0:
+                raise ValueError("model_time_s must be finite and positive")
         rec = self._in[0]
         rec["seq"] = np.uint64(0)
         rec["magic"] = P.WBC_MAGIC
@@ -739,7 +744,9 @@ class NativeWbcClient:
         self._request_thread_cpu_s = time.thread_time()
         self._inflight_seq = seq
         self._inflight_t0 = time.monotonic()
-        rec["t_mono"] = self._inflight_t0
+        # The worker may read as soon as seq is published, before notification.
+        # Simulation time belongs in the payload; IPC deadlines stay on wall time.
+        rec["t_mono"] = self._inflight_t0 if model_time_s is None else model_time_s
         rec["seq"] = np.uint64(seq)
         try:
             self._notify_request()
@@ -775,6 +782,9 @@ class NativeWbcClient:
         self._published_q_cmd = q_cmd.copy()
         self._published_qdot = qdot.copy()
         native_status = int(o["status"])
+        pause_reason = {
+            0: "", 1: "task_infeasible", 2: "publication_infeasible", 3: "qsend_position",
+        }.get(int(o["task_pause_reason"]), "native_pause")
         if auto_commit:
             self._sync_q()
             if native_status == P.STATUS_OK:
@@ -862,13 +872,9 @@ class NativeWbcClient:
             sigma_arm=float(o["sigma_arm"]),
             task_progress=float(o["task_progress_alpha"]),
             task_paused=bool(o["task_paused"]),
-            task_pause_reason={0: "", 1: "task_infeasible", 2: "publication_infeasible"}.get(int(o["task_pause_reason"]), "native_pause"),
+            task_pause_reason=pause_reason,
             fallback_level="stop" if native_status == P.STATUS_FAIL else "none",
-            fallback_reason=(
-                {0: "", 1: "task_infeasible", 2: "publication_infeasible"}.get(
-                    int(o["task_pause_reason"]), "native_pause"
-                )
-            ),
+            fallback_reason=pause_reason,
             solver_fault_latched=bool(native_status == P.STATUS_FAIL),
             rail_base_shaped=float(o["rail_base_shaped"]),
             rail_base_raw=float(o["rail_base_raw"]),

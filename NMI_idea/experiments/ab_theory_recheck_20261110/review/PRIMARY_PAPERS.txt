@@ -1,0 +1,107 @@
+Bounded primary-source check, 2026-11-11
+
+Purpose: establish the actual novelty threshold for the two proposed mechanisms.
+This is not an exhaustive priority search or a claim that no related work exists.
+Only publisher/proceedings pages and author manuscripts/projects are relied on.
+The experimental design recommendations below are the auditor's inferences.
+
+1. Li, Lai, Li, Zhang & Pan, "Uncalibrated Adaptive Robot Visual Servoing on
+Image Space with Parameter Convergence", ACC 2024, pp.3088-3093.
+https://ieeexplore.ieee.org/document/10644769/
+Publisher abstract verified; full paper was not accessible in this check.
+The abstract reports composite adaptation, parameter and image-error convergence
+under interval excitation, and a 7-DoF robot experiment. Therefore generic online
+Jacobian/parameter identification plus improved visual servoing is established
+prior art. Our own linear derivation does not depend on an uninspected proof in
+this paper. Novelty must concern the anatomy-conditioned observation model,
+task-relevant identifiable quantities, or demonstrable transfer/data savings.
+
+2. S. L. Li et al., "Controlling diverse robots by inferring Jacobian fields
+with deep networks", Nature 643, 89-95 (2025), published 25 June 2025.
+https://www.nature.com/articles/s41586-025-09170-0
+Author manuscript read: https://arxiv.org/html/2407.08722v2
+Author project: https://scenerepresentations.org/publications/jacobian-fields/
+The work learns a visual representation of geometry and action sensitivity
+from random robot motions and uses it for closed-loop control. It demonstrates
+different robot systems; that is not evidence for our anatomical transfer.
+It already establishes the broad response-field idea. A defensible distinction
+here needs independent patient/condition transfer, partial internal visibility,
+identity ambiguity and calibrated task-response prediction at lower adaptation
+cost. Calling a response model a field or reusable skill is insufficient.
+Metadata note: the author HTML has stale template conference/year placeholders;
+the publication year/venue above were checked against the publisher and author
+project, not inferred from those placeholders.
+
+3. Raina et al., "Robotic Sonographer: Autonomous Robotic Ultrasound using
+Domain Expertise in Bayesian Optimization", ICRA 2023.
+https://arxiv.org/html/2307.02442v1
+The author paper uses an expert-informed prior quality map, Gaussian-process
+Bayesian optimization and image-quality feedback, evaluated on three bladder
+phantoms. It directly shows that anatomical/domain priors and probabilistic
+search can coexist. It does not establish our continuous vascular response
+transfer or branch-dependent acquisition. Include a competent prior-informed
+BO/coverage baseline if claiming acquisition/search novelty; do not characterize
+existing probabilistic methods as requiring removal of templates or all priors.
+
+4. Vinter-Hviid, Sloth, Savarimuthu & Iturrate, "Safe contact-based robot active
+search using Bayesian optimization and control barrier functions", 2024.
+https://www.frontiersin.org/journals/robotics-and-ai/articles/10.3389/frobt.2024.1344367/full
+The primary article combines informative continuous expected improvement with
+contact-force control for ultrasound search, reporting simulation and robot
+experiments. It already treats information along continuous sampling paths and
+bounded search time. Thus endpoint-only sensing baselines and uncharged contact/
+motion would be inadequate here. It does not substitute for the proposed test
+of posterior-dependent, state-dependent subsequent imaging actions. Compare
+continuous-information acquisition fairly, and preserve our current distinction
+between geometric simulation and actual force/ultrasound evidence.
+
+5. Curtis et al., "Partially Observable Task and Motion Planning with
+Uncertainty and Risk Awareness" (TAMPURA), RSS 2024.
+Official proceedings: https://roboticsproceedings.org/rss20/p118.html
+Author full text read: https://arxiv.org/html/2403.10454v2
+The method plans over belief-space controllers with preconditions and uncertain
+effects, combining information gathering, task utility and continuous execution.
+Its comparisons give planners the same controllers; Appendix H fixes simulated
+controller-query budgets. Appendix J states an abstraction stationarity condition
+and acknowledges imperfect abstractions. Consequently, "information matters
+because it changes feasible future actions" is not new. A contribution here
+would be a concrete anatomical response/decision abstraction with tested validity,
+or measured computational/data benefit over an equally capable belief planner.
+Our inference is not that TAMPURA has already solved ultrasound or our exact
+response-identifiability problem.
+
+6. Hu et al., "Real-World Reinforcement Learning of Active Perception
+Behaviors", NeurIPS 2025 camera-ready author version.
+https://arxiv.org/html/2512.01188v1
+The paper trains active perception policies using privileged observations for
+training-time critics while withholding them from deployed policies; it reports
+eight simulated/real task settings. This establishes a relevant learned-policy
+comparison class and the need to separate training privileges from deployment.
+It does not require this project to adopt RL. If claiming general superiority
+over learned active perception, omitting a competent history-conditioned policy
+forever is not defensible. A known-anatomy test-time oracle remains a privileged
+diagnostic here, never a legal success result.
+
+Foundational theory boundary (not presented as recent novelty)
+
+Subramanian, Sinha, Seraj & Mahajan, "Approximate Information State for
+Approximate Planning and Reinforcement Learning in Partially Observed Systems",
+JMLR 23(12), 2022.
+https://jmlr.org/papers/v23/20-1165.html
+https://jmlr.org/papers/volume23/20-1165/20-1165.pdf
+Information-state conditions preserve current rewards and future predictions;
+approximate conditions lead to bounded planning loss. Thus a new name for a
+belief summary, a Bellman backup, or a generic approximation bound is insufficient.
+The project must show which anatomy-specific summary has identifiable, accurate
+predictive content and nonvacuous decision error under actual costs and actions.
+
+The previous audit already checked the standard POMDP and value-directed
+compression sources below; this review does not claim to replace them:
+Kaelbling, Littman & Cassandra (1998):
+https://people.csail.mit.edu/lpk/papers/aij98-pomdp.pdf
+Poupart & Boutilier (2002):
+https://proceedings.neurips.cc/paper_files/paper/2002/file/14ea0d5b0cf49525d1866cb1e95ada5d-Paper.pdf
+
+No article above supports claiming that our current B beats strong A, that the
+continuous-support repair is new theory, or that a coordinate contract proves
+cross-patient transfer. Those are separate empirical questions.

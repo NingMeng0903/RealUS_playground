@@ -1,0 +1,132 @@
+{
+  "input": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_independent/ownership_right_cap_mesh.npz",
+  "cap_only_flips": [
+    {
+      "edge": [
+        0,
+        308
+      ],
+      "accepted": true,
+      "faces": [
+        908,
+        923
+      ],
+      "old_faces": [
+        [
+          11,
+          0,
+          308
+        ],
+        [
+          0,
+          1,
+          308
+        ]
+      ],
+      "new_faces": [
+        [
+          11,
+          0,
+          1
+        ],
+        [
+          11,
+          1,
+          308
+        ]
+      ]
+    },
+    {
+      "edge": [
+        18,
+        43
+      ],
+      "accepted": true,
+      "faces": [
+        916,
+        917
+      ],
+      "old_faces": [
+        [
+          43,
+          400,
+          18
+        ],
+        [
+          18,
+          42,
+          43
+        ]
+      ],
+      "new_faces": [
+        [
+          400,
+          18,
+          42
+        ],
+        [
+          400,
+          42,
+          43
+        ]
+      ]
+    },
+    {
+      "edge": [
+        465,
+        467
+      ],
+      "accepted": true,
+      "faces": [
+        945,
+        950
+      ],
+      "old_faces": [
+        [
+          465,
+          468,
+          467
+        ],
+        [
+          466,
+          465,
+          467
+        ]
+      ],
+      "new_faces": [
+        [
+          468,
+          467,
+          466
+        ],
+        [
+          468,
+          466,
+          465
+        ]
+      ]
+    }
+  ],
+  "unchanged_original_skin_faces": true,
+  "original_vertex_displacement_max_m": 0.0,
+  "topology": {
+    "vertices": 480,
+    "faces": 956,
+    "boundary_edges": 0,
+    "boundary_components": 0,
+    "boundary_component_vertices": [],
+    "boundary_degrees_not_two": 0,
+    "nonmanifold_edges": 1,
+    "inconsistent_interior_winding": 0,
+    "unused_vertices": 0,
+    "watertight": false,
+    "boundary_vertex_ids": []
+  },
+  "cgal_intersections": {
+    "complete_detect_only": true,
+    "cgal_intersecting_face_pairs": 0,
+    "categories": {},
+    "examples": [],
+    "seconds": 0.0019599980005295947
+  }
+}

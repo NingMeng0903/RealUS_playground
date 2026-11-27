@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,11 @@ from projects.genesis_ue_sync.anatomy_retarget.smplx_body_surface_v7 import (
 from projects.genesis_ue_sync.anatomy_retarget.whole_chain_rest_fit_v1 import (
     INVALIDATED_SMPLX_MODEL_SHA256,
     load_whole_chain_rest_fit_v1,
+)
+from projects.genesis_ue_sync.anatomy_retarget.pose_adapter import (
+    easymocap_fit_to_smplx55,
+    smplx_pose_hash,
+    smplx_shape_hash,
 )
 from projects.genesis_ue_sync.multiview_realtime.publish.static_smplx_track import (
     build_static_track_payload,
@@ -48,11 +54,60 @@ def test_review_station_offset_follows_smplx_joint_pose() -> None:
     )
 
 
-def test_terminal8_mesh_publish_rejects_neutral_before_loading_capture(
-    tmp_path: Path,
-) -> None:
-    with pytest.raises(ValueError, match="frozen to gender=male"):
-        build_static_track_payload(moment_dir=tmp_path, gender="neutral")
+def test_terminal8_mesh_publish_accepts_neutral_capture_payload(tmp_path: Path) -> None:
+    moment = tmp_path / "moment_0000"
+    moment.mkdir(parents=True)
+    source_vertices = np.asarray(
+        [[0.0, 0.1, 0.2], [1.0, 1.1, 1.2], [2.0, 2.1, 2.2], [3.0, 3.1, 3.2]],
+        dtype=np.float32,
+    )
+    source_faces = np.asarray([[0, 1, 2], [1, 2, 3]], dtype=np.int32)
+    source_rh = np.asarray([0.01, -0.02, 0.03], dtype=np.float32)
+    source_poses = np.linspace(-0.4, 0.4, 165, dtype=np.float32)
+    source_poses[:3] = source_rh
+    source_shapes = np.linspace(-0.2, 0.2, 10, dtype=np.float32)
+    source_th = np.asarray([1.0, 2.0, 3.0], dtype=np.float32)
+    source_root_offset = np.asarray([0.1, -0.2, 0.3], dtype=np.float32)
+    source_pelvis = np.asarray([1.5, 2.5, 3.5], dtype=np.float32)
+    result_path = moment / "smplx_result.npz"
+    np.savez(
+        result_path,
+        Rh=source_rh,
+        Th=source_th,
+        poses=source_poses,
+        shapes=source_shapes,
+        root_align_offset=source_root_offset,
+        pelvis_world_m=source_pelvis,
+        vertices=source_vertices,
+        faces=source_faces,
+    )
+
+    with np.load(result_path) as result:
+        payload = build_static_track_payload(moment_dir=moment, gender="neutral")
+        expected_pose = easymocap_fit_to_smplx55(result["Rh"], result["poses"], gender="neutral")
+        expected_betas = np.asarray(result["shapes"], dtype=np.float32).reshape(-1)[:10]
+
+        assert payload["gender"] == "neutral"
+        assert len(payload["vertices"]) == len(source_vertices)
+        assert len(payload["faces"]) == len(source_faces)
+        assert len(payload["poses"]) == 165
+        assert len(payload["smplx_pose_aa_165"]) == 165
+        assert payload["shape_hash"] == smplx_shape_hash(expected_betas, gender="neutral")
+        assert payload["pose_hash"] == smplx_pose_hash(expected_pose, payload["Th"])
+        np.testing.assert_allclose(payload["vertices"], source_vertices, rtol=0.0, atol=0.0)
+        np.testing.assert_array_equal(payload["faces"], source_faces)
+        np.testing.assert_allclose(payload["poses"], source_poses, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(payload["Th"], source_th + source_root_offset, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(payload["pelvis_world_m"], source_pelvis, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(payload["smplx_pose_aa_165"], expected_pose.reshape(-1), rtol=0.0, atol=0.0)
+
+    # Match the JSON metadata decode performed by TrackPoseSubscriber._recv_loop.
+    decoded = json.loads(json.dumps(payload))
+    assert str(decoded["gender"]) == "neutral"
+    native_pose = np.asarray(decoded["smplx_pose_aa_165"], dtype=np.float32).reshape(-1)
+    assert native_pose.size == 165
+    assert decoded["shape_hash"] == payload["shape_hash"]
+    assert decoded["pose_hash"] == payload["pose_hash"]
 
 
 def test_whole_chain_loader_rejects_invalidated_neutral_before_npz(

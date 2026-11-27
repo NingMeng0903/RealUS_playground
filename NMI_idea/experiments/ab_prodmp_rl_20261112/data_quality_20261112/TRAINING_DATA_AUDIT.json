@@ -1,0 +1,39 @@
+{
+  "uniform": {
+    "episodes": 64,
+    "transitions": 1194,
+    "by_slot": [
+      834,
+      105,
+      127,
+      128
+    ],
+    "episode_successes": 58,
+    "wrong_identity_failure": 5,
+    "map_error_failure": 1,
+    "observed_propensities": {}
+  },
+  "fisher": {
+    "episodes": 64,
+    "transitions": 1124,
+    "by_slot": [
+      783,
+      258,
+      36,
+      47
+    ],
+    "episode_successes": 53,
+    "wrong_identity_failure": 9,
+    "map_error_failure": 4,
+    "observed_propensities": {
+      "0.7": 783,
+      "0.25": 279,
+      "0.025": 62
+    },
+    "info_best_nonanchor": 279,
+    "n_nonanchor": 341
+  },
+  "same_initial_sweep": true,
+  "same_first_suffix_pose_and_observation": 64,
+  "transition_count_relative_difference": 0.05862646566164154
+}

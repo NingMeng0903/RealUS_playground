@@ -1,0 +1,125 @@
+{
+  "input": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/rebuild_work/owned_base/atlas_right.npz",
+  "input_sha256": "e9d4d5b4cf1be4b7950ccfcf24c5ff29bac47f679d409d399ebe7288ab3f9c8c",
+  "algorithm": "PyTMesh.fill_small_boundaries(nbe=0,refine=True) only; no global clean/repair",
+  "library_version": "0.18.1",
+  "filled_boundary_count": 2,
+  "max_original_skin_vertex_displacement_m": 0.0,
+  "missing_original_skin_faces": 0,
+  "original_skin_faces": 908,
+  "new_cap_faces": 196,
+  "topology": {
+    "vertices": 554,
+    "faces": 1104,
+    "boundary_edges": 0,
+    "boundary_components": 0,
+    "boundary_component_vertices": [],
+    "boundary_degrees_not_two": 0,
+    "nonmanifold_edges": 0,
+    "inconsistent_interior_winding": 0,
+    "unused_vertices": 0,
+    "watertight": true,
+    "boundary_vertex_ids": []
+  },
+  "cgal_intersections": {
+    "complete_detect_only": true,
+    "cgal_intersecting_face_pairs": 2,
+    "categories": {
+      "tag1_tag2_shared1": 2
+    },
+    "examples": [
+      {
+        "faces": [
+          301,
+          186
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -0.10856728255748749,
+            -1.233963131904602,
+            0.0002891267940867692
+          ],
+          [
+            -0.11340656131505966,
+            -1.2455449104309082,
+            0.018270298838615417
+          ],
+          [
+            -0.09248794615268707,
+            -1.2324968576431274,
+            0.008546709083020687
+          ]
+        ],
+        "vertices_b": [
+          [
+            -0.10856728255748749,
+            -1.233963131904602,
+            0.0002891267940867692
+          ],
+          [
+            -0.0949897641936938,
+            -1.241843620936076,
+            -0.011119195570548376
+          ],
+          [
+            -0.09478158503770828,
+            -1.2430775165557861,
+            0.026783037930727005
+          ]
+        ]
+      },
+      {
+        "faces": [
+          756,
+          186
+        ],
+        "tags": [
+          1,
+          2
+        ],
+        "shared_vertices": 1,
+        "vertices_a": [
+          [
+            -0.11340656131505966,
+            -1.2455449104309082,
+            0.018270298838615417
+          ],
+          [
+            -0.09478158503770828,
+            -1.2430775165557861,
+            0.026783037930727005
+          ],
+          [
+            -0.09248794615268707,
+            -1.2324968576431274,
+            0.008546709083020687
+          ]
+        ],
+        "vertices_b": [
+          [
+            -0.10856728255748749,
+            -1.233963131904602,
+            0.0002891267940867692
+          ],
+          [
+            -0.0949897641936938,
+            -1.241843620936076,
+            -0.011119195570548376
+          ],
+          [
+            -0.09478158503770828,
+            -1.2430775165557861,
+            0.026783037930727005
+          ]
+        ]
+      }
+    ],
+    "seconds": 0.0036699789998237975
+  },
+  "wall_seconds": 0.008545473003323423
+}

@@ -1,0 +1,392 @@
+name: realus_bed_rail_5cam_scene
+environment:
+  ue_environment_preset: soft_studio
+  ue_ground_plane_color: [0.055, 0.060, 0.070, 1.0]
+  ue_map: /Game/Bedlam/IBLMap
+  ue_hdri_name: abandoned_hopper_terminal_03
+  ground_plane_color:
+  - 0.92
+  - 0.92
+  - 0.92
+  - 1.0
+support_surface:
+  name: bed_surface
+  pos:
+  - 0.0
+  - 0.0
+  - 0.14041453319026173
+  size:
+  - 1.926561951637268
+  - 0.701645016670227
+  - 0.28082906638052346
+  rotation_deg: -0.010040283203125
+  quat_xyzw:
+  - 0.0
+  - 0.0
+  - -8.761799975150096e-05
+  - 0.999999996161543
+  color:
+  - 0.55
+  - 0.78
+  - 0.95
+  - 1.0
+  semantic_role: bed
+  spawn_in_genesis: true
+  spawn_in_ue: true
+robot_model_overrides:
+  rm75_6f_8dof:
+    joint_positions: &id001
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    use_collision_geometry: false
+  rm75_6f:
+    joint_positions:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    use_collision_geometry: false
+robot:
+  model_id: rm75_6f_8dof
+  name: robot_main
+  base_pos:
+  - -0.4494202494604286
+  - 0.4488370418535608
+  - -0.0020000000000000018
+  base_quat_wxyz:
+  - -0.707106781186194
+  - 6.133173666736564e-19
+  - 1.2266347333473124e-18
+  - 0.707106781186901
+  joint_positions: *id001
+  rail:
+    enabled: true
+    axis: y
+    travel_m: 0.8
+    joint_index: 0
+    note: 'RealUS 8-DOF: rail_y is URDF joint 0; UE spawn uses rail_base root pose'
+  use_collision_geometry: false
+  use_visual_mesh: true
+  visual_mesh_format: fbx
+  ue_visual_asset_root: /Game/Bedlam/Generated/RM758DofVisual
+  color:
+  - 0.55
+  - 0.55
+  - 0.6
+  - 1.0
+human:
+  anchor_pos:
+  - 0.0
+  - 0.0
+  - 0.0
+  support_margin_m: 0.015
+  support_reference: support_surface_top
+  align_floor: true
+  ue_root_offset_genesis_m:
+  - 0.0
+  - 0.0
+  - 0.0
+motion:
+  source_id: realus_easymocap_subject
+  sequence_npz_path: assets/human_reference/subject_shape_tpose.npz
+  fps: 30.0
+  frame_count: 1
+  start_frame: 0
+  frame_step: 1
+render:
+  fps: 30.0
+  frame_limit: 1
+  genesis_backend: cuda
+  ue_frame_count: 1
+  ue_frame_step: 1
+  ue_render_now: false
+ue_avatar:
+  body_mode: official_retargeted_overlay
+  body_name: it_4375_M_2400
+  texture_body: Male_Skin_Preset_0027
+  texture_clothing: gr_ben_004_M_texture_01
+  texture_clothing_overlay: T_gr_ben_004_M_texture_01_diffuse
+  skeletal_mesh_path: /Engine/PS/Bedlam/SMPLX_LH_animations/it_4375_M/it_4375_M_2400
+  animation_asset_root: /Game/Bedlam/Generated/RetargetedAnimations
+  imported_fbx_root: /Game/Bedlam/Generated/ImportedSMPLMotion
+  hidden_material_path: /Engine/PS/Bedlam/Core/Materials/M_SMPLX_Hidden.M_SMPLX_Hidden
+  fbx_global_scale: 100.0
+  subject_betas_path: outputs/offline_capture/latest/beta_calibration/betas.npy
+  initial_pose: tpose
+  shape_authority: ue_skeletal_mesh
+  note: BEDLAM skeletal mesh defines rendered shape; subject betas require an explicitly
+    imported subject mesh.
+cameras:
+- name: cam1
+  res: &id002
+  - 1920
+  - 1080
+  pos:
+  - 0.1
+  - -1.2
+  - 1.7
+  lookat:
+  - -0.1
+  - -0.1
+  - 0.45
+  up:
+  - -0.13333333333333333
+  - 0.7333333333333332
+  - 0.6666666666666664
+  fov: 44.234570590419565
+  fov_axis: vertical
+  intrinsics: &id003
+  - - 1325.06992068702
+    - 0.0
+    - 964.0668306960372
+  - - 0.0
+    - 1328.7095435231263
+    - 532.3394514567664
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion: &id004
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - 0.9838699100999073
+    - 0.13333333333333333
+    - -0.11925695879998878
+    - 0.1
+  - - 0.17888543819998318
+    - -0.7333333333333332
+    - 0.6559132733999382
+    - -1.2
+  - - -0.0
+    - -0.6666666666666664
+    - -0.7453559924999299
+    - 1.7
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
+    candidate_note: Validated virtual UE camera geometry; physical cameras need their
+      own measured calibration.
+- name: cam2
+  res:
+  - 1920
+  - 1080
+  pos:
+  - -1.493263325475338
+  - 0.8781155611496004
+  - 1.5356295813890233
+  lookat:
+  - -0.8468274841181597
+  - 0.464003420644034
+  - 0.8948239649236587
+  up:
+  - 0.5339482479585084
+  - -0.3543935079642376
+  - 0.7676617158710075
+  fov: 43.96475402015218
+  fov_axis: vertical
+  intrinsics:
+  - - 1337.1751342055215
+    - 0.0
+    - 975.1075839483836
+  - - 0.0
+    - 1337.7313887970467
+    - 560.0300609498038
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - -0.5449953702864123
+    - -0.5339482403812584
+    - 0.646435861443449
+    - -1.493263325475338
+  - - -0.8384010940319029
+    - 0.35439348822814887
+    - -0.4141121358129858
+    - 0.8781155611496004
+  - - -0.007978213614843703
+    - -0.7676617302531384
+    - -0.6408055992360501
+    - 1.5356295813890233
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
+    candidate_note: Validated virtual UE camera geometry; physical cameras need their
+      own measured calibration.
+- name: cam3
+  res:
+  - 1920
+  - 1080
+  pos:
+  - 0.3
+  - 1.3
+  - 1.5
+  lookat:
+  - -0.1
+  - 0.1
+  - 0.5
+  up:
+  - -0.19611613513818404
+  - -0.588348405414552
+  - 0.7844645405527361
+  fov: 42.99366126007098
+  fov_axis: vertical
+  intrinsics:
+  - - 1371.6142420974936
+    - 0.0
+    - 998.2245338999836
+  - - 0.0
+    - 1371.0922735981253
+    - 540.7921374312424
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - -0.9486832980505139
+    - 0.19611613513818404
+    - -0.2480694691784169
+    - 0.3
+  - - 0.316227766016838
+    - 0.588348405414552
+    - -0.7442084075352506
+    - 1.3
+  - - 0.0
+    - -0.7844645405527361
+    - -0.6201736729460422
+    - 1.5
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
+    candidate_note: Validated virtual UE camera geometry; physical cameras need their
+      own measured calibration.
+- name: cam4
+  res:
+  - 1920
+  - 1080
+  pos:
+  - -1.5365651454938123
+  - -0.9363151605636123
+  - 1.5501855134239166
+  lookat:
+  - -0.9236054626574383
+  - -0.43623918635766823
+  - 0.9384629887136884
+  up:
+  - 0.4883279252582682
+  - 0.3688736423997056
+  - 0.7908653952190474
+  fov: 43.13956644978462
+  fov_axis: vertical
+  intrinsics:
+  - - 1366.3979855885582
+    - 0.0
+    - 977.2198352139376
+  - - 0.0
+    - 1365.9886168008622
+    - 541.179051947081
+  - - 0.0
+    - 0.0
+    - 1.0
+  distortion:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  world_from_camera:
+  - - 0.621141083796041
+    - -0.4883279309555732
+    - 0.6129596935111873
+    - -1.5365651454938123
+  - - -0.7834898050650844
+    - -0.3688736326891152
+    - 0.5000759626954807
+    - -0.9363151605636123
+  - - -0.018096391346222332
+    - -0.7908653962308535
+    - -0.6117225234245177
+    - 1.5501855134239166
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
+    candidate_note: Validated virtual UE camera geometry; physical cameras need their
+      own measured calibration.
+- name: cam5
+  res: *id002
+  pos:
+  - 1.6
+  - 0.0
+  - 1.4
+  lookat:
+  - -0.1
+  - -0.1
+  - 0.4
+  up:
+  - -0.5054958784325446
+  - -0.029735051672502618
+  - 0.8623164985025762
+  fov: 44.234570590419565
+  fov_axis: vertical
+  intrinsics: *id003
+  distortion: *id004
+  world_from_camera:
+  - - -0.05872202195147034
+    - 0.5054958784325446
+    - -0.8608284620211166
+    - 1.6
+  - - 0.9982743731749959
+    - 0.029735051672502618
+    - -0.050636968354183326
+    - 0.0
+  - - 0.0
+    - -0.8623164985025762
+    - -0.5063696835418332
+    - 1.4
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  metadata:
+    projection_model: opencv_pinhole
+    source: realus_calibration_bundle
+    candidate_note: Validated virtual UE camera geometry; physical cameras need their
+      own measured calibration.

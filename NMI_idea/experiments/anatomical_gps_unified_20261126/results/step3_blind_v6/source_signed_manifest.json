@@ -1,0 +1,104 @@
+{
+  "payload": {
+    "signed_at_utc": "2026-11-27T05:45:24.074251+00:00",
+    "source_files_relative_to_experiment": {
+      "reader/__init__.py": "7bda229636a598815ee32b825566cce109196d8d90f87fb09fa7f750895d8cdb",
+      "reader/baselines.py": "1ab155a6f72daedf2178efadb24061a8fce6073da57a048c06c8a3d173ad1223",
+      "reader/belief_ipe.py": "860259007b7bde3bce2bbd95803788b439874de8367b78648748cd447959b3d7",
+      "reader/dynamic_factor_graph.py": "e22a69675c3be9ec78f8d8954c0624b7e6720a5e3bef32864f392f5478cd821d",
+      "reader/eval_reader.py": "120b8734f6cdda9053cf376aba242fc116e6df5a0037ab5e383568c20411efe8",
+      "reader/joint_association.py": "0a438bb53326f160293e410da3309ac411d3778043b414fe3bfb460c61a1fd8d",
+      "reader/split_prior.py": "ff7d025834c2692e9d92cf95311cdbc4bfc153000379fe8aea6e3d11338d3cb6",
+      "reader/station_classifier.py": "c87de6caecc7e5f20450ccbb4210fc08369221f692761a9d89bc46246a733a4d",
+      "sim/__init__.py": "76abc694fdc87c0730a7277507ad002938274fec528931b85578f918fd1f35a8",
+      "sim/anatomy_assets.py": "1b6ae2feb710d0d267305c67a3a2210e5f9f1cca5ec09cc55b377841d4380bc5",
+      "sim/audit_training_support.py": "13e30b0aa25cf0c679d33c8fb3b86e1f6907327840f9b145d81793c5768e0c76",
+      "sim/holdout_eval_assets.py": "bfbcff1c1b8f05a8557b1c19cff2ef88e66138600689d8a21ee7dc9ff068f28a",
+      "sim/material_chart.py": "1f5d2f777961d212cd8fce92bb71c523b53958d39383cc24ccb7d91b18336bed",
+      "sim/metric_graph_gp.py": "3d6a53e55ae6d7761ee6531c4321d3d29cc6d5bd69cece1dcbc25134a8ad0ac2",
+      "sim/physics_ultrasound_kernel.py": "2de7e144a5881905dc2785f4b3b1b8e845a0706bd5954e200d35a87d0a0b0ca1",
+      "sim/smplx_dynamic_atlas.py": "c50c004fcd1c9382b1bc6641f9c9c472cdf057caf50ce18d511af4c1ec4a1c96",
+      "tests/test_reader_and_tracking.py": "b73c218ae8e115ef03d8fbdddf5e09bfe2d18550e8f24ff7eee30d7111fb5051",
+      "tests/test_reader_evaluation.py": "683051b7313d0801e061a6392241947e0f391c638eb2bd19f96a608a1d2fda04",
+      "tests/test_reader_history.py": "732ac0e0dc8f145fba5d22cb3d15c85de90b17b998f428da4094bc14cbfb2cfe",
+      "tests/test_reader_protocol.py": "2d625648f483502adbd211683772f5c6cd4e839e7533f3490fb2d06d0566ddf8",
+      "tests/test_exact_set_calibration.py": "b662975b8a860b05a91edcfe3c9b28c55e7f7fede5fbdd47beaecf6e729b6691"
+    },
+    "artifacts_relative_to_run": {
+      "FAMILY_HELD_OUT_ATLASES.json": {
+        "sha256": "d5144ffd4202586337eb27a3f40d73df55b8bdffbd01e7c55a8a212921f3a28d",
+        "bytes": 2229060
+      },
+      "FAMILY_HELD_OUT_ATLASES.log": {
+        "sha256": "26a17a6148485b0dd676373c4e7d5fe735e4b95b3fb5e9b7712a5e982ee88db7",
+        "bytes": 139
+      },
+      "LOAO_BODYPARTS.json": {
+        "sha256": "d4433d4d9a34c40864d74f303dd2cf6427697b4f383e36d8b934e7a6b04076fa",
+        "bytes": 1816176
+      },
+      "LOAO_BODYPARTS.log": {
+        "sha256": "bd1060f7aa5258a0e84e5c0df9c411104206ed4da53629e96cdc56d019dcdfb7",
+        "bytes": 121
+      },
+      "LOAO_OPEN3D.json": {
+        "sha256": "292c699d6c0e806db5aa59d53b0191bff8cc3202b863bc5427b938dff45d0384",
+        "bytes": 1405821
+      },
+      "LOAO_OPEN3D.log": {
+        "sha256": "92521f7637b6965cf273e4ab0b64874b030e056515af62fdb14eeab1fb1b7503",
+        "bytes": 115
+      },
+      "checkpoints/FAMILY_HELD_OUT_ATLASES.pt": {
+        "sha256": "1e8c4cb0a67b7055a4652bad0c5155ab37c352fa681a5528001ea353449f323c",
+        "bytes": 397817
+      },
+      "checkpoints/LOAO_BODYPARTS.pt": {
+        "sha256": "5a04d4d7d5a132c6a3f3004554d5ead8f312e07ea41383ff7f68d28028a88a02",
+        "bytes": 406149
+      },
+      "checkpoints/LOAO_OPEN3D.pt": {
+        "sha256": "88fbd7f90b358788ef8a77bd50a6521dba3697e5635265777e16a0742836dc21",
+        "bytes": 409545
+      },
+      "commands.log": {
+        "sha256": "a85d3d574f4d5ae9e9fba8a0090944a19342b0f7fe7bdd58c66a006778d4fcef",
+        "bytes": 1766
+      },
+      "environment.log": {
+        "sha256": "75918cec2cd58c10ea7112bfb791024a651e053630e1c4684f7da1abf9786e6d",
+        "bytes": 375
+      },
+      "exits.log": {
+        "sha256": "bd518aeb761c7f9885b84e4aa0ff8798b035f7be08c6eca34cd04c72e8bb17b3",
+        "bytes": 66
+      },
+      "extracted_metrics.json": {
+        "sha256": "9aad0cb42fe84ba6cf4c9c598007fa96d5abbef5da08e624a223911fcd45cdeb",
+        "bytes": 1919555
+      },
+      "pytest.log": {
+        "sha256": "5995f78c7fb377a19d476668bac7606a19be89341ff9a0a4eb7055b3ea6141c3",
+        "bytes": 53
+      },
+      "source.sha256.log": {
+        "sha256": "eeb554a5855fd923dc829d2d14cebbebc7f619dc181ed5885ddeda001415521e",
+        "bytes": 3052
+      }
+    },
+    "process_exit_codes": {
+      "pytest": 0,
+      "LOAO_OPEN3D": 0,
+      "LOAO_BODYPARTS": 0,
+      "FAMILY_HELD_OUT_ATLASES": 0
+    }
+  },
+  "payload_sha256": "4142d41fc0dc5600fda92a16a8182045d94b15fad2d3a5c8c266120497e6aecf",
+  "signature": {
+    "algorithm": "Ed25519",
+    "public_key_hex": "703fdc2d4850dbdff84f0e74e75788fe3fb214b5a147bf44ebdc57a314ca47e4",
+    "value_hex": "c752622006934ed09b2d74ff96024c3aa689a91446e9aefce8f552be843c66618550d77daea62d7ff2adf9394ad066678250e8824c24bb3229753d7d8d3a760f",
+    "payload_encoding": "UTF-8 JSON with sort_keys=True, separators=(',', ':'), ensure_ascii=True",
+    "trust_scope": "Ephemeral run-local signing key; integrity check, not an externally authenticated identity."
+  }
+}

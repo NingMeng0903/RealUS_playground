@@ -1,0 +1,5 @@
+Module C 决策（2026-11-10，用户澄清后）
+
+源码 ModuleCSmoother 仅对上层笛卡尔位姿命令做时间处理：平移为 Ruckig 限速度/加速度/jerk，关 Ruckig 时为 fallback 位置混合，旋转为单步角度限幅。它不是底层 UltraPOC 的关节 QP，也不做本实验的目标识别。用户决定在 A/B 伺服路径中旁路这一上层模块。
+
+修复后主验证配置：servo/causal_module_c_bypass_config.json，明确 module_c.enable=false 且 use_ruckig=false。servo/causal_no_ruckig_config.json（enable=true、use_ruckig=false）仅作为消融；不能把该消融的可见率称作完整旁路。实际底层关节 QP 能否跟踪、限位和碰撞状态须独立回放检验，不能由旁路后的探头路径模拟代替。

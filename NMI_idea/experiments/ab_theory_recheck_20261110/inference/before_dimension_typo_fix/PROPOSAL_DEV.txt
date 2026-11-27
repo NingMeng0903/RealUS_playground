@@ -1,0 +1,41 @@
+Public-history informed proposal DEV record
+============================================
+
+Scope
+-----
+This is a DEV-only retrospective comparison.  It used sample_prior(720901,
+128) and the first sample_worlds(720902, 1) object, with exact shared-history
+keys (0,'iid','dev') and (0,'shifted','dev').  Prefixes 5 and 8 were evaluated
+against the fixed128 baseline.  No 720913 data were opened.  Predictive and
+terminal fields below are diagnostic forks and never enter q or the importance
+weights.
+
+Informed proposal configuration
+-------------------------------
+epsilon=.1, 16 modes, 8 public-only association patterns (seed 720907),
+N=128, full-history log likelihood, normalized 30D q density, and one
+importance update per prefix.  All four informed cases reached a finite
+importance result, but every raw ESS was approximately 1.0.  This is a real
+weight-degeneracy limitation, not a success claim.
+
+Condition/prefix     finite LL  ESS   maxw  infer(s)  predictive NLL  terminal
+--------------------------------------------------------------------------------
+iid/5 informed       2/128      1.00  1.000   0.974       30.74       false
+iid/5 fixed128       --         1.00  1.000   0.122       69.38       false
+iid/8 informed       1/128      1.00  1.000   1.649       31.97       false
+iid/8 fixed128       --         1.00  1.000   0.196       84.50       false
+shifted/5 informed  14/128      1.00  1.000   0.603      287.92       false
+shifted/5 fixed128   --         1.00  1.000   0.127      337.23       false
+shifted/8 informed  11/128      1.00  1.000   1.288      372.87       false
+shifted/8 fixed128   --         1.00  1.000   0.194      349.91       false
+
+The informed proposal selected a retrospectively audit-quality terminal pose
+in the shifted prefixes, but its public stop was false and the importance
+weights collapsed.  The shifted prefix-8 predictive score was worse than
+fixed128; the proposal therefore demonstrates a normalized, public-only
+support-recovery mechanism, not a validated A/B performance improvement.
+
+The implementation records finite likelihood count, raw ESS, maximum weight,
+evidence estimate, component/pattern hashes, and zero-support failure.  It
+does not floor likelihoods, discard a block, multiply old weights, or use
+private truth.

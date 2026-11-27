@@ -1,0 +1,95 @@
+#pragma once
+
+#include <optional>
+
+#include "wbc_rt/config.hpp"
+#include "wbc_rt/kinematics.hpp"
+#include "wbc_rt/srs_ik.hpp"
+#include "wbc_rt/types.hpp"
+
+namespace wbc_rt {
+
+class PostureRetarget {
+ public:
+  explicit PostureRetarget(const Config& cfg);
+
+  void reset(const Vec8& q, const Vec6& pose);
+  void set_planned_stroke(double d_star, double psi_star);
+  void clear_planned();
+  void begin_unplanned(const Vec8& q, const Vec6& pose);
+  void follow_live(const Vec8& q, const Vec6& pose, double dt);
+  double nudge_d_star(double delta_m, double y_des_m, double rail_lo, double rail_hi,
+                      double dt);
+
+  // Matches Python PostureRetarget.step.  Updates d*, ψ*, q*.
+  // hold_setpoint is accepted but does not freeze (IDVA).
+  void step(const Vec8& q, const Vec6& pose, double dt, double rail_lo, double rail_hi,
+            bool hold_setpoint, double rate_scale = 1.0);
+
+  bool planned() const { return planned_; }
+  double d_star() const { return d_star_; }
+  double psi_cmd() const { return psi_cmd_; }
+  double psi_star() const { return psi_star_; }
+  double homotopy_s() const { return s_; }
+  const Vec8& q_star() const { return q_star_; }
+  // J4 left the design band.  The rail posture channel must keep authority
+  // even while slack fades every other secondary.
+  bool elbow_rescue() const { return elbow_rescue_; }
+
+ private:
+  struct Pack {
+    Eigen::Matrix<double, 7, 1> q_arm;
+    Vec8 q_full;
+  };
+
+  std::optional<Pack> eval_at(const Vec6& pose, double psi, double d) const;
+  std::optional<Pack> eval_at(const Vec6& pose, double psi, double d, int branch) const;
+  std::optional<double> select_d_for_elbow(const Vec8& q, const Vec6& pose, double psi,
+                                           double rail_lo, double rail_hi,
+                                           bool strict = false) const;
+  double posture_cost(const Vec8& q_full, double j4) const;
+  bool update_elbow_rescue(double j4);
+  bool rescue_elbow_d(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
+                      double rail_hi);
+  void advance_homotopy(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
+                        double rail_hi, double live_psi);
+  void maybe_retarget_psi(const Vec8& q, const Vec6& pose, double dt, double rail_lo,
+                          double rail_hi);
+  std::optional<double> search_psi(const Vec8& q, const Vec6& pose, double rail_lo,
+                                   double rail_hi) const;
+  double rate_limit_psi(double dt, double live_psi);
+  double rate_limit_d(double dt);
+  std::optional<std::pair<double, double>> rail_window(double y_tcp, double rail_lo,
+                                                       double rail_hi) const;
+  std::optional<double> clip_d(double d, double y_tcp, double rail_lo, double rail_hi,
+                               double d_live) const;
+  bool j4_in_design(double j4, bool loose) const;
+  bool j4_illegal(double j4, bool has_travel) const;
+  bool q_star_ok(const Eigen::Matrix<double, 7, 1>& q_arm, const Vec8& q_live, const Vec6& pose,
+                 double rail_lo, double rail_hi) const;
+  double homotopy_T(double d0, double d_goal, double psi0, double psi_goal) const;
+
+  const Eigen::Matrix3d* flange_R() const;
+  const Eigen::Vector3d* flange_t() const;
+
+  Config cfg_;
+  int branch_ = 0;
+  bool planned_ = false;
+  bool held_prev_ = false;
+  bool elbow_rescue_ = false;
+  double d_star_ = 0.0;
+  double d0_ = 0.0;
+  double d_center_target_ = 0.0;
+  double psi_cmd_ = 0.0;
+  double psi0_ = 0.0;
+  double psi_star_ = 0.0;
+  double s_ = 0.0;
+  double psi_dot_ = 0.0;
+  double d_dot_ = 0.0;
+  double s_dot_ = 0.0;
+  double search_age_s_ = 0.0;
+  double healthy_dwell_s_ = 0.0;
+  Vec8 q_star_ = Vec8::Zero();
+};
+
+}  // namespace wbc_rt

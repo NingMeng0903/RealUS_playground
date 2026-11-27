@@ -1,0 +1,180 @@
+{
+  "scope": "analytic mechanism examples, not task experiments",
+  "A_nullspace": {
+    "history_prediction_equal": true,
+    "task_relevant_prediction_equal": true,
+    "unexcited_query_predictions": [
+      0.6,
+      1.4
+    ],
+    "history_rank": 1,
+    "parameter_dimension": 2
+  },
+  "A_position_nuisance_and_public_action_set": {
+    "theta_fields": [
+      "position_origin_nuisance",
+      "gain_x",
+      "gain_y"
+    ],
+    "two_parameters_with_identical_history": [
+      [
+        -20.0,
+        1.0,
+        0.6
+      ],
+      [
+        40.0,
+        1.0,
+        1.4
+      ]
+    ],
+    "same_x_query_response": 3.0,
+    "different_y_query_responses": [
+      0.6,
+      1.4
+    ],
+    "rank_before_y_probe": 1,
+    "rank_after_y_probe": 2,
+    "parameter_dimension": 3,
+    "all_xy_queries_identifiable_after_y_probe": true,
+    "position_origin_still_unidentified": true,
+    "scope": "Origin is a cancelling gauge; an actual registration offset that changes visibility or centering cannot be discarded this way."
+  },
+  "A_gain": {
+    "b_mm": 4.0,
+    "g0": 1.0,
+    "tolerance_mm": 0.5,
+    "one_step_pass_gain_interval": [
+      0.875,
+      1.125
+    ],
+    "three_step_pass_gain_interval": [
+      0.5,
+      1.5
+    ],
+    "uniform_gain_domain": [
+      0.4,
+      1.6
+    ],
+    "uniform_one_step_pass_probability_exact": 0.20833333333333334,
+    "uniform_three_step_pass_probability_exact": 0.8333333333333334,
+    "adaptive_second_step_max_abs_error_mm": 4.440892098500626e-16,
+    "interpretation": "Strong RLS/Broyden uses the ordinary first move to identify g; extra probing is not necessary here."
+  },
+  "A_fixed_design_noise": {
+    "sigma_mm": 0.2,
+    "query_u_mm": 4.0,
+    "alpha": 0.05,
+    "required_sum_u_squared_mm2": 9.834134580976961,
+    "two_balanced_offsets_mm": 2.2174461189594847,
+    "coverage_at_threshold": 0.95,
+    "conditions": "Known baseline, independent Gaussian noise, fixed exogenous design, correctly specified local response. Not an adaptive optional-stopping guarantee."
+  },
+  "B_binary": {
+    "grid_formula_max_error": 2.7755575615628914e-17,
+    "p": 0.5,
+    "accuracy": 0.8,
+    "probe_cost": 0.1,
+    "rows": [
+      {
+        "extra_plus_cost": 0.0,
+        "direct_risk": 0.5,
+        "probe_total_risk": 0.29999999999999993,
+        "net_benefit": 0.20000000000000007,
+        "decision": "probe"
+      },
+      {
+        "extra_plus_cost": 0.2,
+        "direct_risk": 0.5,
+        "probe_total_risk": 0.3999999999999999,
+        "net_benefit": 0.10000000000000009,
+        "decision": "probe"
+      },
+      {
+        "extra_plus_cost": 0.4,
+        "direct_risk": 0.5,
+        "probe_total_risk": 0.5,
+        "net_benefit": 0.0,
+        "decision": "tie"
+      },
+      {
+        "extra_plus_cost": 0.5,
+        "direct_risk": 0.5,
+        "probe_total_risk": 0.5499999999999999,
+        "net_benefit": -0.04999999999999993,
+        "decision": "direct"
+      },
+      {
+        "extra_plus_cost": 0.6,
+        "direct_risk": 0.5,
+        "probe_total_risk": 0.6,
+        "net_benefit": -0.09999999999999998,
+        "decision": "direct"
+      },
+      {
+        "extra_plus_cost": 1.0,
+        "direct_risk": 0.5,
+        "probe_total_risk": 0.6,
+        "net_benefit": -0.09999999999999998,
+        "decision": "direct"
+      }
+    ],
+    "state_cost_threshold": 0.4,
+    "only_plus_voi": 0.0,
+    "strong_threshold_probe_baseline": "Matches exact two-step B on this toy; no algorithmic superiority follows."
+  },
+  "B_continuous": {
+    "target_snr_for_accuracy_point8": 0.8416212335729143,
+    "nuisance_snr_for_accuracy_point95": 1.6448536269514722,
+    "continuous_channel_mi_bits": [
+      0.3807561991167243,
+      0.8164166254309129
+    ],
+    "probe_cost_point1_target_snr_threshold": 0.2533471031357997,
+    "equal_information_control": "Set nuisance snr equal to target snr; entropy ties, task VOI differs. A favorable entropy tie-break can match B.",
+    "strict_entropy_pressure_control": "At larger nuisance SNR entropy selects U, which is independent of target H; final target risk remains .5.",
+    "state_cost_checks": [
+      {
+        "extra_plus_cost": 0.0,
+        "risk_closed": 0.19999999999999998,
+        "risk_quadrature": 0.19999999999999998,
+        "absolute_difference": 0.0
+      },
+      {
+        "extra_plus_cost": 0.2,
+        "risk_closed": 0.2933114304387985,
+        "risk_quadrature": 0.29331143043864305,
+        "absolute_difference": 1.5543122344752192e-13
+      },
+      {
+        "extra_plus_cost": 0.5,
+        "risk_closed": 0.40692869805687804,
+        "risk_quadrature": 0.40692869857956915,
+        "absolute_difference": 5.226911126143818e-10
+      },
+      {
+        "extra_plus_cost": 0.8,
+        "risk_closed": 0.4821659030916704,
+        "risk_quadrature": 0.48216590313966,
+        "absolute_difference": 4.7989612284027316e-11
+      }
+    ]
+  },
+  "Gamma_alias": [
+    {
+      "name": "P",
+      "mean": 0.0,
+      "second_moment": 1.0,
+      "posterior_mse": 0.0,
+      "cost_point8_total": 0.8
+    },
+    {
+      "name": "Q",
+      "mean": 0.0,
+      "second_moment": 0.9999999999999998,
+      "posterior_mse": 0.3999999999999999,
+      "cost_point8_total": 1.2
+    }
+  ],
+  "all_checks_passed": true
+}

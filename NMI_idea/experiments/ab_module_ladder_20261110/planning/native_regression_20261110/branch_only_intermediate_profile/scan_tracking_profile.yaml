@@ -1,0 +1,16 @@
+schema: offline_scan_tracking_v1
+scope: native QP with ideal measured-joint feedback; no hardware connection
+controller_overrides:
+  command_lead_arm_deg: 20.0
+  task_weight: [100.0, 100.0, 100.0, 50.0, 50.0, 50.0]
+  extra_posture_limits: false
+reference:
+  kind: WorldPoseSplineReference
+  speed_m_s: 0.02
+  ramp_s: 0.8
+  settle_s: 2.0
+evaluation:
+  middle_edge_s: 0.8
+  position_tolerance_m: 0.002
+  rotation_tolerance_deg: 2.0
+  timestamp_alignment: measured_q_before_vs_reference_same_time

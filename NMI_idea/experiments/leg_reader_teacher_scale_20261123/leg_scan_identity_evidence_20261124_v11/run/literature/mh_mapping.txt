@@ -1,0 +1,569 @@
+                                        IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED JUNE, 2019                                                                              1
+
+
+
+
+                                         Multiple Hypothesis Semantic Mapping for Robust
+                                                       Data Association
+                                                   Lukas Bernreiter, Abel Gawel, Hannes Sommer1 , Juan Nieto, Roland Siegwart and Cesar Cadena
+
+
+
+
+                                           Abstract—In this paper, we present a semantic mapping                          Place Recognition
+                                        approach with multiple hypothesis tracking for data association.
+                                        As semantic information has the potential to overcome ambiguity
+                                        in measurements and place recognition, it forms an eminent
+arXiv:2012.04423v1 [cs.RO] 8 Dec 2020
+
+
+
+
+                                        modality for autonomous systems. This is particularly evident
+                                        in urban scenarios with several similar looking surroundings.
+                                        Nevertheless, it requires the handling of a non-Gaussian and
+                                        discrete random variable coming from object detectors. Previous
+                                        methods facilitate semantic information for global localization
+                                                                                                                                                                   Multiple Hypothesis Tree
+                                        and data association to reduce the instance ambiguity between the
+                                        landmarks. However, many of these approaches do not deal with
+                                        the creation of complete globally consistent representations of the
+                                        environment and typically do not scale well. We utilize multiple                                            Hypothesis 1   Hypothesis 2   Hypothesis 3
+                                        hypothesis trees to derive a probabilistic data association for
+                                        semantic measurements by means of position, instance and class
+                                        to create a semantic representation. We propose an optimized
+                                                                                                                      Fig. 1: We propose a semantic SLAM system that maintains
+                                        mapping method and make use of a pose graph to derive a novel                 multiple hypotheses of the landmark locations structured in
+                                        semantic SLAM solution. Furthermore, we show that semantic                    a hypothesis tree (bottom right image). Data association is
+                                        covisibility graphs allow for a precise place recognition in urban            done in a semantic framework to create new branches in the
+                                        environments. We verify our approach using real-world outdoor                 hypothesis tree. Furthermore, we perform a semantic place
+                                        dataset and demonstrate an average drift reduction of 33 % w.r.t.
+                                        the raw odometry source. Moreover, our approach produces 55 %
+                                                                                                                      recognition method utilizing the object class distribution of a
+                                        less hypotheses on average than a regular multiple hypotheses                 submap (top left image).
+                                        approach.
+                                           Index Terms—SLAM, Semantic Scene Understanding, Proba-
+                                        bility and Statistical Methods                                                   Traditional approaches for localization often rely on specific
+                                                                                                                      low-level visual features such as points and lines which are
+                                                                                                                      inherently ambiguous preventing the approach to scale well to
+                                                                  I. I NTRODUCTION                                    large environments. In contrast, semantic information features
+                                                                                                                      a promising approach for many robotic applications by allow-
+                                           Semantic data is a reliable and ubiquitous flow of informa-                ing more unique local and global descriptors for landmarks
+                                        tion in structured and non-structured environments. Especially                as well as potential viewpoint-invariance. Therefore, this con-
+                                        for perception systems, semantically annotated data and higher                stitutes a crucial factor for the measurement association to
+                                        reasoning about the underlying scene on top of purely geomet-                 mapped landmarks and thus influences the quality of the
+                                        ric approaches have the potential to increase the robustness                  localization. Moreover, semantics are very efficient at dealing
+                                        of the estimation [1], [2]. A reliable mapping is eminently                   with place recognition as they are less affected by seasonal or
+                                        important especially for autonomous, as well as, augmented                    appearance changes as well as large drifts.
+                                        reality systems since the recognition of the surrounding objects                 In a conventional SLAM setting, the measurement noise is
+                                        and the localization in a globally unknown environment are                    commonly relaxed to the continuous Gaussian case [1] which
+                                        crucial factors there.                                                        however, does not apply to semantic variables. Uncertainties
+                                                                                                                      in the object detection such as class labels and object instances
+                                           Manuscript received: February, 24, 2019; Revised May, 16, 2019; Accepted
+                                        June, 10, 2019.                                                               typically involve the handling of non-Gaussian discrete vari-
+                                           This paper was recommended for publication by Editor Cyrill Stachniss      ables. How to properly handle such variables is still quite
+                                        upon evaluation of the Associate Editor and Reviewers’ comments.              challenging and remains an open research question [3]. Many
+                                           This work was supported by the National Center of Competence in Research
+                                        (NCCR) Robotics through the Swiss National Science Foundation and has         existing semantic mapping approaches are primarily concerned
+                                        received funding from the European Union’s Horizon 2020 research and          with the creation of an indoor semantic representation with
+                                        innovation programme under grant agreement No 688652 and from the             minor illumination and viewpoint changes [4]. In contrast,
+                                        Swiss State Secretariat for Education, Research and Innovation (SERI) under
+                                        contract number 15.0284.                                                      realistic outdoor applications often come with severe changes
+                                           All authors are with the Autonomous Systems Lab, ETH Zurich, Zurich        of illumination and viewpoint. This can hamper loop closure
+                                        8092, Switzerland, {berlukas, gawela, sommerh, nietoj,                        detection since drastic view-point changes might render scenes
+                                        rsiegwart, cesarc}@ethz.ch.
+                                          1 Additionally with Sevensense Robotics AG, Zurich.                         completely different when revisiting.
+                                          Digital Object Identifier (DOI): see top of this page.                         Additionally, local descriptors for place recognition often
+2                                                       IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED JUNE, 2019
+
+
+
+
+Fig. 2: System overview of our proposed approach. We make use of our previous work X-View [5] by means of the semantic
+object extraction. Hereby the semantic objects are converted to measurements and used as input for our system. Afterwards we
+start simultaneously with the creation of the factor graph as well as with the multiple hypothesis mapping of the environment.
+Loop closures are detected and placed into the factor graph when submaps are completed.
+
+
+rely on the bag-of-words paradigm [6], [7] which can fail often     A. Related Work
+in environments with repetitive features which commonly
+                                                                       In recent years, the advances to deep learning systems led to
+occur in urban environments leading to false loop closures.
+                                                                    more reliable as well as practically usable object detectors [9].
+   Other semantic SLAM systems do not directly incorporate          Consequently, this allowed SLAM systems to additionally
+the semantic information into the estimation but rather use it      include semantically rich information in order to improve
+to filter out bad classes such as cars or pedestrians before-       their estimation [10]–[12]. Recently, some research specifically
+hand [8].                                                           addresses the problem of correctly assigning measurements
+   In this work, we aim to build a globally consistent semantic     to already known objects utilizing additional semantic infor-
+mapping formulation by improving the incorporation of dis-          mation [13], [14]. These systems, however, do not deal with
+crete random variables in the map building and localization         the estimation of the camera’s position, i.e. their application
+processes. Throughout this paper, observations comprise the         implies a static position of the camera and is often placed
+semantic class and position from static landmarks as well as        indoors. Thus, they are not optimized for viewpoint-invariance,
+the spatial relationship to other static landmarks. We approach     but rather emphasize on the probabilistic data association and
+the measurement association problem by utilizing the semantic       the tracking of objects across multiple scenes.
+class of an object and deferring the decision on associations          Nevertheless, we make use of the close relationship to
+until the ambiguity is resolved. In other words, the decision on    robotic mapping since target tracking is a special case of
+the association is done at a time when more observations are        mapping. Elfring et al. [13] presented a semantic anchoring
+available or a place is revisited allowing to correctly identify    framework using MHTs [15] which defers the data associ-
+the instance label with a certain assurance. This is motivated      ation until the ambiguity between the instances is resolved.
+by the fact that in many cases the most likely association given    Generally, the MHT enables accurate results but is inher-
+only a few measurements does not necessarily need to be the         ently intractable with a large amount of objects and requires
+correct one.                                                        frequent optimizations [16]. The work of Wong et al. [14]
+                                                                    presents an approach using the DPs which yields estimation
+   Furthermore, we derive a loop closure detection and veri-        results comparable to the MHT but with substantially less
+fication algorithm operating directly on the level of semantic      computational effort. Nevertheless, their proposed approach is
+objects. Utilizing the class labels and the spatial relationships   not incremental and therefore, not directly applicable for the
+between the objects enables a robust recognition of places in       mapping of a robot’s environment. Similar, in their previous
+urban environments. An overview of our proposed system is           work [17] the authors propose a world modeling approach
+given in figure 2.                                                  using dependent DPs to accommodate for dynamic objects. In
+    The main contributions of this work are                         their proposed framework, the optimal measurement assign-
+                                                                    ment is computed using the Hungarian method operating on
+    • Consistent multiple hypothesis mapping using an opti-         negative log-likelihoods for the individual cases. Furthermore,
+      mized Multiple Hypothesis Tracking (MHT) approach.            Atanasov et al. [18] emphasizes on a novel derivation of
+    • A Dirichlet Process (DP)-based relaxed probabilistic          the likelihood of Random Finite Set (RFS) models using the
+      Hungarian algorithm for viewpoint-invariance.                 matrix permanent for localizing in a prior semantic map. Their
+    • Semantic selection strategy to identify potential submaps     system utilizes a probabilistic approach for data association
+      for loop closures.                                            which considers false positives in the measurements.
+    • Place recognition based on the semantic classes and the          There is a vast literature on indoor semantic mapping
+      covisibility graphs.                                          available which however, does often not directly incorporate
+    • Incorporation of the proposed approach into a graph-          semantic information in a SLAM pipeline but rather uses the
+      based semantic SLAM pipeline and evaluation of the            information for mapping and scene interpretation [19] [20].
+      resulting system.                                             The work that is most similar to ours is the work of Bowman
+BERNREITER et al.: MULTIPLE HYPOTHESIS SEMANTIC MAPPING FOR ROBUST DATA ASSOCIATION                                                                                    3
+
+
+
+et al. [21] which proposed a semantic system which enables
+to directly facilitate semantic factors in their optimization
+framework. Despite using probabilistic formulation for the
+data association, their approach inherently neglects false pos-
+itives and false negatives, and lacks including a prior on the
+assignments. Moreover, they limited the possible classes in
+their mapping so that only cars were enabled in their outdoor
+experiments. This greatly reduces the complexity in outdoor
+scenarios with semantically rich information and further, is
+not a reliable source for place recognition. Another direction
+of research is to represent landmarks as quadrics to capture
+additional information such as size and orientation [12], [22].
+However, they either assume that the measurement association
+is given [22] or utilize the semantic labels for a hard associ-
+ation using a nearest neighbor search [12]. Thus, their work                     Fig. 3: Likelihood of assigning a measurement to a specific
+does not include any probabilistic inference for the association                 scenario. Each measurement zti , at time t, could be assigned
+and does not consider false positives.                                           to any of the existing landmarks m{1..6} , represent a new
+   Our previous work by Gawel et al. [5] represents the                          landmark (new) or a false positive (fp). The thickness and
+environment using semantic graphs and performs global lo-                        opacity denotes how likely the association is given a certain
+calization by matching query graphs of the current location                      example of measurements and landmarks.
+with a global graph. The query graphs however, are not used
+in a data association framework and thus, landmarks could
+potentially be duplicated. This system does neither deal with                    t for which we assume conditional independence of the
+map management and optimization nor with drift reduction                         individual measurements such that it equals to
+for globally consistent mapping. Our semantic SLAM system                          n                                            n
+does not require any prior of the object shapes and comprises a
+                                                                                   Y                                            Y
+                                                                                         f (z it |θti = l, Zt−1 ) = ps (cit )         p(cit |γt−1
+                                                                                                                                              l
+                                                                                                                                                  )f (pit |π lt−1 ),
+soft probabilistic data association for semantic measurements.                     i=1                                          i=1
+To the best of our knowledge, a complete semantic SLAM                                                                                                             (2)
+system comprising the aforementioned approaches has not
+been reported in literature before.                                              where z it denotes the attributes of the ith semantic mea-
+   In the remaining part of this paper we will start deriving                    surement at time t, θti is the index of the landmark, l, this
+a semantic mapping approach (section II) and a concrete                          measurement is associated with, and π lt−1 , γt−1      l
+                                                                                                                                           the assigned
+algorithm for localization (section III). The presented work                     landmark’s position and class estimated at time t − 1. Further-
+is evaluated in chapter IV. Finally, chapter V concludes this                    more, a semantic measurement, z it , is split into its position,
+work and gives further research directions.                                      pit , and class, cit , component, whose Probability Mass Function
+                                                                                 (PMF), ps , is a prior assumption based on how well the classes
+                                                                                 fit into the current environment. For the ith class measurement,
+                                                                                                                  l
+                                                                                 cit , we assume p(cit |θti = l, γt−1 ) := δcit ,γt−1
+                                                                                                                                  l   , where δ denotes
+     II. S EMANTIC M ULTIPLE -H YPOTHESES M APPING
+                                                                                 the Kronecker delta. For pit , we assume the following form
+   When performing SLAM, measurement noise typically                             of a stochastic measurement model
+leads to drift and inconsistent maps – in particular when mea-                                     f (pit |θti = l, π lt−1 ) = fν (pit− π lt−1 ),
+surements get wrongly associated to landmarks. We approach
+this problem by introducing locally optimized submaps. Each                      where fν denotes the Probability Density Function (PDF)
+submap maintains an individual Multiple Hypothesis Tree                          of the additive position measurement noise, ν it , which we
+(MHt) and propagates a first-moment estimate to proximate                        model as a zero-mean Gaussian distribution with covariance
+submaps. Specifically, for each submap we want to maximize                       Σz . For practical stability, we use an Unscented Kalman
+the posterior distribution, f (Θt |Zt ), of the associations Θt                  Filter (UKF) [23] for the estimation of πtl . The second fac-
+of all measurements Zt received till the time step t which is                    tor, f (θt |Θt−1 , Zt−1 ), in (1) is the assignment prior and is
+proportional to1                                                                 calculated using the well-known equation [13], [16]
+
+                                                                                                                       Ntn !Ntf !
+       f (z t |Θt , Zt−1 )f (θt |Θt−1 , Zt−1 )f (Θt−1 |Zt−1 ).            (1)              f (θt |Θt−1 , Zt−1 ) =                 pn (Ntn )pf (Ntf ),              (3)
+                                                                                                                        Ntm !
+Here, the set of N measurement associations at time step t is                    where Ntn denotes the number of new measurements, Ntf the
+represented by θt = [θt1 ...θtN ]. The first factor, f (z t |Θt , Zt−1 ),        number of false positives identified by the Hungarian method
+in (1) represents the distribution of all measurements at time                   and Ntm the total number of measurements at time step t. The
+                                                                                 functions pn and pf are prior PMFs over the number of new
+  1 Vectors are underlined and matrices are written with bold capital letters.   measurements and false positives, respectively. Typically both
+4                                                             IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED JUNE, 2019
+
+
+
+are chosen as Poisson PMFs with a specific spatial density λ
+and a volume V [24], e.g.
+                                     (λn Vn )N
+                 pn (N ) = exp (λn V )         .                                                   𝑚2
+                                        N!
+Each branch in the MHt comprises a different set of associ-                                                                   𝑥𝑡+4
+                                                                                           𝑚1
+ations Θt . Utilizing (2) and (3) together with the previous
+posterior distribution f (Θt−1 |Zt−1 ) we can evaluate these                                             2
+                                                                                                        𝑧𝑡+2        𝑥𝑡+3
+branches using (1).                                                                                                         1
+                                                                                                                           𝑧𝑡+3
+                                                                                                           𝑥𝑡+2
+                                                                                                                   1
+                                                                                                                                     𝑚3
+A. Probabilistic Measurement Association                                             𝑧𝑡1                          𝑧𝑡+2
+
+   Finding the correspondence θt between measurements and                                       𝑥𝑡+1
+mapped object can be challenging since the current set of mea-                      𝑥𝑡
+surements often does not allow deriving a correct assignment.
+Fortunately, this problem can be considered as a weighted
+combinatorial assignment problem for which the Hungarian
+algorithm [17], [25] is well known. Figure 3 illustrates the
+                                                                         Fig. 4: Illustration of the Gaussian mixture landmarks created
+probabilistic combinatorial assignment problem. To find the
+                                                                         by the fusion of the weighted hypotheses.
+most likely assignment we utilize a stochastic association al-
+gorithm based on the DP. DPs are a good choice for modeling
+the probability of seeing new and re-observing already mapped            where F is the Fourier transform and Σα is a transitional
+landmarks [26].                                                          covariance depending on the object’s class c. The likelihood
+   The likelihood of the associations of new measure-                    of assigning a new landmark, l, to the ith observation at time
+ments z t at time t with landmarks, θt , is expressed by                 t, is approximated by the uniform distribution in z it over the
+f (θt |z t , Θt−1 , Zt−1 ). We assume that at each time step a           volume of the map [17], M, i.e.
+landmark in the scene can at most generate one observation.                                                     Z
+Inspired by the dependent DP formulation in [17], we differ-                 f (θti = l|z it , Θt−1 , Zt−1 ) = α fν (pit − x)HDP (x) dx
+entiate four cases: (i) landmarks that have already been seen in
+the current submap, (ii) landmarks seen in previous submaps,                                               ≈ αU|M| ,
+(iii) new landmarks and (iv) false positives. The likelihood for         where HDP is the base distribution of the DP. Generally, false
+the association of a measurement z it with an existing landmark          positives occur due to clutter in the images and are essentially
+k of the same class in the current submap is modeled as                  detected objects which do not physically exist in the environ-
+    f (θti = k|z it , Θt−1 , Zt−1 ) = exp(Ntk )fν (pit − π kt ).   (4)   ment. Having such cases in the map may result in improper
+                                                                         assignments of future measurements. False positives have the
+Here, the scalar Ntk denotes the number of assignments to                likelihood f (θti = 0|z it , Θt−1 , Zk−1 ), i.e. the likelihood of the
+the landmark k. Despite the fact that we only deal with static           measurement i being an observation of the false landmark, 0.
+objects, a landmark, l, which was seen in a previous submap              False positives, are assumed to occur at a fixed rate ρ, i.e.
+at time, τ , is modeled using a transitional density, T , i.e.
+                                     Z                                    f (θti = 0|z it , Θt−1 , Zt−1 )
+                                                                                                                             (
+    f (θti = l|z it , Θt−1 , Zt−1 ) = fν (pit− x)T (x, π lτ ) dx . (5)           Y
+                                                                                             i i         j       j
+                                                                                                                       −1    ρNt0    Nt0 > 0
+                                                                              ∝         f (z t |θt = j, γt−1 , π t−1 )     ·                  ,
+                                                                                    j
+                                                                                                                              ρα      Nt0 = 0
+The transitional density, T , depends on the semantic class
+of the object and is used to accommodate for the unknown                 where Nt0 denotes the number of occurred false positives until
+shape of the landmarks. Since we take the centroid of the                time step t, and α is the concentration parameter of the DP.
+segmented objects as input, we employ two approaches for                 The aforementioned four cases will be used as an input to
+the choice of T to compensate for large measurement noise.               the Hungarian algorithm yielding an optimal assignment for
+Objects such as poles and trees are modeled using a Dirac-δ              each measurement as well as landmark. Based on this initial
+distribution: T (x|π lτ ) = δ(x − π lτ ), reducing the right hand        assignment, the optimal branch of the MHt will be formed. In
+side of (5) to fν (pit − π lτ ), the measurement distribution of z it    case the assignment is not distinct enough, new branches in
+given the last seen position of l. The transition of objects like        the MHt are generated by re-running the Hungarian algorithm
+buildings and fences is modeled using a Gaussian distribution            without the previous optimal assignment. Since small MHts
+with covariance Σα resulting in                                          are generally better for computational performance, we only
+      Z                                                                  create branches for associations that are reasonable.
+         fν (x − pit )N (x; π lτ , Σα ) dx
+                                                                         B. Optimized Resampling of Hypotheses
+            = F −1 {F{N (0, Σz )} · F {N (π lτ , Σα )}}(pit )
+                                                                           Each hypothesis is weighted using their measurement likeli-
+            = N (pit ; π lτ , Σz + Σα ),                                 hood (2) and assignment prior term (3). At each time step, the
+BERNREITER et al.: MULTIPLE HYPOTHESIS SEMANTIC MAPPING FOR ROBUST DATA ASSOCIATION                                                5
+
+
+
+
+Fig. 5: Illustration of the trajectories of the KITTI sequence 05, sequence 00, sequence 07 together with a laser map. Regions
+in blue denote the estimated trajectory, orange regions are submaps which were checked for loop closures and green areas
+show performed loop closures. We gain additional efficiency by only checking a subset of the submaps for loop closure.
+
+
+existing hypotheses are reweighted and eventually resampled         motivated by the fact that in many cases (e.g. highways) it
+by a systematic resampling technique [27]. In general, this         is not necessary to check for loop closures. The examination
+fuses the current knowledge in the hypothesis set and elimi-        whether a submap is good enough for loop closure detection is
+nates the hypotheses which have a low weight and preserves          based on a decision tree. We train a decision tree by comparing
+hypotheses with a good weight.                                      the trace of the state covariance before and after incorporating
+    A crucial factor is when to decide that resampling should be    a specific region in the factor graph. The trained decision tree
+performed on the hypothesis tree. In this case, it is common        is specific to an urban environment and furthermore, to the
+to use selective resampling [28] based on the calculation of        length of the submap. Thus for other environments, a retraining
+the effective sample size which essentially captures the diver-     of the decision tree or online learning approaches are required.
+sity of the hypothesis set. Consequently, resampling is only        A submap is considered as good either when it lowers the size
+performed when the effective sample size exceeds a certain          of the bounding box or by having loop closures in it.
+threshold. Furthermore, many particle filter implementations           Evaluating a submap requires extracting descriptive at-
+only consider a fixed particle size. However, it is desired that    tributes from it and we argue that semantic information is
+the number of particles is high for a high state uncertainty, and   a crucial factor for this. In more detail, we first approximate
+low when the uncertainty is low. Fox [29] introduced a variable     the Shannon entropy H of the mixture distribution using an
+sampling algorithm based on the KLD distance for particle           approximate single multivariate Gaussian distribution over the
+filters. During each iteration of the resampling procedure, the     submap, with covariance Σ, i.e.
+number of hypotheses is dynamically bounded by n using                                       1
+                                                                                      H = log (2πe)3 det(Σ) .
+                                                                                                                  
+                                      s                !
+             k−1              2               2                                              2
+        n=            1−            +             z1−δ , (6)        On a level of semantic classes we then calculate a term
+               2         9(k − 1)       9(k − 1)
+                                                                    frequency-inverse document frequency (tf-idf) score, i.e.
+where k is the current number of resampled hypotheses and
+                                                                                                 X ni         
+                                                                                                              N
+z1−δ is the upper 1−δ quantile of a normal distribution which                           i
+                                                                                      Stf      =      c
+                                                                                                         log        ,
+                                                                                          -idf         i
+models how probable the approximation of the true sample                                          c
+                                                                                                     n        n c
+size is [29]. The value n is dynamically calculated at each step
+                                                                    where nic denotes the number of occurrences of class c in
+of the resampling until the number of resampled hypotheses is
+                                                                    submap i, ni the total number of classes in i. Furthermore,
+greater than n. Nevertheless, we bound the maximum number
+                                                                    N denotes the total number of submaps processed so far and
+of resampled hypotheses to avoid drastic changes.
+                                                                    nc represents the number of scenes within the submaps which
+               III. S EMANTIC L OCALIZATION                         included an object of type c. This is efficiently compared and
+   Every time a submap is completed, the resulting map as           updated with the previous submaps. As a final score, we make
+well as the odometry measurements are used to compute               use of the number of landmarks within the submap.
+a trajectory estimate. The weighted hypotheses allow for              As shown in figure 5, the loop closure detection is triggered
+the creation of weighted mixtures of probability distributions      once the decision tree predicts that a submap is potentially
+resulting in a weighted fusion which considers the uncertainty      good in terms of its mapped objects.
+of each hypothesis (cf. figure 4). The result of the fusion
+is formulated as a relative constraint and incorporated into        B. Semantic Loop Closure Detection
+a nonlinear factor graph as semantic landmarks.                       Loop closures are found in multiple steps. First, we find
+                                                                    similar submaps using an incremental kd-tree [30] of the
+A. Semantic Evaluation of Submaps                                   submap’s normalized class histograms while employing the
+  Loop closures are identified by first evaluating the quality      Jensen-Shannon divergence (JSD) [31] as the distance mea-
+of the submap in terms of the occurred landmarks. This is           sure. For each similar submap the individual scene candidates
+6                                                       IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED JUNE, 2019
+
+
+
+
+Fig. 6: Comparison of several KITTI sequences by means of the Root Mean Square Error (RMSE) plotted as a function of
+the frames. The two methods, UKF and MHM, show several jumps in the error due to wrong data associations. Each wrong
+association pulls the factor graph towards a wrong direction which results in the jumps of the RMSE. Our method performs
+a more correct data association and keeps therefore the least error and does not include any sudden changes.
+
+
+are identified with another kd-tree of the scene’s normalized       The sum of both scores, SN CC as well as Sscene has to be
+class histograms using the L2 -norm for faster retrieval. Ad-       larger than a threshold (tuning parameter) to verify the match
+ditional efficiency can be achieved with a tuning parameter         of the two scenes. This binary decision serves as input to the
+that restricts the search space of the kd-tree in terms of the      discrete Bayes filter which finally gets to decide whether to use
+distance. Good loop closure candidates found by the second          the scene pair as a loop closure candidate for the next step. As
+kd-tree are verified and further filtered with a discrete Bayes     the last step, the set of all loop closures candidates undergoes
+filter. We define a Markov chain between the events for loop        a final geometric consistency check based on RANSAC before
+closure and no loop closure. The transitional probabilities are     the actual loop closure constraints are inserted into the factor
+chosen to be similar to [7].                                        graph. Both, the Hungarian algorithm and RANSAC can be
+    The verification process calculates two scores for how          computationally expensive. Therefore, we filter most invalid
+similar the candidate scene and the current scene are. First,       candidates beforehand using the kd-trees which can be per-
+the topology of a scene is represented by the Laplacian matrix      formed in logarithmic time. For additional robustness, we use
+which is calculated based on the spatial relationship between       m-estimators with Cauchy functions [33] in the optimization
+the semantic classes as well as their degrees in the scene. We      of the factor graph.
+compare the topologies of two scenes based on a normalized
+cross correlation (NCC) [32] score, SN CC . Second, another                                IV. E VALUATION
+score, Sscene , expresses the overall similarity of the landmarks      We evaluate our system on the KITTI dataset sequences
+in the two scenes. For this the landmarks get associated with       00, 05, 06 and 07 [34] where we use SegNet [35] to derive
+the Hungarian algorithm on the estimated landmark positions         the semantic classes of the individual scenes. For each image,
+of each scene and their Euclidean distances. A pair of matched      the semantic objects are extracted and projected into the world
+landmarks i and j contribute to Sscene through                      frame [5] using the Velodyne scans. In general, our approach is
+                     Hi,j                                           not limited to the use outdoors but rather depends on the object
+     si,j
+      match := 1 −        ,     si,j
+                                  class := (1 − δci ,cj ) · p,      detector. Additionally, one might need to adapt the decision
+                       2
+                                                                    tree and ps in equation (2). Since, to our knowledge, no
+where H is the Hungarian cost matrix (output of the Hungarian       appropriate approach for comparison is publicly available, we
+algorithm), p denoting a penalty factor, ci , cj being the label    could not compare our proposed approach to another semantic
+of the landmarks i, j, and δ denoting the Kronecker delta. The      SLAM system. Therefore, we evaluate our proposed system
+two scores smatch and sclass are combined using all matched         to two other semantic solutions as well as two non-semantic
+landmark pairs, as follows                                          approaches. As a baseline we compare to LeGo-LOAM [36]
+                                                                    and ORB-SLAM2 stereo [37]. For a semantic baseline, we
+                          X
+               Sscene :=      1 − si,j     i,j
+                                    match sclass .
+                           i,j
+                                                                    utilize a single UKF estimator with a Hungarian algorithm
+BERNREITER et al.: MULTIPLE HYPOTHESIS SEMANTIC MAPPING FOR ROBUST DATA ASSOCIATION                                                                                                             7
+
+
+
+based on the L2 norm for data association. This essentially
+                                                                                                    Sequence                 00              05                06                   07
+performs a nearest neighbor data association with a single
+hypothesis. We also added a multiple hypothesis mapping                                  VO                             8.41±2.51         6.42±3.9          3.8±1.4          6.23±2.4
+                                                                                         UKF                            11.14±2.9         8.9±4.2          5.96±2.4         14.55±5.1
+(MHM) using a maximum likelihood approach and a MHt.                                    MHM                             6.84±1.3          5.6±2.94         3.17±1.07        6.93±2.02
+Similar to our main approach, frequent optimizations of the                            DPMHM                            4.54±1.58          4.4±2.3         2.3±0.74           2.9±4.5
+MHt are needed. Hence, we threshold the likelihood if the                             ORB-SLAM2                          5.7±1.0          4.51±1.3          2.1±0.6          2.71±0.9
+MHt reaches a certain size (see equation (2)) and keep only                               LO                             7.33±2.5         2.96±1.3          3.3±1.2         6.65±2.85
+the best third of all.                                                                   UKF                            6.96±1.7          6.96±1.5         5.47±0.75        10.4±2.8
+                                                                                         MHM                             5.3±2.2          3.8±1.4          2.67±0.35         11.3±3.9
+   Our proposed system is agnostic to the source of odometry                            DPMHM                           3.94±1.17        2.42±0.66         2.66±0.35         5.5±2.4
+which we show by making use of two different ones for                                 LeGo-LOAM                          5.8±2.2         2.54±0.72         2.15±0.52         1.0±0.16
+all sequences. More specifically, we utilized the tracking of
+                                                                    TABLE I: Comparison of the mean RMSE and standard de-
+ORB features [37] as well as LiDAR surface and corner
+                                                                    viation in meters achieved with VO and LO as the underlying
+features [36] to get an odometry estimate. We have used the
+                                                                    odometry source.
+provided camera calibration parameters from Geiger et al. [34]
+for both, Visual Odometry (VO) and ORB-SLAM2. Thus, the
+results of ORB-SLAM2 are different than the results reported                                                                                                              Type
+                                                                                                         40                                                                MHM
+in the work of Mur-Artal et al. [37] where they used different                                                                                                             DPMHM
+parameters per sequence.
+                                                                                                         30
+
+
+
+
+                                                                                      Hypothesis Count
+A. Results
+                                                                                                         20
+   We demonstrate the performance of our proposed approach
+by means of calculating the RMSE of the estimated trajectory
+location to the GPS ground truth provided by the KITTI                                                   10
+
+dataset using the VO and Laser Odometry (LO) sources. Both,
+VO and LO, accumulate an error and hence, are subject to drift                                            0
+over time. Using our DP-based multiple hypothesis mapping                                                               Sequence 00                         Sequence 05
+approach together with our place recognition (cf. figure 5) we                                                                             KITTI
+
+can reduce the drift up to 50 % for several sequences.              Fig. 7: Evaluation of the two multiple hypotheses-based imple-
+   The simple UKF and MHM estimation approaches are                 mentations. The naive likelihood thresholding approach has an
+strongly affected by wrong measurement associations resulting       average of 12 (sequence 00) and 18 (sequence 05) hypotheses,
+in bad constraints in the pose graph. These wrong assignments       respectively, whereas our proposed resampling approach has
+can be observed in figure 6 as sudden jumps in the RMSE.            an average of 7 (sequence 00) and 6 (sequence 05) hypotheses.
+Consequently, the RMSE will have an increased total error
+which is even worse than the raw odometry source for a
+few sequences. Our approach is less perturbed with wrong                              100
+associations and thus, maintains a more robust RMSE over                                                                                         Semantic and Multiple Hypotheses
+                                                                                                80
+                                                                                                                                                 Semantic Only
+                                                                    Improvement [%]
+
+
+
+
+time. Table I show the mean and standard deviation of the                                                                                        Multiple Hypotheses Only
+                                                                                                60
+RMSE for each sequence and estimator. Our approach does
+                                                                                                40
+particularly well on on the longer sequences (00, 05) which
+                                                                                                20
+results from the correct data association together with the
+                                                                                                         0
+semantic place recognition. Regardless of the odometry source,
+                                                                                                              0   500    1000     1500    2000     2500     3000    3500         4000    4500
+our proposed system yields results comparable to the state-of-                                                                           Time [frames]
+the-art SLAM approaches in VO and LO and compared to                Fig. 8: Reduction of the RMSE for a single hypothesis, non-
+the MHM, maintains less hypotheses about the environment            semantic DPMHM. Including both modalities, we achieve an
+as shown in figure 7. Due to the fact that the total number         average reduction of 34 %, with only multiple hypotheses 27 %
+of hypotheses of the environment is only increased when the         and 13 % with a pure semantic DPMHM.
+state uncertainty is high, we gain additional efficiency for our
+proposed system. Figure 8 evaluates the performance of our
+algorithm when the semantic classes are removed as well as for      to deal with ambiguities in data association in semantic-
+the restriction to a single hypothesis. The single hypothesis, no   based SLAM. We showed that our resampling method for
+semantic solution then still performs a probabilistic Hungarian     optimizing the hypothesis tree yields a more robust estimation
+method and achieves a mean RMSE of 5.45 m±2.94 m.                   and requires substantially less hypotheses. Moreover, we gain
+                                                                    additional efficiency by preselecting submaps for loop closure
+                                                                    detection.
+             V. C ONCLUSION AND F UTURE W ORK
+                                                                       As further research, we intend to remove the assumption
+  In this work, we presented a novel semantic SLAM system           that each object can generate at most one measurement per
+based on factor graphs and a MHt mapping approach aiming            time-step since a bad detector or viewpoint angle might
+8                                                                 IEEE ROBOTICS AND AUTOMATION LETTERS. PREPRINT VERSION. ACCEPTED JUNE, 2019
+
+
+
+easily violate this assumption. Additionally, this work could                   [17] L. L. Wong, T. Kurutach, L. P. Kaelbling, and T. Lozano-Pérez, “Object-
+potentially also be extended towards utilizing an instance-                          based world modeling in semi-static environments with dependent
+                                                                                     Dirichlet-process mixtures,” arXiv preprint arXiv:1512.00573, 2015.
+based detection. Instance information could possibly give a                     [18] N. Atanasov, M. Zhu, K. Daniilidis, and G. J. Pappas, “Localization from
+prior on how to associate the measurements at the cost of an                         semantic observations via the matrix permanent,” International Journal
+additional non-Gaussian discrete random variable.                                    of Robotics Research, vol. 35, no. 1-3, pp. 73–99, 2016.
+                                                                                [20] A. Pronobis and P. Jensfelt, “Large-scale semantic mapping and rea-
+                                                                                     soning with heterogeneous modalities,” in 2012 IEEE International
+                             R EFERENCES                                             Conference on Robotics and Automation. IEEE, 2012, pp. 3515–3522.
+                                                                                [21] S. L. Bowman, N. Atanasov, K. Daniilidis, and G. J. Pappas, “Prob-
+ [1] C. Cadena, L. Carlone, H. Carrillo, Y. Latif, D. Scaramuzza, J. Neira,          abilistic data association for semantic SLAM,” Proceedings - IEEE
+     I. Reid, and J. J. Leonard, “Past, present, and future of simultaneous          International Conference on Robotics and Automation, pp. 1722–1729,
+     localization and mapping: Toward the robust-perception age,” IEEE               2017.
+     Transactions on Robotics, vol. 32, no. 6, pp. 1309–1332, 2016.
+                                                                                [22] L. Nicholson, M. Milford, and N. Sünderhauf, “QuadricSLAM: Dual
+ [2] A. Ess, T. Müller, H. Grabner, and L. J. Van Gool, “Segmentation-Based
+                                                                                     Quadrics as SLAM Landmarks,” in Proceedings of the IEEE Conference
+     Urban Traffic Scene Understanding.” in BMVC, vol. 1. Citeseer, 2009,
+                                                                                     on Computer Vision and Pattern Recognition Workshops, 2018, pp. 313–
+     p. 2.
+                                                                                     314.
+ [3] H. Blum, A. Gawel, R. Siegwart, and C. Cadena, “Modular sensor fusion
+                                                                                [23] E. A. Wan and R. Van Der Merwe, “The unscented Kalman filter
+     for semantic segmentation,” in 2018 IEEE/RSJ International Conference
+                                                                                     for nonlinear estimation,” in IEEE 2000 Adaptive Systems for Signal
+     on Intelligent Robots and Systems (IROS). IEEE, 2018, pp. 3670–3677.
+                                                                                     Processing, Communications, and Control Symposium, AS-SPCC 2000,
+ [4] I. Kostavelis and A. Gasteratos, “Semantic mapping for mobile robotics
+                                                                                     vol. 7, 2000, pp. 153–158.
+     tasks: A survey,” Robotics and Autonomous Systems, vol. 66, pp.
+     86–103, 2015.                                                              [24] Y. Bar-Shalom, S. S. Blackman, and R. J. Fitzgerald, “Dimensionless
+ [5] A. Gawel, C. Del Don, R. Siegwart, J. Nieto, and C. Cadena, “X-                 score function for multiple hypothesis tracking,” IEEE Transactions on
+     view: Graph-based semantic multi-view localization,” IEEE Robotics              Aerospace and Electronic Systems, vol. 43, no. 1, pp. 392–400, 2007.
+     and Automation Letters, vol. 3, no. 3, pp. 1687–1694, 2018.                [25] R. Jonker and T. Volgenant, “Improving the Hungarian assignment
+ [6] M. Labbe and F. Michaud, “Appearance-based loop closure detection               algorithm,” Operations Research Letters, vol. 5, no. 4, pp. 171–175,
+     for online large-scale and long-term operation,” IEEE Transactions on           1986.
+     Robotics, vol. 29, no. 3, pp. 734–745, 2013.                               [26] A. Ranganathan and F. Dellaert, “A rao-blackwellized particle filter for
+ [7] A. Angeli, D. Filliat, J.-a. Meyer, A. Angeli, D. Filliat, J.-a. M. A.          topological mapping,” Proceedings - IEEE International Conference on
+     Fast, A. Angeli, D. Filliat, and J.-a. Meyer, “A Fast and Incremental           Robotics and Automation, vol. 2006, no. May, pp. 810–817, 2006.
+     Method for Loop-Closure Detection Using Bags of Visual Words,” IEEE        [27] B. Ristic, S. Arulampalam, and N. Gordon, Beyond the Kalman filter:
+     Transactions on Robotics, vol. 24, 2008.                                        Particle filters for tracking applications. Artech house, 2003.
+ [8] W. Chen, M. Fang, Y.-H. Liu, and L. Li, “Monocular semantic SLAM in        [28] G. Grisetti, C. Stachniss, and W. Burgard, “Improving Grid Based
+     dynamic street scene based on multiple object tracking,” in Cybernetics         SLAM with Rao Blackwellized Particle Filters by Adaptive Proposals
+     and Intelligent Systems (CIS) and IEEE Conference on Robotics, Au-              and Selective Resampling,” International Conference on Robotics and
+     tomation and Mechatronics (RAM), 2017 IEEE International Conference             Automation, no. April, pp. 2443–2448, 2005.
+     on. IEEE, 2017, pp. 599–604.                                               [29] D. Fox, “Adapting the sample size in particle filters through KLD
+ [9] A. Garcia-Garcia, S. Orts-Escolano, S. Oprea, V. Villena-Martinez, and          Sampling,” Intl Jour of Robotics Research, vol. 22, no. 12, pp. 985–
+     J. Garcia-Rodriguez, “A review on deep learning techniques applied to           1004, 2003.
+     semantic segmentation,” arXiv preprint arXiv:1704.06857, 2017.             [30] J. L. Bentley, “Multidimensional binary search trees used for associative
+[10] R. F. Salas-Moreno, R. A. Newcombe, H. Strasdat, P. H. Kelly, and A. J.         searching,” Communications of the ACM, vol. 18, no. 9, pp. 509–517,
+     Davison, “SLAM++: Simultaneous localisation and mapping at the level            1975.
+     of objects,” Proceedings of the IEEE Computer Society Conference on        [31] J. Lin, “Divergence Measures Based on the Shannon Entropy,” IEEE
+     Computer Vision and Pattern Recognition, pp. 1352–1359, 2013.                   Transactions on Information Theory, vol. 37, no. 1, pp. 145–151, 1991.
+[11] J. Civera, D. Galvez-Lopez, L. Riazuelo, J. D. Tardos, and J. M. M.        [32] S. Cascianelli, G. Costante, E. Bellocchio, P. Valigi, M. L. Fravolini,
+     Montiel, “Towards semantic SLAM using a monocular camera,” in 2011              and T. A. Ciarfuglia, “Robust visual semi-semantic loop closure
+     IEEE/RSJ International Conference on Intelligent Robots and Systems,            detection by a covisibility graph and CNN features,” Robotics and
+     2011, pp. 1277–1284.                                                            Autonomous Systems, vol. 92, pp. 53–65, 2017.
+[12] M. Hosseinzadeh, Y. Latif, T. Pham, N. Suenderhauf, and I. Reid, “Struc-
+                                                                                [33] G. H. Lee, F. Fraundorfer, and M. Pollefeys, “Robust pose-graph
+     ture Aware SLAM Using Quadrics and Planes,” in Asian Conference on
+                                                                                     loop-closures with expectation-maximization,” in Intelligent Robots and
+     Computer Vision. Springer, 2018, pp. 410–426.
+                                                                                     Systems (IROS), 2013 IEEE/RSJ International Conference on. IEEE,
+[13] J. Elfring, S. Van Den Dries, M. J. Van De Molengraft, and M. Stein-
+                                                                                     2013, pp. 556–563.
+     buch, “Semantic world modeling using probabilistic multiple hypothesis
+                                                                                [34] A. Geiger, P. Lenz, and R. Urtasun, “Are we ready for autonomous
+     anchoring,” Robotics and Autonomous Systems, vol. 61, no. 2, pp. 95–
+                                                                                     driving? the KITTI vision benchmark suite,” Proceedings of the IEEE
+     105, 2013.
+                                                                                     Computer Society Conference on Computer Vision and Pattern Recog-
+[14] L. L. Wong, L. P. Kaelbling, and T. Lozano-Pérez, “Data association
+                                                                                     nition, pp. 3354–3361, 2012.
+     for semantic world modeling from partial views,” Springer Tracts in
+     Advanced Robotics, vol. 114, pp. 431–448, 2016.                            [35] V. Badrinarayanan, A. Kendall, and R. Cipolla, “SegNet: A Deep Convo-
+[15] S. S. Blackman, “Multiple hypothesis tracking for multiple target               lutional Encoder-Decoder Architecture for Image Segmentation,” IEEE
+     tracking,” IEEE Aerospace and Electronic Systems Magazine, vol. 19,             Transactions on Pattern Analysis and Machine Intelligence, vol. 39,
+     no. 1, pp. 5–18, 2004.                                                          no. 12, pp. 2481–2495, 2017.
+[16] I. Cox and S. Hingorani, “An Efficient Implementation and Evaluation       [36] T. Shan and B. Englot, “LeGO-LOAM: Lightweight and ground-
+     of Reid’s Multiple Hypothesis Tracking Algorithm for Visual Tracking,”          optimized lidar odometry and mapping on variable terrain,” in 2018
+     in Proceedings of the 12th IAPR International Conference on Pattern             IEEE/RSJ International Conference on Intelligent Robots and Systems
+     Recognition, no. 1, 1994, pp. 437–442.                                          (IROS). IEEE, 2018, pp. 4758–4765.
+[19] A. Nüchter and J. Hertzberg, “Towards semantic maps for mobile            [37] R. Mur-Artal and J. D. Tardos, “ORB-SLAM2: An Open-Source SLAM
+     robots,” Robotics and Autonomous Systems, vol. 56, no. 11, pp. 915–926,         System for Monocular, Stereo, and RGB-D Cameras,” IEEE Transac-
+     2008.                                                                           tions on Robotics, vol. 33, no. 5, pp. 1255–1262, 2017.
+

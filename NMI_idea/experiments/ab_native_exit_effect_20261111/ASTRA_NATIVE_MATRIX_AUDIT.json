@@ -1,0 +1,76 @@
+{
+  "source_hashes": {
+    "fixture.py": "559353c7b2a21317337baacaa54742bffe0acb658cf577c87c064b141f7af787",
+    "native_adapter.py": "740cd538e660615e7a814aca657581ec42819940000721be2d46d1ae1f63de0b",
+    "robot_motion.py": "e14393104c76b4bf96512062d35c14a83c1a962458e3a402565a0bcee0fa6994"
+  },
+  "blocks": [
+    {
+      "fixture": 0,
+      "mode": "constrained",
+      "status": "complete",
+      "cells": 38,
+      "status_counts": {
+        "passed": 38
+      },
+      "selected_routes": {
+        "direct": 32,
+        "retreat_fork": 4,
+        "round_tip": 2
+      },
+      "failures": 0,
+      "input_sha256": "19aa07ce417ae4987d03d01f440c811128e22c837e639a9e3b93625362c01481"
+    },
+    {
+      "fixture": 1,
+      "mode": "constrained",
+      "status": "complete",
+      "cells": 38,
+      "status_counts": {
+        "passed": 38
+      },
+      "selected_routes": {
+        "direct": 32,
+        "round_tip": 2,
+        "retreat_fork": 4
+      },
+      "failures": 0,
+      "input_sha256": "088d31c91c8467eeaef6e5fff627b37f1799b21a6952b1df8ed4d2f1ff2ada5b"
+    },
+    {
+      "fixture": 0,
+      "mode": "open",
+      "status": "complete",
+      "cells": 38,
+      "status_counts": {
+        "passed": 38
+      },
+      "selected_routes": {
+        "direct": 38
+      },
+      "failures": 0,
+      "input_sha256": "6bf7f6a14fd31ad988ab19ef761da70566ed4464e96faf240fc663a648cb2138"
+    },
+    {
+      "fixture": 1,
+      "mode": "open",
+      "status": "complete",
+      "cells": 38,
+      "status_counts": {
+        "passed": 38
+      },
+      "selected_routes": {
+        "direct": 38
+      },
+      "failures": 0,
+      "input_sha256": "8fa963742498efac0d93f2ea2a2c21191197911edb86b929e55d59c006c12766"
+    }
+  ],
+  "selected_segments_checked": 176,
+  "max_path_report_difference_m": 1.3877787807814457e-17,
+  "max_tracking_report_difference": 0.0,
+  "metric_warnings": [],
+  "failures": [],
+  "all_observed_checks_pass": true,
+  "scope": "independent recomputation of selected-route traces and complete-state continuity; no claim of physical robot contact or ultrasound image quality"
+}

@@ -994,6 +994,7 @@ def _joint_optimize_pose3d2d(
     body25_robust_sigma_m: float,
     outer_max_iter: int,
     lbfgs_max_iter: int,
+    disable_face_iteration: bool = False,
     optimizer_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Joint final stage; unlike EasyMocap's 2D-only tail it cannot drop the 3D anchor."""
@@ -1020,7 +1021,11 @@ def _joint_optimize_pose3d2d(
     cfg.OPT_T = True
     cfg.OPT_POSE = True
     cfg.OPT_HAND = cfg.model in ("smplh", "smplx")
-    cfg.OPT_EXPR = cfg.model == "smplx"
+    # DWPose's face landmarks are optional and often not reliable in the
+    # four-camera UE profile.  Keep the historical expression/face objective
+    # by default, but allow recorded-sequence smoke runs to disable it without
+    # changing any quality gate or hand/body objective.
+    cfg.OPT_EXPR = cfg.model == "smplx" and not bool(disable_face_iteration)
     cfg.OPT_SHAPE = False
 
     kp2d_vf = np.asarray(kp2ds, dtype=np.float32).transpose(1, 0, 2, 3)
@@ -1118,6 +1123,7 @@ def _smpl_fit_from_keypoints(
     bed_sdf_margin_m: float = 0.008,
     bed_sdf_weight: float = 0.0,
     fit_diagnostics: dict[str, Any] | None = None,
+    disable_face_iteration: bool = False,
     pose_frame_index: int | None = None,
 ) -> dict[str, Any]:
     """Shared-shape 3D initialization followed by joint 3D/2D/bed optimization."""
@@ -1255,6 +1261,7 @@ def _smpl_fit_from_keypoints(
         body25_robust_sigma_m=delayed_opts["body25_robust_sigma_m"],
         outer_max_iter=int(delayed_opts["final_outer_max_iter"]),
         lbfgs_max_iter=int(delayed_opts["final_lbfgs_max_iter"]),
+        disable_face_iteration=bool(disable_face_iteration),
         optimizer_diagnostics=optimizer_diag,
     )
     predicted_final = _body_model_joints_sequence(body_model, params)
@@ -1338,6 +1345,7 @@ def run_mv1p_smplx_fit(
     zero_hand_keypoints: bool = False,
     fit_2d_source: str = "raw_inlier_2d",
     write_easymocap_smpl_json: bool = False,
+    disable_face_iteration: bool = False,
     pose_frame_index: int | None = None,
 ) -> tuple[dict[str, Any], Any]:
     """Run EasyMocap mv1p fit; a burst shares beta, pose is one synced frame."""
@@ -1383,6 +1391,7 @@ def run_mv1p_smplx_fit(
         gender=str(gender).lower(),
         opts=resolved_fit_opts,
         cfg_opts=[],
+        disable_face_iteration=bool(disable_face_iteration),
     )
 
     dataset = MV1PMF(
@@ -1462,6 +1471,12 @@ def run_mv1p_smplx_fit(
         if keypoints2d.shape[2] >= SMPLX_REGRESSOR_JOINTS:
             keypoints2d[:, :, 67:SMPLX_REGRESSOR_JOINTS, :2] = 0.0
             keypoints2d[:, :, 67:SMPLX_REGRESSOR_JOINTS, 2] = 0.0
+        if bool(disable_face_iteration) and kp3ds.shape[1] >= SMPLX_REGRESSOR_JOINTS:
+            # Disable the native face/jaw/eye 3D terms as well.  The default
+            # path keeps its historical 3D face behavior; this flag is an
+            # explicit speed/robustness option for recorded runs.
+            kp3ds[:, 67:SMPLX_REGRESSOR_JOINTS, :3] = 0.0
+            kp3ds[:, 67:SMPLX_REGRESSOR_JOINTS, 3] = 0.0
 
     keypoints2d_fit, fit_2d_tag = build_keypoints2d_for_fit(
         keypoints2d,
@@ -1470,6 +1485,9 @@ def run_mv1p_smplx_fit(
         source=str(fit_2d_source),
     )
     if model_type == "smplx" and keypoints2d_fit.shape[2] >= SMPLX_REGRESSOR_JOINTS:
+        keypoints2d_fit[:, :, 67:SMPLX_REGRESSOR_JOINTS, :2] = 0.0
+        keypoints2d_fit[:, :, 67:SMPLX_REGRESSOR_JOINTS, 2] = 0.0
+    if bool(disable_face_iteration) and model_type == "smplx" and keypoints2d_fit.shape[2] >= SMPLX_REGRESSOR_JOINTS:
         keypoints2d_fit[:, :, 67:SMPLX_REGRESSOR_JOINTS, :2] = 0.0
         keypoints2d_fit[:, :, 67:SMPLX_REGRESSOR_JOINTS, 2] = 0.0
     if bool(zero_hand_keypoints):
@@ -1483,6 +1501,7 @@ def run_mv1p_smplx_fit(
     diag["smplx_fit_2d_source_config"] = str(fit_2d_source)
     diag["smplx_fit_opts"] = dict(resolved_fit_opts) if resolved_fit_opts else "easymocap_official_defaults"
     diag["smplx_fit_zero_hand_keypoints"] = bool(zero_hand_keypoints)
+    diag["smplx_fit_disable_face_iteration"] = bool(disable_face_iteration)
     diag["n_frames"] = int(end - start)
     diag["n_frames_shape"] = int(end - start)
     diag["n_frames_pose"] = 1 if pose_frame_index is not None else int(end - start)
@@ -1654,6 +1673,102 @@ def easymocap_joints_world(
     if isinstance(joints, (list, tuple)):
         joints = joints[0]
     return np.asarray(joints, dtype=np.float32).reshape(-1, 3)
+
+
+def easymocap_smplx_joints_world(
+    body_model: Any,
+    params: dict[str, Any],
+    *,
+    frame_index: int = 0,
+) -> np.ndarray:
+    """Return true LBS FK joints (not EasyMocap's proxy/pseudo vertices).
+
+    EasyMocap's ``forward(return_smpl_joints=True)`` returns the first rows of
+    the auxiliary ``j_v_template`` path.  Those rows are weighted proxy
+    vertices when a regressor is installed, so they are not the 55 native
+    SMPL-X kinematic joints.  Call the same LBS routine with the original
+    ``v_template/J_regressor/weights`` and take its second return value,
+    ``J_transformed``; then apply the fitted global ``Rh`` and ``Th`` exactly
+    as ``forward`` does.
+    """
+
+    ensure_easymocap_import()
+    import torch
+    from easymocap.smplmodel.lbs import batch_rodrigues
+
+    def select(value: Any, width: int) -> np.ndarray:
+        arr = np.asarray(value, dtype=np.float32).reshape(-1, width)
+        index = min(max(int(frame_index), 0), len(arr) - 1)
+        return arr[index : index + 1]
+
+    Rh = select(params["Rh"], 3)
+    Th = select(params["Th"], 3)
+    poses_raw = np.asarray(params["poses"], dtype=np.float32)
+    poses = poses_raw.reshape(-1, poses_raw.shape[-1] if poses_raw.ndim > 1 else poses_raw.size)
+    index = min(max(int(frame_index), 0), len(poses) - 1)
+    poses = poses[index : index + 1]
+    device = getattr(body_model, "device", None)
+    dtype = getattr(body_model, "dtype", torch.float32)
+    poses_t = torch.as_tensor(poses, dtype=dtype, device=device)
+    poses_t = body_model.extend_pose(poses_t)
+    shape_np = np.asarray(params["shapes"], dtype=np.float32).reshape(1, -1)
+    if shape_np.shape[0] < poses_t.shape[0]:
+        shape_np = np.repeat(shape_np, int(poses_t.shape[0]), axis=0)
+    expression = params.get("expression")
+    target_shape_dim = int(getattr(getattr(body_model, "shapedirs", None), "shape", (0, 0, 0))[-1] or 0)
+    if (
+        expression is not None
+        and str(getattr(body_model, "model_type", "")).lower() == "smplx"
+        and (target_shape_dim <= 0 or shape_np.shape[1] < target_shape_dim)
+    ):
+        expr_np = np.asarray(expression, dtype=np.float32).reshape(-1, np.asarray(expression).shape[-1])
+        if expr_np.shape[0] == 1 and poses_t.shape[0] > 1:
+            expr_np = np.repeat(expr_np, int(poses_t.shape[0]), axis=0)
+        shape_np = np.concatenate([shape_np, expr_np[: shape_np.shape[0]]], axis=1)
+    shapes_np = _prepare_shapes_for_body_model(body_model, shape_np)
+    shapes_t = torch.as_tensor(shapes_np, dtype=dtype, device=device)
+    if shapes_t.shape[0] < poses_t.shape[0]:
+        shapes_t = shapes_t.expand(int(poses_t.shape[0]), -1)
+    # This is the same call made by SMPLlayer.forward for its real mesh path;
+    # the second result is the FK-transformed native joint array.
+    _vertices, joints = body_model.lbs(
+        shapes_t,
+        poses_t,
+        body_model.v_template,
+        body_model.shapedirs,
+        body_model.posedirs,
+        body_model.J_regressor,
+        body_model.parents,
+        body_model.weights,
+        pose2rot=True,
+        dtype=dtype,
+        use_pose_blending=bool(getattr(body_model, "use_pose_blending", True)),
+        use_shape_blending=bool(getattr(body_model, "use_shape_blending", True)),
+        J_shaped=getattr(body_model, "J_shaped", None),
+    )
+    Rh_t = torch.as_tensor(Rh, dtype=dtype, device=device)
+    Th_t = torch.as_tensor(Th, dtype=dtype, device=device)
+    rot = batch_rodrigues(Rh_t, dtype=dtype)
+    joints = torch.matmul(joints, rot.transpose(1, 2)) + Th_t.unsqueeze(1)
+    joints_arr = np.asarray(joints.detach().cpu().numpy(), dtype=np.float32)
+    joints_arr = joints_arr.reshape(int(poses_t.shape[0]), -1, 3)[0]
+    if joints_arr.shape[0] == 0 or not np.all(np.isfinite(joints_arr)):
+        raise ValueError("EasyMocap native SMPL-X joints are empty or non-finite")
+    return joints_arr
+
+
+def easymocap_pelvis_world_m(
+    body_model: Any,
+    params: dict[str, Any],
+    *,
+    frame_index: int = 0,
+) -> np.ndarray:
+    """Return native SMPL-X joint 0 (pelvis) after Rh/Th in world meters."""
+
+    joints = easymocap_smplx_joints_world(body_model, params, frame_index=frame_index)
+    if joints.shape[0] < 1:
+        raise ValueError("EasyMocap native SMPL-X joints contain no pelvis joint")
+    return np.asarray(joints[0], dtype=np.float32).reshape(3)
 
 
 def build_annot_record_from_arrays(annot: dict[str, np.ndarray], *, person_id: int = 0) -> dict[str, object]:

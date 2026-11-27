@@ -35,6 +35,18 @@ CANONICAL_UDP_RECV_BUFFER = 1 << 16  # 64 KiB
 CANONICAL_UDP_RESULT_EVERY_ENV = "AMONGUS_UE_CANONICAL_RESULT_EVERY"
 CANONICAL_UDP_RESULT_DEFAULT_EVERY = 100
 
+# Strict benchmark capture is deliberately separate from the preview UDP path:
+# one TCP request owns one canonical apply -> one-shot multi-camera capture ->
+# one ACK.  The preview listener may coalesce frames, while this endpoint must
+# never acknowledge a coalesced/latest-only state as a recorded frame.
+BENCHMARK_ACK_BIND_ENV = "AMONGUS_UE_BENCHMARK_ACK_BIND"
+BENCHMARK_ACK_DEFAULT_HOST = "127.0.0.1"
+BENCHMARK_ACK_DEFAULT_PORT = 17367
+BENCHMARK_ACK_RECV_BUFFER = 1 << 20
+BENCHMARK_ACK_MAX_PENDING = 4
+BENCHMARK_ACK_TIMEOUT_ENV = "AMONGUS_UE_BENCHMARK_ACK_TIMEOUT_S"
+BENCHMARK_ACK_DEFAULT_TIMEOUT_S = 30.0
+
 
 def _current_level_path() -> str:
     try:
@@ -215,6 +227,10 @@ class EditorSessionWatcher:
         self._busy = False
         self._active_render_request_id: str | None = None
         self._active_render_command_path: Path | None = None
+        # ``editor_request_play`` schedules PIE creation on a later Slate
+        # tick.  Keep the command pending while that world is being created;
+        # never poll with sleep from the Slate callback itself.
+        self._pie_start_pending: dict[str, object] | None = None
 
         self._canonical_udp_sock: socket.socket | None = None
         self._canonical_udp_thread: threading.Thread | None = None
@@ -225,6 +241,19 @@ class EditorSessionWatcher:
         self._latest_canonical_seq: int = 0
         self._canonical_apply_count: int = 0
         self._canonical_drop_count: int = 0
+        self._benchmark_ack_sock: socket.socket | None = None
+        self._benchmark_ack_thread: threading.Thread | None = None
+        self._benchmark_ack_running = False
+        self._benchmark_ack_lock = threading.Lock()
+        self._benchmark_ack_pending: list[dict[str, object]] = []
+        self._benchmark_ack_active: dict[str, object] | None = None
+        try:
+            self._benchmark_ack_timeout_s = max(
+                float(os.environ.get(BENCHMARK_ACK_TIMEOUT_ENV, BENCHMARK_ACK_DEFAULT_TIMEOUT_S)),
+                1.0,
+            )
+        except (TypeError, ValueError):
+            self._benchmark_ack_timeout_s = BENCHMARK_ACK_DEFAULT_TIMEOUT_S
         try:
             self._canonical_diag_every = max(
                 int(os.environ.get(CANONICAL_UDP_RESULT_EVERY_ENV, CANONICAL_UDP_RESULT_DEFAULT_EVERY)),
@@ -239,6 +268,7 @@ class EditorSessionWatcher:
         if register is None:
             raise RuntimeError("Unreal Python does not expose register_slate_post_tick_callback on this build.")
         self._start_canonical_udp_listener()
+        self._start_benchmark_ack_listener()
         try:
             scene_loader.apply_level_editor_viewport_camera_speed_scale()
         except Exception as exc:
@@ -258,6 +288,7 @@ class EditorSessionWatcher:
             unregister(self._callback_handle)
         self._callback_handle = None
         self._stop_canonical_udp_listener()
+        self._stop_benchmark_ack_listener()
         unreal.EditorPythonScripting.set_keep_python_script_alive(False)
         EditorSessionStatus(
             state="stopped",
@@ -283,6 +314,319 @@ class EditorSessionWatcher:
         except ValueError:
             port = CANONICAL_UDP_DEFAULT_PORT
         return host or CANONICAL_UDP_DEFAULT_HOST, port
+
+    def _resolve_benchmark_ack_bind(self) -> tuple[str, int]:
+        raw = str(os.environ.get(BENCHMARK_ACK_BIND_ENV, "") or "").strip()
+        if not raw:
+            return BENCHMARK_ACK_DEFAULT_HOST, BENCHMARK_ACK_DEFAULT_PORT
+        if "://" in raw:
+            raw = raw.split("://", 1)[1]
+        if ":" not in raw:
+            return raw or BENCHMARK_ACK_DEFAULT_HOST, BENCHMARK_ACK_DEFAULT_PORT
+        host, port_str = raw.rsplit(":", 1)
+        try:
+            port = int(port_str)
+        except ValueError:
+            port = BENCHMARK_ACK_DEFAULT_PORT
+        return host or BENCHMARK_ACK_DEFAULT_HOST, port
+
+    @staticmethod
+    def _recv_json_line(conn: socket.socket) -> dict[str, object]:
+        chunks: list[bytes] = []
+        total = 0
+        while total < BENCHMARK_ACK_RECV_BUFFER:
+            chunk = conn.recv(min(65536, BENCHMARK_ACK_RECV_BUFFER - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if b"\n" in chunk:
+                break
+        raw = b"".join(chunks).split(b"\n", 1)[0].strip()
+        if not raw:
+            raise ValueError("empty benchmark ACK request")
+        payload = json.loads(raw.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise TypeError("benchmark ACK request must be a JSON object")
+        return payload
+
+    def _start_benchmark_ack_listener(self) -> None:
+        host, port = self._resolve_benchmark_ack_bind()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            sock.bind((host, port))
+            sock.listen(8)
+        except OSError as exc:
+            unreal.log_warning(f"UE_SCENE: benchmark ACK bind failed on {host}:{port}: {exc!r}")
+            try:
+                sock.close()
+            except OSError:
+                pass
+            return
+        sock.settimeout(0.5)
+        self._benchmark_ack_sock = sock
+        self._benchmark_ack_running = True
+        self._benchmark_ack_thread = threading.Thread(
+            target=self._benchmark_ack_accept_loop,
+            name="amongus-benchmark-ack",
+            daemon=True,
+        )
+        self._benchmark_ack_thread.start()
+        unreal.log(f"UE_SCENE: benchmark ACK listener bound on {host}:{port}")
+
+    def _stop_benchmark_ack_listener(self) -> None:
+        self._benchmark_ack_running = False
+        sock = self._benchmark_ack_sock
+        if sock is not None:
+            try:
+                sock.close()
+            except OSError:
+                pass
+        thread = self._benchmark_ack_thread
+        if thread is not None:
+            thread.join(timeout=2.0)
+        self._benchmark_ack_sock = None
+        self._benchmark_ack_thread = None
+        with self._benchmark_ack_lock:
+            pending = list(self._benchmark_ack_pending)
+            self._benchmark_ack_pending.clear()
+            active = self._benchmark_ack_active
+            self._benchmark_ack_active = None
+        for request in pending + ([active] if active is not None else []):
+            event = request.get("event") if isinstance(request, dict) else None
+            if isinstance(event, threading.Event):
+                request["response"] = {
+                    "ack": "capture_group",
+                    "success": False,
+                    "request_id": str(request.get("request_id") or ""),
+                    "error": "watcher_stopped",
+                }
+                event.set()
+
+    def _benchmark_ack_accept_loop(self) -> None:
+        sock = self._benchmark_ack_sock
+        if sock is None:
+            return
+        while self._benchmark_ack_running:
+            try:
+                conn, _addr = sock.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            try:
+                conn.settimeout(max(self._benchmark_ack_timeout_s + 5.0, 10.0))
+                request = self._recv_json_line(conn)
+                request_id = str(request.get("request_id") or f"benchmark-{time.time_ns()}")
+                event = threading.Event()
+                envelope: dict[str, object] = {
+                    "request": request,
+                    "request_id": request_id,
+                    "event": event,
+                    "response": None,
+                    "deadline": time.monotonic() + self._benchmark_ack_timeout_s,
+                }
+                with self._benchmark_ack_lock:
+                    if len(self._benchmark_ack_pending) >= BENCHMARK_ACK_MAX_PENDING:
+                        envelope["response"] = {
+                            "ack": "capture_group",
+                            "success": False,
+                            "request_id": request_id,
+                            "error": "benchmark_ack_queue_full",
+                        }
+                        event.set()
+                    else:
+                        self._benchmark_ack_pending.append(envelope)
+                event.wait(self._benchmark_ack_timeout_s + 5.0)
+                response = envelope.get("response")
+                if not isinstance(response, dict):
+                    response = {
+                        "ack": "capture_group",
+                        "success": False,
+                        "request_id": request_id,
+                        "error": "benchmark_ack_timeout",
+                    }
+                conn.sendall((json.dumps(response, ensure_ascii=True, separators=(",", ":")) + "\n").encode("utf-8"))
+            except Exception as exc:
+                try:
+                    response = {
+                        "ack": "capture_group",
+                        "success": False,
+                        "request_id": str(locals().get("request_id") or ""),
+                        "error": f"benchmark_ack_request_error:{type(exc).__name__}:{exc}",
+                    }
+                    conn.sendall((json.dumps(response, ensure_ascii=True) + "\n").encode("utf-8"))
+                except Exception:
+                    pass
+            finally:
+                try:
+                    conn.close()
+                except OSError:
+                    pass
+
+    @staticmethod
+    def _benchmark_request_fields(request: dict[str, object]) -> tuple[dict[str, object], dict[str, object]]:
+        payload = request.get("payload")
+        data = payload if isinstance(payload, dict) else request
+        canonical = data.get("canonical_state") if isinstance(data, dict) else None
+        if not isinstance(canonical, dict):
+            canonical = request.get("canonical_state")
+        if not isinstance(canonical, dict):
+            canonical = {}
+        return dict(data) if isinstance(data, dict) else {}, dict(canonical)
+
+    def _pop_benchmark_ack_request(self) -> dict[str, object] | None:
+        with self._benchmark_ack_lock:
+            if not self._benchmark_ack_pending:
+                return None
+            return self._benchmark_ack_pending.pop(0)
+
+    def _resolve_benchmark_success(self, active: dict[str, object], *, response: dict[str, object]) -> None:
+        with self._benchmark_ack_lock:
+            self._benchmark_ack_active = None
+        request = active.get("request")
+        event = active.get("event")
+        if isinstance(request, dict):
+            response.setdefault("request_id", str(active.get("request_id") or ""))
+        active["response"] = response
+        if isinstance(event, threading.Event):
+            event.set()
+
+    def _fail_benchmark_capture(self, active: dict[str, object], error: str, *, status: object = None) -> None:
+        response: dict[str, object] = {
+            "ack": "capture_group",
+            "success": False,
+            "request_id": str(active.get("request_id") or ""),
+            "error": str(error),
+        }
+        if status is not None:
+            response["capture_status"] = status
+        self._resolve_benchmark_success(active, response=response)
+
+    def _begin_benchmark_capture(self, envelope: dict[str, object]) -> None:
+        request = envelope.get("request")
+        if not isinstance(request, dict):
+            self._fail_benchmark_capture(envelope, "invalid_request")
+            return
+        data, canonical = self._benchmark_request_fields(request)
+        human = canonical.get("human") if isinstance(canonical.get("human"), dict) else {}
+        frame_value = data.get("canonical_frame_index", canonical.get("frame_index"))
+        sim_value = data.get("canonical_sim_time_ns", canonical.get("sim_time_ns"))
+        group_id = str(data.get("capture_group_id") or "")
+        session_id = str(data.get("session_id") or "")
+        loop_id = str(data.get("loop_id") or human.get("loop_id") or "")
+        try:
+            frame_index = int(frame_value)
+            sim_time_ns = int(sim_value)
+        except (TypeError, ValueError):
+            self._fail_benchmark_capture(envelope, "missing_canonical_frame_or_sim_time")
+            return
+        if not group_id:
+            self._fail_benchmark_capture(envelope, "missing_capture_group_id")
+            return
+        try:
+            apply_detail = scene_loader.apply_canonical_scene_tick(canonical)
+            armed = scene_loader.prepare_benchmark_capture_components(
+                session_id=session_id,
+                loop_id=loop_id,
+                capture_group_id=group_id,
+                frame_index=frame_index,
+                sim_time_ns=sim_time_ns,
+            )
+        except Exception as exc:
+            self._fail_benchmark_capture(envelope, f"apply_or_arm_failed:{type(exc).__name__}:{exc}")
+            return
+        if int(armed.get("armed", 0) or 0) <= 0:
+            self._fail_benchmark_capture(envelope, "no_capture_component_armed", status=armed)
+            return
+        try:
+            state_hash = __import__("hashlib").sha256(
+                json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+            ).hexdigest()[:32]
+        except Exception:
+            state_hash = ""
+        envelope["canonical"] = canonical
+        envelope["session_id"] = session_id
+        envelope["loop_id"] = loop_id
+        envelope["capture_group_id"] = group_id
+        envelope["frame_index"] = frame_index
+        envelope["sim_time_ns"] = sim_time_ns
+        envelope["state_hash"] = state_hash
+        envelope["apply_detail"] = apply_detail
+        envelope["armed"] = armed
+        envelope["camera_names"] = list(data.get("camera_names") or []) if isinstance(data.get("camera_names"), list) else []
+        envelope["deadline"] = time.monotonic() + self._benchmark_ack_timeout_s
+        with self._benchmark_ack_lock:
+            self._benchmark_ack_active = envelope
+
+    def _progress_benchmark_capture(self) -> None:
+        with self._benchmark_ack_lock:
+            active = self._benchmark_ack_active
+        if active is None:
+            return
+        if time.monotonic() > float(active.get("deadline", 0.0) or 0.0):
+            self._fail_benchmark_capture(active, "capture_timeout")
+            return
+        try:
+            status = scene_loader.benchmark_capture_component_status()
+        except Exception as exc:
+            self._fail_benchmark_capture(active, f"capture_status_failed:{type(exc).__name__}:{exc}")
+            return
+        rows = status.get("components") if isinstance(status, dict) else None
+        if not isinstance(rows, list) or not rows:
+            self._fail_benchmark_capture(active, "capture_component_disappeared", status=status)
+            return
+        if any(bool(row.get("pending")) for row in rows if isinstance(row, dict)):
+            return
+        group_id = str(active.get("capture_group_id") or "")
+        frame_raw = active.get("frame_index", -1)
+        sim_raw = active.get("sim_time_ns", -1)
+        frame_index = int(-1 if frame_raw is None else frame_raw)
+        sim_time_ns = int(-1 if sim_raw is None else sim_raw)
+        successful = all(
+            isinstance(row, dict)
+            and bool(row.get("success"))
+            and str(row.get("group_id") or "") == group_id
+            and int(row.get("camera_count") or 0) > 0
+            for row in rows
+        )
+        if not successful:
+            self._fail_benchmark_capture(active, "capture_component_failed", status=status)
+            return
+        canonical = active.get("canonical") if isinstance(active.get("canonical"), dict) else {}
+        try:
+            gt = scene_loader.export_benchmark_applied_gt(canonical)
+        except Exception as exc:
+            self._fail_benchmark_capture(active, f"gt_export_failed:{type(exc).__name__}:{exc}", status=status)
+            return
+        response = {
+            "ack": "capture_group",
+            "success": True,
+            "request_id": str(active.get("request_id") or ""),
+            "session_id": str(active.get("session_id") or ""),
+            "loop_id": str(active.get("loop_id") or ""),
+            "capture_group_id": group_id,
+            "requested_frame_index": frame_index,
+            "requested_sim_time_ns": sim_time_ns,
+            "applied_frame_index": frame_index,
+            "applied_sim_time_ns": sim_time_ns,
+            "applied_motion_frame_index": int(
+                (canonical.get("human") or {}).get("motion_frame_index", frame_index)
+                if isinstance(canonical.get("human"), dict)
+                else frame_index
+            ),
+            "applied_state_hash": str(active.get("state_hash") or ""),
+            "captured_frame_indices": {
+                str(name): frame_index
+                for name in (active.get("camera_names") or [])
+            }
+            or {f"camera_{index}": frame_index for index, _row in enumerate(rows)},
+            "capture_status": status,
+            "apply_detail": active.get("apply_detail"),
+            "gt": gt,
+        }
+        self._resolve_benchmark_success(active, response=response)
 
     def _start_canonical_udp_listener(self) -> None:
         host, port = self._resolve_canonical_udp_bind()
@@ -403,6 +747,40 @@ class EditorSessionWatcher:
             self._last_poll_time = now
             self._finalize_active_render_if_done()
             return
+        if self._pie_start_pending is not None:
+            self._busy = True
+            try:
+                self._progress_pending_pie_start(now)
+            finally:
+                self._busy = False
+            self._last_poll_time = now
+            # Let the next Slate tick perform the first canonical apply after
+            # PIE has become available.  This also keeps a timeout/result
+            # transition isolated from the hot UDP path.
+            return
+        # Strict benchmark requests have priority over the coalescing preview
+        # UDP path.  A request is applied on one Slate tick and its capture is
+        # observed on later ticks, so the ACK cannot race ahead of the applied
+        # canonical state.
+        with self._benchmark_ack_lock:
+            benchmark_active = self._benchmark_ack_active is not None
+        if benchmark_active:
+            self._busy = True
+            try:
+                self._progress_benchmark_capture()
+            finally:
+                self._busy = False
+            self._last_poll_time = now
+            return
+        benchmark_request = self._pop_benchmark_ack_request()
+        if benchmark_request is not None:
+            self._busy = True
+            try:
+                self._begin_benchmark_capture(benchmark_request)
+            finally:
+                self._busy = False
+            self._last_poll_time = now
+            return
         # 1) Hot path: apply newest UDP canonical state every UE frame, no file IO.
         canonical_payload, canonical_request_id, _seq = self._consume_latest_canonical_payload()
         if canonical_payload is not None:
@@ -425,6 +803,64 @@ class EditorSessionWatcher:
             self._consume(command_path)
         finally:
             self._busy = False
+
+    def _progress_pending_pie_start(self, now: float | None = None) -> None:
+        """Complete a deferred ``start_pie`` command on a later Slate tick."""
+        pending = self._pie_start_pending
+        if pending is None:
+            return
+        now_value = time.monotonic() if now is None else float(now)
+        request_id = str(pending["request_id"])
+        command_path = pending.get("command_path")
+        if not isinstance(command_path, Path):
+            command_path = None
+        result_payload = dict(pending.get("result_payload") or {})
+        started_at = float(pending.get("started_at_monotonic", now_value))
+        deadline = float(pending.get("deadline_monotonic", now_value))
+        try:
+            world_ready = scene_loader.world_kind_for_canonical_tick() == "pie"
+        except Exception as exc:
+            world_ready = False
+            result_payload["world_query_error"] = repr(exc)
+        if not world_ready and now_value < deadline:
+            return
+
+        result_payload.update(
+            {
+                "world_ready": bool(world_ready),
+                "readiness_deferred": True,
+                "ready_wait_s": max(now_value - started_at, 0.0),
+            }
+        )
+        if world_ready:
+            try:
+                result_payload["capture_projection_restore"] = scene_loader.restore_capture_rig_projection_contract()
+            except Exception as exc:
+                result_payload["capture_projection_restore"] = {
+                    "restored": False,
+                    "count": 0,
+                    "reason": repr(exc),
+                }
+        if world_ready:
+            detail = "pie_started"
+            success = True
+        else:
+            detail = "pie_start_timeout"
+            success = False
+            result_payload["ready_timeout_s"] = max(deadline - started_at, 0.0)
+        EditorCommandResult(
+            request_id=request_id,
+            success=success,
+            detail=detail,
+            payload=result_payload,
+        ).write(self.paths)
+        if command_path is not None:
+            try:
+                command_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        self._pie_start_pending = None
+        _write_ready(self.paths, detail=detail)
 
     def _finalize_active_render_if_done(self) -> None:
         request_id = self._active_render_request_id
@@ -461,6 +897,100 @@ class EditorSessionWatcher:
                 command_path.unlink(missing_ok=True)
                 EditorCommandResult(request_id=request_id, success=True, detail="watcher_stopping").write(self.paths)
                 self.stop()
+                return
+            if command_type == "prepare_tpose_avatar":
+                payload_data = dict(payload.get("payload", {}))
+                _apply_tool_env(payload_data.get("tool_env"))
+                result_payload = scene_loader.prepare_tpose_avatar(
+                    payload_data["scene_spec_path"],
+                    payload_data.get("augmentation_spec_path"),
+                    capture_on_request=(
+                        bool(payload_data["capture_on_request"])
+                        if "capture_on_request" in payload_data
+                        else None
+                    ),
+                )
+                EditorCommandResult(
+                    request_id=request_id,
+                    success=bool((result_payload.get("tpose_avatar") or {}).get("prepared", False)),
+                    detail="tpose_avatar_prepared",
+                    payload=result_payload,
+                ).write(self.paths)
+                command_path.unlink(missing_ok=True)
+                _write_ready(self.paths, detail="tpose_avatar_prepared")
+                return
+            if command_type == "start_pie":
+                payload_data = dict(payload.get("payload", {}))
+                ready_timeout_s = max(
+                    float(
+                        payload_data.get(
+                            "ready_timeout_s",
+                            os.environ.get("AMONGUS_UE_PIE_READY_TIMEOUT_S", "10"),
+                        )
+                    ),
+                    0.0,
+                )
+                result_payload = scene_loader.start_pie_session(
+                    simulate=bool(payload_data.get("simulate", False)),
+                    ready_timeout_s=ready_timeout_s,
+                )
+                if bool(result_payload.get("world_ready", False)):
+                    try:
+                        result_payload["capture_projection_restore"] = scene_loader.restore_capture_rig_projection_contract()
+                    except Exception as exc:
+                        result_payload["capture_projection_restore"] = {
+                            "restored": False,
+                            "count": 0,
+                            "reason": repr(exc),
+                        }
+                    EditorCommandResult(
+                        request_id=request_id,
+                        success=True,
+                        detail="pie_started",
+                        payload=result_payload,
+                    ).write(self.paths)
+                    command_path.unlink(missing_ok=True)
+                    _write_ready(self.paths, detail="pie_started")
+                    return
+                # The editor request has been submitted, but PIE world
+                # creation is deferred to future Slate ticks.  Keep this
+                # command file until _progress_pending_pie_start resolves it
+                # so callers observe one result only after the world exists or
+                # the explicit timeout expires.
+                started_at = time.monotonic()
+                result_payload["ready_timeout_s"] = ready_timeout_s
+                self._pie_start_pending = {
+                    "request_id": request_id,
+                    "command_path": command_path,
+                    "result_payload": result_payload,
+                    "started_at_monotonic": started_at,
+                    "deadline_monotonic": started_at + ready_timeout_s,
+                }
+                return
+            if command_type == "stop_pie":
+                result_payload = scene_loader.stop_pie_session()
+                EditorCommandResult(
+                    request_id=request_id,
+                    success=True,
+                    detail="pie_stop_requested",
+                    payload=result_payload,
+                ).write(self.paths)
+                command_path.unlink(missing_ok=True)
+                _write_ready(self.paths, detail="pie_stop_requested")
+                return
+            if command_type == "resume_camera_preview":
+                result_payload = scene_loader.resume_camera_preview()
+                EditorCommandResult(
+                    request_id=request_id,
+                    success=bool(result_payload.get("resumed", False)),
+                    detail="camera_preview_resumed" if result_payload.get("resumed") else "camera_preview_resume_failed",
+                    payload=result_payload,
+                ).write(self.paths)
+                command_path.unlink(missing_ok=True)
+                _write_ready(
+                    self.paths,
+                    detail="camera_preview_resumed" if result_payload.get("resumed") else "camera_preview_resume_failed",
+                )
                 return
             if command_type == "apply_scene_to_level":
                 payload_data = dict(payload.get("payload", {}))

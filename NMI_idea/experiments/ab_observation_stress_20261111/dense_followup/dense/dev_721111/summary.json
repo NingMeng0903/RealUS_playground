@@ -1,0 +1,961 @@
+{
+  "groups": [
+    {
+      "regime": "bursty",
+      "context": "pooled",
+      "method": "A_task",
+      "trials": 6,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 1,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": 0.0,
+      "loss_events": 1,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": 0.0,
+      "acquisitions": 36,
+      "source_counts": {
+        "target": 6,
+        "decoy": 15,
+        "clutter": 1,
+        "missing": 14
+      },
+      "target_in_fov_acquisitions": 11,
+      "in_fov_without_target_return": 5,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 6,
+      "oracle_any_qualified_candidate": 4,
+      "failures": {
+        "action_limit": 6
+      },
+      "forecast_invalid_fallbacks": {},
+      "same_path_first_public_gate": {
+        "success_count": 0,
+        "false_stop_count": 0,
+        "mean_restricted_time_s": 60.0
+      }
+    },
+    {
+      "regime": "bursty",
+      "context": "pooled",
+      "method": "B_two",
+      "trials": 6,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 2,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": 0.0,
+      "loss_events": 2,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": 0.0,
+      "acquisitions": 36,
+      "source_counts": {
+        "target": 13,
+        "decoy": 10,
+        "clutter": 1,
+        "missing": 12
+      },
+      "target_in_fov_acquisitions": 17,
+      "in_fov_without_target_return": 4,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 6,
+      "oracle_any_qualified_candidate": 4,
+      "failures": {
+        "action_limit": 6
+      },
+      "forecast_invalid_fallbacks": {}
+    },
+    {
+      "regime": "bursty",
+      "context": "pooled",
+      "method": "B_fixed",
+      "trials": 6,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 5,
+      "recovered_trials": 3,
+      "recovery_rate_given_exposure": 0.6,
+      "loss_events": 6,
+      "recovery_events": 3,
+      "recovery_rate_per_loss": 0.5,
+      "acquisitions": 36,
+      "source_counts": {
+        "target": 14,
+        "decoy": 9,
+        "clutter": 1,
+        "missing": 12
+      },
+      "target_in_fov_acquisitions": 20,
+      "in_fov_without_target_return": 6,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 6,
+      "oracle_any_qualified_candidate": 4,
+      "failures": {
+        "action_limit": 6
+      },
+      "forecast_invalid_fallbacks": {}
+    },
+    {
+      "regime": "bursty",
+      "context": "pooled",
+      "method": "B_no_future_cap",
+      "trials": 6,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 2,
+      "recovered_trials": 1,
+      "recovery_rate_given_exposure": 0.5,
+      "loss_events": 2,
+      "recovery_events": 1,
+      "recovery_rate_per_loss": 0.5,
+      "acquisitions": 36,
+      "source_counts": {
+        "target": 14,
+        "decoy": 9,
+        "clutter": 1,
+        "missing": 12
+      },
+      "target_in_fov_acquisitions": 19,
+      "in_fov_without_target_return": 5,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 6,
+      "oracle_any_qualified_candidate": 4,
+      "failures": {
+        "action_limit": 6
+      },
+      "forecast_invalid_fallbacks": {
+        "forecast_endpoint_unavailable": 2
+      }
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout",
+      "method": "A_task",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 1,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": 0.0,
+      "loss_events": 1,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": 0.0,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 4,
+        "decoy": 7,
+        "clutter": 1,
+        "missing": 6
+      },
+      "target_in_fov_acquisitions": 7,
+      "in_fov_without_target_return": 3,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {},
+      "same_path_first_public_gate": {
+        "success_count": 0,
+        "false_stop_count": 0,
+        "mean_restricted_time_s": 60.0
+      }
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout",
+      "method": "B_two",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 0,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": null,
+      "loss_events": 0,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": null,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 3,
+        "decoy": 5,
+        "clutter": 1,
+        "missing": 9
+      },
+      "target_in_fov_acquisitions": 5,
+      "in_fov_without_target_return": 2,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {}
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout",
+      "method": "B_fixed",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 2,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": 0.0,
+      "loss_events": 2,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": 0.0,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 5,
+        "decoy": 4,
+        "clutter": 1,
+        "missing": 8
+      },
+      "target_in_fov_acquisitions": 7,
+      "in_fov_without_target_return": 2,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {}
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout",
+      "method": "B_no_future_cap",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 0,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": null,
+      "loss_events": 0,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": null,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 3,
+        "decoy": 5,
+        "clutter": 1,
+        "missing": 9
+      },
+      "target_in_fov_acquisitions": 5,
+      "in_fov_without_target_return": 2,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {}
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "method": "A_task",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 0,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": null,
+      "loss_events": 0,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": null,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 2,
+        "decoy": 8,
+        "clutter": 0,
+        "missing": 8
+      },
+      "target_in_fov_acquisitions": 4,
+      "in_fov_without_target_return": 2,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {},
+      "same_path_first_public_gate": {
+        "success_count": 0,
+        "false_stop_count": 0,
+        "mean_restricted_time_s": 60.0
+      }
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "method": "B_two",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 2,
+      "recovered_trials": 0,
+      "recovery_rate_given_exposure": 0.0,
+      "loss_events": 2,
+      "recovery_events": 0,
+      "recovery_rate_per_loss": 0.0,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 10,
+        "decoy": 5,
+        "clutter": 0,
+        "missing": 3
+      },
+      "target_in_fov_acquisitions": 12,
+      "in_fov_without_target_return": 2,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {}
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "method": "B_fixed",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 3,
+      "recovered_trials": 3,
+      "recovery_rate_given_exposure": 1.0,
+      "loss_events": 4,
+      "recovery_events": 3,
+      "recovery_rate_per_loss": 0.75,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 9,
+        "decoy": 5,
+        "clutter": 0,
+        "missing": 4
+      },
+      "target_in_fov_acquisitions": 13,
+      "in_fov_without_target_return": 4,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {}
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "method": "B_no_future_cap",
+      "trials": 3,
+      "success_count": 0,
+      "success_rate": 0.0,
+      "false_stop_count": 0,
+      "false_stop_rate": 0.0,
+      "mean_restricted_time_s": 60.0,
+      "recovery_exposed_trials": 2,
+      "recovered_trials": 1,
+      "recovery_rate_given_exposure": 0.5,
+      "loss_events": 2,
+      "recovery_events": 1,
+      "recovery_rate_per_loss": 0.5,
+      "acquisitions": 18,
+      "source_counts": {
+        "target": 11,
+        "decoy": 4,
+        "clutter": 0,
+        "missing": 3
+      },
+      "target_in_fov_acquisitions": 14,
+      "in_fov_without_target_return": 3,
+      "qualified_endpoint_acquisitions": 0,
+      "oracle_any_geometrically_visible": 3,
+      "oracle_any_qualified_candidate": 2,
+      "failures": {
+        "action_limit": 3
+      },
+      "forecast_invalid_fallbacks": {
+        "forecast_endpoint_unavailable": 2
+      }
+    }
+  ],
+  "paired_differences": [
+    {
+      "regime": "bursty",
+      "context": "pooled",
+      "comparisons": [
+        {
+          "left": "B_two",
+          "right": "A_task",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": 0.16666666666666666,
+              "object_bootstrap_95": [
+                -0.5,
+                0.5
+              ]
+            },
+            "recovered": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "loss_events": {
+              "mean": 0.16666666666666666,
+              "object_bootstrap_95": [
+                -0.5,
+                0.5
+              ]
+            },
+            "recovery_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        {
+          "left": "B_two",
+          "right": "B_fixed",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": -0.5,
+              "object_bootstrap_95": [
+                -0.5,
+                -0.5
+              ]
+            },
+            "recovered": {
+              "mean": -0.5,
+              "object_bootstrap_95": [
+                -0.5,
+                -0.5
+              ]
+            },
+            "loss_events": {
+              "mean": -0.6666666666666666,
+              "object_bootstrap_95": [
+                -1.0,
+                -0.5
+              ]
+            },
+            "recovery_events": {
+              "mean": -0.5,
+              "object_bootstrap_95": [
+                -0.5,
+                -0.5
+              ]
+            }
+          }
+        },
+        {
+          "left": "B_two",
+          "right": "B_no_future_cap",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovered": {
+              "mean": -0.16666666666666666,
+              "object_bootstrap_95": [
+                -0.5,
+                0.0
+              ]
+            },
+            "loss_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_events": {
+              "mean": -0.16666666666666666,
+              "object_bootstrap_95": [
+                -0.5,
+                0.0
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout",
+      "comparisons": [
+        {
+          "left": "B_two",
+          "right": "A_task",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": -0.3333333333333333,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            },
+            "recovered": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "loss_events": {
+              "mean": -0.3333333333333333,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            },
+            "recovery_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        {
+          "left": "B_two",
+          "right": "B_fixed",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": -0.6666666666666666,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            },
+            "recovered": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "loss_events": {
+              "mean": -0.6666666666666666,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            },
+            "recovery_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        {
+          "left": "B_two",
+          "right": "B_no_future_cap",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovered": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "loss_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "regime": "bursty",
+      "context": "prior_only_layout_partial_endpoint_witnesses",
+      "comparisons": [
+        {
+          "left": "B_two",
+          "right": "A_task",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": 0.6666666666666666,
+              "object_bootstrap_95": [
+                0.0,
+                1.0
+              ]
+            },
+            "recovered": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "loss_events": {
+              "mean": 0.6666666666666666,
+              "object_bootstrap_95": [
+                0.0,
+                1.0
+              ]
+            },
+            "recovery_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        {
+          "left": "B_two",
+          "right": "B_fixed",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": -0.3333333333333333,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            },
+            "recovered": {
+              "mean": -1.0,
+              "object_bootstrap_95": [
+                -1.0,
+                -1.0
+              ]
+            },
+            "loss_events": {
+              "mean": -0.6666666666666666,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            },
+            "recovery_events": {
+              "mean": -1.0,
+              "object_bootstrap_95": [
+                -1.0,
+                -1.0
+              ]
+            }
+          }
+        },
+        {
+          "left": "B_two",
+          "right": "B_no_future_cap",
+          "independent_objects": 3,
+          "delta_left_minus_right": {
+            "success": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "false_stop": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "restricted_time_s": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_exposed": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovered": {
+              "mean": -0.3333333333333333,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            },
+            "loss_events": {
+              "mean": 0.0,
+              "object_bootstrap_95": [
+                0.0,
+                0.0
+              ]
+            },
+            "recovery_events": {
+              "mean": -0.3333333333333333,
+              "object_bootstrap_95": [
+                -1.0,
+                0.0
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "identity_blind_label_swap": {
+    "worlds": 6,
+    "max_abs_public_likelihood_change": 0.0,
+    "max_abs_target_joint_vs_swapped_decoy": 0.0,
+    "max_abs_private_correct_mass_change": 0.5283672310119156
+  },
+  "static_capability": {
+    "prior_only_layout": {
+      "available_poses": 298,
+      "pose_count": 305,
+      "joint_time_exceeds_reference_edges": 6
+    },
+    "prior_only_layout_partial_endpoint_witnesses": {
+      "available_poses": 221,
+      "pose_count": 305,
+      "joint_time_exceeds_reference_edges": 2
+    }
+  }
+}

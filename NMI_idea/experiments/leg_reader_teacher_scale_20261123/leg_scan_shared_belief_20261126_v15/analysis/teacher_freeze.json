@@ -1,0 +1,11 @@
+{
+  "protocol": "18f6218696441030c7c1b09d813ab0c59e7ee5d572b67007cf3e5817cefdf2d5",
+  "reader": "b1a3248d6ee06a3784cc23bbac5f46f4b7897e46b3444fc79c79759df0fd7ffc",
+  "continuation_student": "b7eb3265c58720a56c87b48ba7067a9716ab17828bb07a8995071db2b656620e",
+  "reference_action": "normally advance or submit, then same continuation",
+  "search": [
+    227041151,
+    227053217
+  ],
+  "independent_proof": 227078709
+}

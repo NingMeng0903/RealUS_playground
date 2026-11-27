@@ -1,0 +1,43 @@
+2026-11-10 13:12: motion owner reported DMP integration on requested n<25
+could be unstable and corrected adapter to integrate >=161 source samples,
+then sample the requested query grid. A and graph had imported old adapter at
+n=21. Retained A outputs and interrupted partial graph (7 root queries, zero
+failures; no planner comparison had run) in development_pre_adapter_fix/.
+Re-running same A seeds/parameters and same fixed B geometry under corrected
+adapter. This is a numerical implementation correction, not outcome-based
+selection. Original protocol, contexts, hypotheses and costs unchanged.
+B geometry explicitly frozen in graph_config.json before capability queries.
+Before first B planner run: parent requested proxy-only ablation to distinguish
+learned dIRD penalty from exact feasibility. Added B_without_dird_proxy retaining
+exact admissibility, motion/sensing costs. Movement costing uses production
+README nominal .02m/s rather than hypothetical .05; planner recomputes from
+retained actual path lengths, no path/kinematic query changes. No B comparison
+had run when this was decided. B without capability ignores both score and
+validation while planning; evaluation aborts/charges failure at invalid attempt.
+Virtual graph descendants below infeasible edges are only that ablation's
+counterfactual model, never claimed physically reachable.
+A rerun will use common .015 sensor noise for training and four online probe
+measurements, replacing earlier uncharged .003 probe precision. Prior results
+are retained as development, same original worlds/seeds used throughout.
+Graph builder development correction before any B policy comparisons: node-depth
+iteration accidentally included root among depth1 nodes (duplicated seven root
+queries), and failed exact lifts can contain null q_ref entries; converting them
+to NaN poisoned ablation-only virtual descendant queries. Preserve partial graph
+and log in development_graph_builder_fix/. Fix root exclusion and use previous
+q_seed when no finite q_ref exists. Descendants remain marked unreachable for
+exact policies. Same fixed geometry/costs, no scenario replacement or retuning.
+Independent Astra audit found adapter departure q_seed->first q_ref sample
+was collision-sampled but lacked the declared12degree/.04m consecutive-step
+acceptance bound. dIRD owner corrected wrapper (no source solver/model change),
+with physical-asset regression tests. Regenerate all192 exact graph queries and
+main/extension outputs under corrected adapter; retain prior artifacts in
+before_departure_fix/. Three former-valid edges below an already-unreachable
+node are expected to fail; do not infer results until rerun. Add exhaustive
+outcome replay categories (correct acquisition, wrong identity, explicit fail,
+invalid attempt), so lower wrong rate is not mistaken for higher success.
+Final corrected graph recomputation:192 completed queries, exact invalid counts
+4/34/0 per context. Main/extension loss metrics unchanged. Exhaustive outcome
+categories and all source-shift adverse cases added to reporting. Prior2x2
+factorial run exactly as frozen in PRIOR_FACTORIAL_DESIGN.txt; source fitted
+prior is beneficial under source population and harmful after declared shift.
+No tuning, seed replacement, failed-scenario deletion or physical claim.

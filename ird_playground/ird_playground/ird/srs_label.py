@@ -20,7 +20,7 @@ Pose / rail frame contract (must match ``srs_ik``):
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import numpy as np
@@ -68,6 +68,14 @@ def _default_y_rail_m() -> float:
     return float(srs.shoulder_y_from_q_rail(0.0))
 
 
+def _default_T_flange_tcp() -> tuple[tuple[float, ...], ...]:
+    """Read the complete physical probe transform from the active robot contract."""
+    from ird_playground.ird.robot_model import RobotModelSpec
+
+    transform = RobotModelSpec.default_probe45().tool_frame().T_flange_tcp
+    return tuple(tuple(float(value) for value in row) for row in transform)
+
+
 @dataclass(frozen=True)
 class SrsLabelConfig:
     """Controller-aligned point-reachability config.
@@ -87,9 +95,26 @@ class SrsLabelConfig:
     y_rail_m: float | None = None  # None → RAIL_ORIGIN_Y + 0 (locked rail)
     check_limits: bool = True
     euler_order: str = "xyz"
-    # Default probe45 TCP offset xyz in link_7 (from URDF link_7_to_tcp).
-    # Flange mode uses the full URDF ``T_flange_tcp``; this is kept for manifests.
-    tcp_offset_xyz: tuple[float, float, float] = (0.0, -0.01523, 0.12135)
+    # A TCP pose is not a flange pose: both the calibrated tool rotation and
+    # translation must reach the analytical IK. Custom robot specs override this.
+    T_flange_tcp: tuple[tuple[float, ...], ...] = field(default_factory=_default_T_flange_tcp)
+
+    def __post_init__(self) -> None:
+        transform = np.asarray(self.T_flange_tcp, dtype=float)
+        if transform.shape != (4, 4) or not np.isfinite(transform).all():
+            raise ValueError("T_flange_tcp must be a finite 4x4 rigid transform")
+        rotation = transform[:3, :3]
+        if (
+            not np.allclose(transform[3], [0.0, 0.0, 0.0, 1.0], atol=1e-9)
+            or not np.allclose(rotation.T @ rotation, np.eye(3), atol=1e-7)
+            or not np.isclose(np.linalg.det(rotation), 1.0, atol=1e-7)
+        ):
+            raise ValueError("T_flange_tcp must be a proper rigid transform")
+        object.__setattr__(self, "T_flange_tcp", tuple(tuple(float(v) for v in row) for row in transform))
+
+    @property
+    def tcp_offset_xyz(self) -> tuple[float, float, float]:
+        return tuple(float(row[3]) for row in self.T_flange_tcp[:3])
 
     def resolved_y_rail_m(self) -> float:
         if self.y_rail_m is not None:
@@ -118,7 +143,9 @@ class SrsLabelConfig:
             "per_sample_overrides": ["psi_homes", "branch_ids"],
             "pose_frame": "rail_base",
             "y_rail_meaning": "shoulder_world_y = RAIL_ORIGIN_Y + q_rail",
-            "tool_mode": srs.TOOL_MODE_FLANGE,
+            "tool_mode": srs.TOOL_MODE_FLANGE_TCP,
+            "T_flange_tcp": np.asarray(self.T_flange_tcp, dtype=float).tolist(),
+            "tcp_offset_xyz": list(self.tcp_offset_xyz),
         }
 
 
@@ -144,6 +171,7 @@ def srs_reachable_single(
         branch = int(cfg.branch_id) & 0b111
     y_rail = cfg.resolved_y_rail_m()
     psi_grid = np.arange(-np.pi, np.pi, float(cfg.psi_grid_step_rad))
+    T_flange_tcp = np.asarray(cfg.T_flange_tcp, dtype=float)
     best: tuple[float, float, int, np.ndarray] | None = None  # score, psi, branch, q
     for psi in psi_grid:
         if abs(_wrap_pi(float(psi) - psi_home)) > float(cfg.max_psi_swing_rad):
@@ -159,7 +187,9 @@ def srs_reachable_single(
             y_rail=float(y_rail),
             check_limits=cfg.check_limits,
             euler_order=cfg.euler_order,
-            tool_mode=srs.TOOL_MODE_FLANGE,
+            tool_mode=srs.TOOL_MODE_FLANGE_TCP,
+            R_flange_tcp=T_flange_tcp[:3, :3],
+            t_flange_tcp=T_flange_tcp[:3, 3],
         )
         if q is None:
             continue

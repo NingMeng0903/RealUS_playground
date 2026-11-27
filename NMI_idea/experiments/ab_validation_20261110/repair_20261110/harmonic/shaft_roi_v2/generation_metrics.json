@@ -1,0 +1,46 @@
+{
+  "right": {
+    "vertices": 62208,
+    "tets": 322056,
+    "det_min": 2.0669163047810057e-09,
+    "det_max": 7.530214262956217e-07,
+    "material_J_min": -39564.48007718745,
+    "material_J_max": -72.06925571511685,
+    "nonpositive_tets": 0,
+    "material_fold_tets": 0,
+    "max_curvature_times_radius": 0.2746167261010111,
+    "ray_hit_count_min": 1,
+    "ray_hit_count_max": 1,
+    "harmonic_relative_residual": 3.0512127610137996e-06,
+    "surface_rebinding_distance_m": {
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0,
+      "meaning": "original retained source vertices and original stencil weights are identical; no cross-surface rebinding"
+    },
+    "after_save_load_det_min": 2.0669163047810057e-09,
+    "wall_s": 4.852163252999162
+  },
+  "left": {
+    "vertices": 62208,
+    "tets": 322056,
+    "det_min": 2.1002103578658662e-09,
+    "det_max": 8.632401668313877e-07,
+    "material_J_min": -37993.66325980086,
+    "material_J_max": -55.8402276512365,
+    "nonpositive_tets": 0,
+    "material_fold_tets": 0,
+    "max_curvature_times_radius": 0.3743476027904197,
+    "ray_hit_count_min": 1,
+    "ray_hit_count_max": 1,
+    "harmonic_relative_residual": 3.055992122320477e-06,
+    "surface_rebinding_distance_m": {
+      "mean": 0.0,
+      "p95": 0.0,
+      "max": 0.0,
+      "meaning": "original retained source vertices and original stencil weights are identical; no cross-surface rebinding"
+    },
+    "after_save_load_det_min": 2.1002103578658662e-09,
+    "wall_s": 4.875334439999278
+  }
+}

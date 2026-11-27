@@ -1,0 +1,1178 @@
+                                    Article                                                                                                   https://doi.org/10.1038/s41467-025-62865-w
+
+
+                                    Towards expert-level autonomous carotid
+                                    ultrasonography with large-scale learning-
+                                    based robotic system
+                                    Received: 28 October 2024                            Haojun Jiang 1,2,8, Andrew Zhao 1,2,8, Qian Yang 3,8, Xiangjie Yan 1,2,
+                                                                                         Teng Wang 1,2, Yulin Wang 1,2, Ning Jia 4, Jiangshan Wang 5,
+                                    Accepted: 30 July 2025
+                                                                                         Guokun Wu 5, Yang Yue 1,2, Shaqi Luo6, Huanqian Wang 1,2, Ling Ren7,
+                                                                                         Siming Chen7, Pan Liu 7, Guocai Yao 6, Wenming Yang5, Shiji Song1,2,
+                                                                                         Xiang Li 1,2, Kunlun He 7 & Gao Huang 1,2
+                                        Check for updates
+                  1234567890():,;
+1234567890():,;
+
+
+
+
+                                                                                         Carotid ultrasound requires skilled operators due to small vessel dimensions
+                                                                                         and high anatomical variability, exacerbating sonographer shortages and
+                                                                                         diagnostic inconsistencies. Prior automation attempts, including rule-based
+                                                                                         approaches with manual heuristics and reinforcement learning trained in
+                                                                                         simulated environments, demonstrate limited generalizability and fail to
+                                                                                         complete real-world clinical workﬂows. Here, we present UltraBot, a fully
+                                                                                         learning-based autonomous carotid ultrasound robot, achieving human-
+                                                                                         expert-level performance through four innovations: (1) A uniﬁed imitation
+                                                                                         learning framework for acquiring anatomical knowledge and scanning
+                                                                                         operational skills; (2) A large-scale expert demonstration dataset (247,000
+                                                                                         samples, 100 × scale-up), enabling embodied foundation models with strong
+                                                                                         generalization; (3) A comprehensive scanning protocol ensuring full anato-
+                                                                                         mical coverage for biometric measurement and plaque screening; (4) The
+                                                                                         clinical-oriented validation showing over 90% success rates, expert-level
+                                                                                         accuracy, up to 5.5 × higher reproducibility across diverse unseen popula-
+                                                                                         tions. Overall, we show that large-scale deep learning offers a promising
+                                                                                         pathway toward autonomous, high-precision ultrasonography in clinical
+                                                                                         practice.
+
+
+                                    Ultrasonography is an integral medical imaging technique in con-                    However, unlike other medical imaging techniques, ultrasound
+                                    temporary medical diagnostics, utilized from the fetal stage1,2                examination signiﬁcantly relies on manual operation (Fig. 1a, b).
+                                    throughout an individual’s life. It enables health assessments of a wide       Sonographers require close coordination of eye, hand, and brain for
+                                    range of organs1–8, including the carotid artery4,5,9, heart3,6, liver7,8,     real-time decision-making to adjust the transducer’s pose, with a
+                                    among others. Compared to X-ray imaging, ultrasound boasts several             nontrivial challenge in adapting scanning strategies to individual dif-
+                                    predominant advantages: it offers real-time, dynamic visualization of          ferences on a case-by-case basis. This heavy reliance on sonographers’
+                                    the organs and tissues in a radiation-free and cost-effective manner,          experience diminishes the standardization and accuracy of examina-
+                                    offering rich information for clinical diagnostics.                            tions, leading to high variability in inter-sonographer results10–12,
+
+
+                                    1
+                                     Department of Automation, Tsinghua University, Beijing, China. 2Beijing National Research Center for Information Science and Technology, Tsinghua
+                                    University, Beijing, China. 3Air Force Medical Center, Beijing, China. 4LeadVision Ltd, Beijing, China. 5Shenzhen International Graduate School, Tsinghua
+                                    University, Shenzhen, China. 6Beijing Academy of Artiﬁcial Intelligence, Beijing, China. 7Chinese PLA General Hospital, Beijing, China. 8These authors
+                                    contributed equally: Haojun Jiang, Andrew Zhao, Qian Yang.        e-mail: kunlunhe@plagh.org; gaohuang@tsinghua.edu.cn
+
+
+                                    Nature Communications | (2025)16:7893                                                                                                                       1
+Article                                                                                                   https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 1 | Comparison of manual, tele-echography, autonomous robotic ultra-      mirroring the sonographer’s actions. They also manually measure biometrics on
+sound examination. a Manual ultrasonography: sonographers conduct ultrasound   the remote control device. c Autonomous robotic ultrasonography: empowered by
+scans using a handheld transducer and manually measure biometrics. b Tele-     the foundation model, the robotic system automatically performs scanning, bio-
+echography: sonographers operate the transducer on a simulator, and then the   metric measurements, and plaque screening, demonstrating signiﬁcant clinical
+adjustments are executed by a distant robotic arm holding the transducer,      potential.
+
+
+
+particularly among less experienced sonographers or trainees. More-            are notable risk factors for cardiovascular diseases, which have
+over, the complexity of manual operation makes training sono-                  impacted 422.7 million individuals worldwide, resulting in 17.9 million
+graphers a time-intensive endeavor13, contributing to a signiﬁcant             fatalities and constituting 31% of the total global deaths in 201520–22.
+shortage of these professionals10,14. Additionally, manual operation                Currently, most medical ultrasound robotic systems (Fig. 2c)
+requiring close contact with patients can increase the risk of infection       adopt rule-based decision strategies, depending on a predeﬁned set of
+for practitioners during epidemic periods15,16.                                rules to guide the decision-making process23–25. For example, in work23,
+     On the ﬂip side, medical robots with a high level of autonomy             the core scanning carotid trajectory relied on manually pre-deﬁned
+present a potential solution to mitigate the dependence on sono-               paths, meaning all action decisions are predetermined. Meanwhile,
+graphers’ experience and availability, thereby enhancing the exam-             works24,25 implemented traditional visual servoing for carotid scan-
+ination process. In this paper, we investigate how to develop an expert-       ning, where action decisions were made based on rule sets derived
+level, fully autonomous robot, which dynamically analyzes the ultra-           from observed image feature changes following each executed
+sound signals collected from patients, adjusts the probe’s moving              movement. (See supplementary material for details.) However, it is
+trajectories and poses in real time, and accomplishes scanning and             inherently difﬁcult to deﬁne a set of sufﬁciently generalizable rules
+measuring tasks in real clinician scenarios (Fig. 1c). In particular, we use   applicable to complex clinical environments, e.g., adapting to the large
+carotid artery ultrasonography (Fig. 1a) as a case study, which is a           variability of each individual’s carotid artery in structure, morphology,
+common, important approach for assessing cardiovascular diseases.              and position. Hence, rule-based strategies are usually suitable only for
+For example, it can be conveniently employed for the effective                 a limited range of scenarios, lacking the necessary ability to fulﬁll all
+detection of stenosis and atherosclerotic plaques17–19. These conditions       ultrasound examination tasks or generalize to new individuals. In
+
+
+Nature Communications | (2025)16:7893                                                                                                                      2
+Article                                                                                                             https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 2 | Comparison with existing works. a Two main types of ultrasound robotic         clinically-oriented evaluation. ⭐ indicates task difﬁculty. The “Incomplete” label
+systems: rule-based and learning-based. As learning-based methods scale up with         denotes scans covering only a partial carotid artery segment (between the internal/
+data and model size, they will show superior generalizability compared to rule-         external and common carotid-subclavian junctions), rather than the full vessel. The
+based methods, further possessing the potential to surpass human experts. b Our         abbreviation “CCA” stands for the common carotid artery, with its upper end
+philosophy is to embrace the scaling law, involving the large-scale collection of       marking the bifurcation into internal/external carotid arteries and its lower end
+expert data, training scalable neural networks, and future deployment in real           indicating the junction with the subclavian artery. The quantitative error metric
+clinical settings to establish a loop that enables continuous data and model scaling.   evaluates errors in at least one area: target segmentation or biometric
+c We compare our system with existing works across four critical aspects: system        measurement.
+ﬂexibility, data scalability, comprehensiveness of medical examinations, and
+
+
+
+contrast to rule-based methods, researchers have recently begun to                      those in carotid arteries. (See supplementary material for details.)
+explore harnessing learnable neural networks as the controller of                       Learning-based methods, in theory, have the potential of ﬁtting func-
+ultrasound robots26–28. For instance26, adopted a reinforcement learn-                  tions with arbitrary complexities and therefore may address the issues
+ing approach for motion planning, but trained on simulated and sim-                     of predeﬁned rules (Fig. 2a). Nevertheless, current learning-based
+pliﬁed vascular virtual environments. Nevertheless, control strategies                  approaches have mainly been investigated in small-scale, experimental
+trained on simpliﬁed vascular fail to generalize to real human anato-                   scenarios, with signiﬁcant limitations in data, modeling, and validation.
+mical variations, limiting clinical applicability. Representative thyroid               First, their data collection schemes tend to be labor-intensive, less
+scanning work27 adopted a hybrid learning-rule strategy, implement-                     realistic, and difﬁcult to scale up (e.g., constructing a phantom or
+ing learning-based methods for two degrees of freedom (DoF) while                       collecting all possible probe positions and poses for each person),
+maintaining rule-based control for the remaining four. This hybrid                      yielding a limited number of learning samples, sometimes with
+strategy remains constrained by the limitations of rule-based methods,                  training-test domain shifts (Fig. 2c, Data Scalability). Second, with the
+making it inadequate for handling complex anatomical variations like                    relatively small-scale training data, the action space is typically deﬁned
+
+
+Nature Communications | (2025)16:7893                                                                                                                                    3
+Article                                                                                                https://doi.org/10.1038/s41467-025-62865-w
+
+
+with limited degrees of freedom (e.g., translation or rotation in one        a crucial foundation for developing truly practical end-to-end auton-
+direction) to avoid overﬁtting and ensure training stability (Fig. 2c,       omous ultrasound robotic systems.
+System Flexibility). Such simpliﬁcations often make it difﬁcult for the            Finally, our work conducts a clinically-oriented evaluation, while
+system to handle complex situations in real world. Third, validation of      also scaling up the evaluation population by an order of magnitude
+the system is usually conducted only on a few individuals or even            compared to works23–26 (Fig. 2c, Clinically-oriented Evaluation). This
+phantom, without considering clinically-oriented validations (Fig. 2c,       approach enables more accurate and clinically relevant validation,
+Clinically-oriented Evaluation). This is insufﬁcient to fully evaluate its   better reﬂecting the practical potential of autonomous ultrasound
+applicability in clinical scenarios.                                         robots. Concretely, our robotic system achieves over 90% scanning
+      In recent years, the rise of large language models and multi-modal     success rate across a diverse population (Age: 19-70 years old; Body
+foundation models like GPT-4V29 has demonstrated the scaling law of          Mass Index (BMI): 16.5-30.8; Sex: female and male), conﬁrming its
+neural networks30,31: previously unobserved abilities can emerge with        strong generalization performance across anatomical variations,
+growing datasets, increases in model size, and advances in learning          including successful scanning of patients with plaques. Meanwhile,
+algorithms, such as the capabilities of handling more complex situa-         existing carotid artery studies23–26 suffer from critically limited valida-
+tions and generalizing to new, unseen samples without additional             tion cohorts (1-3 subjects), fundamentally constraining their ability to
+training. Inspired by this success, this paper explores the potential of     demonstrate robotic systems’ clinical viability Furthermore, we
+scaling up a purely learning-based framework in autonomous robotic           demonstrate the robotic system’s capability for precise measurement
+ultrasound examination. Through four key contributions—(1) more              of key anatomical structures that reﬂect the health status of carotid
+ﬂexible modeling formulations, (2) utilization of large-scale real-world     artery, i.e., intima-media thickness and lumen diameter. Hypothesis
+individual data, (3) a more comprehensive examination process, and           testing shows that the robotic system’s biometric measurements align
+(4) validation on a broader population with clinically oriented eva-         with expert outcomes, evidenced by a p-value below 0.001. Notably,
+luation protocols—we demonstrate the powerful capabilities of a fully        we present the validation of a robotic ultrasound system’s reproduci-
+learning-driven ultrasound robot. Our work not only highlights the           bility in biometric measurements, demonstrating superior perfor-
+system’s promising potential but also charts a viable path to bridge the     mance across all four reproducibility metrics (with improvements up
+gap between theoretical research and real-world clinical adoption.           to 5.5 times)—marking a signiﬁcant advancement that overcomes
+      At its core, our system frames autonomous scanning as an end-to-       fundamental limitations of conventional manual scanning techniques.
+end vision-driven navigation task, where the transducer’s movements          Moreover, the robotic system demonstrates automated precise plaque
+are inferred from real-time ultrasound images, under the goal of             segmentation, achieving promising performance on real patients and
+obtaining high-quality diagnostic images. Speciﬁcally, we integrate          expert-annotated datasets, thereby enabling pathological case detec-
+perception and scanning action decision-making within a uniﬁed net-          tion capabilities. Overall, our empirical ﬁndings demonstrate the
+work, optimized through a deep imitation learning strategy32–34 that         potential of this large-scale learning-based robotic system in clinical
+eliminates the need for handcrafted rules23,24 (Fig. 2c, System Flex-        applications, marking a signiﬁcant turning point in the development of
+ibility). This network achieves 6-DoF probe pose control through a           AI-driven medical ultrasound robotics.
+uniﬁed learning strategy governing all DoFs, resulting in a simpliﬁed
+yet efﬁcient system architecture compared to prior work27. The 6-DoF         Results
+conﬁguration ensures effective handling of the carotid artery’s com-         In this section, we initially present an overview of the functionalities
+plex anatomical structures, whereas systems23,26 with limited degrees        and critical technologies of the autonomous ultrasound robotic sys-
+of freedom struggle to adapt to the demands of comprehensive                 tem. We then conduct a comprehensive evaluation comparing its
+ultrasound scanning. In terms of data, our philosophy is to embrace          performance against experienced sonographers, assessing both result
+data scaling law, learning generalizable scanning strategies from            reproducibility and consistency. The system’s robustness is further
+extensive data (Fig. 2c, Data Scalability). Thus, we collected a large-      validated across diverse clinical variables including patient age, BMI,
+scale dataset of expert demonstrations of carotid artery scans per-          different ultrasound machines, and imaging parameters. Finally, we
+formed on real individuals, comprising 247,297 pairs of ultrasound           provide a validation of the algorithms for each component of the
+images and corresponding scanning actions, encompassing a wide               system using expert-annotated datasets.
+range of individual tissue structural variations likely to be encountered
+in the real world and corresponding expert adaptation actions. To the        Autonomous carotid ultrasound compliant with medical
+best of our knowledge, this dataset is 100 times larger than those used      standards
+in previous works23–26. Notably, these expert demonstration data             Clinical ultrasound examination is an intricate and demanding task
+naturally exist in routine medical ultrasound examinations but were          that necessitates the meticulous coordination of a professional sono-
+previously unrecorded. Since our data collection process eliminates          grapher’s hand, eye, and brain. In this article, we delve into this highly
+the need for complex annotations (unlike prior works23–25), further          challenging issue and design an autonomous ultrasound robotic sys-
+scaling the dataset is entirely feasible. By training the neural network     tem speciﬁcally for clinical carotid artery examinations. The “hand” is
+with deep imitation learning on this dataset, the model can acquire          represented by a 7 degrees of freedom (7-DOF) Franka Emika Panda
+generalizable knowledge and skills for navigation, including anatomi-        robotic arm which holds an ultrasound transducer, the “eye” is facili-
+cal knowledge, ultrasound image interpretation ability, and transducer       tated through an ultrasound imaging system and an external camera,
+operation skills.                                                            and the “brain” comprises a series of deep neural networks that
+      Building upon our ﬂexible modeling framework and large-scale           encapsulate expert knowledge. In accordance with professional med-
+data learning approach, our robotic system achieves unprecedented            ical guidelines19,37,38, we categorize the robotic ultrasound examination
+comprehensiveness in carotid artery scanning, enabling thorough              into the following stages: scanning (Stages 1-4) and image analysis
+vascular assessments (Fig. 2c, Medical Examination Completeness).            (Stage 5). Each stage is tailored to clinical examination requirements,
+Previous efforts23–26 were constrained by rule-based strategies, limited     with the goal of capturing high-quality imaging data, acquiring
+degrees of freedom, and small-scale datasets, making comprehensive           essential biometric measurements, and detecting the presence of
+scanning unattainable. More importantly, we achieves a fully autono-         plaques to assess carotid artery health (Fig. 3a). Furthermore, upon
+mous workﬂow integrating scanning, measurement, and plaque                   obtaining clear longitudinal images of the carotid artery, the ultra-
+screening,      overcoming       the      limitations  of     conventional   sound system’s integrated Color Doppler and Pulse Doppler functions
+approaches23–26,35,36 that focused on isolated steps, thereby establishing   can be immediately activated to assess the subject’s hemodynamic
+
+
+Nature Communications | (2025)16:7893                                                                                                                 4
+Article                                                                                                             https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 3 | Autonomous carotid artery ultrasound examination system workﬂow.              high-quality demonstration data (action-image pair) from experts, speciﬁcally how
+a Schematic diagram of each stage, including the relative position of the transducer   to adjust the transducer to obtain ultrasound images suitable for measurement or
+to the carotid artery, the motion posture of the transducer, and the corresponding     diagnosis. Subsequently, leveraging an imitation learning paradigm, we encapsu-
+ultrasound images. Finally, assess the collected images’ quality and select the        late experts’ knowledge within deep neural networks to facilitate autonomous
+appropriate ultrasound images for biometric measurement and plaque segmen-             ultrasound scanning. The term “CCA”, “SCA”, “ICE”, and “ECA” refers to the com-
+tation. b The coordinate system of the transducer and its action space, 6 degrees of   mon carotid artery, subclavian artery, internal carotid artery, and external carotid
+freedom, 12 discrete actions. c Longitudinal section diagrams of the carotid artery,   artery, respectively.
+vascular wall structures, and the schematic diagram of biometrics. d Collecting
+
+
+                                                                                          • Stage 2.1 - Transverse scanning of the common carotid artery: The
+proﬁle. Live demonstrations can be seen in the Supplementary                                ultrasound transducer glides along the right common carotid
+Video 1–3. The advantage of designing the robotic process based on                          artery, keeping it centrally in view, until it reaches the point where
+medical rules is that it endows each stage with a clear medical purpose                     it intersects with the subclavian artery.
+and signiﬁcance, while also enhancing the standardization of                              • Stage 2.2 - Locate the proximal endpoint of the common carotid
+ultrasonography.                                                                            artery: The robot moves the ultrasound transducer out-of-plane,
+   • Stage 1 - Locate the distal starting point of the common carotid
+                                                                                            making accurate adjustments to clearly display the junction
+     artery: Starting from the transverse view of the right common                          between the right common carotid and subclavian arteries, before
+     carotid artery, the ultrasound transducer moves up upward along                        advancing to the subsequent stage.
+     the neck, keeping the carotid artery in the image, until it identiﬁes                • Stage 3 - Reset the transducer’s posture for the next stage: The
+     the bifurcation of the internal and external carotid arteries and                      ultrasound transducer primarily executes a “pitch anti-clockwise”
+     then proceeds to the next stage.
+
+
+Nature Communications | (2025)16:7893                                                                                                                                    5
+Article                                                                                                     https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 4 | Autonomous scanning and image analysis with deep neural networks.        includes the image quality assessment module, measurable region focusing mod-
+a Technical workﬂow for autonomous carotid artery ultrasound examination sys-     ule and intima structure keypoint detection module. d The plaque segmentation
+tem, including autonomous scan, biometric measurement, and plaque segmenta-       model architecture employs the vessel region focusing module and multi-scale
+tion. b The scanning model architecture demonstrates the action decision module   feature fusion module.
+and stage transition module. c The biometric measurement model architecture
+
+
+    action until the subclavian artery disappears from the image, then                 Purely learning-based navigation framework: Autonomous
+    moves on to the next stage.                                                   ultrasound scanning is analogous to an autonomous driving task
+  • Stage 4.1 - Switch from transverse to longitudinal view: The system           performed on the human body’s surface. This difﬁcult task requires
+    adjusts the posture of the transducer until the longitudinal view of          generalizable perception, decision-making, and control technologies
+    the right common carotid artery is clearly presented in the image.            to navigate the transducer and conduct a safe, effective, and
+  • Stage 4.2 - Longitudinal scanning of the common carotid artery:               autonomous scan. For successful execution, the entire system must
+    Maintaining the longitudinal view, the ultrasound transducer                  possess the following knowledge and capabilities (Fig. 3d right): (1) A
+    move towards the bifurcation of the internal and external carotid             thorough understanding of the carotid artery’s anatomical structure,
+    arteries.                                                                     including the pathway of the carotid artery, the structure of bifur-
+  • Stage 4.3 - Termination of the scan: The scan concludes once the              cations, and corresponding blood vessels, analogous to a “map” in
+    carotid bifurcation is visible in the longitudinal view.                      autonomous driving; (2) The capability to interpret ultrasound ima-
+  • Stage 5 - Image analysis: During scanning, the algorithm auto-                ges and spatial imagination skills, requiring the identiﬁcation of
+    matically calculates biological parameters and detects plaque                 structures on ultrasound images and mapping these two-
+    presence using stage 4-acquired images. The Color and Pulse                   dimensional structures onto a three-dimensional anatomical frame-
+    Doppler functions of the ultrasound machine can then be                       work to locate the current position of the transducer; (3) Proﬁciency
+    employed to assess the subject’s hemodynamic status.                          in operating the transducer, encompassing knowledge of how to
+                                                                                  change the probe’s pose to obtain clear imaging and how to apply
+     A suite of deep learning-based technologies facilitates the                  appropriate force. As discussed in Sec. 5, most previous works23–25
+autonomous operations mentioned above. These include the encod-                   adopt rule-based decision strategies, depending on a predeﬁned set
+ing of features in ultrasound images, decision-making for robotic                 of rules to guide the decision-making process. Nevertheless, pre-
+actions, evaluation of image quality, concentration on speciﬁc local              determined rules often fail to encapsulate the full scope of the
+areas, identiﬁcation of key anatomical points, and detects plaque                 aforementioned knowledge and capabilities with sufﬁcient ﬂexibility,
+presence and outlines contours (Fig. 4a).                                         frequently encountering difﬁculties in handling complex individual
+
+
+Nature Communications | (2025)16:7893                                                                                                                        6
+Article                                                                                                https://doi.org/10.1038/s41467-025-62865-w
+
+
+differences and exhibiting limited generalizability when applied to          address this, we propose an innovative plaque segmentation algo-
+new individuals in clinical settings.                                        rithm based on a vessel region-focused mechanism to identify pla-
+      Diverging from prior approaches, we introduce a purely learning-       ques in the longitudinal view (Fig. 3a stage-5 and Fig. 4d). The core
+based navigation framework. Our core concept encompasses two main            idea is to prioritize vascular regions to reduce background inter-
+aspects: ﬁrst, integrating perception and decision-making into a uni-        ference, since plaques typically exist within blood vessels. Speciﬁ-
+ﬁed network, optimizing it directly based on the ﬁnal navigation goal;       cally, we train a Faster R-CNN detector41 to accurately locate vascular
+and second, entirely learning generalizable skills and knowledge from        regions, whose features are then used to modulate the encoder’s
+extensive expert data. To achieve data-driven autonomous scanning,           multi-scale features. This approach enables the model to concentrate
+we build a large-scale carotid artery scanning expert demonstration          more effectively on vascular characteristics while suppressing irre-
+dataset, containing 247K pairs of ultrasound images and correspond-          levant background information. Simultaneously, we develop a multi-
+ing scanning actions. Speciﬁcally, professionals are guided to execute       scale feature fusion module that effectively combines high-level
+scans following the predetermined procedure, recording the expert            semantic information with low-level contour details. The high-level
+maneuvers as 12 discrete actions across six degrees of freedom               features provide rich contextual understanding, while the low-level
+(Fig. 3b), with an additional action denoting the conclusion of each         features retain ﬁne spatial details. This fusion strategy ensures that
+stage. In this dataset, the ultrasound imaging data include variations in    both semantic and structural information are leveraged synergisti-
+tissue structures across different individuals. Additionally, the map-       cally to improve overall segmentation quality. Finally, the decoder
+ping relationship from ultrasound images to scanning actions impli-          integrates both modulated vessel features and fused multi-scale
+citly contains anatomical knowledge, ultrasound image interpretation         features for precise plaque region prediction. Please refer to Sec. 5
+ability, and transducer operation skills. Inspired by recent advance-        for implementation details.
+ments in imitation learning32–34, which is a method well-suited for
+modeling complex tasks, we adopt this strategy to embed the required         System-level clinical evaluation on human subjects
+knowledge into our uniﬁed network (Fig. 3d). After optimization based        Equipped with the aforementioned key components, the autonomous
+on the ultimate navigation goal, the action decision network can             system is capable of executing the automated process of carotid artery
+autonomously decide the subsequent action based on the current               ultrasound examination, thereby providing crucial biometric data.
+ultrasound image. Meanwhile, a stage switch network is trained to            During our study, we recruited 122 volunteers, comprising 81 indivi-
+identify anatomical landmarks indicating the end of a stage and              duals (61 males and 20 females) for the training and validation set, and
+instruct the system to proceed to the next stage. Additionally, from         41 (26 males and 15 females) for the test set. We explained the full
+Stage 1 to 4, due to the different tasks at each stage, we trained four      process to all participants, and each signed an informed consent form
+separate networks (Fig. 4b). Please refer to Sec. 5 for implementation       (including their understanding of publishing information in the jour-
+details.                                                                     nal). We built a large-scale dataset for learning intelligent scanning
+      Interpretable autonomous biometric measurement: After con-             strategies, comprising 247,297 pairs of ultrasound images and corre-
+ducting a scan of the carotid artery, sonographers usually measure the       sponding expert operational data collected from 81 volunteers. After
+lumen diameter and intima-media thickness on the longitudinal sec-           training, in order to ascertain the performance of this system in real
+tion images of the carotid artery (Fig. 3c). These two parameters are        clinical environments, we organized 41 previously unseen volunteers
+instrumental in evaluating the health status of the carotid artery,          to undergo autonomous carotid ultrasound examinations. It is note-
+providing insights into potential risks associated with cardiovascular       worthy that the data from these 41 volunteers were not included in the
+diseases. The typical procedure involves sonographers selecting ima-         training set. This is an important setting for evaluating the real-world
+ges that clearly depict vascular wall structures. They then zoom into a      generalizability of our system, i.e., in real clinical settings, ultrasound
+localized area for measurement, manually operating the device’s cur-         examinations are always performed on individuals not previously
+sor to measure from point to point. In this paper, we present an             encountered. In this test population, the oldest participant was 70
+automated measurement process designed to emulate expert beha-               years old, with 7 subjects over 60 (6 subjects exhibiting plaques), 7
+vior. To ensure that sonographers can ascertain the acceptability of the     aged between 45 and 60, and the remaining under 45. For detailed
+ﬁnal results, we incorporate interpretable strategies in the ﬁnal image      patients’ pathological information, please refer to Supplementary
+analysis stage (Fig. 3a stage-5 and Fig. 4c). Interpretability39,40 is of    Table 1. Moreover, these 41 volunteers display a wide range of physi-
+paramount importance in modern medical settings, as sonographers             ques. Their heights vary between 1.55 to 1.90 meters (mean=1.72,
+need to conﬁrm the ﬁnal outcomes. Furthermore, aiding sonographers           sd=0.09), weights range from 46.0 to 100.0 kilograms (mean=65.0,
+in quickly and accurately comprehending and assessing the results is a       sd=12.1), and BMI spans from 16.5 to 30.8 (mean=22.1, sd=3.2), with
+pivotal step towards enhancing the overall efﬁcacy of medical pro-           12 subjects BMI < 20 and 13 subjects BMI≥24. These variations in body
+cesses. Speciﬁcally, we predict three groups of keypoints, uniformly         size, which contribute to anatomical differences, invariably escalate
+distributed along the X-axis, on the localized image. These points           the scanning complexity. During the validation experiments, a subset
+correspond to the upper intima (near wall), lower intima (far wall), and     of volunteers (n=21) underwent three scans and measurements carried
+lower media (far wall) of the artery wall, respectively. With these points   out by the autonomous system, in addition to one scan and mea-
+identiﬁed, we calculate the distances between corresponding points,          surement performed by each of the three sonographers. The results of
+adjusting for the artery’s slope, to derive the ﬁnal measurements.           these measurements, obtained from both groups, were subsequently
+Interpretability is inherently embedded in this modeling approach, as        compared and analyzed. The analysis extensively veriﬁed the autono-
+sonographers can assess the credibility of the ﬁnal output based on the      mous system, evaluating it on the grounds of reproducibility, con-
+visualized positions of key points. Please refer to Sec. 5 for imple-        sistency, generalizability, efﬁciency, and comfort. Additionally, 15
+mentation details.                                                           older volunteers participated in age-robustness testing of the scanning
+      Precise autonomous plaque segmentation: Carotid plaque                 algorithm, while 5 younger volunteers were included to validate the
+represents one of the most prevalent pathological changes in the             algorithm’s robustness to imaging parameters and ultrasound
+carotid artery system, serving as a well-established biomarker for           machine variations. It’s worth mentioning that, to the best of our
+elevated cardiovascular risk. Early identiﬁcation and characterization       knowledge, our investigation is pioneering in conducting a compre-
+of these atherosclerotic lesions through advanced imaging techni-            hensive assessment of the system, focusing on its practical medical
+ques enables timely intervention, which may effectively halt disease         value, which underscores the potential of such systems to evolve into
+progression and prevent subsequent vascular complications. To                real clinical applications. Contrarily, previous studies23,24,42–46 have
+
+
+Nature Communications | (2025)16:7893                                                                                                                 7
+Article                                                                                             https://doi.org/10.1038/s41467-025-62865-w
+
+
+mainly evaluated such systems from a technical standpoint, only             manual measurement, while simultaneously applying the our deep
+emphasizing aspects like operational precision and success rate.            learning measurement algorithm to the same image, thereby obtaining
+      Autonomous system possesses superior result reproducibility:          two sets of biometric data. To assess measurement consistency, on the
+Ultrasound examinations, heavily reliant on manual experience and           same subjects, sonographers select one image from the robotic scans
+operation, often yield signiﬁcant variations in measurement results         for manual measurement while our deep learning algorithm simulta-
+among different sonographers in practice. Severe variations can lead        neously processes the same image, generating two comparable sets of
+to incorrect diagnostic outcomes, making reproducibility a crucial          biometric data from each subject. Then, we employ a TOST for
+metric for autonomous ultrasound systems. To assess the system’s            equivalence testing, with predeﬁned equivalence margins of 0.308
+reproducibility, we compare the results of multiple measurements of         mm for CALD and 0.1 mm for CIMT. The results again demonstrate that
+carotid artery lumen diameter (CALD), and carotid intima-media              the measurements from the our deep learning algorithm were highly
+thickness (CIMT) by the autonomous system on the same individual            consistent with those of the sonographers. For image consistency
+with those performed by different ultrasound sonographers on the            evaluation within the same subject cohort, we compare two sets of
+same person. The comparison is drawn across four metrics, following         data: robotic system-acquired images versus sonographer-acquired
+the work cited47,48, namely, spearman’s correlation coefﬁcient (SCC),       images, with all measurements performed by sonographers. Following
+intra-class correlation coefﬁcient (ICC), coefﬁcient of variation (CV),     the same analytical methodology, we perform equivalence testing
+and mean absolute difference (MAD) (Fig. 5b). A larger value in the ﬁrst    using the TOST, applying equivalence margins of 0.418 mm for CALD
+two metrics signiﬁes better reproducibility, while a smaller value in the   and 0.1 mm for CIMT. The results clearly indicate that the image quality
+last two metrics is preferable. As depicted in Fig. 5b, the autonomous      obtained through robotic acquisition meets clinical measurement
+system surpasses the sonographer in all four indicators, for both CIMT      requirements Furthermore, we employ the Bland-Altman method to
+and CALD. Speciﬁcally, for CIMT, there is a notable improvement             assess system-level consistency (Fig. 5e). The results show that the
+where the autonomous system ampliﬁes the Spearman’s correlation             differences between the autonomous system and sonographer mea-
+coefﬁcient by 5.5 times and reduces the coefﬁcient of variation and         surements consistently fall within the 95% conﬁdence interval,
+mean absolute difference by 2.4 and 2.8 times, respectively. For CALD,      demonstrating good consistency. Given that the quality of ultrasound
+the autonomous system reduces the coefﬁcient of variation and the           images serves as the baseline for accurate measurements, the afore-
+mean absolute difference by 3.1 and 2.3 times, respectively. This is        mentioned results also validate the system’s ability to deliver high-
+noteworthy as measuring CIMT presents a greater challenge due to the        quality imaging outcomes.
+necessity for a more precise identiﬁcation of the intima-media                   Autonomous system exhibits good generalizability: In routine
+boundary.                                                                   ultrasound examinations, sonographers frequently encounter new
+      High consistency between autonomous and manual biometric              patients, each with unique anatomical variations. Notably, key vascular
+measurements: The accuracy of an autonomous system’s biometric              parameters such as carotid artery length, trajectory, and bifurcation
+measurement (CALD and CIMT) is a critical factor when evaluating its        location exhibit signiﬁcant inter-individual variability. Furthermore,
+potential deployment in real-world clinical settings. To verify this, we    elderly individuals often present with atherosclerotic plaques that vary
+conduct an equivalence test49 to compare the robotic system’s results       in size and spatial distribution. These inherent variations pose sub-
+with professional songraphers’ measurements. This two-sample                stantial challenges to autonomous ultrasound systems, demanding
+equivalence test aims to determine whether the means of both                robust generalization capabilities. To evaluate the system’s general-
+populations can be considered statistically equivalent. Here, “equiva-      ization capability, we recruited a cohort of 41 previously unexamined
+lence” means the difference between the two group means falls within        volunteers and assessed the success rate of autonomous scanning. The
+a predeﬁned acceptable range, known as the equivalence margin. For          participant pool demonstrats substantial demographic and physiolo-
+CALD, we used the standard deviation among measurements taken by            gical diversity, including 7 subjects over 60 years old (maximum age
+three senior sonographers. Since ultrasound measurements lack an            70), 6 patients with detectable atherosclerotic plaques, and 14 indivi-
+absolute ground truth, the standard deviation among expert mea-             duals above 45 years, as well as both underweight (minimal BMI 16.5)
+surements reﬂects an acceptable range of variability. For CIMT, we set      and obese (maximal BMI 30.8) cases. This heterogeneous population
+the equivalence margin at 0.1 mm, which corresponds to the smallest         with its wide spectrum of anatomical variations provides a rigorous
+measurable unit typically achievable by ultrasound devices, (e.g.,          test for assessing the system’s generalization performance. As shown
+General Electric, Vivid E7). In other words, if there is a discrepancy      in Fig. 5c, each participant underwent a maximum of three trial runs,
+between the measurements of two sonographers, the smallest possible         with success rates exceeding 90.2% at all stages and reaching an
+difference would be 0.1 mm, making this a reasonable tolerance              average stage success rate of 95.8%. For failure cases, please refer to
+threshold.                                                                  Supplementary Fig. 1 and the corresponding explanation in supple-
+      Speciﬁcally, we employ a two one-sided t-test (TOST) approach49       mentary. Moreover, as shown in Fig. 5d, our system demonstrates
+to comprehensively validate consistency across three key dimensions:        robust generalization capabilities across elderly populations, suc-
+system-level consistency, measurement consistency, and image qual-          cessfully completing scans even for individuals with existing plaques
+ity consistency (Fig. 5a). For system-level consistency testing, one set    while maintaining clear visualization of the lesions. We provide three
+of data (CALD and CIMT) is obtained through robotic autonomous              scanning videos (Supplementary Video 1–3) demonstrating successful
+scanning and measurement, while the other set is manually scanned           examinations in elderly subjects with plaques. Furthermore, despite
+and measured by three senior sonographers on the same group of              the known challenges that varying fat distributions pose for ultrasound
+subjects. Using the expert-obtained measurement data, we derived the        imaging, our model maintains high success rates across both under-
+inter-observer standard deviation of CALD measurements (0.418 mm)           weight and overweight BMI groups (ranging from 16.5 to 30.8), further
+to establish the equivalence margin. Subsequently, we conducted the         validating its superior generalization performance across diverse
+two one-sided test (TOST) procedure for formal equivalence testing. If      anatomical variations. Given that the expert scanning demonstration
+both one-sided p-values were below 0.05, the two datasets were con-         data (training data) was collected solely from 81 distinct individuals,
+sidered statistically equivalent. As shown in Fig. 5a, both one-sided       this success rate is indeed promising, highlighting the potential of
+p-values were below 0.05, demonstrating statistical equivalence             imitation learning in autonomous ultrasound scanning tasks. In the
+between the robotic system results and sonographer-acquired mea-            future, in accordance with scaling laws, we anticipate continued
+surements. For measurement consistency testing, On the same sub-            improvement in scanning success rates as more training data becomes
+jects, we had sonographers select one image from the robotic scans for      available.
+
+
+Nature Communications | (2025)16:7893                                                                                                             8
+Article                                                                                                    https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 5 | Autonomous system evaluation results on unseen human subjects.         consistency between lumen diameter and intima-media thickness measurements
+a Hypothesis test of results consistency between of autonomous system and       from the robot system and sonographers. f Comparison of the total time taken for
+sonographers. b Testing the reproducibility of measurements of the CIMT (ﬁrst   scanning and measurement by the robot system and sonographers, as well as a
+row) and CALD (second row) between the robot system and sonographers, eval-     comparison of just the measurement time. g Volunteers' subjective comfort per-
+uated by the SCC, ICC, CV, and MAD. c Success rate of the robot system on       ceptions under the operation of the robot system and sonographers. h Contact
+volunteers. d Robustness of the robotic system across variations in age, BMI,   force in the Z-axis (up and down) direction between the transducer and the human
+machine type, and imaging parameters. e Bland-Altman plot assessing the         neck during the scanning process.
+
+
+
+
+Nature Communications | (2025)16:7893                                                                                                                         9
+Article                                                                                               https://doi.org/10.1038/s41467-025-62865-w
+
+
+      Beyond the challenges posed by individual structural variations,       represents utmost comfort. As depicted in Fig. 5g, eight individuals
+sonographers also adjust imaging parameters on the ultrasound                found the comfort level of the autonomous system to be superior to
+device based on case-speciﬁc conditions in clinical practice. We             that of the sonographer, whereas seven individuals felt the autono-
+recruited ﬁve hold-out volunteers and systematically varied two key          mous system was less comfortable. Overall, the autonomous system
+parameters, Gain (G) and Dynamic Range (DR), to evaluate the model’s         received a higher average comfort rating compared to the sono-
+effectiveness. Regarding the effects of G and DR on imaging, please          graphers. Objectively, using the built-in joint torque sensors and end-
+refer to Supplementary Fig. 2. As shown in Fig. 5d, despite changes in       effector force estimation application program interface (API) of the
+imaging parameters, the model still demonstrates high robustness and         Franka robotic arm, we recorded the contact force along the Z-axis.
+good success rate. This indicates that the model has learned semantic        Fig. 5h presents the average force applied by the robotic arm on all
+features from the large-scale data, speciﬁcally the characteristics of the   participants at various stages. It’s observable that the force maintained
+carotid artery, rather than overﬁtting to low-level features such as         a comfortable range throughout the entire process. Thus, from both
+image texture.                                                               subjective and objective perspectives, the autonomous system show-
+      Furthermore, the clinical environment presents the additional          cases satisfactory safety and comfort levels. Technically, we imple-
+challenge of adapting to diverse ultrasound devices. Speciﬁcally, we         mented a variable impedance control algorithm to properly balance
+validate our model’s scanning capability on an EQTouch ultrasound            contact force and control precision, thereby successfully executing
+device (manufactured by Hisky Medical, Wuxi, China) using a linear           tasks while ensuring safety. Please refer to Sec. 5 for more details.
+probe (L15-4, Hisky). We conduct the experiments on the same ﬁve                  End-to-end autonomous carotid ultrasound process visualization:
+participants as those in the imaging parameter robustness study. As          To offer readers an intuitive grasp of the full process of autonomous
+shown in Fig. 5d, our deep learning model made accurate scanning             examination, we illustrate the scanning, measuring, and segmentation
+decisions and achieved a high success rate on the new machine.               process of an unseen test subject with plaque in Fig. 6. The ﬁgure
+Although Supplementary Fig. 3 demonstrates low-level imaging dif-            clearly shows the carotid artery remaining consistently visible in
+ferences between ultrasound devices, our model exhibits robust per-          the ultrasound images throughout the entire process. In the transverse
+formance, indicating that its decision-making relies not on low-level        view, the carotid artery stays centrally positioned, thanks to
+image features but rather on semantic-level ones, thereby demon-             the model’s real-time transducer adjustment. In the longitudinal view,
+strating strong generalization capability.                                   the intimal layer is clearly visualized, demonstrating proper alignment
+      Existing studies24–26 have reported scanning success rates for few     of the ultrasound transducer with the artery’s maximal longitudinal
+operational stages, we comprehensively present these comparative             cross-section. This optimal orientation provides high-quality images
+metrics in Supplementary Table 3 for intuitive evaluation. Notably,          for CALD and CIMT measurements, while also enabling clear visuali-
+these prior works were exclusively validated on extremely limited            zation of plaques with well-deﬁned borders. Following the acquisition
+cohorts (1/3/1 subjects respectively), meaning their evaluations were        of high-quality ultrasound images, we perform biometric measure-
+performed under oversimpliﬁed experimental conditions with mini-             ments and plaque segmentation to objectively analyze carotid artery
+mal population diversity. Such constrained validation frameworks             anatomy and pathology (Fig. 6b). Using the ultrasound system’s
+cannot sufﬁciently demonstrate the real-world generalization cap-            intrinsic Color and Pulse Doppler functions, we can further obtain
+abilities of their methodologies.                                            hemodynamic information (Fig. 6b right). The integrated analysis
+      Autonomous system’s efﬁciency is superior in measurement and           revealed: (1) plaques are present on both the anterior (12.4 mm × 3.6
+comparable in total time: The efﬁciency of the robotic ultrasound            mm) and posterior (9.7 mm × 1.7 mm) walls of the carotid sinus, with a
+system signiﬁcantly inﬂuences its practical utility. Firstly, as seen in     normal CIMT of 0.60 mm elsewhere, and (2) Doppler ultrasound
+Fig. 5f, the autonomous system’s measurement speed substantially             demonstrating a blood ﬂow ﬁlling defect, while ﬂow direction, velo-
+exceeds that of sonographers. The most notable reduction in mea-             cities, and resistive index remained within normal ranges (Fig. 6c). In
+surement time occurs when the autonomous system decreases the                Fig. 6d, we show four representative plaque segmentation results and
+time required by a factor of 64. On average, the autonomous system           report the plaque condition in Supplementary Table 2. We further
+enhances efﬁciency by a notable factor of 14. The longer duration            provide the corresponding Color and Pulse Doppler imaging of these
+taken by sonographers is attributed to the extensive manual opera-           four representative cases in Supplementary Fig. 4. Moreover, three
+tions they undertake, such as selecting high-quality images for mea-         end-to-end examination demonstrations on previously unseen indivi-
+surement, magnifying speciﬁc areas, and annotating anatomical                duals with plaque are available in the Supplementary Videos 1–3.
+landmarks. Secondly, we analyze the total time required for both
+scanning and measurement by the autonomous system and sono-                  Subsystem-level evaluation on expert-annotated datasets
+grapher. The data reveal that the mean total time between the                In the context mentioned above, the robotic ultrasound system,
+autonomous system and the sonographer does not signiﬁcantly differ.          comprised of a series of deep neural networks, showcases promising
+Although the autonomous system lags slightly behind the sono-                potential for clinical applications. In the subsequent section, for a
+grapher in terms of total time, the continuous operation of the              more comprehensive understanding of each subsystem’s perfor-
+autonomous system, without the need for breaks, coupled with                 mance, we will delve into analyzing their respective functionalities and
+extended working hours, and its capability for rapid and large-scale         effectiveness on the test set.
+replication, predicts a higher efﬁciency ceiling in clinical scenarios            Intelligent action decision based on imitation learning: As intro-
+compared to sonographers. Furthermore, the autonomous system                 duced earlier in Sec. 5, we collect expert demonstration data and
+demonstrates superior stability in terms of time efﬁciency.                  employ an imitation learning strategy to model the decision-making
+      Subjective and objective comfort assessment of autonomous              process of sonographers, translating ultrasound images into adjust-
+scanning: Due to the lack of exoskeletal protection in the neck area,        ment actions. Initially, we implement an imitation learning strategy
+along with the crucial function of the carotid arteries in delivering        based on deep learning foundational models, namely, ResNet-5050 and
+blood to the brain, exerting excessive pressure along the Z-axis (up and     DenseNet-12151. Both models yield comparable performance as depic-
+down) of the probe during scanning can lead to signiﬁcant discomfort         ted in Fig. 7a, which illustrates the evaluation of these models on our
+for the patient, for instance, reduced blood supply to the brain. Upon       dataset. Given their equivalent performance, a ResNet-based imple-
+completion of both autonomous ultrasound scanning and sono-                  mentation is employed in all subsequent experiments. Following this,
+grapher scanning, participants were invited to rate their comfort on a       we explore the improvements that deep learning contributes to imi-
+scale of 0 to 10, where 0 indicates extreme discomfort, and 10               tation learning by comparing the ResNet-based implementation with a
+
+
+Nature Communications | (2025)16:7893                                                                                                              10
+Article                                                                                                             https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 6 | Autonomous end-to-end carotid artery ultrasound examination process           analysis results. d Representative plaque segmentation results of patients. The
+visualization. a Scanning process in a 65-year-old patient with plaque, yielding       terms “CCA”, “ICE”, “ECA”, “PMH”, “PSV”, “EDV”, “RI” refer to the common carotid
+high-quality transverse and longitudinal views with clear plaque visibility. b Image   artery, internal carotid artery, external carotid artery, past medical history, peak
+analysis of acquired scans, including biometric measurements, plaque segmenta-         systolic velocity, end diastolic velocity, and resistive factor, respectively.
+tion, and color/pulse Doppler. c Representative report summarizing scanning and
+
+
+
+non-deep learning method, speciﬁcally k-Nearest Neighbors (k-NN).                      2 (transverse scanning of the CCA) and Stage 4 (longitudinal scanning
+The comparison results in a 10.9% decrease in average accuracy when                    of the CCA), which entail the most complex action decisions, the deep
+utilizing the k-NN approach, thereby demonstrating that deep learning                  learning approach markedly outperforms k-NN with improvements of
+signiﬁcantly enhances the performance of the action decision algo-                     18.9% and 18.2%, respectively. Conversely, in the simpler Stage 3, which
+rithm. A closer examination reveals that in the two main phases, Stage                 encompasses only two action decisions, the deep learning approach
+
+
+Nature Communications | (2025)16:7893                                                                                                                                   11
+Article                                                                                                             https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 7 | Intelligent action decision and interpretable biometric measurement            longitudinal section images. e Precision-Recall curve of the model in detecting the
+with deep neural networks. a Comparison of performance between deep learning            local region that can be used to measure the arterial structural parameters. f Our
+and non-deep learning method (k-nearest neighbors) in scanning action decision,         interpretable biometric measurement solution compared with two other non-
+as well as between instant and delayed decision-making. b Performance trends in         interpretable baseline models. The t-test was used to check whether the mean error
+action decision, biometric measurement, and plaque segmentation as training data        of our method’s results is signiﬁcantly smaller than that of Baseline 2. The models
+scales up. c Comparison of the ROC curves for the models of stage transition, action    were evaluated on 1076 annotated images. This boxplot displays standard ele-
+decision, and their combined decision-making in accurately identifying the ana-         ments: the box represents the interquartile range (IQR), the central line marks the
+tomical structures at the termination positions of each stage. d Performance of the     median, and the whiskers extend to 1.5 × IQR.
+model that predicts whether visible arterial wall and intimal structures exist in the
+
+
+
+exhibits slightly weaker performance compared to k-NN. This pattern                     the criticality of immediate decision-making in the realm of ultra-
+suggests that deep learning methods are more proﬁcient at navigating                    sound scanning.
+in more complex action decision spaces.                                                      In addition to performing a sequence of actions, a pivotal aspect
+     One distinctive aspect of ultrasound scanning is the necessity                     in the successful execution of autonomous ultrasound scanning is
+for instantaneous decision-making, which calls for immediate action                     pinpointing the termination point for each stage. This primarily entails
+decisions in response to changes in imaging. To delve deeper into the                   accurately identifying the anatomical structures depicted in the
+effects of delays in action decision-making, we envisage a scenario                     ultrasound images. To accomplish this identiﬁcation, we employ two
+where a decision is repeated twice consecutively. Speciﬁcally, the                      distinct models, namely, the decision model and the stage transition
+delayed decision-making paradigm executes the action decision at                        model. The decision model integrates the “stage transition" as a
+output at time t twice. Contrarily, our methodology entails making a                    decision action, training it concurrently with the other 12 actions.
+instant action decision promptly after a single action decision is                      Meanwhile, the stage transition model serves as a binary classiﬁer,
+carried out and there’s a subsequent change in the image. In other                      trained separately to ascertain whether transitioning to the sub-
+words, our method outputs and executes an action decision at at                         sequent stage is warranted. In Fig. 7c, we showcase the Receiver
+time t. After execution, based on the image at time t + 1, it further                   Operating Characteristic (ROC) curves corresponding to each model,
+outputs and executes at+1. As illustrated in Fig. 7a, there’s an absolute               in addition to the outcomes stemming from their collective decision-
+reduction of 1.9 percentage points (83.2% vs. 81.3%) in average per-                    making process (joint model). Our strategy for joint decision-making is
+formance when action decision delays occur. Notably, at the most                        structured such that the progression to the next stage is initiated when
+intricate phase, stage-4, the delayed decision-making strategy sig-                     either one of the two models opts for stage transition. As illustrated by
+niﬁcantly impacts the algorithm’s efﬁcacy, resulting in an absolute                     the ﬁgures, the joint model attains superior or at the very least, com-
+reduction of 5.4 percentage points (82.0% vs. 76.6%). This highlights                   parable performance at each stage. To boost the robustness of
+
+
+Nature Communications | (2025)16:7893                                                                                                                                   12
+Article                                                                                               https://doi.org/10.1038/s41467-025-62865-w
+
+
+identiﬁcation, we have elected to adopt the joint model as our ﬁnal          a 2.94% increase in the Dice coefﬁcient (Fig. 8a). Furthermore, our
+implementation.                                                              visual comparisons with state-of-the-art methods35,54,56 demonstrate
+      A core principle of our work is embracing the data scaling law,        superior segmentation performance, as shown in Fig. 8c. While com-
+learning generalizable scanning strategies from extensive expert             peting methods exhibit signiﬁcant segmentation errors including both
+demonstration data. Thus, we further validate how data scaling               under-segmentation (missing plaque regions) and over-segmentation
+improves the model’s action decision accuracy. Speciﬁcally, we extract       (including non-plaque areas), our approach achieves precise plaque
+10% and 25% subsets from the complete dataset and trained individual         delineation with well-deﬁned boundaries, providing more reliable
+models for each subsample. As shown in Fig. 7b, our results indicate a       support for clinical diagnosis and quantitative assessment. Despite
+general upward trend in action prediction accuracy as the dataset            achieving promising performance, our segmentation model adheres
+expands with more training data. A similar trend has also been               to the scaling law, as illustrated in Fig. 7b. Notably, the model’s per-
+observed in biometric measurement and plaque segmentation tasks.             formance exhibits no signs of saturation with increasing data volume,
+This suggests that further data scaling could continue to enhance            suggesting that further improvements can be attained by scaling up
+system performance beyond what is currently presented in our                 the dataset.
+manuscript, reinforcing its potential for reliable deployment.
+      Interpretable biometric measurement: Biometric measurement is          Discussion
+another key component, which includes image quality assessment,              In today’s healthcare landscape, ultrasound examination stands as one
+localized measurement area focusing, and anatomical keypoint                 of the most in-demand medical imaging modalities, thanks to its real-
+detection. Interpretability is a crucial consideration in clinical medi-     time, rapid, and radiation-free features. However, due to its heavy
+cine, as clinicians need to understand and evaluate the correctness of       reliance on manual operation, there are issues of non-standardization,
+algorithmic outputs. Therefore, we adopt an interpretable approach           inaccuracy, and a marked shortage of qualiﬁed professionals57,58. These
+for predicting CALD and CIMT by regressing points that represent the         issues are particularly prominent in developing countries58, leading to
+boundaries of the artery structure. These points can be visualized to        delays in accessing ultrasound examinations and a potential risk of
+allow professionals to easily assess the correctness of the structure        misdiagnosis or missed diagnosis due to low-quality scans. Compared
+(Fig. 8f), and the ﬁnal biometric measurements are calculated based on       to traditional solutions such as training additional sonographers,
+these points. Therefore, interpretability is inherently included in this     developing AI-driven robotic ultrasound systems offers a more pro-
+modeling approach. We attempt to compare our approach with non-              mising approach to addressing these global challenges. In recent years,
+interpretable methods (Baseline 1/2) in Fig. 7f. Both Baseline 1/2           large language models like GPT29 have demonstrated the scaling law of
+directly regress the values of CALD and CIMT from the image. The             neural networks30,31: as datasets grow, models expand, and learning
+difference lies in their inputs: Baseline 1 takes the complete ultrasound    algorithms advance, new abilities emerge that enable handling com-
+image as input, while Baseline 2 uses a localized region containing clear    plex situations and generalizing to novel samples in “zero-shot” with-
+intimal structures as input (See Supplementary Fig. 5 for visual refer-      out further training. Inspired by this success, this paper makes the ﬁrst
+ence). Compared to our method, the outputs of Baseline 1/2 lack              attempt to demonstrate the great potential of a purely learning-driven
+interpretability, making it difﬁcult to assess the correctness of their      autonomous ultrasound robotic system, utilizing large-scale real
+results in practical applications. As shown in Fig. 7f, it is evident that   individual data, more ﬂexible modeling formulations, clinically orien-
+the interpretable approach outperforms the non-interpretable one.            ted evaluations, and testing on a large unseen population. Based on the
+Moreover, the t-test yields a p-value less than 0.001, indicating that the   tests conducted on a large, previously unseen population, our robotic
+error of the interpretable approach is signiﬁcantly smaller than that of     system delivers precise biometric results with excellent reproducibility
+the non-interpretable one. Additionally, sonographers often zoom in          and promising generalizability. Overall, this work provides a proof of
+on local regions for more precise measurements during manual pro-            concept for developing a learning-based fully autonomous ultrasound
+cedures. Therefore, we also compare the effects of global versus local       robot intended for clinical use.
+regression (Fig. 7f, Baseline 1 vs. Baseline 2). The results indicate that        Future research could probably focus on constructing a uniﬁed
+local regression is beneﬁcial for performance.                               multimodal perception and decision-making network to further
+      The performance of the image quality assessment model is pre-          enhance the robotic system’s ability to handle complex situations.
+sented in Fig. 7d. It can be seen that the model possesses a high recall     Multimodal input data can provide a more substantial basis for deci-
+rate, accurately identifying images with clear intimal structures            sion-making, improving the robustness of the system’s decisions.
+(Fig. 8d). The performance of the localized measurement area focus           Additionally, exploring how to integrate the vast amount of existing
+model is shown in Fig. 7e. The model demonstrates a high average             ultrasound report data to enhance the capabilities of the robotic sys-
+precision (AP) value, accurately detecting measurable areas (Fig. 8e).       tem is a potential direction. Multimodal pre-training methods like
+      Precise plaque segmentation: Carotid artery plaque is one of the       CLIP59 have shown that unsupervised training with large volumes of
+most common vascular diseases and a signiﬁcant risk factor for car-          existing paired visual-language data can achieve remarkable general-
+diovascular health. To enable more accurate plaque detection and             izability. By utilizing ultrasound reports, the discrepancies in visual
+patient health assessment, we develop an innovative plaque segmen-           appearances of anatomical structures with the same semantics can be
+tation algorithm. As demonstrated in Fig. 8a, comparative evaluations        aligned through the bridge of language, further enhancing the sys-
+against state-of-the-art methods35,52–56 reveal our algorithm’s superior     tem’s robustness. Lastly, validation on large-scale populations is both
+performance across all four key metrics (Dice, IoU, Recall, and HD95),       time-consuming and labor-intensive, and differences in the popula-
+while maintaining competitive results in precision. This balanced            tions used for validation across various studies make it difﬁcult to
+performance proﬁle suggests our model effectively minimizes false            measure technological progress. Thus, researching how to develop a
+positives while maintaining high detection rates, making it particularly     public ofﬂine validation tool is worthwhile, as it could potentially
+suitable for clinical applications where both accurate plaque identiﬁ-       accelerate the development of the entire ﬁeld.
+cation and reliable negative predictions are equally crucial. Moreover,           This work is a starting point for intelligent and highly autonomous
+the vessel region focusing module achieves precise vascular localiza-        ultrasound medical robots. In the future, we anticipate ultrasound
+tion, resulting in high AP values (Fig. 8b, c). By incorporating a vessel    robots will advance to provide extensive coverage across all organs, be
+region focusing mechanism, this algorithm signiﬁcantly improves              suitable for people of all ages, and seamlessly combine diagnostic and
+segmentation accuracy. Experimental results demonstrate that inte-           therapeutic functions. We envision a day when ultrasound robots will
+grating this module leads to a notable performance improvement, with         be capable of performing autonomous full-body scans on patients
+
+
+Nature Communications | (2025)16:7893                                                                                                              13
+Article                                                                                                          https://doi.org/10.1038/s41467-025-62865-w
+
+
+
+
+Fig. 8 | Precise plaque segmentation with deep neural networks and visuali-          our method and other approaches. d–f The visualization results are used to
+zations. a Comparisons with the existing segmentation models on the test set (best   determine the presence of clear structures, localize the measurement position, and
+result in bold). b Precision-Recall curve for vascular region detection to guide     predict the ﬁnal anatomical keypoint, respectively.
+plaque segmentation. (c) Visual comparison of plaque prediction results between
+
+
+
+
+ranging from fetuses to the elderly, swiftly providing physiological                 site of the lesion. With such highly intelligent ultrasound robots
+parameters and even potential diagnostic conclusions. If adverse tis-                assisting physicians, there will be a signiﬁcant reduction in repetitive
+sue is detected during the scanning process, the ultrasound robot                    tasks for doctors, an increase in diagnostic and therapeutic efﬁciency,
+could potentially also perform rapid, automated ultrasound-guided                    and an opportunity for physicians to focus their efforts on solving
+biopsies60 and ablation61 procedures to eradicate malignant cells at the             more complex problems. Intelligent robots can also elevate the
+
+
+Nature Communications | (2025)16:7893                                                                                                                               14
+Article                                                                                                    https://doi.org/10.1038/s41467-025-62865-w
+
+
+diagnostic and treatment capabilities of primary healthcare facilities,      monitored, underlining a patient-centric approach. This process
+thereby enabling more patients to beneﬁt from high-quality medical           thoroughly considered the volunteers’ comfort, aiding in the for-
+services. Finally, while the vision outlined above is promising, it          mulation of a comfort-optimized imitation policy. During the process,
+requires the collective efforts of researchers in the ﬁeld of intelligent    we also collected expert demonstration data from recovering from
+ultrasound robotics worldwide. We hope our work will ignite their            poor postures, thereby enhancing the robustness of the model. Finally,
+enthusiasm and provide valuable insights for their future work,              we collected 243 trajectory data associated with 247,297 images paired
+thereby hastening the fulﬁllment of this vision.                             with expert adjustment actions. 76 subjects were grouped into the
+                                                                             training set with 231,373 images/action pairs, and 5 subjects were
+Methods                                                                      allocated to the test sets with 15,924 images/action pairs. To account
+In this section, we introduce our deep learning framework for auton-         for clinical scenarios where multiple actions could be considered valid
+omous ultrasound scanning, biometric measurement, and plaque                 expert decisions, we implemented a re-annotation protocol under a
+segmentation, including dataset speciﬁcations, training implementa-          senior sonographer supervision (15+ years experience). The sono-
+tion details, as well as the robotic system conﬁguration and the control     grapher was asked to provide up to two additional expert actions for
+algorithm. To ensure compliance with ethical standards, all human            selected validation set images, beyond the single action recorded
+participant studies were conducted under approval from Tsinghua              during actual scanning. This approach recognizes that - similar to how
+University’s Medical Ethics Committee (THU01-20230175). We                   a self-driving car might validly turn either left or right to avoid an
+obtained written informed consent from all participants after fully          obstacle - multiple navigation choices can be clinically appropriate
+explaining the study procedures, including their understanding that          when scanning the carotid artery. While real-world scanning requires
+journal publication would include their anonymized data that includes        choosing a single action, our ofﬂine evaluation beneﬁts from con-
+indirect identiﬁers. Also, the authors afﬁrm that human research par-        sidering these clinically equivalent alternatives, leading to more robust
+ticipants provided written informed consent, for publication of the          performance assessment that better reﬂects real clinical decision-
+images in Figs. 3, 6, and Supplementary Video 1–3.                           making.
+                                                                                   Method. To boost the robustness of the scanning policy, two
+Deep learning for autonomous scanning                                        distinct networks are employed for different operational phases. The
+Introduction and problem statement. To reliably collect ultrasound           initial policy, denoted as πscanning(a∣o, θ), where a represents the dis-
+images with high diagnostic value for patients, we draw inspiration          cretized robot action, is responsible for outputting the probabilities
+from professional sonographers, emulating their policies with our            associated with predeﬁned actions given the observation o. The pre-
+automatic scanning robot. Speciﬁcally, the robot aims to capture a           deﬁned action space A is illustrated in Fig. 3b. The subsequent
+transverse view of the upper carotid bifurcation, scanning downward          policy, πtransition(atransition∣o, ϕ), takes the ultrasound observation o
+to the lower junction between the common carotid and the subclavian          and outputs atransition, which is the probability of transitioning to
+artery. Similarly, the robot is also tasked with scanning the subject in a   the subsequent task upon spotting the area of interest. Upon con-
+longitudinal view from the lower junction between the common car-            ﬁrmation to transition to the next task, given by
+otid and the subclavian artery, up to the upper carotid bifurcation.         maxðπ transition ðatransition jo, ϕÞ, ptransition ðπ scanning ðajo, θÞÞÞ ≥ 0:5, where
+During the scanning process, it is advisable to center on the carotid        ptransition picks the probability of transitioning from the action policy,
+artery to garner as much information as possible. By adhering to these       the robot ceases its current operation and moves on to the next stage.
+guidelines, the images obtained can be utilized to make an accurate                The inputs to these policy networks, as illustrated in Fig. 4b,
+diagnosis.                                                                   comprise pre-processed ultrasound images. Initially, the images are
+      Data collection and annotation. We recruited 81 volunteers (60         cropped to focus exclusively on the ultrasound area and are resized to
+males and 21 females) aged between 18 and 36 years for the collection        dimensions of 3 ⋅ 224 ⋅ 224. It should be noted that the grayscale
+of expert demonstration data. All data collection sessions were con-         ultrasound images are expanded into three channels primarily to
+ducted by four qualiﬁed sonographers with over 5 years of experience         inherit the models pre-trained on ImageNet, following the practices
+under the supervision of a senior sonographer (15+ years of experi-          outlined in references62,63. Subsequently, these images are processed
+ence). The data were collected using a General Electric (GE) Vivid E7        using a Convolutional Neural Network (CNN)—speciﬁcally, the ResNet-
+ultrasound device equipped with a 9L probe. Sonographers were                50 architecture50, which consists of convolutional blocks with residual
+tasked with performing carotid ultrasound examinations using a series        connections, followed by average pooling and a fully connected layer.
+of predetermined keystrokes. The “keystroke actions” refer to a unit-        The output dimensions are two for πtransition and thirteen for πscanning,
+length robot movement in the scanner base coordinate system,                 with a softmax activation function employed to generate action
+totaling 12 (translation and rotation in 3 dimensions) plus 1 (stop          probabilities. It’s noteworthy that our method is not exclusive to
+action) discrete action space. Since, during data collection, we need to     ResNet and it could be implemented using various networks51.
+perform one of these actions at each time step, we use a keyboard to               We trained these networks using imitation learning by maximizing
+conveniently execute these precise actions. Speciﬁc keys are pro-            the log-probability of the collected ultrasound image o, along with its
+grammed and mapped to control a unit movement along one of the 6             corresponding action a, and checking if it’s the transition action
+degrees of freedom or to stop the scan at a given stage. With every          atransition = 1transition(a). Here, a 2 A and atransition ∈ [0, 1] indicate
+keystroke action, the preceding thirty frames were captured at a rate of     whether to transition to the next stage or not. The overall objective is
+30 FPS before actuating the robot. This process encompassed the              expressed as:
+recording of both the ultrasound images and their corresponding                                  h                                                                 i
+keystrokes. The sonographers also interacted with the volunteers to          maxθ, ϕ Eo, aDtrain log π scanning ðajo, θÞ + log π transition ð1transition ðaÞjo, ϕÞ :
+ensure their safety and comfort.
+      To enhance system robustness, multiple initial positions were                                                                                               ð1Þ
+utilized for imaging the same volunteer. Each volunteer underwent
+three imaging trajectories following the protocol elaborated in the               Implementation. Each policy network is trained using a batch
+preceding section. Although volunteers were instructed to remain still       size of 256, a learning rate of 0.0001, weight decay of 0.0001, and 10
+during the procedure, minor movements were allowed to account for            epochs. The networks are initialized with weights pretrained on
+real-world conditions and to collect data useful for recovery to the         ImageNet, and the ultrasound image input is also normalized by
+optimal view. The comfort level of each participant was continually          ImageNet statistics. The loss function applied to both policies is
+
+
+Nature Communications | (2025)16:7893                                                                                                                             15
+Article                                                                                                                  https://doi.org/10.1038/s41467-025-62865-w
+
+                                 P
+cross-entropy, formulated as  M   c = 1 yo, a logðπ o, a Þ, where y is the   training the Stage-2 model consists of 4,957 images. These images
+binary indicator verifying whether class label a is the correct classi-       are allocated into training and test sets based on individual subjects
+ﬁcation for observation o, and π is the predicted probability that            at a 4:1 ratio, with a guarantee that unique individuals are not
+observation o corresponds to action a. Both policy networks are               included in both sets.
+trained end-to-end using the Adam optimizer, and employ Dis-                       Method. Stage 1: A convolution network f s1 is employed to extract
+tributed Data Parallel (DDP) as implemented by the PyTorch deep               features z 2 RC of a batch of images xs1 2 R3256256 for multi-task
+learning library.                                                             learning. The features are then fed into two distinct heads. The ﬁrst
+                                                                              head (hcls) performs binary classiﬁcation to determine the presence of
+Deep learning for biometric measurement                                       internal membrane structures. Speciﬁcally, for a batch of N images, it
+Introduction and problem statement. During the diagnostic assessment                   ys = fe
+                                                                              predicts e     ysi gi2f1, 2, ..., Ng , each e
+                                                                                                                          ysi indicates a predicted quality score
+of carotid artery ultrasound images, sonographers typically concentrate       between 0 and 1 of an image in the batch. The second head (hreg)
+on speciﬁc arterial structures. These structures include the boundary         predicts y     ec g
+                                                                                       ec = fy                             ec is a 4-dimensional vector, indicat-
+                                                                                                                    , each y
+                                                                                                i i2f1, 2, ..., Ng           i
+between the upper intimal layer and the lumen (intima-up), the                ing the coordinates of the bounding box’s top-left and bottom-right
+boundary between the lower intimal layer (intima-down) and the lumen          points for an image in the batch.
+in carotid ultrasound images, and the boundary between the lower
+intimal layer and the outer medial layer (media). Speciﬁcally, the carotid                                                           z = f s1 ðxs1 Þ
+artery lumen diameter (CALD) is the distance between intima-up and                                                                  es = hcls ðzÞ
+                                                                                                                                    y                                                                      ð2Þ
+intima-down, while the carotid intima-media thickness (CIMT) is the                                                                 e
+                                                                                                                                    yc = hreg ðzÞ
+distance between intima-down and media. These two biometrics are
+extremely valuable for diagnosing cardiovascular diseases. Our objec-              During training, the backbone and the two heads are optimized
+tive is to develop a system capable of automatically calculating CALD         jointly through binary cross entropy (BCE) loss, mean square error
+and CIMT values based on patients’ carotid artery ultrasound images           (MSE) loss and complete intersection over union (Complete-IoU)
+during the autonomous scanning process. Accurate measurement of               loss. Note that the the BCE loss is calculated on all images while the
+these biometrics necessitates clear membrane structures within the            MSE loss and the Complete-IoU loss are only calculated on images
+carotid artery images. However, many ultrasound images in practice are        which are labelled with clear internal membrane structures. The
+indistinct, posing a challenge to discerning the membrane structures.         three losses are:
+Consequently, we break down the problem into two stages. The ﬁrst
+stage aims to ascertain the presence and location of clear internal                                             X
+                                                                                                                N
+
+membrane structures of the carotid artery in images. If a clear internal                         l cls =               ysi  logðe
+                                                                                                                                  ysi Þ + ð1  ysi Þ  logð1  e
+                                                                                                                                                               ysi Þ,
+                                                                                                                i=1
+membrane structure is detected, the second stage is utilized to calcu-
+                                                                                                           X
+                                                                                                           N                        2
+late CALD and CIMT values. Subsequently, these predicted biometrics                                                             ec 
+                                                                                                l reg =             ysi  yci  y i
+                                                                                                                                      ,                                                                   ð3Þ
+assist sonographers in making appropriate diagnostic assessments.                                             i=1
+      Data collection and annotation. Our dataset for biometric mea-                                       X
+                                                                                                           N                               
+surement is separated into two segments for the training of Stage 1 and                         l IoU =             ysi  1  IoU ye c , yc :
+                                                                                                                                      i    i
+
+Stage 2 models, respectively. Moreover, every image within the dataset                                        i=1
+
+is annotated by three expert sonographers.
+      Stage 1 Data: Inspired by the diagnostic practices of sonographers,     The overall loss is a weighted sum of these three parts:
+who typically focus their assessment on particular localized regions in
+ultrasound images where clear internal membrane structures are dis-                                                 Ls1 = l cls + λ1  l reg + λ2  l IoU :                                               ð4Þ
+cernible, we adjust our data annotation process accordingly. For images
+showcasing clear internal membrane structures, we delineate regions                Stage 2: Inspired by previous works64,65, we formulate the task of
+that exhibit prominent structures of intima-up, intima-down, and              keypoint prediction as an offset prediction problem. Instead of
+media. Following this, we document the coordinates of the top-left and        directly regressing the coordinates, we ﬁrst compute the mean posi-
+bottom-right points of the bounding box that envelops these features.         tions of each keypoint in the training set as reference points (anchor
+Conversely, for images devoid of distinct internal membrane structures,       points), and then predict the offsets to these points, as illustrated in
+the bounding box annotation is omitted. Our Stage 1 dataset encom-            Supplementary Fig. 6. The positional information of these reference
+passes a total of 12,194 images from 76 volunteers. These volunteers are      points serves as prior knowledge, providing the model with approx-
+the same individuals used to train the autonomous scanning model. Out         imate location cues for each keypoint, which has the potential to
+of these, 4,957 images display clear internal membrane structures while       improve prediction accuracy. For simplicity, we denote the annotated
+7,237 do not. The 76 volunteers are segregated into training and test         key-points’ y coordinate of the i-th image in a batch of N images as ai,
+sets with a 4:1 ratio, ensuring no overlap of individuals across both sets.   bi, ci, where ai = faij g    , bi = fbij g     , ci = fcij g   , respec-
+                                                                                                                    j2f1, ..., 5g               j2f1, ..., 5g                     j2f1, ..., 5g
+      Stage 2 Data: We notice that prior to measuring the values of           tively corresponding to the annotated 5 points on intima of near wall,
+CALD and CIMT, sonographers initially determine the positions of              intima of far wall and media of far wall. Before training, we ﬁrstly
+intima-up, intima-down, and media in the images by marking points.
+                                                                              calculate        the        mean            positions           ai = faij g                     ,   bi = fbij g                     ,
+Motivated by this procedure, we employ the data annotation tech-                                                                                              j2f1, ..., 5g                       j2f1, ..., 5g
+nique from APRIL36, where ﬁve equally spaced points are positioned            ci = fcij g               for each of the point in the training dataset. Then the
+                                                                                        j2f1, ..., 5g
+along the x axis at normalized coordinates [0, 0.25, 0.5, 0.75, 1.0],         stage 2 models predicts offsets for each point relative to the corre-
+and their y coordinates are manually labeled in alignment with the            sponding mean positions:
+position of the membranes. In other words, each image has a total of
+15 key-points labeled. By choosing to predict anatomical boundaries                                       a         a               b     b               c        c
+                                                                                                                                                                                                           ð5Þ
+                                                                                                        δ i = f s2 ðxs2 Þ, δ i = f s2 ðxs2 Þ, δ i = f s2 ðxs2 Þ,
+over direct metric values, the interpretability of the model’s predic-
+tion is augmented. This strategy enables sonographers to visually             where xs2 represents the local region detected in Stage 1 that contains
+evaluate the accuracy of the model’s predictions during the diag-             clear intima-media structures, with its spatial coordinates determined
+nostic phase, thereby facilitating informed decisions regarding the              ec . Since the x coordinates are ﬁxed during annotation, only the y
+                                                                              by y
+acceptance or dismissal of the model’s results. Our dataset for               coordinates need to be predicted. The actual y coordinates are then
+
+
+Nature Communications | (2025)16:7893                                                                                                                                                                      16
+Article                                                                                                              https://doi.org/10.1038/s41467-025-62865-w
+
+
+computed from the predicted offsets through a                       e =b +δ ,
+                                                    ei = ai + δ i , b a        b
+                                                                                    the model, all images are resized to 256 ⋅ 256 pixels. Among the
+                                                      j    j     j    ij ij ij
+e             c
+cij = cij + δ ij . The stage 2 models are optimized using the Mean Squared          dataset, 330 images are used for training and 100 images for testing.
+Error (MSE) loss function:                                                                  Method. Given an input ultrasound image I 2 R3HW , we use
+                                                                                    ResNeXt66           to           extract    multi-scale    hierarchical  features
+                   X 5 
+                   N X                                                  
+                                                                                    fdi g4i = 1 , di 2 RC i H i W i . The hierarchical features are then processed
+           Ls2 =             ðaij  a             e Þ2 + ðc  e
+                                    ei Þ2 + ðbi  b            c     Þ
+                                                                      2
+                                                                          :   ð6Þ
+                                      j        j    i j    i j   i j                through two parallel branches: a vessel region-focused branch and a
+                   i=1 j=1
+                                                                                    multi-scale feature integration branch. Please refer to Supplementary
+      Subsequently, the value of CALD and CIMT can be calculated                    Fig. 7 for more intuitive understanding of the network architecture.
+through the predicted points. Taking CALD as an example, to account                         Branch 1: Since plaques typically grow along the arterial wall, we
+for potential non-horizontal positioning of intima-down and intima-                 incorporate vascular wall location priors into the model to reduce
+up, we ﬁt two lines respectively for these two set of points using the              interference from irrelevant regions. Speciﬁcally, we trained a Faster
+least squares method. Then, the average slope k of the two lines are                R-CNN41 model to detect the vascular region in the input image, pro-
+obtained and ﬁnal CALD value can be calculated by                                   ducing bounding box coordinates ðx min , ymin , x max , ymax Þ. We then
+e            P5
+               j = 1 ðaij  bij Þ  cosðarctanðkÞÞ. The CIMT can be calculated
+           1
+d CALDi = 5                                                                         generate a masked input image Z by setting pixels outside the
+similarly.                                                                          bounding box to zero:
+      Implementation. For training, distinct models are trained for both
+                                                                                                         
+Stage 1 and Stage 2. In the ﬁrst stage of training, the ResNet-50 archi-                                     Ix, y   if x min ≤ x ≤ x max and ymin ≤ y ≤ ymax ,
+tecture (f s1 ) is employed, and the model is trained with a batch size of                     Zx, y =                                                              ð7Þ
+                                                                                                              0                         else:
+256. The initial learning rate is set at 0.001, with a cosine learning rate
+scheduler applied. The model is trained over 50 epochs, utilizing a                 Then, Z is encoded by convolutional layers and fed into the spatial
+weight decay of 0.00001 while conducting 5-fold training. Images are                feature transform67 module, which undergoes afﬁne transformation to
+resized to 256 ⋅ 256 dimensions and normalized using ImageNet sta-                  generate the modulation parameters γi 2 R1 , βi 2 R1 , and ﬁnally out-
+tistics. In our experiment, we set λ1 to 1.0 and λ2 to 8.0.                                                            4
+                                                                                    puts the modulation features fe1i gi = 1 :
+      For the second stage of training, the ResNet-50 architecture (f s2 ) is
+also employed, and the model is trained with a batch size of 128. The
+                                                                                                                       e1i = ðγi + 1Þdi + βi :                      ð8Þ
+learning rate for this stage is set at 0.0001, following a cosine learning
+rate scheduler. The model is trained over 100 epochs, with a weight
+                                                                                           Branch 2: Meanwhile, the multi-scale features fdi g4i = 1 are con-
+decay set at 0.00001. Images are resized to 256 ⋅ 256 dimensions and
+                                                                                    catenated along the channel dimension and then passed through a
+normalized using a mean of 0.193 and a standard deviation of 0.224.
+                                                                                    fusion layer to generate the global contextual feature g. Subsequently,
+      During the autonomous scanning procedure, the system captures
+                                                                                    g is concatenated with each multi-scale feature di, and the combined
+real-time ultrasound images of the carotid artery. The ﬁrst stage model
+                                                                                    features are processed through convolutional and activation layers to
+is deployed to evaluate the presence and location of internal mem-                                                                            4
+                                                                                    produce the second branch output features fe2i gi = 1 .
+brane structures within the acquired image. Upon identiﬁcation of
+                                                                                           For each hierarchical level i ∈ {1, 2, 3, 4}, the output features e1i and
+such structures, the image is cropped using the predicted bounding
+                                                                                    e2i from both branches are fused. The combined features are then
+box coordinates. This cropped image is then supplied to the second
+                                                                                    processed through multi-layer convolutions and upsampling opera-
+stage model for key-point prediction and subsequent biometric
+                                                                                    tions to generate the ﬁnal prediction result pi. The ﬁnal generated
+calculations.
+                                                                                    output pi maintains the same spatial size as the original input image,
+                                                                                    i.e., 256 ⋅ 256. Subsequently, the binary cross-entropy loss Li is com-
+Deep learning for plaque segmentation
+                                                                                    puted between each hierarchical prediction pi and the ground-truth
+Introduction and problem statement. Carotid atherosclerotic plaques
+                                                                                    segmentation mask Sgt:
+are a major risk factor for ischemic stroke and other related diseases.
+Accurate segmentation of plaques in medical images is of great
+                                                                                             1 Xh                                                                     i
+importance for the diagnosis of carotid artery conditions. However,                 Li =           S ðx, yÞ log σðpi ðx, yÞÞ + ð1  Sgt ðx, yÞÞ logð1  σðpi ðx, yÞÞÞ ,
+                                                                                             N x, y gt
+the inherent low contrast of ultrasound images, the presence of noise,
+and the high heterogeneity of plaque morphology pose signiﬁcant                                                                                                     ð9Þ
+challenges to precise segmentation. Clinical observations show that
+plaques often form between the intima and media layers of the carotid               where the σ( ⋅ ) represents the sigmoid activation function. Finally, the
+artery wall. When analyzing ultrasound images, clinicians typically                 total loss is obtained by summing the individual losses across all
+                                                                                                                 P
+locate the vessel wall ﬁrst, then identify abnormal protrusions along its           hierarchical levels: Ltotal = 4i = 1 Li . During model inference, the average
+                                                                                                         4
+boundary. Inspired by this diagnostic process, we propose a dual-                   of predictions fpi gi = 1 from all hierarchical levels is computed as the
+branch, multi-scale segmentation network with explicit vascular spatial             ﬁnal prediction result:
+priors, as illustrated in Fig. 4d. The framework introduces a vessel                                                                         !
+region localization stage, where a detection model is trained to capture                                                           1X 4
+                                                                                                                      Sfinal = σ        p                          ð10Þ
+spatial cues of the vessel region. These spatial priors are then                                                                   4 i=1 i
+embedded into the segmentation model to guide learning, helping the
+model focus on plausible plaque areas and suppress irrelevant                            Implementation. The training process of the network comprises
+background noise.                                                                   two stages. In the ﬁrst stage, a pretrained Faster R-CNN model with a
+     Data collection and annotation. The dataset used for plaque seg-               ResNet-50-FPN backbone is ﬁne-tuned for the vessel wall detection
+mentation experiments, adopted from the MBFF-Net35 study, consists                  task. In the second stage, both the original images and their corre-
+of 430 carotid ultrasound images collected from different patients.                 sponding vessel wall detection results are used as inputs to train the
+These images were acquired using two ultrasound systems: the Philips                segmentation model. Identical training parameters are applied to both
+IU22 with an L9-3 probe and the GE Logiq E9 with a 9L probe, both                   stages: a batch size of 2, initial learning rate of 0.005, SGD optimizer
+operating at a center frequency of 9 MHz. Each image is accompanied                 with momentum 0.9, weight decay of 0.0005, and a total of 100
+by a manually annotated plaque mask, and we further labeled                         training epochs. All experiments are conducted on a single
+bounding boxes to delineate vascular regions. Before being input into               RTX3090 GPU.
+
+
+Nature Communications | (2025)16:7893                                                                                                                                17
+Article                                                                                                      https://doi.org/10.1038/s41467-025-62865-w
+
+
+Robotic system conﬁguration                                                     proportionally and thus unboundedly with the pose error, posing a
+The robotic ultrasound system consists of a 7-degree-of-freedom                 safety risk in practical implementation.
+collaborative robotic arm (Franka Emika Panda) with a General                         To address this safety concern, we introduce a modiﬁcation
+Electric (GE) Vivid E7 ultrasound device equipped with a 9L probe.              where the stiffness matrix K becomes error-dependent. We
+The probe is rigidly attached to the robotic arm’s end effector,                established a safe threshold for the contact force, denoted by
+enabling precise control of the probe’s position and orientation.                = ½
+                                                                                F      f ext1 , 
+                                                                                                f ext2 ,    , f ext6  . If the contact force exceeds this thresh-
+                                                                                                                          T
+                                                                                  ext
+Before scanning, we apply an adequate amount of ultrasound gel                  old, the stiffness matrix K is adjusted to maintain the contact force
+evenly on the probe surface to ensure optimal acoustic coupling                 within a safe range, as deﬁned by:
+between the probe and the subject’s skin, which is essential for high-                                       (
+quality ultrasound imaging. The ultrasound imaging parameters,                                                   k normal ,   if f ext < 
+                                                                                                                                         f ext
+                                                                                                        k=                                    ,                 ð16Þ
+including gain and dynamic range, are preset to 6 and 72, respec-                                                f =x~ ,
+                                                                                                                  ext         if f ≥ 
+                                                                                                                                  ext    fext
+tively, providing clear and consistent image quality. The method of
+guiding the probe from its initial position to contact the human neck           where k and x~ represent the corresponding elements of the stiffness
+using an external depth camera has been well-established in our                 matrix and the pose error vector, respectively.
+previous works68. Readers may refer to existing literature68 for                     Additionally, regarding safe human-robot interaction scenarios—
+technical details. During scanning, since GE does not provide direct            such as a human attempting to push away a robotic arm or accidental
+software access to the imaging data, we use a high-performance                  collisions between the robot and other humans—our team has con-
+video capture card (Acasis, Shenzhen, China) to record the ultra-               ducted detailed studies in the prior work68. This works proposed a
+sound monitor’s display. The captured video stream is then pro-                 safety interaction framework to address these cases. As this falls out-
+cessed by extracting the region containing the ultrasound image,                side the scope of the current paper, readers may refer to68 for further
+which is subsequently fed into the neural network for analysis.                 details.
+
+Robot control algorithm                                                         Statistics and reproducibility
+Cartesian impedance control69 is employed during ultrasound scan-               No statistical method was used to predetermine sample size. To vali-
+ning to execute motion commands. This control strategy ensures                  date the performance of our robotic system, we recruited 41 volun-
+compliant and stable interaction between the robotic arm and the                teers with diverse demographic characteristics. In this test cohort, the
+subject’s body, enabling precise probe positioning while maintaining            oldest participant was 70 years old, including 7 subjects over 60 (6 of
+safe contact forces. Speciﬁcally, the controller we utilize is a stream-        whom exhibited plaques), 7 aged between 45-60, and the remaining
+lined version of the traditional Cartesian impedance control:                   under 45. The volunteers exhibited a broad spectrum of physiques:
+                                                                                heights ranged from 1.55 to 1.90 m (mean ± SD = 1.72 ± 0.09 m),
+        τ = JT ðKx    _ + ðI  JT J + T ÞðKn q_  Dn q
+                  ~  DxÞ                              ~ Þ + Cq_ + g,    ð11Þ   weights varied between 46.0-100.0 kg (65.0 ± 12.1 kg), and BMI span-
+                                                                                ned 16.5-30.8 (22.1 ± 3.2), with 12 subjects having BMI <20 and 13 sub-
+where x~ = x  xd 2 R6 represents the pose (position and orientation)           jects BMI≥24. This population diversity ensures robust evaluation of
+error of the probe in Cartesian space, the subscript d for desired, x_          the system’s real-world performance and enhances the reproducibility
+signiﬁes the velocity of pose. The vectors q, q,_ q
+                                                  ~ 2 R7 correspond to          of our ﬁndings.
+the joint angle, joint velocity and joint error. The Jacobian matrix J 2
+R6 × 7 maps from joint space to Cartesian space, and the superscript +          Reporting summary
+indicates the pseudo-inverse. The stiffness matrices K and Kn                   Further information on research design is available in the Nature
+correspond to the Cartesian space and null space, respectively, while           Portfolio Reporting Summary linked to this article.
+the damping matrices D and Dn are set to ensure critical damping. The
+terms Cq_ and g account for Coriolis and gravitational forces,                  Data availability
+respectively.                                                                   To ensure compliance with participant agreements and prevent com-
+     When we substitute (11) into the dynamics model of the robot               mercial misuse, all datasets are available under controlled access. All
+                                                                                data requests must include: (1) institutional afﬁliation details, (2) a
+                            € + Cq_ + g = τ + τ ext ,
+                           Mq                                            ð12Þ   research purpose statement, and (3) a signed data use agreement. An
+                                                                                independent review panel will consider and approve requests for
+where M 2 R7 × 7 denotes the mass matrix, and τ, τ ext 2 R7 represent           veriﬁed academic research purposes. For data inquiries, please contact
+the control torque and the external torque, respectively, we have the           the lead author (Haojun Jiang; jhj20@mails.tsinghua.edu.cn). All such
+close-loop dynamics                                                             requests will be processed within two weeks. Source data are provided
+                                                                                with this paper.
+            € + JT ðKx
+           Mq             _ + ðI  JT J + T ÞðKn q_ + Dn q
+                     ~ + DxÞ                             ~ Þ = τ ext :   ð13Þ
+                                                                                Code availability
+To derive the dynamics of the probe, we left-multiply (13) by the               The code for this project is available on GitHub repository: https://
+Jacobian J. Utilizing the null-space projection property J(I − JTJ+T) = 0,      github.com/LeapLabTHU/UltraBot.
+we obtain:
+                                                                                References
+                          € + JJT ðKx
+                        JMq         ~ + DxÞ
+                                         _ = Jτ ext :                    ð14Þ   1.   Salomon, L. J. et al. Practice guidelines for performance of the
+                                                                                     routine mid-trimester fetal ultrasound scan. Ultrasound Obstet.
+During quasi-static motion, including the equilibrium state during                   Gynecol. 37, 116–126 (2011).
+                            € = 0, x_ = 0. Therefore,
+probe-neck contact, we have q                                                   2.   Namburete, A. I. et al. Normative spatiotemporal fetal brain
+                                                                                     maturation with satisfactory development at 2 years. Nature
+                                 1
+                      ~ = ðJJT Þ Jτ ext = J + T τ ext = Fext ,
+                     Kx                                                  ð15Þ        1–9 (2023).
+                                                                                3.   Ulloa Cerna, A. E. et al. Deep-learning-assisted analysis of echo-
+where Fext is the contact force between the probe and the patient’s                  cardiographic videos improves predictions of all-cause mortality.
+neck. Equation (15) reveals that the contact force increases                         Nat. Biomed. Eng. 5, 546–554 (2021).
+
+
+Nature Communications | (2025)16:7893                                                                                                                              18
+Article                                                                                                 https://doi.org/10.1038/s41467-025-62865-w
+
+
+4.  Lin, M. et al. A fully integrated wearable ultrasound system to          25. Huang, Q., Gao, B. & Wang, M. Robot-assisted autonomous ultra-
+    monitor deep tissues in moving subjects. Nature Biotechnology                sound imaging for carotid artery. IEEE Trans. Instrum. Meas. 73,
+    1–10 (2023).                                                                 1–9 (2024).
+5. Stein, J. H. et al. Use of carotid ultrasound to identify subclinical     26. Bi, Y. et al. Vesnet-rl: Simulation-based reinforcement learning for
+    vascular disease and evaluate cardiovascular disease risk: a con-            real-world us probe navigation. IEEE Robot. Autom. Lett. 7,
+    sensus statement from the american society of echocardiography               6638–6645 (2022).
+    carotid intima-media thickness task force endorsed by the society        27. Su, K. et al. A fully autonomous robotic ultrasound system for
+    for vascular medicine. J. Am. Soc. Echocardiogr. 21, 93–111 (2008).          thyroid scanning. Nat. Commun. 15 1, 4004 (2024).
+6. Hu, H. et al. A wearable cardiac ultrasound imager. Nature 613,           28. Ning, G., Zhang, X. & Liao, H. Autonomic robotic ultrasound imaging
+    667–675 (2023).                                                              system based on reinforcement learning. IEEE Trans. Biomed. Eng.
+7. Ferraioli, G. & Monteiro, L. B. S. Ultrasound-based techniques for the        68, 2787–2797 (2021).
+    diagnosis of liver steatosis. World J. Gastroenterol. 25, 6053 (2019).   29. Brown, T. et al. Language models are few-shot learners. Adv. neural
+8. Ferraioli, G. et al. Liver ultrasound elastography: an update to the          Inf. Process. Syst. 33, 1877–1901 (2020).
+    world federation for ultrasound in medicine and biology guidelines       30. Kaplan, J. et al. Scaling laws for neural language models. arXiv
+    and recommendations. Ultrasound Med. Biol. 44, 2419–2440 (2018).             preprint arXiv:2001.08361 (2020).
+9. Wang, C. et al. Monitoring of the central blood pressure waveform via     31. Zhai, X., Kolesnikov, A., Houlsby, N. & Beyer, L. Scaling vision
+    a conformal ultrasonic device. Nat. Biomed. Eng. 2, 687–695 (2018).          transformers. Proceedings of the IEEE/CVF conference on computer
+10. Thomson, N. Sonographer workforce survey analysis. Society of                vision and pattern recognition 12104–12113 (2022).
+    Radiographers (2014).                                                    32. Ross, S., Gordon, G. & Bagnell, D. A reduction of imitation learning
+11. Beales, L., Wolstenhulme, S., Evans, J., West, R. & Scott, D. Repro-         and structured prediction to no-regret online learning. Proceedings
+    ducibility of ultrasound measurement of the abdominal aorta. J. Br.          of the fourteenth international conference on artiﬁcial intelligence
+    Surg. 98, 1517–1525 (2011).                                                  and statistics 627–635 (2011).
+12. Joakimsen, O., Bønaa, K. H. & Stensland-Bugge, E. Reproducibility        33. Triantafyllidis, E., Acero, F., Liu, Z. & Li, Z. Hybrid hierarchical
+    of ultrasound assessment of carotid plaque occurrence, thickness,            learning for solving complex sequential tasks using the robotic
+    and morphology: the tromsø study. Stroke 28, 2201–2207 (1997).               manipulation network roman. Nature Machine Intelligence
+13. Parker, P. & Harrison, G. Educating the future sonographic work-             1–15 (2023).
+    force: Membership survey report from the british medical ultra-          34. Hussein, A., Gaber, M. M., Elyan, E. & Jayne, C. Imitation learning: A
+    sound society. Ultrasound 23, 231–241 (2015).                                survey of learning methods. ACM Comput. Surv. (CSUR) 50,
+14. Committee, M. A. Skilled shortage sensible: full review of the               1–35 (2017).
+    recommended shortage occupation lists for the uk and scotland, a         35. Mi, S., Bao, Q., Wei, Z., Xu, F. & Yang, W. Mbff-net: Multi-branch
+    sunset clause and the creative occupations. Migration Advisory               feature fusion network for carotid plaque segmentation in ultra-
+    Committee (2013).                                                            sound. Medical image computing and computer-assisted interven-
+15. Buonsenso, D., Pata, D. & Chiaretti, A. Covid-19 outbreak: less              tion 313–322 (2021).
+    stethoscope, more ultrasound. Lancet Respiratory Med. 8,                 36. Lian, S., Luo, Z., Feng, C., Li, S. & Li, S. April: Anatomical prior-guided
+    e27 (2020).                                                                  reinforcement learning for accurate carotid lumen diameter and
+16. Gargani, L. et al. Why, when, and how to use lung ultrasound during          intima-media thickness measurement. Med. Image Anal. 71,
+    the covid-19 pandemic: enthusiasm and caution. Eur. Heart J.-Car-            102040 (2021).
+    diovascular Imaging 21, 941–948 (2020).                                  37. Johri, A. M. et al. Recommendations for the assessment of carotid
+17. Tahmasebpour, H. R., Buckley, A. R., Cooperberg, P. L. & Fix, C. H.          arterial plaque by ultrasound for the characterization of athero-
+    Sonographic examination of the carotid arteries. Radiographics 25,           sclerosis and evaluation of cardiovascular risk: from the american
+    1561–1575 (2005).                                                            society of echocardiography. J. Am. Soc. Echocardiogr. 33,
+18. Wendelhag, I., Gustavsson, T., Suurküla, M., Berglund, G. & Wik-             917–933 (2020).
+    strand, J. Ultrasound measurement of wall thickness in the carotid       38. Lee, W. General principles of carotid doppler ultrasonography.
+    artery: fundamental principles and description of a computerized             Ultrasonography 33, 11 (2014).
+    analysing system. Clin. Physiol. 11, 565–577 (1991).                     39. Vellido, A. The importance of interpretability and visualization in
+19. Oates, C. et al. Joint recommendations for reporting carotid ultra-          machine learning for applications in medicine and health care.
+    sound investigations in the united kingdom. Eur. J. Vasc. Endovasc.          Neural Comput. Appl. 32, 18069–18083 (2020).
+    Surg. 37, 251–261 (2009).                                                40. Stiglic, G. et al. Interpretability of machine learning-based predic-
+20. Song, P. et al. Global and regional prevalence, burden, and risk             tion models in healthcare. Wiley Interdiscip. Rev.: Data Min. Knowl.
+    factors for carotid atherosclerosis: a systematic review, meta-ana-          Discov. 10, e1379 (2020).
+    lysis, and modelling study. Lancet Glob. Health 8, e721–e729             41. Ren, S., He, K., Girshick, R. & Sun, J. Faster r-cnn: Towards real-time
+    (2020).                                                                      object detection with region proposal networks. Advances in neural
+21. O’Leary, D. H. & Bots, M. L. Imaging of atherosclerosis: carotid             information processing systems 28 (2015).
+    intima–media thickness. Eur. heart J. 31, 1682–1689 (2010).              42. Abolmaesumi, P., Salcudean, S. E., Zhu, W.-H., Sirouspour, M. R. &
+22. Roth, G. A. et al. Global, regional, and national burden of cardio-          DiMaio, S. P. Image-guided control of a robot for medical ultra-
+    vascular diseases for 10 causes, 1990 to 2015. J. Am. Coll. Cardiol.         sound. IEEE Trans. Robot. Autom. 18, 11–23 (2002).
+    70, 1–25 (2017).                                                         43. Fang, T.-Y., Zhang, H. K., Finocchi, R., Taylor, R. H. & Boctor, E. M.
+23. Huang, D., Bi, Y., Navab, N. & Jiang, Z. Motion magniﬁcation in              Force-assisted ultrasound imaging system through dual force
+    robotic sonography: enabling pulsation-aware artery segmenta-                sensing and admittance robot control. Int. J. computer Assist.
+    tion. 2023 IEEE/RSJ International Conference on Intelligent Robots           Radiol. Surg. 12, 983–991 (2017).
+    and Systems (IROS) 6565–6570 (2023).                                     44. Welleweerd, M. K., de Groot, A. G., de Looijer, S., Siepel, F. J. &
+24. Huang, Y. et al. Towards fully autonomous ultrasound scanning                Stramigioli, S. Automated robotic breast ultrasound acquisition
+    robot with imitation learning based on clinical protocols. IEEE              using ultrasound feedback. 2020 IEEE international conference on
+    Robot. Autom. Lett. 6, 3671–3678 (2021).                                     robotics and automation (ICRA) 9946–9952 (2020).
+
+
+
+Nature Communications | (2025)16:7893                                                                                                                    19
+Article                                                                                               https://doi.org/10.1038/s41467-025-62865-w
+
+
+45. Li, K. et al. Autonomous navigation of an ultrasound probe towards       65. Duan, K. et al. Centernet: Keypoint triplets for object detection.
+    standard scan planes with deep reinforcement learning. 2021 IEEE             Proceedings of the IEEE/CVF international conference on computer
+    International Conference on Robotics and Automation (ICRA)                   vision 6569–6578 (2019).
+    8302–8308 (2021).                                                        66. Xie, S., Girshick, R., Dollár, P., Tu, Z. & He, K. Aggregated residual
+46. Zhan, J., Cartucho, J. & Giannarou, S. Autonomous tissue scanning            transformations for deep neural networks. Proceedings of the IEEE
+    under free-form motion for intraoperative tissue characterisation.           conference on computer vision and pattern recognition
+    2020 IEEE international conference on robotics and automation                1492–1500 (2017).
+    (ICRA) 11147–11154 (2020).                                               67. Wang, X., Yu, K., Dong, C. & Change Loy, C. Recovering realistic
+47. Peters, S. et al. Manual or semi-automated edge detection of the             texture in image super-resolution by deep spatial feature transform.
+    maximal far wall common carotid intima–media thickness: a direct             Proceedings of the IEEE conference on computer vision and pattern
+    comparison. J. Intern. Med. 271, 247–256 (2012).                             recognition 606–615 (2018).
+48. Freire, C. M. V. et al. Comparison between automated and                 68. Yan, X. et al. A uniﬁed interaction control framework for safe robotic
+    manual measurements of carotid intima-media thickness in                     ultrasound scanning with human-intention-aware compliance.
+    clinical practice. Vascular health and risk management                       2024 IEEE/RSJ International Conference on Intelligent Robots and
+    811–817 (2009).                                                              Systems (IROS) 14004–14011 (2024).
+49. Schuirmann, D. J. A comparison of the two one-sided tests proce-         69. Albu-Schaffer, A. & Hirzinger, G. Cartesian impedance control
+    dure and the power approach for assessing the equivalence of                 techniques for torque controlled light-weight robots. 2002 IEEE Int.
+    average bioavailability. J. Pharmacokinetics Biopharmaceutics 15,            Conf. Robot. Autom. (ICR A) 1, 657–663 (2002).
+    657–680 (1987).
+50. He, K., Zhang, X., Ren, S. & Sun, J. Deep residual learning for image
+    recognition. Proceedings of the IEEE conference on computer vision       Acknowledgements
+    and pattern recognition 770–778 (2016).                                  Gao Huang is supported by the National Key R&D Program of China
+51. Huang, G., Liu, Z., Pleiss, G., Van Der Maaten, L. & Weinberger, K. Q.   under Grant 2024YFB4708200 and the Scientiﬁc Research Innovation
+    Convolutional networks with dense connectivity. IEEE Trans. pattern      Capability Support Project for Young Faculty of MoE of China under
+    Anal. Mach. Intell. 44, 8704–8716 (2019).                                Grant ZYGXQNJSKYCXNLZCXM-I20. Qian Yang is supported by the Key
+52. Long, J., Shelhamer, E. & Darrell, T. Fully convolutional net-           Research of National Social Science Foundation of China under Grant
+    works for semantic segmentation. Proceedings of the IEEE                 2024-SKJJ-B-047 and Comprehensive Research on Air Force Equipment
+    conference on computer vision and pattern recognition                    Foundation under Grant KJ2023C0KYD19. Xiang Li is supported by the
+    3431–3440 (2015).                                                        National Natural Science Foundation of China under Grant
+53. Chen, L.-C., Papandreou, G., Schroff, F. & Adam, H. Rethinking           62461160307. Wenming Yang is supported by the Special Foundations
+    atrous convolution for semantic image segmentation. arXiv preprint       for the Development of Strategic Emerging Industries of Shenzhen
+    arXiv:1706.05587 (2017).                                                 under Grant No.KJZD20231023094700001. We sincerely thank Pro-
+54. Ronneberger, O., Fischer, P. & Brox, T. U-net: Convolutional             fessor Jianwen Luo and Mr. Rui Wang for providing the EQTouch ultra-
+    networks for biomedical image segmentation. Medical                      sound machine for our experiments. We are also grateful to Professor
+    image computing and computer-assisted intervention                       Guangyu Wang and Dr. Siqi Zhang for their valuable suggestions during
+    234–241 (2015).                                                          the rebuttal phase.
+55. Zhou, Z., Rahman Siddiquee, M. M., Tajbakhsh, N. & Liang, J. Unet++:
+    A nested u-net architecture for medical image segmentation. Deep         Author contributions
+    learning in medical image analysis and multimodal learning for           H.J. led the project; H.J., G.H., and A.Z. contributed to the conception
+    clinical decision support 3–11 (2018).                                   of the study; Q.Y. and K.H provided critical medical expertise and
+56. Oktay, O. et al. Attention u-net: Learning where to look for the         conceptual guidance throughout the project; H.J., A.Z., Q.Y., J.W.,
+    pancreas. Medical Imaging with Deep Learning (2018).                     H.W., N.J., and S.L. contributed to the expert scanning demonstration
+57. Won, D. et al. Sound the alarm: The sonographer shortage is              data collection; H.J., A.Z., and G.H. designed the scanning action
+    echoing across healthcare. Journal of Ultrasound in Medi-                decision-making algorithm and the on-human experimental protocol;
+    cine (2024).                                                             H.J., Q.Y., A.Z., T.W., X.Y., N.J., L.R., S.C., and G.Y. participated in
+58. Shah, S. et al. Perceived barriers in the use of ultrasound in devel-    executing the human trials; H.J. led the data analysis of the human trial
+    oping countries. Crit. ultrasound J. 7, 1–5 (2015).                      results, with participation from A.Z.; A.Z. and H.J. performed off-line
+59. Radford, A. et al. Learning transferable visual models from natural      evaluation of scanning algorithm; H.J., J.W., and P.L. contributed to the
+    language supervision. International conference on machine learning       collection of the biometric measurement dataset; H.J., J.W., and G.H.
+    8748–8763 (2021).                                                        designed the biometric measurement algorithm; H.J., J.W., and T.W.
+60. Jennings, P., Coral, A., Donald, J., Rode, J. & Lees, W. Ultrasound-     contributed to the evaluation of biometric measurement algorithm;
+    guided core biopsy. Lancet 333, 1369–1371 (1989).                        W.Y., G.H., H.J., and T.W. contributed to the collection of the plaque
+61. Zhang, M. et al. Ultrasound-guided radiofrequency ablation versus        segmentation dataset; H.J., T.W., and G.H. designed the plaque seg-
+    surgery for low-risk papillary thyroid microcarcinoma: results of        mentation algorithm; H.J. and T.W. contributed to the evaluation of
+    over 5 years’ follow-up. Thyroid 30, 408–417 (2020).                     plaque segmentation algorithm; X.Y., S.L., G.W., and X.L. contributed
+62. Christiansen, F. et al. International multicenter validation of ai-      to the robotic control algorithm; H.J., Y.W., A.Z., T.W., X.Y., and J.W.
+    driven ultrasound detection of ovarian cancer. Nature Medicine           wrote the manuscript; G.H., K.H., Y.W., S.S., and X.L. helped perform
+    1–8 (2025).                                                              the analysis and write the manuscript with constructive discussions;
+63. Qian, X. et al. A multimodal machine learning model for the strati-      T.W., H.J., and A.Z. contributed to the demonstration video production
+    ﬁcation of breast cancer risk. Nature Biomedical Engineering             process; N.J. and Y.Y. contributed to pilot experiments; G.H. and K.H.
+    1–15 (2024).                                                             supervised the work.
+64. Law, H. & Deng, J. Cornernet: Detecting objects as paired keypoints.
+    Proceedings of the European conference on computer vision                Competing interests
+    734–750 (2018).                                                          The authors declare no competing interests.
+
+
+
+Nature Communications | (2025)16:7893                                                                                                              20
+Article                                                                                              https://doi.org/10.1038/s41467-025-62865-w
+
+
+Additional information                                                     Open Access This article is licensed under a Creative Commons
+Supplementary information The online version contains                      Attribution-NonCommercial-NoDerivatives 4.0 International License,
+supplementary material available at                                        which permits any non-commercial use, sharing, distribution and
+https://doi.org/10.1038/s41467-025-62865-w.                                reproduction in any medium or format, as long as you give appropriate
+                                                                           credit to the original author(s) and the source, provide a link to the
+Correspondence and requests for materials should be addressed to           Creative Commons licence, and indicate if you modiﬁed the licensed
+Kunlun He or Gao Huang.                                                    material. You do not have permission under this licence to share adapted
+                                                                           material derived from this article or parts of it. The images or other third
+Peer review information Nature Communications thanks Diego Dal-            party material in this article are included in the article’s Creative
+l’Alba, Floris Ernst, and Guillaume Goudot for their contribution to the   Commons licence, unless indicated otherwise in a credit line to the
+peer review of this work. A peer review ﬁle is available.                  material. If material is not included in the article’s Creative Commons
+                                                                           licence and your intended use is not permitted by statutory regulation or
+Reprints and permissions information is available at                       exceeds the permitted use, you will need to obtain permission directly
+http://www.nature.com/reprints                                             from the copyright holder. To view a copy of this licence, visit http://
+                                                                           creativecommons.org/licenses/by-nc-nd/4.0/.
+Publisher’s note Springer Nature remains neutral with regard to jur-
+isdictional claims in published maps and institutional afﬁliations.        © The Author(s) 2025, corrected publication 2025
+
+
+
+
+Nature Communications | (2025)16:7893                                                                                                               21
+

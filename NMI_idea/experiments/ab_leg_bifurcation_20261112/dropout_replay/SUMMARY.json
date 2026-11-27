@@ -1,0 +1,7 @@
+{
+  "scope": "Post-hoc paired diagnostic on the 12 already-held-out temporary-dropout seeds. No retuning.",
+  "same_complete_actions": 12,
+  "open_loop_accurate_complete": 9,
+  "active_accurate_complete": 9,
+  "initial_surface_choices_changed_by_dird_rank": 0
+}

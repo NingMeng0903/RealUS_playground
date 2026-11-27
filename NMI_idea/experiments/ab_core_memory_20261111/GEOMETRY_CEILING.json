@@ -1,0 +1,64 @@
+{
+  "scope": "Post hoc evaluator only, frozen synthetic response scene. The analytic ceiling is for the declared at-most-one terminal and geometry-only evidence class, including true local geometry in that class. Policies that use lawful response cues are outside it.",
+  "independent_objects": 128,
+  "privileged_geometry_expected_success_on_test_geometries": 0.3052783437115148,
+  "geometry_expectation_95_across_geometries": [
+    0.2951620665034347,
+    0.3131874920715343
+  ],
+  "privileged_geometry_empirical_correct_count": 43,
+  "privileged_geometry_action_counts": [
+    34,
+    94
+  ],
+  "comparisons": {
+    "h1": {
+      "correct_count": 44,
+      "paired_minus_oracle_count": 1,
+      "paired_delta_bootstrap_95": [
+        -0.046875,
+        0.0703125
+      ]
+    },
+    "h2": {
+      "correct_count": 58,
+      "paired_minus_oracle_count": 15,
+      "paired_delta_bootstrap_95": [
+        0.03125,
+        0.1953125
+      ]
+    },
+    "h3": {
+      "correct_count": 68,
+      "paired_minus_oracle_count": 25,
+      "paired_delta_bootstrap_95": [
+        0.1171875,
+        0.2734375
+      ]
+    },
+    "h4": {
+      "correct_count": 70,
+      "paired_minus_oracle_count": 27,
+      "paired_delta_bootstrap_95": [
+        0.140625,
+        0.2890625
+      ]
+    },
+    "fixed_pair_learned": {
+      "correct_count": 68,
+      "paired_minus_oracle_count": 25,
+      "paired_delta_bootstrap_95": [
+        0.1171875,
+        0.2734375
+      ]
+    },
+    "paired_difference": {
+      "correct_count": 68,
+      "paired_minus_oracle_count": 25,
+      "paired_delta_bootstrap_95": [
+        0.1171875,
+        0.2734375
+      ]
+    }
+  }
+}

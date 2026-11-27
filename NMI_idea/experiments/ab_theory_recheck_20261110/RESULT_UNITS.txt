@@ -1,0 +1,52 @@
+Result-unit and evidence-scope notes
+
+response_identification/
+Normalized response/control identifiability mechanism. Its success rates do
+not use the geometric ultrasound or native robot acquisition acceptance gate.
+
+response_learning_geometry/ original benchmark
+One numerical response/action unit was 1mm. The original task used a .50mm
+centering threshold; all methods passed. The first typed model was manual,
+not an e3nn-library implementation. Original FD values contain a diagnostic
+array-broadcast bug and are superseded by the corrected addendum.
+
+response_learning_geometry/geometry_addendum/
+positive_runs and negative_runs use the original 1-unit=1mm prediction scale.
+task_scale_rows/task_scale_id_rows reuse normalized models at 1 unit=10mm.
+Their keys containing normalized are normalized lengths: multiply by10 to
+obtain mm, including mean regret and actual/oracle centering error. For
+example e3nn .000128125 normalized is .00128125mm, not .000128125mm.
+The success threshold in those task-scale rows is2mm. Those are separate
+post-initial-benchmark test seeds, not a retrospective rewrite of the .50mm
+result. Artifact names marked OOD describe the probe-R sampling change; see
+FINAL_REPORT for the isotropic-input limit of that generalization claim.
+
+geometry_addendum/context_ablation/
+Fields ending _mm are physically converted using10mm per unit. Raw error
+arrays remain normalized; analyze_evidence.py multiplies by10 before computing
+component RMSE. The512 contexts are independent sampling units; their32
+candidates and three task readouts are correlated, not16384/49152 independent
+objects. Bootstrap intervals condition on the frozen trained model.
+
+harmonic_mechanism/
+Positions are metre-based production mesh coordinates, angles are degrees in
+summary fields, and material theta/h/d are mixed-unit scalar labels. An equal
+float32 API label is not infinite numerical accuracy or true patient
+correspondence. The normal counterexample uses sampled local planes inside
+native cells, not measured ultrasound-probe normals.
+
+inference/proposal_dev_28d/
+mean_capped_NLL is a per-frame marginal heldout predictive score under the
+declared geometric sensor, not a joint5-frame density or a clinical image
+quality score. The score cap is evaluation-only, not a likelihood floor.
+evidence_estimate in the proposal diagnostics is log Z, a Monte Carlo log
+normalizer estimate. ESS after resampling is not posterior coverage. The
+2conditions/prefixes share one independent DEV world and must not be counted
+as four subjects. Forked public-stop checks are diagnostic, not a complete
+online first-image-acquisition experiment with a native controller.
+
+response_identification/b_decision_mechanism/
+L=1, observation c=.1 and execution Delta are normalized toy costs. They are
+not seconds or directly measured robot joint effort. Cheap threshold and
+Bellman agree by design and independent enumeration; no novel algorithmic
+superiority follows.

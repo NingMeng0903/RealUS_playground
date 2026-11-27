@@ -1,0 +1,9 @@
+{
+  "status": "Read-only scope review; fresh module subset intentionally deferred until formal timing ends",
+  "audit_files": {
+    "DEV_PRECISION_REVIEW.txt": "d17a89e2af3e14a0e84d781d5a5cf29917e226f860abf604e717f122d377749d",
+    "M8_COMPRESSION_REVIEW.txt": "1236342eb27a683d534c8171dd30d721d5fda7aaa5d79edd8754a199ce9cff05",
+    "check_module_subset.py": "02b7474535dc3de195afed87727926258454a1660490cca6354518bd17e83901"
+  },
+  "dev_precision_results_sha256": "ad1dfdbba820fc775c6e143b2a73aa043d069d781d906332e7d8a14e45cd61a3"
+}

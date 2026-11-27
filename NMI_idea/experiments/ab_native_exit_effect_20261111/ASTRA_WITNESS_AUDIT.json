@@ -1,0 +1,237 @@
+{
+  "dwell_regression": [
+    {
+      "arm": ".15",
+      "root": "b851e6874ff8b54c2c8cbfb6fd491c587d0f018568db17c795e2b87f9280625a",
+      "complete": true,
+      "motion_s": 4.975,
+      "attempts": [
+        {
+          "capture": "side_right__single_dwell_0.15",
+          "route": "direct",
+          "valid": true,
+          "position_max_mm": 0.010338581801857179
+        },
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "round_tip",
+          "valid": false,
+          "position_max_mm": 4.096784855332584
+        },
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "retreat_fork",
+          "valid": true,
+          "position_max_mm": 1.899906817086296
+        }
+      ]
+    },
+    {
+      "arm": ".30",
+      "root": "b851e6874ff8b54c2c8cbfb6fd491c587d0f018568db17c795e2b87f9280625a",
+      "complete": true,
+      "motion_s": 5.125,
+      "attempts": [
+        {
+          "capture": "side_right__single_dwell_0.3",
+          "route": "direct",
+          "valid": true,
+          "position_max_mm": 0.010338581801857179
+        },
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "round_tip",
+          "valid": false,
+          "position_max_mm": 4.087228461381371
+        },
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "retreat_fork",
+          "valid": true,
+          "position_max_mm": 1.5567556654817787
+        }
+      ]
+    },
+    {
+      "arm": ".60",
+      "root": "b851e6874ff8b54c2c8cbfb6fd491c587d0f018568db17c795e2b87f9280625a",
+      "complete": false,
+      "motion_s": null,
+      "attempts": [
+        {
+          "capture": "side_right__single_dwell_0.6",
+          "route": "direct",
+          "valid": true,
+          "position_max_mm": 0.010338581801857179
+        },
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "round_tip",
+          "valid": false,
+          "position_max_mm": 3.993223939181942
+        },
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "retreat_fork",
+          "valid": false,
+          "position_max_mm": 2.2107616199364166
+        }
+      ]
+    },
+    {
+      "arm": "direct",
+      "root": "b851e6874ff8b54c2c8cbfb6fd491c587d0f018568db17c795e2b87f9280625a",
+      "complete": true,
+      "motion_s": 4.15,
+      "attempts": [
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "round_tip",
+          "valid": false,
+          "position_max_mm": 4.428515197156625
+        },
+        {
+          "capture": "side_left__single_dwell_0.6",
+          "route": "retreat_fork",
+          "valid": true,
+          "position_max_mm": 1.48488506784314
+        }
+      ]
+    }
+  ],
+  "retry_certification": [
+    {
+      "file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_native_exit_effect_20261111/fixture_00_constrained/certified_retries/RETRY_VALIDATION.json",
+      "checks": [
+        {
+          "branches": 16,
+          "strict_margin": 0.05370029495950723,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.6",
+          "B_nominal": "side_right__single_dwell_0.6"
+        },
+        {
+          "branches": 64,
+          "strict_margin": 0.03482228701107454,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.6",
+          "B_nominal": "side_right__single_dwell_0.6"
+        }
+      ],
+      "retry_links": 2
+    },
+    {
+      "file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_native_exit_effect_20261111/fixture_00_open/certified_retries/RETRY_VALIDATION.json",
+      "checks": [
+        {
+          "branches": 16,
+          "strict_margin": 0.05370029495950723,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.6",
+          "B_nominal": "side_right__single_dwell_0.6"
+        },
+        {
+          "branches": 64,
+          "strict_margin": 0.03482228701107454,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.6",
+          "B_nominal": "side_right__single_dwell_0.6"
+        }
+      ],
+      "retry_links": 2
+    },
+    {
+      "file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_native_exit_effect_20261111/fixture_01_constrained/certified_retries/RETRY_VALIDATION.json",
+      "checks": [
+        {
+          "branches": 16,
+          "strict_margin": 0.03228207565776947,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.15",
+          "B_nominal": "side_right__single_dwell_0.6"
+        },
+        {
+          "branches": 64,
+          "strict_margin": 0.059875005380482516,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.15",
+          "B_nominal": "side_right__single_dwell_0.6"
+        }
+      ],
+      "retry_links": 2
+    },
+    {
+      "file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_native_exit_effect_20261111/fixture_01_open/certified_retries/RETRY_VALIDATION.json",
+      "checks": [
+        {
+          "branches": 16,
+          "strict_margin": 0.03228207565776947,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.15",
+          "B_nominal": "side_right__single_dwell_0.6"
+        },
+        {
+          "branches": 64,
+          "strict_margin": 0.059875005380482516,
+          "choice": "side_right__single_dwell_0.6",
+          "A_task": "side_right__single_dwell_0.6",
+          "A_info": "side_right__single_dwell_0.15",
+          "B_nominal": "side_right__single_dwell_0.6"
+        }
+      ],
+      "retry_links": 2
+    }
+  ],
+  "late_retrospective_witness": [
+    {
+      "prefix": 4,
+      "passed": false,
+      "tcp_delta_mm": 1.236911038406487e-05,
+      "attempts": [
+        {
+          "route": "round_tip",
+          "valid": false,
+          "position_max_mm": 3.993223939181942,
+          "rotation_max_deg": 0.37209182734613133
+        },
+        {
+          "route": "retreat_fork",
+          "valid": false,
+          "position_max_mm": 2.2107616199364166,
+          "rotation_max_deg": 0.14737759568323042
+        }
+      ],
+      "source_sha256": "36bfde7f62b4206c1c917ef12f3c39530218eb4ededf52c20535fd08db7c9e9d"
+    },
+    {
+      "prefix": 5,
+      "passed": true,
+      "tcp_delta_mm": 1.236911038406487e-05,
+      "attempts": [
+        {
+          "route": "round_tip",
+          "valid": false,
+          "position_max_mm": 4.054151049025294,
+          "rotation_max_deg": 0.27904904766521144
+        },
+        {
+          "route": "retreat_fork",
+          "valid": true,
+          "position_max_mm": 1.9356588240097266,
+          "rotation_max_deg": 0.148085682252629
+        }
+      ],
+      "source_sha256": "3306d2539e7d69d34afa3f386a18d943fc6c9f4abc63d7d2a34083903e3a0be8"
+    }
+  ],
+  "failures": [],
+  "passed": true,
+  "scope": "independent stored-score ordering and native retry/late trace checks; no independent posterior quadrature recomputation; late pair is retrospective"
+}

@@ -1,0 +1,3051 @@
+{
+  "schema": "native_qp_replay_witness_v1",
+  "status": "passed",
+  "scope": "one recorded fixture/case; two selected native transitions; no multi-case rollout",
+  "read_only_existing_trace": true,
+  "fresh_native_replay": {
+    "requested": true,
+    "performed": true,
+    "backend": "native",
+    "segments": [
+      {
+        "index": 0,
+        "wall_seconds": 2.2146126939996975,
+        "whole_segment_pass": true,
+        "exit_state_valid": true,
+        "failures": [],
+        "integrated_duration_s": 2.045,
+        "simulated_duration_s": 2.045,
+        "entry_q_matches_recorded": null,
+        "entry_qdot_matches_recorded": null,
+        "diffs_to_recorded_exit": {
+          "q_max_abs_diff": 0.0,
+          "qdot_max_abs_diff": 0.0,
+          "acceleration_max_abs_diff": 0.0
+        }
+      },
+      {
+        "index": 1,
+        "wall_seconds": 3.4631997289998253,
+        "whole_segment_pass": true,
+        "exit_state_valid": true,
+        "failures": [],
+        "integrated_duration_s": 1.2750000000000001,
+        "simulated_duration_s": 1.2750000000000001,
+        "entry_q_matches_recorded": true,
+        "entry_qdot_matches_recorded": true,
+        "diffs_to_recorded_exit": {
+          "q_max_abs_diff": 0.0,
+          "qdot_max_abs_diff": 0.0,
+          "acceleration_max_abs_diff": 0.0
+        }
+      }
+    ],
+    "total_wall_seconds": 5.735650640000131
+  },
+  "source_result": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/B_rollout/case_0001/RESULT_GUARD_16.json",
+  "transitions": [
+    {
+      "index": 0,
+      "action_id": "side_right__single_dwell_0.6",
+      "route_id": "side_right__single_dwell_0.6__direct",
+      "source_checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/239763b4090bb8fcb7b196c2.json",
+      "source_trace": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/seg_2a41ea0b06e21c866352_0.npz",
+      "trace_samples": 409,
+      "trace_final_time_s": 2.04,
+      "elapsed_s": 2.045,
+      "duration_s": 2.045,
+      "dird_margin": 6.470023162522572,
+      "reference_kind": "ProDMPIntegralBasisReference",
+      "same_tick_position_error_max_m": 2.926050999474412e-05,
+      "same_tick_rotation_error_max_rad": 0.0002632639689332076,
+      "jerk_margin_min": 72.83839038115599,
+      "input_state": {
+        "key": [],
+        "elapsed_s": 0.0,
+        "pose": [
+          [
+            -0.9853855957027935,
+            0.15274593849422388,
+            0.07539168425609986,
+            0.40589837530715667
+          ],
+          [
+            0.1596349440468076,
+            0.982510211759051,
+            0.09586640928062422,
+            0.22358551217316114
+          ],
+          [
+            -0.05942989500769184,
+            0.10650052611469267,
+            -0.9925349996431717,
+            0.15052916784701276
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "q": null,
+        "qdot": null,
+        "acceleration": null,
+        "snapshot_schema": null
+      },
+      "exit_state": {
+        "key": [
+          "side_right__single_dwell_0.6"
+        ],
+        "elapsed_s": 2.045,
+        "pose": [
+          [
+            -0.9857225066358009,
+            0.14658755147678712,
+            0.08284461155486184,
+            0.3927840597510841
+          ],
+          [
+            0.1591752693819866,
+            0.9716864353445265,
+            0.17461015143633918,
+            0.24026588775984906
+          ],
+          [
+            -0.05490331072720187,
+            0.18530396951897607,
+            -0.9811463017061752,
+            0.1505589613867636
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "q": [
+          0.39093723651140305,
+          -1.520056746390382,
+          -1.6058272607595268,
+          1.0908746123981135,
+          1.6803718350214345,
+          1.6044757696618932,
+          1.1105144887125635,
+          1.7448433812003346
+        ],
+        "qdot": [
+          -0.00320586776604585,
+          0.001238888172486118,
+          0.0010570422574938032,
+          0.0016087489123983519,
+          -0.014794935570618051,
+          -0.008954190059800403,
+          -0.0022377579910596228,
+          0.01710432291868872
+        ],
+        "acceleration": [
+          0.0005538066777551615,
+          0.006121503054094422,
+          0.01231938595958864,
+          0.015623459827761657,
+          0.001526998556205389,
+          -0.010849910519911826,
+          -0.016599767774019315,
+          -0.0025534453628302256
+        ],
+        "snapshot_schema": "ultrapoc_qp_complete_history_v2"
+      },
+      "linkage": {
+        "action_id_equal": true,
+        "route_id_equal": true,
+        "trace_record_equal": true,
+        "entry_state_hash_equal": true,
+        "exit_state_hash_equal": true
+      }
+    },
+    {
+      "index": 1,
+      "action_id": "side_right__single_dwell_0.6",
+      "route_id": "side_right__single_dwell_0.6__side_right__single_dwell_0.6__direct",
+      "source_checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/3f24774a6736087b07962efd.json",
+      "source_trace": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/seg_4c68c19c31f02bc6146a_0.npz",
+      "trace_samples": 255,
+      "trace_final_time_s": 1.27,
+      "elapsed_s": 3.3200000000000003,
+      "duration_s": 1.2750000000000004,
+      "dird_margin": 6.40408437593214,
+      "reference_kind": "ProDMPIntegralBasisReference",
+      "same_tick_position_error_max_m": 1.0105347963513176e-05,
+      "same_tick_rotation_error_max_rad": 2.371560909546645e-07,
+      "jerk_margin_min": 202.23283884534288,
+      "input_state": {
+        "key": [
+          "side_right__single_dwell_0.6"
+        ],
+        "elapsed_s": 2.045,
+        "pose": [
+          [
+            -0.9857225066358009,
+            0.14658755147678712,
+            0.08284461155486184,
+            0.3927840597510841
+          ],
+          [
+            0.1591752693819866,
+            0.9716864353445265,
+            0.17461015143633918,
+            0.24026588775984906
+          ],
+          [
+            -0.05490331072720187,
+            0.18530396951897607,
+            -0.9811463017061752,
+            0.1505589613867636
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "q": [
+          0.39093723651140305,
+          -1.520056746390382,
+          -1.6058272607595268,
+          1.0908746123981135,
+          1.6803718350214345,
+          1.6044757696618932,
+          1.1105144887125635,
+          1.7448433812003346
+        ],
+        "qdot": [
+          -0.00320586776604585,
+          0.001238888172486118,
+          0.0010570422574938032,
+          0.0016087489123983519,
+          -0.014794935570618051,
+          -0.008954190059800403,
+          -0.0022377579910596228,
+          0.01710432291868872
+        ],
+        "acceleration": [
+          0.0005538066777551615,
+          0.006121503054094422,
+          0.01231938595958864,
+          0.015623459827761657,
+          0.001526998556205389,
+          -0.010849910519911826,
+          -0.016599767774019315,
+          -0.0025534453628302256
+        ],
+        "snapshot_schema": "ultrapoc_qp_complete_history_v2"
+      },
+      "exit_state": {
+        "key": [
+          "side_right__single_dwell_0.6",
+          "side_right__single_dwell_0.6"
+        ],
+        "elapsed_s": 3.3200000000000003,
+        "pose": [
+          [
+            -0.9857225702205153,
+            0.14658783745681137,
+            0.08284334896417139,
+            0.3927840639681071
+          ],
+          [
+            0.1591744760643441,
+            0.9716892631857647,
+            0.17459513732962456,
+            0.24026661084253442
+          ],
+          [
+            -0.054904469103212505,
+            0.18528891418334875,
+            -0.9811490801877423,
+            0.1505589615884284
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "q": [
+          0.38868385873850464,
+          -1.5172685380397095,
+          -1.601261239656329,
+          1.0968907837923223,
+          1.6699664926249396,
+          1.5944779539249019,
+          1.1037601474098588,
+          1.7566820019600924
+        ],
+        "qdot": [
+          -0.00030136648192346274,
+          0.001417973693310206,
+          0.0026646491752200943,
+          0.003436008627413151,
+          -0.0014145860079132107,
+          -0.003359053555194158,
+          -0.0037083620624905845,
+          0.0015368385747710864
+        ],
+        "acceleration": [
+          0.0011601816199347122,
+          -0.0020214648160962138,
+          -0.0035359581100316735,
+          -0.004621879828970669,
+          0.0053834066962222225,
+          0.006321373327859876,
+          0.005075573959588495,
+          -0.006073524437815196
+        ],
+        "snapshot_schema": "ultrapoc_qp_complete_history_v2"
+      },
+      "linkage": {
+        "action_id_equal": true,
+        "route_id_equal": true,
+        "trace_record_equal": true,
+        "entry_state_hash_equal": true,
+        "exit_state_hash_equal": true
+      }
+    }
+  ],
+  "continuity": {
+    "key_equal": true,
+    "elapsed_diff_s": 0.0,
+    "pose_max_abs_diff": 0.0,
+    "q_max_abs_diff": 0.0,
+    "qdot_max_abs_diff": 0.0,
+    "acceleration_max_abs_diff": 0.0,
+    "snapshot_equal": true
+  },
+  "downstream_route_feasible_sets": [
+    {
+      "exit_index": 0,
+      "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+      "route_set_kind": "public_measured_frame_geometry_plus_baked_dird_prediction",
+      "native_qp_checked": false,
+      "prediction_status_contract": "predicted_unknown; checked/execute is required for a native certificate",
+      "actions": {
+        "side_left__single_dwell_0.15": {
+          "action_id": "side_left__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.6963939832985853,
+              "dwell_s": 0.15,
+              "duration_s": 2.846393983298585,
+              "margin": 6.326198552887582,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.5279995079469866,
+              "dwell_s": 0.15,
+              "duration_s": 3.6779995079469865,
+              "margin": 6.3606758136398796,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/b578760740da124fd9aa9c53.json",
+          "saved_match": true
+        },
+        "side_left__single_dwell_0.3": {
+          "action_id": "side_left__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.6963939832985853,
+              "dwell_s": 0.3,
+              "duration_s": 2.996393983298585,
+              "margin": 6.326198552887582,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.5279995079469866,
+              "dwell_s": 0.3,
+              "duration_s": 3.8279995079469864,
+              "margin": 6.3606758136398796,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/39fe21f93701015cb5d07706.json",
+          "saved_match": true
+        },
+        "side_left__single_dwell_0.6": {
+          "action_id": "side_left__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.6963939832985853,
+              "dwell_s": 0.6,
+              "duration_s": 3.2963939832985854,
+              "margin": 6.326198552887582,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.5279995079469866,
+              "dwell_s": 0.6,
+              "duration_s": 4.127999507946987,
+              "margin": 6.3606758136398796,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/48a8a882c9420830c8054626.json",
+          "saved_match": true
+        },
+        "side_right__single_dwell_0.15": {
+          "action_id": "side_right__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.014389738775325362,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39278406453685477
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2402664769993484
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.15055896128427323
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 0.15,
+              "duration_s": 0.8200000000000001,
+              "margin": 6.40408437593214,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/e30f9145bc625cadc98690e7.json",
+          "saved_match": true
+        },
+        "side_right__single_dwell_0.3": {
+          "action_id": "side_right__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.014389738775325362,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39278406453685477
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2402664769993484
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.15055896128427323
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 0.3,
+              "duration_s": 0.97,
+              "margin": 6.40408437593214,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/88eb5b457cc9d57f08b9514e.json",
+          "saved_match": true
+        },
+        "side_right__single_dwell_0.6": {
+          "action_id": "side_right__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.014389738775325362,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39278406453685477
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2402664769993484
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.15055896128427323
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 0.6,
+              "duration_s": 1.27,
+              "margin": 6.40408437593214,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/3f24774a6736087b07962efd.json",
+          "saved_match": true
+        },
+        "fork_minus__single_dwell_0.15": {
+          "action_id": "fork_minus__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.006,
+                  -0.003,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39958123490026465
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2216635430839732
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.1491505376388222
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.355440163118196,
+              "dwell_s": 0.15,
+              "duration_s": 1.505440163118196,
+              "margin": 6.436211529088109,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/8f590dd2f1ee4b47c042172f.json",
+          "saved_match": true
+        },
+        "fork_minus__single_dwell_0.3": {
+          "action_id": "fork_minus__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.006,
+                  -0.003,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39958123490026465
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2216635430839732
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.1491505376388222
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.355440163118196,
+              "dwell_s": 0.3,
+              "duration_s": 1.655440163118196,
+              "margin": 6.436211529088109,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/77d57b5c3ee2ff8c973be465.json",
+          "saved_match": true
+        },
+        "fork_minus__single_dwell_0.6": {
+          "action_id": "fork_minus__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.006,
+                  -0.003,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39958123490026465
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2216635430839732
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.1491505376388222
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.355440163118196,
+              "dwell_s": 0.6,
+              "duration_s": 1.9554401631181961,
+              "margin": 6.436211529088109,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/4199d95cabb8ab568f91e8c2.json",
+          "saved_match": true
+        },
+        "fork_plus__single_dwell_0.15": {
+          "action_id": "fork_plus__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  -0.006,
+                  -0.003,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.411409905619705
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.2197534483694549
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.1498093905758455
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.8446268829655788,
+              "dwell_s": 0.15,
+              "duration_s": 1.9946268829655787,
+              "margin": 6.363794030216383,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/a74df8c20ea7aa5c9621f8a2.json",
+          "saved_match": true
+        },
+        "fork_plus__single_dwell_0.3": {
+          "action_id": "fork_plus__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  -0.006,
+                  -0.003,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.411409905619705
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.2197534483694549
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.1498093905758455
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.8446268829655788,
+              "dwell_s": 0.3,
+              "duration_s": 2.1446268829655786,
+              "margin": 6.363794030216383,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/b2263b210aa21e482b171b14.json",
+          "saved_match": true
+        },
+        "fork_plus__single_dwell_0.6": {
+          "action_id": "fork_plus__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  -0.006,
+                  -0.003,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.411409905619705
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.2197534483694549
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.1498093905758455
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.8446268829655788,
+              "dwell_s": 0.6,
+              "duration_s": 2.444626882965579,
+              "margin": 6.363794030216383,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/06e86cdd0740bfe5aa728ec3.json",
+          "saved_match": true
+        },
+        "left": {
+          "action_id": "left",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.017789738775325366,
+                  0.1
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533606,
+                  0.158772719305156,
+                  0.05605585075118899,
+                  0.4240249896167927
+                ],
+                [
+                  0.15917455954319296,
+                  0.9872466257748269,
+                  0.002749452754538231,
+                  0.23864428925759776
+                ],
+                [
+                  -0.05490441141860952,
+                  0.011632862960813692,
+                  -0.998423848926953,
+                  0.15264846477910313
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.8363939832985854,
+              "dwell_s": 1.0,
+              "duration_s": 3.8363939832985854,
+              "margin": 6.298540353556876,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07501530276789967
+                ],
+                [
+                  -0.015583909311968907,
+                  0.017789738775325366,
+                  0.1
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533606,
+                  0.158772719305156,
+                  0.05605585075118899,
+                  0.4240249896167927
+                ],
+                [
+                  0.15917455954319296,
+                  0.9872466257748269,
+                  0.002749452754538231,
+                  0.23864428925759776
+                ],
+                [
+                  -0.05490441141860952,
+                  0.011632862960813692,
+                  -0.998423848926953,
+                  0.15264846477910313
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.799296326832531,
+              "dwell_s": 1.0,
+              "duration_s": 4.799296326832531,
+              "margin": 6.333566127995376,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/6af1472fd52dc498bfad1b5d.json",
+          "saved_match": true
+        },
+        "right": {
+          "action_id": "right",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "b5eac332c52902c43aaf6bc7f9ad7fb4176c450ca82df2e9ccd5a979dd5dfcff",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.019389738775325363,
+                  -0.1
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533606,
+                  0.14447125730806573,
+                  0.08648173570656462,
+                  0.39354598088654286
+                ],
+                [
+                  0.15917455954319296,
+                  0.9670211900696508,
+                  0.19883027322444355,
+                  0.24517667708704957
+                ],
+                [
+                  -0.05490441141860952,
+                  0.20975717810864786,
+                  -0.9762107517532642,
+                  0.1511152153402741
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 1.0,
+              "duration_s": 1.67,
+              "margin": 6.384211515141892,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/5cdfa9dd76195a77e24547d1.json",
+          "saved_match": true
+        }
+      },
+      "saved_proposal_match_count": 14,
+      "action_count": 14,
+      "available_action_count": 14
+    },
+    {
+      "exit_index": 1,
+      "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+      "route_set_kind": "public_measured_frame_geometry_plus_baked_dird_prediction",
+      "native_qp_checked": false,
+      "prediction_status_contract": "predicted_unknown; checked/execute is required for a native certificate",
+      "actions": {
+        "side_left__single_dwell_0.15": {
+          "action_id": "side_left__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.6963439361184047,
+              "dwell_s": 0.15,
+              "duration_s": 2.8463439361184046,
+              "margin": 6.307807937016242,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.5280425743188992,
+              "dwell_s": 0.15,
+              "duration_s": 3.678042574318899,
+              "margin": 6.345353462424906,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/e50bb014b30af42cc7c4136f.json",
+          "saved_match": true
+        },
+        "side_left__single_dwell_0.3": {
+          "action_id": "side_left__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.6963439361184047,
+              "dwell_s": 0.3,
+              "duration_s": 2.9963439361184045,
+              "margin": 6.307807937016242,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.5280425743188992,
+              "dwell_s": 0.3,
+              "duration_s": 3.828042574318899,
+              "margin": 6.345353462424906,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/ee97c42443b9d2c27fe3e010.json",
+          "saved_match": true
+        },
+        "side_left__single_dwell_0.6": {
+          "action_id": "side_left__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.6963439361184047,
+              "dwell_s": 0.6,
+              "duration_s": 3.296343936118405,
+              "margin": 6.307807937016242,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.012789738775325365,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.4232630732671046
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.23373408916989658
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.15209221072310225
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.5280425743188992,
+              "dwell_s": 0.6,
+              "duration_s": 4.128042574318899,
+              "margin": 6.345353462424906,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/d34b2d7d0612829c99cea023.json",
+          "saved_match": true
+        },
+        "side_right__single_dwell_0.15": {
+          "action_id": "side_right__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.014389738775325362,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39278406453685477
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2402664769993484
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.15055896128427323
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 0.15,
+              "duration_s": 0.8200000000000001,
+              "margin": 6.389065250089041,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/380f40147757a12ea54d8cae.json",
+          "saved_match": true
+        },
+        "side_right__single_dwell_0.3": {
+          "action_id": "side_right__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.014389738775325362,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39278406453685477
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2402664769993484
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.15055896128427323
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 0.3,
+              "duration_s": 0.97,
+              "margin": 6.389065250089041,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/3b278e28d074515af3f8c9ae.json",
+          "saved_match": true
+        },
+        "side_right__single_dwell_0.6": {
+          "action_id": "side_right__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.014389738775325362,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39278406453685477
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2402664769993484
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.15055896128427323
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 0.6,
+              "duration_s": 1.27,
+              "margin": 6.389065250089041,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/bab32dd2b190d5a51062c049.json",
+          "saved_match": true
+        },
+        "fork_minus__single_dwell_0.15": {
+          "action_id": "fork_minus__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.006,
+                  -0.003,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39958123490026465
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2216635430839732
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.1491505376388222
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.3554822269488684,
+              "dwell_s": 0.15,
+              "duration_s": 1.5054822269488684,
+              "margin": 6.4247822849429355,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/82cb2f486b748b0446d888d8.json",
+          "saved_match": true
+        },
+        "fork_minus__single_dwell_0.3": {
+          "action_id": "fork_minus__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.006,
+                  -0.003,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39958123490026465
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2216635430839732
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.1491505376388222
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.3554822269488684,
+              "dwell_s": 0.3,
+              "duration_s": 1.6554822269488685,
+              "margin": 6.4247822849429355,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/983a31cadbd9bd12aec70c87.json",
+          "saved_match": true
+        },
+        "fork_minus__single_dwell_0.6": {
+          "action_id": "fork_minus__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.006,
+                  -0.003,
+                  -0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.14658793057837669,
+                  0.08284330635448134,
+                  0.39958123490026465
+                ],
+                [
+                  0.15917455954319298,
+                  0.9716892507463253,
+                  0.174595130454076,
+                  0.2216635430839732
+                ],
+                [
+                  -0.054904411418609536,
+                  0.18528890574665907,
+                  -0.981149085008992,
+                  0.1491505376388222
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.3554822269488684,
+              "dwell_s": 0.6,
+              "duration_s": 1.9554822269488685,
+              "margin": 6.4247822849429355,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/558ecc7f8fe2ef6d4aa9e728.json",
+          "saved_match": true
+        },
+        "fork_plus__single_dwell_0.15": {
+          "action_id": "fork_plus__single_dwell_0.15",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  -0.006,
+                  -0.003,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.411409905619705
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.2197534483694549
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.1498093905758455
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.8446600039482282,
+              "dwell_s": 0.15,
+              "duration_s": 1.994660003948228,
+              "margin": 6.34510439816649,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/bda3e9eccd65c4b4a26ba380.json",
+          "saved_match": true
+        },
+        "fork_plus__single_dwell_0.3": {
+          "action_id": "fork_plus__single_dwell_0.3",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  -0.006,
+                  -0.003,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.411409905619705
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.2197534483694549
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.1498093905758455
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.8446600039482282,
+              "dwell_s": 0.3,
+              "duration_s": 2.144660003948228,
+              "margin": 6.34510439816649,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/4b94ffd8d438e9e9996fae13.json",
+          "saved_match": true
+        },
+        "fork_plus__single_dwell_0.6": {
+          "action_id": "fork_plus__single_dwell_0.6",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  -0.006,
+                  -0.003,
+                  0.075
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533608,
+                  0.1573218551199472,
+                  0.06000723873510408,
+                  0.411409905619705
+                ],
+                [
+                  0.15917455954319298,
+                  0.986869398113351,
+                  0.027427188365258915,
+                  0.2197534483694549
+                ],
+                [
+                  -0.054904411418609536,
+                  0.03658722412278945,
+                  -0.99782106644316,
+                  0.1498093905758455
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 1.8446600039482282,
+              "dwell_s": 0.6,
+              "duration_s": 2.4446600039482282,
+              "margin": 6.34510439816649,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/e29f8052671d6824054eab93.json",
+          "saved_match": true
+        },
+        "left": {
+          "action_id": "left",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "round_tip",
+          "routes": [
+            {
+              "route_id": "round_tip",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  0.006736662657196346,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.017789738775325366,
+                  0.1
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533606,
+                  0.158772719305156,
+                  0.05605585075118899,
+                  0.4240249896167927
+                ],
+                [
+                  0.15917455954319296,
+                  0.9872466257748269,
+                  0.002749452754538231,
+                  0.23864428925759776
+                ],
+                [
+                  -0.05490441141860952,
+                  0.011632862960813692,
+                  -0.998423848926953,
+                  0.15264846477910313
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 2.836343936118405,
+              "dwell_s": 1.0,
+              "duration_s": 3.836343936118405,
+              "margin": 6.279466513207763,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            },
+            {
+              "route_id": "retreat_fork",
+              "waypoints": [
+                [
+                  0.00759122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.00539122309421748,
+                  -0.003,
+                  -0.07500001382028317
+                ],
+                [
+                  -0.015583909311968907,
+                  0.017789738775325366,
+                  0.1
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533606,
+                  0.158772719305156,
+                  0.05605585075118899,
+                  0.4240249896167927
+                ],
+                [
+                  0.15917455954319296,
+                  0.9872466257748269,
+                  0.002749452754538231,
+                  0.23864428925759776
+                ],
+                [
+                  -0.05490441141860952,
+                  0.011632862960813692,
+                  -0.998423848926953,
+                  0.15264846477910313
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 3.7993393932044435,
+              "dwell_s": 1.0,
+              "duration_s": 4.799339393204443,
+              "margin": 6.317551015693075,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/88970f9a004bb9349c063239.json",
+          "saved_match": true
+        },
+        "right": {
+          "action_id": "right",
+          "available": true,
+          "status": "predicted_unknown",
+          "prediction_kind": "public_measured_frame_route_dird",
+          "native_checked": false,
+          "state_fingerprint": "78b9baa94654264bb84e3849afe110ac7ad65c0514936fbbee945960dfe6abf5",
+          "dird_query_increment": 1,
+          "best_route": "direct",
+          "routes": [
+            {
+              "route_id": "direct",
+              "waypoints": [
+                [
+                  0.015583909311968907,
+                  0.019389738775325363,
+                  -0.1
+                ]
+              ],
+              "goal_pose": [
+                [
+                  -0.9857225599533606,
+                  0.14447125730806573,
+                  0.08648173570656462,
+                  0.39354598088654286
+                ],
+                [
+                  0.15917455954319296,
+                  0.9670211900696508,
+                  0.19883027322444355,
+                  0.24517667708704957
+                ],
+                [
+                  -0.05490441141860952,
+                  0.20975717810864786,
+                  -0.9762107517532642,
+                  0.1511152153402741
+                ],
+                [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ]
+              ],
+              "travel_s": 0.67,
+              "dwell_s": 1.0,
+              "duration_s": 1.67,
+              "margin": 6.3690074601590725,
+              "geometric_status": "clear",
+              "prediction_status": "predicted_unknown",
+              "native_checked": false
+            }
+          ],
+          "saved_proposal": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/4c386d070880191c21642178.json",
+          "saved_match": true
+        }
+      },
+      "saved_proposal_match_count": 14,
+      "action_count": 14,
+      "available_action_count": 14
+    }
+  ],
+  "provenance": {
+    "python": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+    "backend": "native",
+    "native_model_clock": "deterministic",
+    "tcp_mode": "urdf",
+    "adapter_fingerprint": {
+      "index": 0,
+      "mode": "constrained",
+      "backend": "native",
+      "adapter_source_sha256": "740cd538e660615e7a814aca657581ec42819940000721be2d46d1ae1f63de0b",
+      "motion_source_sha256": "e14393104c76b4bf96512062d35c14a83c1a962458e3a402565a0bcee0fa6994",
+      "fixture_source_sha256": "559353c7b2a21317337baacaa54742bffe0acb658cf577c87c064b141f7af787",
+      "controller": {
+        "backend": "native",
+        "tcp_mode": "urdf",
+        "native_model_clock": "deterministic",
+        "wrapper_sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c",
+        "native_binary_sha256": "a212b43c4df2cbbbbcb5671d1973484e5fd587f18984ad9c1ead8668f5171e04",
+        "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+        "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+        "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+        "tcp_cache_sha256": null,
+        "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+        "scan_profile_sha256": "f9e07c984347e83f7768adf812565bfec119475fc4a0a627043b8c87d4617033",
+        "scan_reference_sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+      },
+      "rig": {
+        "name": "fixture_00_constrained",
+        "address": {
+          "side": "left",
+          "skin_vertex_id": 6152,
+          "h": 0.7709859013557434,
+          "theta_rad": 6.050474643707275,
+          "depth": 0
+        },
+        "measured": [
+          [
+            -0.9857225599533606,
+            0.15238326993761314,
+            0.07162662802417792,
+            0.40595272006979766
+          ],
+          [
+            0.15917455954319296,
+            0.9820400175402345,
+            0.1012959206671542,
+            0.22365461577933476
+          ],
+          [
+            -0.05490441141860952,
+            0.1112508112001724,
+            -0.9922745399404742,
+            0.14981371654093437
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "wall": [
+          -0.0028912230942174794,
+          0.00509122309421748,
+          0.009736662657196346,
+          0.032
+        ],
+        "main_side": "left"
+      },
+      "sha256": "ab6ce9c2cc638e8ef750e085dbbd92cfa65a517ba57b5c27064f876b341ffc55"
+    },
+    "complete_exit_contract": "q, qdot, acceleration, snapshot, pose; snapshot restores all prior path/hold events",
+    "route_set_contract": "public measured-frame geometry and baked dIRD proposal only; native_checked=false",
+    "live_robot_connection": false,
+    "external_network": false
+  },
+  "checks": {
+    "count": 52,
+    "passed": 52,
+    "failed": 0,
+    "failures": [],
+    "rows": [
+      {
+        "name": "result_case_identity",
+        "passed": true
+      },
+      {
+        "name": "checkpoint_0_schema",
+        "passed": true
+      },
+      {
+        "name": "checkpoint_0_adapter_fingerprint",
+        "passed": true,
+        "detail": {
+          "recorded": "ab6ce9c2cc638e8ef750e085dbbd92cfa65a517ba57b5c27064f876b341ffc55",
+          "current": "ab6ce9c2cc638e8ef750e085dbbd92cfa65a517ba57b5c27064f876b341ffc55"
+        }
+      },
+      {
+        "name": "checkpoint_0_input_fingerprint",
+        "passed": true
+      },
+      {
+        "name": "checkpoint_0_complete_native_exit",
+        "passed": true,
+        "detail": {
+          "q_shape": [
+            8
+          ],
+          "snapshot_schema": "ultrapoc_qp_complete_history_v2"
+        }
+      },
+      {
+        "name": "checkpoint_0_route_valid",
+        "passed": true
+      },
+      {
+        "name": "checkpoint_0_source_exists",
+        "passed": true,
+        "detail": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/239763b4090bb8fcb7b196c2.json"
+      },
+      {
+        "name": "checkpoint_1_schema",
+        "passed": true
+      },
+      {
+        "name": "checkpoint_1_adapter_fingerprint",
+        "passed": true,
+        "detail": {
+          "recorded": "ab6ce9c2cc638e8ef750e085dbbd92cfa65a517ba57b5c27064f876b341ffc55",
+          "current": "ab6ce9c2cc638e8ef750e085dbbd92cfa65a517ba57b5c27064f876b341ffc55"
+        }
+      },
+      {
+        "name": "checkpoint_1_input_fingerprint",
+        "passed": true
+      },
+      {
+        "name": "checkpoint_1_complete_native_exit",
+        "passed": true,
+        "detail": {
+          "q_shape": [
+            8
+          ],
+          "snapshot_schema": "ultrapoc_qp_complete_history_v2"
+        }
+      },
+      {
+        "name": "checkpoint_1_route_valid",
+        "passed": true
+      },
+      {
+        "name": "checkpoint_1_source_exists",
+        "passed": true,
+        "detail": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/checkpoints/3f24774a6736087b07962efd.json"
+      },
+      {
+        "name": "exact_exit_to_next_input_continuity",
+        "passed": true,
+        "detail": {
+          "key_equal": true,
+          "elapsed_diff_s": 0.0,
+          "pose_max_abs_diff": 0.0,
+          "q_max_abs_diff": 0.0,
+          "qdot_max_abs_diff": 0.0,
+          "acceleration_max_abs_diff": 0.0,
+          "snapshot_equal": true
+        }
+      },
+      {
+        "name": "transition_0_trace_fields",
+        "passed": true,
+        "detail": [
+          "time_s",
+          "q",
+          "qdot",
+          "desired",
+          "actual",
+          "measured_before",
+          "local_xyz_m",
+          "self_clearance_m"
+        ]
+      },
+      {
+        "name": "transition_0_trace_exit_matches_checkpoint",
+        "passed": true,
+        "detail": {
+          "q_max_abs_diff": 0.0,
+          "qdot_max_abs_diff": 0.0,
+          "pose_max_abs_diff": 0.0
+        }
+      },
+      {
+        "name": "transition_0_measured_contact_link",
+        "passed": true,
+        "detail": {
+          "max_abs_diff": 0.0
+        }
+      },
+      {
+        "name": "transition_0_selected_event_linkage",
+        "passed": true,
+        "detail": {
+          "action_id_equal": true,
+          "route_id_equal": true,
+          "trace_record_equal": true,
+          "entry_state_hash_equal": true,
+          "exit_state_hash_equal": true
+        }
+      },
+      {
+        "name": "transition_1_trace_fields",
+        "passed": true,
+        "detail": [
+          "time_s",
+          "q",
+          "qdot",
+          "desired",
+          "actual",
+          "measured_before",
+          "local_xyz_m",
+          "self_clearance_m"
+        ]
+      },
+      {
+        "name": "transition_1_trace_exit_matches_checkpoint",
+        "passed": true,
+        "detail": {
+          "q_max_abs_diff": 0.0,
+          "qdot_max_abs_diff": 0.0,
+          "pose_max_abs_diff": 0.0
+        }
+      },
+      {
+        "name": "transition_1_measured_contact_link",
+        "passed": true,
+        "detail": {
+          "max_abs_diff": 0.0
+        }
+      },
+      {
+        "name": "transition_1_selected_event_linkage",
+        "passed": true,
+        "detail": {
+          "action_id_equal": true,
+          "route_id_equal": true,
+          "trace_record_equal": true,
+          "entry_state_hash_equal": true,
+          "exit_state_hash_equal": true
+        }
+      },
+      {
+        "name": "exit_0_proposal_side_left__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/b578760740da124fd9aa9c53.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_side_left__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/39fe21f93701015cb5d07706.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_side_left__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/48a8a882c9420830c8054626.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_side_right__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/e30f9145bc625cadc98690e7.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_side_right__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/88eb5b457cc9d57f08b9514e.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_side_right__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/3f24774a6736087b07962efd.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_fork_minus__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/8f590dd2f1ee4b47c042172f.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_fork_minus__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/77d57b5c3ee2ff8c973be465.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_fork_minus__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/4199d95cabb8ab568f91e8c2.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_fork_plus__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/a74df8c20ea7aa5c9621f8a2.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_fork_plus__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/b2263b210aa21e482b171b14.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_fork_plus__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/06e86cdd0740bfe5aa728ec3.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_left_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/6af1472fd52dc498bfad1b5d.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_0_proposal_right_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/5cdfa9dd76195a77e24547d1.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_side_left__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/e50bb014b30af42cc7c4136f.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_side_left__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/ee97c42443b9d2c27fe3e010.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_side_left__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/d34b2d7d0612829c99cea023.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_side_right__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/380f40147757a12ea54d8cae.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_side_right__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/3b278e28d074515af3f8c9ae.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_side_right__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/bab32dd2b190d5a51062c049.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_fork_minus__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/82cb2f486b748b0446d888d8.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_fork_minus__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/983a31cadbd9bd12aec70c87.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_fork_minus__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/558ecc7f8fe2ef6d4aa9e728.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_fork_plus__single_dwell_0.15_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/bda3e9eccd65c4b4a26ba380.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_fork_plus__single_dwell_0.3_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/4b94ffd8d438e9e9996fae13.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_fork_plus__single_dwell_0.6_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/e29f8052671d6824054eab93.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_left_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/88970f9a004bb9349c063239.json",
+          "exists": true,
+          "fresh_routes": [
+            "round_tip",
+            "retreat_fork"
+          ]
+        }
+      },
+      {
+        "name": "exit_1_proposal_right_saved_match",
+        "passed": true,
+        "detail": {
+          "saved": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/study_v4_closed_loop_20261111/B_rollout/fixture_00/cases_0000_0001/dev/fixture_00_constrained/native_shared/planning/proposals/4c386d070880191c21642178.json",
+          "exists": true,
+          "fresh_routes": [
+            "direct"
+          ]
+        }
+      },
+      {
+        "name": "fresh_native_segment_0",
+        "passed": true,
+        "detail": {
+          "whole_segment_pass": true,
+          "exit_state_valid": true,
+          "failures": [],
+          "diffs": {
+            "q_max_abs_diff": 0.0,
+            "qdot_max_abs_diff": 0.0,
+            "acceleration_max_abs_diff": 0.0
+          }
+        }
+      },
+      {
+        "name": "fresh_native_segment_1",
+        "passed": true,
+        "detail": {
+          "whole_segment_pass": true,
+          "exit_state_valid": true,
+          "failures": [],
+          "diffs": {
+            "q_max_abs_diff": 0.0,
+            "qdot_max_abs_diff": 0.0,
+            "acceleration_max_abs_diff": 0.0
+          }
+        }
+      }
+    ]
+  }
+}

@@ -16,6 +16,8 @@ from xml.etree import ElementTree as ET
 import numpy as np
 import unreal
 
+from projects.genesis_ue_sync.cli.render.unreal.ue_studio_environment import apply_scene_environment
+
 from bridge.adapters.ue import (
     ue_camera_payload_from_spec,
     ue_rotation_matrix_from_quat_xyzw,
@@ -357,6 +359,68 @@ def load_level(map_path: str) -> None:
     subsystem.load_level(map_path)
 
 
+def start_pie_session(*, simulate: bool = False, ready_timeout_s: float = 10.0) -> dict[str, Any]:
+    """Request PIE/Simulate without blocking the Slate tick.
+
+    Unreal creates the PIE world on a later editor tick.  Waiting here (even
+    for a few milliseconds) blocks that tick and makes ``get_game_world`` stay
+    ``None`` until the caller times out.  The session watcher owns the
+    cross-tick readiness/timeout state machine; this function only submits the
+    editor request and reports whether a world happened to be available
+    already.
+
+    ``ready_timeout_s`` remains in the signature for command-file/API
+    compatibility.  It is returned as metadata and is intentionally not used
+    for sleeping or polling here.
+    """
+    if _query_pie_world() is not None:
+        return {"requested": False, "already_running": True, "world_ready": True}
+    subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    method_names = (
+        ("editor_play_simulate", "editor_request_play")
+        if simulate
+        else ("editor_request_play", "editor_play_simulate", "editor_play")
+    )
+    errors: list[str] = []
+    for name in method_names:
+        method = getattr(subsystem, name, None)
+        if not callable(method):
+            continue
+        try:
+            method()
+            timeout_s = max(float(ready_timeout_s), 0.0)
+            return {
+                "requested": True,
+                "method": name,
+                "world_ready": _query_pie_world() is not None,
+                "ready_timeout_s": timeout_s,
+                "readiness_deferred": True,
+            }
+        except Exception as exc:
+            errors.append(f"{name}:{exc!r}")
+    raise RuntimeError("UE editor has no usable PIE start API: " + ";".join(errors))
+
+
+def stop_pie_session() -> dict[str, Any]:
+    """Request PIE stop through LevelEditorSubsystem when it is running."""
+    global _LAST_PIE_WORLD
+    subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    errors: list[str] = []
+    for name in ("editor_stop_simulate", "editor_stop_play", "editor_request_end_play", "stop_play_in_editor"):
+        method = getattr(subsystem, name, None)
+        if not callable(method):
+            continue
+        try:
+            method()
+            _LAST_PIE_WORLD = None
+            return {"requested": True, "method": name, "world_ready": False}
+        except Exception as exc:
+            errors.append(f"{name}:{exc!r}")
+    if _query_pie_world() is None:
+        return {"requested": False, "already_stopped": True, "world_ready": False}
+    raise RuntimeError("UE editor has no usable PIE stop API: " + ";".join(errors))
+
+
 _LAST_PIE_WORLD: object | None = None
 
 
@@ -536,6 +600,42 @@ def clear_sync_actors(*, preserve_labels: set[str] | None = None) -> None:
             actor_subsystem.destroy_actor(actor)
 
 
+def _genesis_srgb_to_linear_rgb(color_rgba) -> tuple[float, float, float]:
+    return tuple(
+        float(v) / 12.92 if float(v) <= 0.04045 else ((float(v) + 0.055) / 1.055) ** 2.4
+        for v in color_rgba[:3]
+    )
+
+
+def _genesis_solid_color_material():
+    """A parameterized solid material; BasicShapeMaterial ignores our colors."""
+    name = "M_GenesisSolidColor_v1"
+    root = "/Game/Bedlam/Generated/RealUSMaterials"
+    path = f"{root}/{name}"
+    existing = unreal.EditorAssetLibrary.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else None
+    if existing is not None:
+        return existing
+    material = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
+        name, root, unreal.Material, unreal.MaterialFactoryNew(),
+    )
+    if material is None:
+        raise RuntimeError(f"Cannot create Genesis solid-color material: {path}")
+    library = unreal.MaterialEditingLibrary
+    color = library.create_material_expression(material, unreal.MaterialExpressionVectorParameter)
+    color.set_editor_property("parameter_name", "BaseColor")
+    color.set_editor_property("default_value", unreal.LinearColor(1.0, 1.0, 1.0, 1.0))
+    roughness = library.create_material_expression(material, unreal.MaterialExpressionConstant)
+    roughness.set_editor_property("r", 1.0)
+    if not library.connect_material_property(color, "", unreal.MaterialProperty.MP_BASE_COLOR):
+        raise RuntimeError("Cannot connect Genesis solid-color BaseColor")
+    if not library.connect_material_property(roughness, "", unreal.MaterialProperty.MP_ROUGHNESS):
+        raise RuntimeError("Cannot connect Genesis solid-color Roughness")
+    library.recompile_material(material)
+    if not unreal.EditorAssetLibrary.save_loaded_asset(material, only_if_is_dirty=False):
+        raise RuntimeError(f"Cannot save Genesis solid-color material: {path}")
+    return material
+
+
 def _spawn_static_mesh_actor(
     *,
     label: str,
@@ -566,14 +666,18 @@ def _spawn_static_mesh_actor(
         actor.set_actor_location(unreal.Vector(float(location_cm[0]), float(location_cm[1]), float(location_cm[2])), False, False)
         actor.set_actor_rotation(unreal.Rotator(rotation_deg[0], rotation_deg[1], rotation_deg[2]), False)
         actor.set_actor_scale3d(unreal.Vector(float(scale_xyz[0]), float(scale_xyz[1]), float(scale_xyz[2])))
-    if material_path is not None:
-        material = unreal.EditorAssetLibrary.load_asset(material_path)
+    if material_path is not None or color_rgba is not None:
+        material = (
+            _genesis_solid_color_material()
+            if color_rgba is not None and material_path in {None, DEFAULT_STATIC_MATERIAL_PATH}
+            else unreal.EditorAssetLibrary.load_asset(material_path)
+        )
         if material is not None:
             material_slots = component.get_num_materials() if hasattr(component, "get_num_materials") else 1
             for material_index in range(max(int(material_slots), 1)):
                 component.set_material(material_index, material)
     if color_rgba is not None and hasattr(component, "set_vector_parameter_value_on_materials"):
-        color = unreal.Vector(float(color_rgba[0]), float(color_rgba[1]), float(color_rgba[2]))
+        color = unreal.Vector(*_genesis_srgb_to_linear_rgb(color_rgba))
         for parameter_name in ("Color", "BaseColor"):
             component.set_vector_parameter_value_on_materials(parameter_name, color)
     mobility = getattr(unreal, "ComponentMobility", None)
@@ -647,6 +751,23 @@ def _fix_imported_static_mesh_lod_for_mrq(asset_path: str | None) -> None:
         unreal.log_warning(f"UE_SCENE: lod_fix exception asset={asset_path} err={exc!r}")
 
 
+def _persist_robot_fbx_materials(mesh, *, asset_root: str) -> None:
+    """Save imported dependencies too; AssetImportTask.save only saves the mesh."""
+    materials = [slot.get_editor_property("material_interface") for slot in mesh.get_editor_property("static_materials")]
+    if not materials or any(material is None for material in materials):
+        raise RuntimeError(f"Robot FBX has missing material slots: {mesh.get_path_name()}")
+    dependencies: dict[str, object] = {}
+    for material in materials:
+        dependencies[material.get_path_name()] = material
+        if isinstance(material, unreal.Material):
+            for texture in unreal.MaterialEditingLibrary.get_used_textures(material):
+                dependencies[texture.get_path_name()] = texture
+    # Import folders are isolated per mesh. Do not modify shared engine assets.
+    owned = [asset for path, asset in dependencies.items() if path.startswith(f"{asset_root}/")]
+    if owned and not unreal.EditorAssetLibrary.save_loaded_assets(owned, only_if_is_dirty=False):
+        raise RuntimeError(f"Cannot persist robot FBX materials/textures under {asset_root}")
+
+
 def _import_static_mesh_asset(mesh_path: Path, *, asset_root: str, asset_name: str) -> str | None:
     asset_path = f"{asset_root}/{asset_name}.{asset_name}"
     force_reimport = (
@@ -658,7 +779,14 @@ def _import_static_mesh_asset(mesh_path: Path, *, asset_root: str, asset_name: s
         or _env_truthy("AMONGUS_REBUILD_PANDA_OBJ_CACHE")
     )
     if unreal.EditorAssetLibrary.does_asset_exist(asset_path) and not force_reimport:
-        return asset_path
+        if mesh_path.suffix.lower() != ".fbx":
+            return asset_path
+        cached_mesh = unreal.EditorAssetLibrary.load_asset(asset_path)
+        slots = list(cached_mesh.get_editor_property("static_materials")) if cached_mesh is not None else []
+        if slots and all(slot.get_editor_property("material_interface") is not None for slot in slots):
+            _persist_robot_fbx_materials(cached_mesh, asset_root=asset_root)
+            return asset_path
+        unreal.log_warning(f"UE_SCENE: repairing robot FBX cache with missing materials: {asset_path}")
     task = unreal.AssetImportTask()
     task.filename = str(mesh_path)
     task.destination_path = asset_root
@@ -666,9 +794,29 @@ def _import_static_mesh_asset(mesh_path: Path, *, asset_root: str, asset_name: s
     task.automated = True
     task.save = True
     task.replace_existing = True
+    if mesh_path.suffix.lower() == ".fbx":
+        # Automated imports otherwise inherit the last editor import dialog
+        # settings, which can leave every material slot empty.
+        options = unreal.FbxImportUI()
+        options.automated_import_should_detect_type = False
+        options.mesh_type_to_import = unreal.FBXImportType.FBXIT_STATIC_MESH
+        options.import_as_skeletal = False
+        options.import_mesh = True
+        options.import_animations = False
+        options.import_materials = True
+        options.import_textures = True
+        options.static_mesh_import_data.combine_meshes = True
+        options.texture_import_data.material_search_location = unreal.MaterialSearchLocation.LOCAL
+        options.texture_import_data.base_material_name = unreal.SoftObjectPath("")
+        task.options = options
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
     imported = [str(item) for item in task.get_editor_property("imported_object_paths")]
-    result = imported[0] if imported else (asset_path if unreal.EditorAssetLibrary.does_asset_exist(asset_path) else None)
+    result = asset_path if unreal.EditorAssetLibrary.does_asset_exist(asset_path) else next(
+        (path for path in imported if isinstance(unreal.EditorAssetLibrary.load_asset(path), unreal.StaticMesh)),
+        None,
+    )
+    if result is not None and mesh_path.suffix.lower() == ".fbx":
+        _persist_robot_fbx_materials(unreal.EditorAssetLibrary.load_asset(result), asset_root=asset_root)
     _fix_imported_static_mesh_lod_for_mrq(result)
     return result
 
@@ -770,7 +918,8 @@ def _robot_visual_cache_key(
         "mesh_source": str(mesh_source),
         "mirror_y_for_unreal_obj_import": str(mesh_source).lower() == "obj" and _mirror_y_for_unreal_obj_import(),
         "obj_converter_revision": 2,
-        "fbx_converter_revision": 6,
+        "fbx_converter_revision": 7,
+        "fbx_material_import_revision": 2 if str(mesh_source).lower() == "fbx" else None,
         "fbx_axis_forward": _fbx_axis_forward() if str(mesh_source).lower() == "fbx" else None,
         "fbx_axis_up": _fbx_axis_up() if str(mesh_source).lower() == "fbx" else None,
         "fbx_global_scale": round(float(_fbx_global_scale()), 6) if str(mesh_source).lower() == "fbx" else None,
@@ -805,7 +954,11 @@ def _import_robot_link_visual_mesh(
     if pref == "fbx":
         fbx_path = _ensure_visual_fbx(urdf_path, mesh_filename, cache_key=cache_key, model_id=model_id)
         if fbx_path is not None:
-            return _import_static_mesh_asset(fbx_path, asset_root=visual_asset_root, asset_name=keyed_asset_name)
+            # CAD material names are reused across links. Isolate each mesh's
+            # materials so UE cannot substitute a same-named older material.
+            return _import_static_mesh_asset(
+                fbx_path, asset_root=f"{visual_asset_root}/{keyed_asset_name}", asset_name=keyed_asset_name
+            )
         unreal.log_warning(
             f"UE robot mesh: FBX path unavailable for {mesh_filename}; "
             "falling back to COLLADA/OBJ import."
@@ -863,6 +1016,7 @@ def _ensure_visual_fbx(
                         f"--global-scale={float(_fbx_global_scale())}",
                         f"--axis-forward={_fbx_axis_forward()}",
                         f"--axis-up={_fbx_axis_up()}",
+                        "--match-genesis-colors",
                         *(["--mirror-y-for-unreal"] if _mirror_y_for_unreal_fbx_import() else []),
                     ],
                     check=True,
@@ -891,6 +1045,7 @@ def _ensure_visual_fbx(
                 f"--global-scale={float(_fbx_global_scale())}",
                 f"--axis-forward={_fbx_axis_forward()}",
                 f"--axis-up={_fbx_axis_up()}",
+                "--match-genesis-colors",
                 *(["--mirror-y-for-unreal"] if _mirror_y_for_unreal_fbx_import() else []),
             ],
             check=True,
@@ -1118,6 +1273,9 @@ def compute_robot_visual_mesh_entries(
             continue
         link_info = links.get(link_name, {})
         visual_mesh = link_info.get("visual_mesh")
+        visual_boxes = list(link_info.get("visual_boxes") or [])
+        visual_cylinders = list(link_info.get("visual_cylinders") or [])
+        visual_spheres = list(link_info.get("visual_spheres") or [])
         if not use_collision_geometry and use_visual_mesh and visual_mesh:
             visual_local = make_transform(
                 link_info.get("visual_origin_xyz", (0.0, 0.0, 0.0)),
@@ -1140,8 +1298,8 @@ def compute_robot_visual_mesh_entries(
                     "rot3": _rotation3_from_transform(visual_world),
                 }
             )
-        elif not use_collision_geometry and use_visual_mesh:
-            for box_idx, box in enumerate(link_info.get("visual_boxes") or []):
+        elif not use_collision_geometry and use_visual_mesh and visual_boxes:
+            for box_idx, box in enumerate(visual_boxes):
                 visual_local = make_transform(
                     tuple(float(v) for v in box["xyz"]),
                     tuple(float(v) for v in box["rpy"]),
@@ -1159,8 +1317,64 @@ def compute_robot_visual_mesh_entries(
                         "rot3": _rotation3_from_transform(visual_world),
                     }
                 )
-        elif not use_collision_geometry and use_visual_mesh and visual_mesh is None and not allow_collision_fallback:
-            continue
+        elif not use_collision_geometry and use_visual_mesh and visual_cylinders:
+            for cylinder_idx, cylinder in enumerate(visual_cylinders):
+                visual_local = make_transform(
+                    tuple(float(v) for v in cylinder["xyz"]),
+                    tuple(float(v) for v in cylinder["rpy"]),
+                )
+                visual_world = apply_transform(world, visual_local)
+                entries.append(
+                    {
+                        "link_name": f"{link_name}__cylinder{cylinder_idx}",
+                        "visual_mesh": None,
+                        "pos_m": (
+                            float(visual_world[0][3]),
+                            float(visual_world[1][3]),
+                            float(visual_world[2][3]),
+                        ),
+                        "rot3": _rotation3_from_transform(visual_world),
+                    }
+                )
+        elif not use_collision_geometry and use_visual_mesh and visual_spheres:
+            for sphere_idx, sphere in enumerate(visual_spheres):
+                visual_local = make_transform(
+                    tuple(float(v) for v in sphere["xyz"]),
+                    tuple(float(v) for v in sphere["rpy"]),
+                )
+                visual_world = apply_transform(world, visual_local)
+                entries.append(
+                    {
+                        "link_name": f"{link_name}__sphere{sphere_idx}",
+                        "visual_mesh": None,
+                        "pos_m": (
+                            float(visual_world[0][3]),
+                            float(visual_world[1][3]),
+                            float(visual_world[2][3]),
+                        ),
+                        "rot3": _rotation3_from_transform(visual_world),
+                    }
+                )
+        elif use_collision_geometry or allow_collision_fallback or not use_visual_mesh:
+            # Register collision primitives only when explicitly requested.
+            # Collision-only links still participate in FK without a visible actor.
+            collision_local = make_transform(
+                link_info.get("collision_origin_xyz", (0.0, 0.0, 0.0)),
+                link_info.get("collision_origin_rpy", (0.0, 0.0, 0.0)),
+            )
+            collision_world = apply_transform(world, collision_local)
+            entries.append(
+                {
+                    "link_name": str(link_name),
+                    "visual_mesh": None,
+                    "pos_m": (
+                        float(collision_world[0][3]),
+                        float(collision_world[1][3]),
+                        float(collision_world[2][3]),
+                    ),
+                    "rot3": _rotation3_from_transform(collision_world),
+                }
+            )
     return entries
 
 
@@ -1245,6 +1459,8 @@ def _parse_urdf(urdf_path: Path) -> tuple[str, dict[str, dict], list[dict]]:
 
     for link in root.findall("link"):
         visual_boxes: list[dict[str, object]] = []
+        visual_cylinders: list[dict[str, object]] = []
+        visual_spheres: list[dict[str, object]] = []
         visual_mesh = None
         visual_xyz, visual_rpy = (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)
         for visual in link.findall("visual"):
@@ -1254,6 +1470,8 @@ def _parse_urdf(urdf_path: Path) -> tuple[str, dict[str, dict], list[dict]]:
                 continue
             mesh_el = visual_geometry.find("mesh")
             box_el = visual_geometry.find("box")
+            cylinder_el = visual_geometry.find("cylinder")
+            sphere_el = visual_geometry.find("sphere")
             if mesh_el is not None and visual_mesh is None:
                 visual_mesh = str(mesh_el.attrib.get("filename"))
                 visual_xyz, visual_rpy = v_xyz, v_rpy
@@ -1271,6 +1489,41 @@ def _parse_urdf(urdf_path: Path) -> tuple[str, dict[str, dict], list[dict]]:
                         "xyz": v_xyz,
                         "rpy": v_rpy,
                         "size": tuple(float(item) for item in box_el.attrib["size"].split()),
+                        "color_rgba": color_rgba,
+                    }
+                )
+            elif cylinder_el is not None:
+                color_rgba = None
+                material = visual.find("material")
+                if material is not None:
+                    color_el = material.find("color")
+                    if color_el is not None:
+                        rgba_raw = str(color_el.attrib.get("rgba", "")).strip()
+                        if rgba_raw:
+                            color_rgba = tuple(float(item) for item in rgba_raw.split())
+                visual_cylinders.append(
+                    {
+                        "xyz": v_xyz,
+                        "rpy": v_rpy,
+                        "radius": float(cylinder_el.attrib["radius"]),
+                        "length": float(cylinder_el.attrib["length"]),
+                        "color_rgba": color_rgba,
+                    }
+                )
+            elif sphere_el is not None:
+                color_rgba = None
+                material = visual.find("material")
+                if material is not None:
+                    color_el = material.find("color")
+                    if color_el is not None:
+                        rgba_raw = str(color_el.attrib.get("rgba", "")).strip()
+                        if rgba_raw:
+                            color_rgba = tuple(float(item) for item in rgba_raw.split())
+                visual_spheres.append(
+                    {
+                        "xyz": v_xyz,
+                        "rpy": v_rpy,
+                        "radius": float(sphere_el.attrib["radius"]),
                         "color_rgba": color_rgba,
                     }
                 )
@@ -1292,11 +1545,19 @@ def _parse_urdf(urdf_path: Path) -> tuple[str, dict[str, dict], list[dict]]:
                     "type": "box",
                     "size": tuple(float(item) for item in box.attrib["size"].split()),
                 }
+            elif geometry.find("sphere") is not None:
+                sphere = geometry.find("sphere")
+                geometry_payload = {
+                    "type": "sphere",
+                    "radius": float(sphere.attrib["radius"]),
+                }
         links[link.attrib["name"]] = {
             "visual_origin_xyz": visual_xyz,
             "visual_origin_rpy": visual_rpy,
             "visual_mesh": visual_mesh,
             "visual_boxes": visual_boxes,
+            "visual_cylinders": visual_cylinders,
+            "visual_spheres": visual_spheres,
             "collision_origin_xyz": collision_xyz,
             "collision_origin_rpy": collision_rpy,
             "geometry": geometry_payload,
@@ -1384,6 +1645,7 @@ def spawn_robot_from_urdf(
 
     robot_visual_asset_paths: list[str] = []
     skipped_visual_links: list[str] = []
+    collision_fallback_links: list[str] = []
 
     for link_name in ordered_links:
         world = link_world.get(link_name)
@@ -1392,6 +1654,8 @@ def spawn_robot_from_urdf(
         link_info = links.get(link_name, {})
         visual_mesh = link_info.get("visual_mesh")
         visual_boxes = list(link_info.get("visual_boxes") or [])
+        visual_cylinders = list(link_info.get("visual_cylinders") or [])
+        visual_spheres = list(link_info.get("visual_spheres") or [])
         geometry = link_info.get("geometry")
         if not use_collision_geometry and use_visual_mesh and visual_mesh:
             visual_local = make_transform(
@@ -1480,21 +1744,81 @@ def spawn_robot_from_urdf(
                 if articulation_actor_sink is not None:
                     articulation_actor_sink[f"{link_name}__box{box_idx}"] = actor
             continue
+        elif not use_collision_geometry and use_visual_mesh and visual_cylinders:
+            for cylinder_idx, cylinder in enumerate(visual_cylinders):
+                visual_local = make_transform(
+                    tuple(float(v) for v in cylinder["xyz"]),
+                    tuple(float(v) for v in cylinder["rpy"]),
+                )
+                visual_world = apply_transform(world, visual_local)
+                cylinder_color = cylinder.get("color_rgba") or color_rgba
+                actor = spawn_cylinder(
+                    label=f"{GENERATED_SCENE_LABEL_PREFIX}{link_name}_cylinder{cylinder_idx}",
+                    pos_m=(
+                        float(visual_world[0][3]),
+                        float(visual_world[1][3]),
+                        float(visual_world[2][3]),
+                    ),
+                    radius_m=float(cylinder["radius"]),
+                    length_m=float(cylinder["length"]),
+                    rotation_deg=matrix_to_rotator_deg(_rotation3_from_transform(visual_world)),
+                    folder=folder,
+                    color_rgba=(
+                        tuple(float(v) for v in cylinder_color)
+                        if cylinder_color is not None
+                        else color_rgba
+                    ),
+                )
+                if articulation_actor_sink is not None:
+                    articulation_actor_sink[f"{link_name}__cylinder{cylinder_idx}"] = actor
+            continue
+        elif not use_collision_geometry and use_visual_mesh and visual_spheres:
+            for sphere_idx, sphere in enumerate(visual_spheres):
+                visual_local = make_transform(
+                    tuple(float(v) for v in sphere["xyz"]),
+                    tuple(float(v) for v in sphere["rpy"]),
+                )
+                visual_world = apply_transform(world, visual_local)
+                sphere_color = sphere.get("color_rgba") or color_rgba
+                actor = spawn_marker(
+                    label=f"{GENERATED_SCENE_LABEL_PREFIX}{link_name}_sphere{sphere_idx}",
+                    pos_m=(
+                        float(visual_world[0][3]),
+                        float(visual_world[1][3]),
+                        float(visual_world[2][3]),
+                    ),
+                    scale_m=float(sphere["radius"]) * 2.0,
+                    folder=folder,
+                    color_rgba=(
+                        tuple(float(v) for v in sphere_color)
+                        if sphere_color is not None
+                        else color_rgba
+                    ),
+                )
+                if articulation_actor_sink is not None:
+                    articulation_actor_sink[f"{link_name}__sphere{sphere_idx}"] = actor
+            continue
         elif not use_collision_geometry and use_visual_mesh and visual_mesh is None and not allow_collision_fallback:
-            if geometry is None:
-                skipped_visual_links.append(str(link_name))
-                continue
-            raise RuntimeError(f"URDF link '{link_name}' does not define a robot visual mesh.")
-        if not use_collision_geometry and not allow_collision_fallback and use_visual_mesh:
-            raise RuntimeError(f"Cannot fall back to collision geometry for link '{link_name}'.")
+            # A collision shape is not a visual. Keep the link in FK (including
+            # calibrated camera/TCP transforms), but do not spawn its debug box.
+            skipped_visual_links.append(str(link_name))
+            continue
+        if not use_collision_geometry and allow_collision_fallback:
+            collision_fallback_links.append(str(link_name))
         collision_local = make_transform(link_info.get("collision_origin_xyz", (0.0, 0.0, 0.0)), link_info.get("collision_origin_rpy", (0.0, 0.0, 0.0)))
         collision_world = apply_transform(world, collision_local)
         pos_m = (float(collision_world[0][3]), float(collision_world[1][3]), float(collision_world[2][3]))
         rot_deg = matrix_to_rotator_deg(_rotation3_from_transform(collision_world))
         if geometry is None:
-            spawn_marker(label=f"{GENERATED_SCENE_LABEL_PREFIX}{link_name}", pos_m=pos_m, scale_m=0.04, folder=folder, color_rgba=color_rgba)
+            actor = spawn_marker(
+                label=f"{GENERATED_SCENE_LABEL_PREFIX}{link_name}",
+                pos_m=pos_m,
+                scale_m=0.04,
+                folder=folder,
+                color_rgba=color_rgba,
+            )
         elif geometry["type"] == "cylinder":
-            spawn_cylinder(
+            actor = spawn_cylinder(
                 label=f"{GENERATED_SCENE_LABEL_PREFIX}{link_name}",
                 pos_m=pos_m,
                 radius_m=float(geometry["radius"]),
@@ -1504,7 +1828,7 @@ def spawn_robot_from_urdf(
                 color_rgba=color_rgba,
             )
         elif geometry["type"] == "box":
-            spawn_box(
+            actor = spawn_box(
                 label=f"{GENERATED_SCENE_LABEL_PREFIX}{link_name}",
                 pos_m=pos_m,
                 size_m=tuple(float(item) for item in geometry["size"]),
@@ -1512,14 +1836,28 @@ def spawn_robot_from_urdf(
                 folder=folder,
                 color_rgba=color_rgba,
             )
+        elif geometry["type"] == "sphere":
+            actor = spawn_marker(
+                label=f"{GENERATED_SCENE_LABEL_PREFIX}{link_name}",
+                pos_m=pos_m,
+                scale_m=float(geometry["radius"]) * 2.0,
+                folder=folder,
+                color_rgba=color_rgba,
+            )
+        else:
+            actor = None
+        if articulation_actor_sink is not None and actor is not None:
+            articulation_actor_sink[str(link_name)] = actor
 
     robot_summary["visual_mesh_asset_paths"] = list(robot_visual_asset_paths)
     robot_summary["skipped_visual_links"] = skipped_visual_links
+    robot_summary["collision_fallback_links"] = collision_fallback_links
     if diagnostics:
         robot_summary["links"] = links_detail
     unreal.log(
         f"UE_SCENE: spawn_robot_from_urdf visual_mesh_entries={len(robot_visual_asset_paths)} "
-        f"ordered_links={len(ordered_links)} skipped_visual_links={len(skipped_visual_links)} diagnostics={diagnostics}"
+        f"ordered_links={len(ordered_links)} skipped_visual_links={len(skipped_visual_links)} "
+        f"collision_fallback_links={len(collision_fallback_links)} diagnostics={diagnostics}"
     )
     return robot_summary
 
@@ -1681,6 +2019,7 @@ SMPL_BODY_BONE_PRESETS: dict[str, tuple[str, ...]] = {
 _VISIBLE_HUMAN_SMPL_BONE_NAMES: tuple[str, ...] | None = None
 _VISIBLE_HUMAN_BONE_PRESET_NAME: str = ""
 _VISIBLE_HUMAN_SKELETAL_MESH_PATH: str = ""
+_VISIBLE_HUMAN_BODY_NAME: str = ""
 _VISIBLE_HUMAN_RELATIVE_SCALE: float = 1.0
 _HUMAN_UE_CALIBRATION: dict[str, Any] | None = None
 _SMPL_ROOT_ALIGN_BONE_OVERRIDE: str = ""
@@ -1951,6 +2290,55 @@ SMPL_BODY_PARENT_INDICES: tuple[int, ...] = (
     20,  # right_hand
 )
 
+# Official SMPL-X runtime order (55 joints).  The UE avatar may expose any of
+# the snake_case, PascalCase, or Bedlam ``m_avg_`` spellings; application below
+# resolves them case-insensitively against the actual skeletal mesh.
+SMPLX55_BONE_NAMES: tuple[str, ...] = (
+    "pelvis", "left_hip", "right_hip", "spine1", "left_knee", "right_knee",
+    "spine2", "left_ankle", "right_ankle", "spine3", "left_foot", "right_foot",
+    "neck", "left_collar", "right_collar", "head", "left_shoulder", "right_shoulder",
+    "left_elbow", "right_elbow", "left_wrist", "right_wrist", "jaw", "left_eye_smplhf",
+    "right_eye_smplhf", "left_index1", "left_index2", "left_index3", "left_middle1",
+    "left_middle2", "left_middle3", "left_pinky1", "left_pinky2", "left_pinky3",
+    "left_ring1", "left_ring2", "left_ring3", "left_thumb1", "left_thumb2", "left_thumb3",
+    "right_index1", "right_index2", "right_index3", "right_middle1", "right_middle2",
+    "right_middle3", "right_pinky1", "right_pinky2", "right_pinky3", "right_ring1",
+    "right_ring2", "right_ring3", "right_thumb1", "right_thumb2", "right_thumb3",
+)
+SMPLX55_PARENT_INDICES: tuple[int, ...] = (
+    # Both collars branch from spine3 (9), independently of the neck (12).
+    # Parenting them to the neck incorrectly rotates the entire arm/hand
+    # chains whenever the head turns, despite correct pelvis and leg motion.
+    -1, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 12, 13, 14, 16, 17, 18, 19,
+    15, 15, 15, 20, 25, 26, 20, 28, 29, 20, 31, 32, 20, 34, 35, 20, 37, 38, 21,
+    40, 41, 21, 43, 44, 21, 46, 47, 21, 49, 50, 21, 52, 53,
+)
+
+
+def _canonical_smplx55_pose(raw: Any) -> tuple[np.ndarray | None, str]:
+    """Normalize full SMPL-X or legacy body-only payloads for UE driving."""
+    if raw is None:
+        return None, "missing"
+    try:
+        arr = np.asarray(raw, dtype=np.float64)
+    except Exception:
+        return None, "invalid"
+    if arr.ndim == 2 and arr.shape == (55, 3):
+        return arr.copy(), "smplx55"
+    flat = arr.reshape(-1)
+    if flat.size == 165:
+        return flat.reshape(55, 3).copy(), "smplx55"
+    # Legacy canonical body pose excludes global_orient.  Keep the 21 shared
+    # SMPL/SMPL-X body joints and leave jaw/eyes/fingers at the neutral pose;
+    # old terminal hand slots are deliberately not reinterpreted as fingers.
+    out = np.zeros((55, 3), dtype=np.float64)
+    if flat.size % 3 == 0 and flat.size in {63, 66, 69, 72}:
+        rows = flat.reshape(-1, 3)
+        n = min(21, int(rows.shape[0]))
+        out[1 : 1 + n] = rows[:n]
+        return out, "legacy_body"
+    return None, "unsupported"
+
 
 def _rotvec_to_matrix(rotvec_xyz: tuple[float, float, float]) -> np.ndarray:
     rx, ry, rz = (float(rotvec_xyz[0]), float(rotvec_xyz[1]), float(rotvec_xyz[2]))
@@ -2000,6 +2388,77 @@ def _smpl_body_component_space_rotators(
         roll, pitch, yaw = ue_rotator_deg_from_matrix(np.asarray(ue_mat, dtype=np.float64))
         out.append(unreal.Rotator(float(roll), float(pitch), float(yaw)))
     return out
+
+
+def _smplx55_component_space_rotators(
+    pose55: np.ndarray,
+    smpl_root_rot_genesis: np.ndarray | None = None,
+) -> list[object]:
+    """Build component-space rotations for the canonical 55-joint SMPL-X pose.
+
+    The canonical payload carries the pelvis/global orientation twice for
+    compatibility: as joint 0 in ``smplx_pose_axis_angle`` and as the legacy
+    ``root_quat_xyzw_genesis``.  When the latter is supplied, use it for joint
+    0 and ignore the duplicate axis-angle root so the UE actor/skeleton does
+    not receive the root rotation twice.
+    """
+    rows = np.asarray(pose55, dtype=np.float64).reshape(55, 3)
+    root_mat = (
+        np.asarray(smpl_root_rot_genesis, dtype=np.float64).reshape(3, 3)
+        if smpl_root_rot_genesis is not None
+        else None
+    )
+    global_mats: list[np.ndarray] = []
+    out: list[object] = []
+    for index, row in enumerate(rows):
+        local = _rotvec_to_matrix((float(row[0]), float(row[1]), float(row[2])))
+        if index == 0 and root_mat is not None:
+            local = np.eye(3, dtype=np.float64)
+        parent = int(SMPLX55_PARENT_INDICES[index])
+        if parent < 0:
+            global_mat = root_mat @ local if root_mat is not None else local
+        else:
+            global_mat = global_mats[parent] @ local
+        global_mats.append(global_mat)
+        ue_mat = ue_world_rotation_from_genesis(global_mat)
+        roll, pitch, yaw = ue_rotator_deg_from_matrix(np.asarray(ue_mat, dtype=np.float64))
+        out.append(unreal.Rotator(float(roll), float(pitch), float(yaw)))
+    return out
+
+
+def _smplx55_bone_aliases(canonical_name: str) -> tuple[str, ...]:
+    """Return common Bedlam/SMPL-X spellings for one canonical joint name."""
+    name = str(canonical_name).strip()
+    if not name:
+        return ()
+    aliases: list[str] = [name]
+    parts = [part for part in name.split("_") if part]
+    clean_parts = [part for part in parts if part != "smplhf"]
+    if name == "pelvis":
+        aliases.extend(("Pelvis", "m_avg_Pelvis", "root", "Root", "m_avg_ROOT"))
+    else:
+        side = ""
+        rest = clean_parts[:]
+        if rest and rest[0] in {"left", "right"}:
+            side = "L" if rest.pop(0) == "left" else "R"
+        title_rest = "".join(part[:1].upper() + part[1:] for part in rest)
+        underscored_rest = "_".join(part[:1].upper() + part[1:] for part in rest)
+        if side:
+            aliases.extend(
+                (
+                    f"{side}_{title_rest}",
+                    f"{side}_{underscored_rest}",
+                    f"{side}{title_rest}",
+                    f"{side.lower()}_{title_rest}",
+                    f"{('Left' if side == 'L' else 'Right')}{title_rest}",
+                )
+            )
+        elif title_rest:
+            aliases.append(title_rest)
+        # BEDLAM's native SMPL-X skeleton uses the m_avg_ prefix.
+        aliases.extend(f"m_avg_{candidate}" for candidate in tuple(aliases))
+    # Preserve order while removing duplicate spellings.
+    return tuple(dict.fromkeys(aliases))
 
 
 def _coerce_bone_space(space: object) -> object:
@@ -2594,21 +3053,32 @@ def _apply_smpl_body_pose_to_component(
         mesh_bones = []
     if not mesh_bones:
         mesh_bones = _collect_skeletal_mesh_bone_names(component)
+    normalized_pose, pose_encoding = _canonical_smplx55_pose(body_pose_floats)
+    is_full_smplx = pose_encoding == "smplx55" and normalized_pose is not None
     _ensure_visible_human_bone_mapping_for_component(component)
-    bone_names = _smpl_body_bone_names_effective()
+    bone_names = SMPLX55_BONE_NAMES if is_full_smplx else _smpl_body_bone_names_effective()
     ci_map = _bone_name_ci_map(mesh_bones)
 
     if smpl_root_rot_genesis is not None:
         _apply_pelvis_smpl_global_orient(component, smpl_root_rot_genesis)
 
-    rotators = _smpl_body_component_space_rotators(body_pose_floats, smpl_root_rot_genesis=smpl_root_rot_genesis)
+    if is_full_smplx:
+        rotators = _smplx55_component_space_rotators(
+            normalized_pose,
+            smpl_root_rot_genesis=smpl_root_rot_genesis,
+        )
+    else:
+        rotators = _smpl_body_component_space_rotators(body_pose_floats, smpl_root_rot_genesis=smpl_root_rot_genesis)
     bone_space = _component_space_bone_space()
     applied = 0
     missing: list[str] = []
     for joint_index, name in enumerate(bone_names):
         if joint_index >= len(rotators):
             break
-        mesh_name = ci_map.get(str(name).lower(), str(name))
+        mesh_name = next(
+            (ci_map[alias.lower()] for alias in _smplx55_bone_aliases(name) if alias.lower() in ci_map),
+            str(name),
+        ) if is_full_smplx else ci_map.get(str(name).lower(), str(name))
         try:
             bone_index = component.get_bone_index(mesh_name)
         except Exception:
@@ -2986,13 +3456,18 @@ def _apply_human_canonical_tick(canonical_state: dict[str, Any]) -> dict[str, An
         if _HUMAN_UE_DRIVE_HUMAN_BONES is None
         else bool(_HUMAN_UE_DRIVE_HUMAN_BONES)
     )
-    body_pose_raw = human.get("smpl_body_pose_axis_angle")
+    # Prefer the lossless canonical SMPL-X 55-joint payload.  Keep the
+    # historical body-only field as a compatibility fallback for old Genesis
+    # publishers and recordings.
+    smplx_pose_raw = human.get("smplx_pose_axis_angle")
+    body_pose_raw = smplx_pose_raw if smplx_pose_raw is not None else human.get("smpl_body_pose_axis_angle")
+    normalized_pose, pose_encoding = _canonical_smplx55_pose(body_pose_raw)
+    body_pose_is_valid = normalized_pose is not None and pose_encoding in {"smplx55", "legacy_body"}
     fold_root_into_skeleton = bool(
         _amongus_truthy_env("AMONGUS_UE_FOLD_ROOT_INTO_SKELETON", default=True)
         and drive_bones
         and root_mat_g is not None
-        and isinstance(body_pose_raw, list)
-        and len(body_pose_raw) > 0
+        and body_pose_is_valid
     )
     detail["root_rotation_drive"] = "skeleton_pelvis_fk" if fold_root_into_skeleton else "actor"
 
@@ -3028,7 +3503,7 @@ def _apply_human_canonical_tick(canonical_state: dict[str, Any]) -> dict[str, An
             detail["human_root_on"] = "actor"
 
     if drive_bones:
-        if not isinstance(body_pose_raw, list) or not body_pose_raw:
+        if not body_pose_is_valid:
             detail["body_pose_warning"] = "missing_smpl_body_pose_axis_angle"
         else:
             comp = None
@@ -3050,7 +3525,11 @@ def _apply_human_canonical_tick(canonical_state: dict[str, Any]) -> dict[str, An
                     detail["pelvis_deferred_bind_align"] = defer_plv
                 root_for_pose = root_mat_g if fold_root_into_skeleton else None
                 applied, missing = _apply_smpl_body_pose_to_component(comp, body_pose_raw, smpl_root_rot_genesis=root_for_pose)
-                detail["human_pose_source"] = "smpl_body_pose_axis_angle"
+                detail["human_pose_source"] = (
+                    "smplx_pose_axis_angle" if pose_encoding == "smplx55" else "smpl_body_pose_axis_angle"
+                )
+                detail["human_pose_encoding"] = str(pose_encoding)
+                detail["human_pose_joint_count"] = 55 if pose_encoding == "smplx55" else 23
                 detail["motion_frame_index"] = int(human.get("motion_frame_index", 0) or 0)
                 detail["body_pose_bones_applied"] = int(applied)
                 if _VISIBLE_HUMAN_BONE_PRESET_NAME:
@@ -3144,11 +3623,26 @@ def _apply_camera_clock_canonical_tick(canonical_state: dict[str, Any]) -> dict[
         session_id = str(extras.get("session_id") or "")
 
     detail: dict[str, Any] = {"updated": 0, "errors": []}
+    human = canonical_state.get("human") if isinstance(canonical_state.get("human"), dict) else {}
+    motion_raw = human.get("motion_frame_index", frame_raw)
+    try:
+        motion_frame = int(motion_raw)
+    except (TypeError, ValueError):
+        motion_frame = int(frame_raw)
+    try:
+        state_hash = hashlib.sha256(
+            json.dumps(canonical_state, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+        ).hexdigest()[:32]
+    except Exception:
+        state_hash = ""
     for component in _iter_amongus_capture_components():
         try:
             if session_id and hasattr(component, "set_session_id"):
                 component.set_session_id(session_id)
-            if hasattr(component, "set_external_sim_clock"):
+            if hasattr(component, "set_canonical_context"):
+                component.set_canonical_context(int(frame_raw), int(sim_raw), int(motion_frame), state_hash)
+                detail["updated"] += 1
+            elif hasattr(component, "set_external_sim_clock"):
                 component.set_external_sim_clock(int(frame_raw), int(sim_raw))
                 detail["updated"] += 1
             else:
@@ -3156,6 +3650,272 @@ def _apply_camera_clock_canonical_tick(canonical_state: dict[str, Any]) -> dict[
         except Exception as exc:
             detail["errors"].append(repr(exc))
     return detail
+
+
+def prepare_benchmark_capture_components(
+    *,
+    session_id: str,
+    loop_id: str,
+    capture_group_id: str,
+    frame_index: int,
+    sim_time_ns: int,
+) -> dict[str, Any]:
+    """Arm the installed capture rig for one strict canonical capture group."""
+    components = list(_iter_amongus_capture_components())
+    armed = 0
+    errors: list[str] = []
+    for component in components:
+        try:
+            set_mode = getattr(component, "set_capture_on_request", None)
+            if callable(set_mode):
+                set_mode(True)
+            else:
+                _set_property_if_available(component, ["b_capture_on_request", "capture_on_request"], True)
+            set_context = getattr(component, "set_capture_context", None)
+            if callable(set_context):
+                set_context(
+                    str(session_id),
+                    str(loop_id),
+                    str(capture_group_id),
+                    int(frame_index),
+                    int(sim_time_ns),
+                )
+            else:
+                if hasattr(component, "set_session_id"):
+                    component.set_session_id(str(session_id))
+                if hasattr(component, "set_external_sim_clock"):
+                    component.set_external_sim_clock(int(frame_index), int(sim_time_ns))
+            request = getattr(component, "request_capture", None)
+            if not callable(request):
+                raise RuntimeError("component_missing_request_capture")
+            request()
+            armed += 1
+        except Exception as exc:
+            errors.append(repr(exc))
+    return {
+        "components": len(components),
+        "armed": int(armed),
+        "capture_group_id": str(capture_group_id),
+        "errors": errors,
+    }
+
+
+def benchmark_capture_component_status() -> dict[str, Any]:
+    """Return one-shot capture completion state for the active UE capture rig."""
+    rows: list[dict[str, Any]] = []
+    for component in _iter_amongus_capture_components():
+        row: dict[str, Any] = {}
+        try:
+            row["pending"] = bool(getattr(component, "is_capture_pending")())
+        except Exception:
+            row["pending"] = None
+        for key, method_name in (
+            ("serial", "get_last_capture_serial"),
+            ("success", "get_last_capture_success"),
+            ("camera_count", "get_last_capture_camera_count"),
+            ("group_id", "get_last_capture_group_id"),
+        ):
+            try:
+                row[key] = getattr(component, method_name)()
+            except Exception:
+                row[key] = None
+        rows.append(row)
+    return {"components": rows, "count": len(rows)}
+
+
+def resume_camera_preview() -> dict[str, Any]:
+    """Leave strict one-shot mode and resume continuous preview capture."""
+    components = list(_iter_amongus_capture_components())
+    updated = 0
+    errors: list[str] = []
+    for component in components:
+        try:
+            setter = getattr(component, "set_capture_on_request", None)
+            if callable(setter):
+                setter(False)
+            else:
+                used = _set_property_if_available(
+                    component,
+                    ["b_capture_on_request", "capture_on_request"],
+                    False,
+                )
+                if used is None:
+                    raise RuntimeError("component_missing_set_capture_on_request")
+            updated += 1
+        except Exception as exc:
+            errors.append(repr(exc))
+    return {
+        "resumed": not errors and updated == len(components),
+        "updated": int(updated),
+        "components": len(components),
+        "errors": errors,
+    }
+
+
+def _bone_space_candidates() -> tuple[tuple[object, str], ...]:
+    spaces = getattr(unreal, "BoneSpaces", None)
+    values: list[tuple[object, str]] = []
+    if spaces is not None:
+        for attr in ("WORLD_SPACE", "WorldSpace", "COMPONENT_SPACE", "ComponentSpace"):
+            value = getattr(spaces, attr, None)
+            if value is not None and all(value != existing for existing, _label in values):
+                values.append((value, "world" if "WORLD" in attr.upper() else "component"))
+    if not values:
+        values.append((_component_space_bone_space(), "component"))
+    return tuple(values)
+
+
+def _read_applied_bone_transform(component, mesh_name: str) -> tuple[list[float] | None, list[float] | None, str]:
+    """Read the live PoseableMesh transform, preferring world-space UE APIs."""
+    name_arg = _bone_name_arg(mesh_name)
+
+    def _rotation_quat_xyzw(value) -> list[float] | None:
+        if value is None:
+            return None
+        quat_fn = getattr(value, "quaternion", None)
+        if callable(quat_fn):
+            try:
+                value = quat_fn()
+            except Exception:
+                pass
+        try:
+            return [float(value.x), float(value.y), float(value.z), float(value.w)]
+        except Exception:
+            return None
+
+    rotation_fn = getattr(component, "get_bone_rotation_by_name", None)
+
+    def _bone_rotation(space, space_label: str) -> list[float] | None:
+        if not callable(rotation_fn):
+            return None
+        try:
+            rotation = rotation_fn(name_arg, space)
+        except Exception:
+            try:
+                rotation = rotation_fn(str(mesh_name), space)
+            except Exception:
+                return None
+        return _rotation_quat_xyzw(rotation)
+
+    transform_fn = getattr(component, "get_bone_transform_by_name", None)
+    if callable(transform_fn):
+        for space, space_label in _bone_space_candidates():
+            try:
+                transform = transform_fn(name_arg, space)
+            except Exception:
+                try:
+                    transform = transform_fn(str(mesh_name), space)
+                except Exception:
+                    continue
+            matrix = _transform_to_mat4_unreal(transform)
+            if matrix is not None:
+                translation = [float(v) for v in matrix[:3, 3].tolist()]
+                # Keep the quaternion as supplied by the UE transform where
+                # possible; the matrix is still useful when a mock lacks it.
+                quat = None
+                try:
+                    q = transform.get_rotation()
+                    quat = [float(q.x), float(q.y), float(q.z), float(q.w)]
+                except Exception:
+                    quat = _bone_rotation(space, space_label)
+                return translation, quat, f"get_bone_transform_by_name:{space_label}_space"
+    location_fn = getattr(component, "get_bone_location_by_name", None)
+    if callable(location_fn):
+        for space, space_label in _bone_space_candidates():
+            try:
+                loc = location_fn(name_arg, space)
+            except Exception:
+                try:
+                    loc = location_fn(str(mesh_name), space)
+                except Exception:
+                    continue
+            vec = _vector_to_cm_list(loc)
+            if vec is not None:
+                return vec, _bone_rotation(space, space_label), f"get_bone_location_by_name:{space_label}_space"
+    return None, None, "unavailable"
+
+
+def export_benchmark_applied_gt(canonical_state: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Export the actual UE-applied skeleton used for a benchmark frame.
+
+    ``betas`` in a canonical message are recorded as provenance only.  The
+    shape used by UE is the loaded skeletal mesh asset, so this manifest never
+    presents fitted betas as if they had changed the rendered mesh.
+    """
+    canonical_state = canonical_state if isinstance(canonical_state, dict) else {}
+    label = str(os.environ.get("AMONGUS_UE_HUMAN_ACTOR_LABEL", VISIBLE_HUMAN_LABEL) or "").strip()
+    actor = find_world_actor_by_label(label)
+    human = canonical_state.get("human") if isinstance(canonical_state.get("human"), dict) else {}
+    result: dict[str, Any] = {
+        "schema_version": 1,
+        "source": "ue_applied_poseable_skeletal_mesh",
+        "transform_space": "world_cm",
+        "joint_names": list(SMPLX55_BONE_NAMES),
+        "canonical_frame_index": canonical_state.get("frame_index"),
+        "canonical_sim_time_ns": canonical_state.get("sim_time_ns"),
+        "actor_label": label,
+        "body_shape": {
+            "source": "ue_skeletal_mesh_asset",
+            "skeletal_mesh_path": str(_VISIBLE_HUMAN_SKELETAL_MESH_PATH),
+            "body_name": str(_VISIBLE_HUMAN_BODY_NAME),
+            "relative_scale": float(_VISIBLE_HUMAN_RELATIVE_SCALE),
+            "canonical_betas_provenance": list(human.get("betas", [])) if isinstance(human.get("betas"), list) else [],
+            "canonical_betas_applied_to_mesh": False,
+        },
+        "bones": [],
+        "missing_joints": [],
+    }
+    if actor is None:
+        result["error"] = "actor_not_found"
+        return result
+    try:
+        result["actor_world_location_cm"] = _ue_vec3_cm(actor.get_actor_location())
+    except Exception:
+        result["actor_world_location_cm"] = None
+    try:
+        rot = actor.get_actor_rotation()
+        result["actor_world_rotation_deg"] = [float(rot.roll), float(rot.pitch), float(rot.yaw)]
+    except Exception:
+        result["actor_world_rotation_deg"] = None
+    component = None
+    try:
+        component = actor.get_component_by_class(unreal.PoseableMeshComponent)
+    except Exception:
+        component = None
+    if component is None:
+        try:
+            component = actor.get_component_by_class(unreal.SkeletalMeshComponent)
+        except Exception:
+            component = None
+    if component is None:
+        result["error"] = "poseable_or_skeletal_component_not_found"
+        return result
+    mesh_bones = _poseable_mesh_bone_names_for_alignment(component)
+    ci_map = _bone_name_ci_map(mesh_bones)
+    for canonical_name in SMPLX55_BONE_NAMES:
+        mesh_name = next(
+            (ci_map[alias.lower()] for alias in _smplx55_bone_aliases(canonical_name) if alias.lower() in ci_map),
+            "",
+        )
+        if not mesh_name:
+            result["missing_joints"].append(canonical_name)
+            continue
+        location, quat, source = _read_applied_bone_transform(component, mesh_name)
+        if location is None:
+            result["missing_joints"].append(canonical_name)
+            continue
+        result["bones"].append(
+            {
+                "joint_name": canonical_name,
+                "mesh_bone_name": mesh_name,
+                "world_location_cm": location,
+                "world_quat_xyzw": quat,
+                "source": source,
+            }
+        )
+    result["applied_joint_count"] = len(result["bones"])
+    result["mesh_bone_count"] = len(mesh_bones)
+    return result
 
 
 def _apply_dynamic_objects_canonical_tick(canonical_state: dict[str, Any]) -> dict[str, Any]:
@@ -3416,13 +4176,48 @@ def _attach_poseable_human_component(
 
     for setter, args in (
         ("set_visibility", (True, True)),
-        ("set_hidden_in_game", (False, True)),
     ):
         fn = getattr(component, setter, None)
         if fn is None:
             continue
         try:
             fn(*args)
+        except Exception:
+            continue
+    hidden_fn = getattr(component, "set_hidden_in_game", None)
+    if callable(hidden_fn):
+        try:
+            hidden_fn(False)
+        except TypeError:
+            try:
+                hidden_fn(False, True)
+            except Exception:
+                pass
+        except Exception:
+            pass
+    render_main_fn = getattr(component, "set_render_in_main_pass", None)
+    if callable(render_main_fn):
+        try:
+            render_main_fn(True)
+        except Exception:
+            pass
+    anim_tick_fn = getattr(component, "set_visibility_based_anim_tick_option", None)
+    tick_opt = getattr(unreal, "VisibilityBasedAnimTickOption", None)
+    if callable(anim_tick_fn) and tick_opt is not None:
+        desired = getattr(tick_opt, "ALWAYS_TICK_POSE_AND_REFRESH_BONES", None)
+        if desired is None:
+            desired = getattr(tick_opt, "AlwaysTickPoseAndRefreshBones", None)
+        if desired is not None:
+            try:
+                anim_tick_fn(desired)
+            except Exception:
+                pass
+    for method_name in ("activate", "mark_render_state_dirty", "recreate_render_state_concurrent"):
+        method = getattr(component, method_name, None)
+        if not callable(method):
+            continue
+        try:
+            method(True) if method_name == "activate" else method()
         except Exception:
             continue
 
@@ -3435,8 +4230,10 @@ def _attach_poseable_human_component(
                 skeletal_component = None
         if skeletal_component is not None and skeletal_component is not component:
             for setter, args in (
-                ("set_visibility", (False, True)),
-                ("set_hidden_in_game", (True, True)),
+                # The PoseableMesh is attached below the actor's skeletal
+                # root.  Do not propagate the parent's hidden state to that
+                # child or the live human disappears from SceneCapture2D.
+                ("set_visibility", (False, False)),
             ):
                 fn = getattr(skeletal_component, setter, None)
                 if fn is None:
@@ -3445,6 +4242,44 @@ def _attach_poseable_human_component(
                     fn(*args)
                 except Exception:
                     continue
+            hidden_fn = getattr(skeletal_component, "set_hidden_in_game", None)
+            if callable(hidden_fn):
+                try:
+                    hidden_fn(True)
+                except TypeError:
+                    try:
+                        hidden_fn(True, True)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+    # Hiding the actor's native SkeletalMeshComponent above must never hide
+    # the PoseableMesh child.  Re-assert the render state after the parent
+    # operation for UE versions that still propagate component visibility.
+    for setter, args in (("set_visibility", (True, True)),):
+        fn = getattr(component, setter, None)
+        if callable(fn):
+            try:
+                fn(*args)
+            except Exception:
+                pass
+    hidden_fn = getattr(component, "set_hidden_in_game", None)
+    if callable(hidden_fn):
+        try:
+            hidden_fn(False)
+        except TypeError:
+            try:
+                hidden_fn(False, True)
+            except Exception:
+                pass
+        except Exception:
+            pass
+    render_main_fn = getattr(component, "set_render_in_main_pass", None)
+    if callable(render_main_fn):
+        try:
+            render_main_fn(True)
+        except Exception:
+            pass
     return component
 
 
@@ -3466,6 +4301,189 @@ def _ensure_pie_human_poseable(actor):
     )
 
 
+def _load_editor_asset_candidates(paths: list[str]) -> tuple[object | None, str]:
+    for path in paths:
+        if not str(path).strip():
+            continue
+        raw = str(path).strip()
+        candidates = [raw]
+        # UE accepts both /Game/Path/Asset and /Game/Path/Asset.Asset.  Some
+        # editor builds only resolve one spelling through load_asset().
+        if raw.startswith("/") and "." not in raw.rsplit("/", 1)[-1]:
+            leaf = raw.rsplit("/", 1)[-1]
+            candidates.append(f"{raw}.{leaf}")
+        for candidate in candidates:
+            for loader in (
+                getattr(unreal, "load_asset", None),
+                getattr(getattr(unreal, "EditorAssetLibrary", None), "load_asset", None),
+            ):
+                if not callable(loader):
+                    continue
+                try:
+                    asset = loader(candidate)
+                except Exception:
+                    asset = None
+                if asset is not None:
+                    return asset, candidate
+    return None, ""
+
+
+def _bedlam_asset_candidates(root: str, name: str | None) -> list[str]:
+    """Build the package/object spellings used by BEDLAM editor assets."""
+    raw = str(name or "").strip()
+    if not raw:
+        return []
+    if raw.startswith("/"):
+        base = raw
+        leaf = raw.rsplit("/", 1)[-1].split(".", 1)[0]
+        return [base, f"{base}.{leaf}"] if "." not in raw.rsplit("/", 1)[-1] else [base]
+    base = str(root).rstrip("/")
+    return [f"{base}/{raw}", f"{base}/{raw}.{raw}"]
+
+
+def _apply_bedlam_subject_materials(component, avatar) -> dict[str, Any]:
+    """Apply the selected BEDLAM body/clothing material to the live poseable mesh."""
+    body_name = str(getattr(avatar, "texture_body", "") or "").strip()
+    clothing_name = str(getattr(avatar, "texture_clothing", "") or "").strip()
+    overlay_name = str(getattr(avatar, "texture_clothing_overlay", "") or "").strip()
+    report: dict[str, Any] = {
+        "body_texture": body_name or None,
+        "clothing_texture": clothing_name or None,
+        "clothing_overlay": overlay_name or None,
+        "body_material_loaded": False,
+        "clothing_material_loaded": False,
+        "clothing_material_applied": False,
+        "clothing_single_slot_fallback": False,
+        "material_slots": 0,
+        "errors": [],
+    }
+    if component is None:
+        report["errors"].append("component_missing")
+        return report
+    try:
+        slots = max(int(component.get_num_materials()), 1) if hasattr(component, "get_num_materials") else 1
+    except Exception:
+        slots = 1
+    report["material_slots"] = slots
+    body, body_path = _load_editor_asset_candidates(
+        _bedlam_asset_candidates("/Engine/PS/Meshcapade/SMPLX/Materials", f"MI_{body_name}")
+        + _bedlam_asset_candidates("/Engine/PS/Meshcapade/SMPLX", f"MI_{body_name}")
+        if body_name
+        else []
+    )
+    if body is not None:
+        report["body_material_loaded"] = True
+        report["body_material_path"] = body_path
+        for index in range(slots):
+            try:
+                component.set_material(index, body)
+            except Exception as exc:
+                report["errors"].append(f"body_slot_{index}:{exc!r}")
+    elif body_name:
+        report["errors"].append(f"body_material_not_found:{body_name}")
+
+    clothing_asset_name = clothing_name or overlay_name
+    if clothing_asset_name:
+        outfit = clothing_asset_name.split("_texture_", 1)[0]
+        clothing, clothing_path = _load_editor_asset_candidates(
+            _bedlam_asset_candidates(
+                f"/Engine/PS/Bedlam/Clothing/Materials/{outfit}", f"MI_{clothing_asset_name}"
+            )
+            + _bedlam_asset_candidates(
+                "/Engine/PS/Bedlam/Clothing/Materials", f"MI_{clothing_asset_name}"
+            )
+        )
+        if clothing is not None:
+            report["clothing_material_loaded"] = True
+            report["clothing_material_path"] = clothing_path
+            if slots > 1:
+                for index in range(1, slots):
+                    try:
+                        component.set_material(index, clothing)
+                        report["clothing_material_applied"] = True
+                    except Exception as exc:
+                        report["errors"].append(f"clothing_slot_{index}:{exc!r}")
+            else:
+                report["clothing_single_slot_fallback"] = True
+                report["errors"].append("clothing_material_requires_multiple_mesh_slots")
+        else:
+            report["errors"].append(f"clothing_material_not_found:{clothing_asset_name}")
+
+    # BEDLAM's one-slot SMPL-X meshes use a dynamic material with texture
+    # parameters for clothing overlays.  Keep this fallback in the dynamic
+    # path so the T-pose loader has the same appearance contract as the old
+    # FBX/Sequencer pipeline.
+    overlay_report: dict[str, Any] = {
+        "requested": bool(overlay_name),
+        "body_texture_loaded": False,
+        "overlay_texture_loaded": False,
+        "parameters_set": 0,
+        "body_texture_path": None,
+        "overlay_texture_path": None,
+    }
+    if overlay_name:
+        body_texture, body_texture_path = _load_editor_asset_candidates(
+            _bedlam_asset_candidates("/Engine/PS/Meshcapade/SMPLX/Textures", body_name)
+        )
+        overlay_outfit = overlay_name.split("_texture_", 1)[0]
+        overlay_texture, overlay_texture_path = _load_editor_asset_candidates(
+            _bedlam_asset_candidates("/Engine/PS/Bedlam/Clothing/MaterialsSMPLX/Textures", overlay_name)
+            + _bedlam_asset_candidates(
+                f"/Engine/PS/Bedlam/Clothing/Materials/{overlay_outfit}", overlay_name
+            )
+        )
+        overlay_report.update(
+            {
+                "body_texture_loaded": body_texture is not None,
+                "overlay_texture_loaded": overlay_texture is not None,
+                "body_texture_path": body_texture_path or None,
+                "overlay_texture_path": overlay_texture_path or None,
+            }
+        )
+        if body_texture is not None and overlay_texture is not None:
+            for index in range(slots):
+                try:
+                    source_material = component.get_material(index)
+                except Exception:
+                    source_material = None
+                if source_material is None:
+                    continue
+                dynamic_material = None
+                for method_name, args in (
+                    ("create_dynamic_material_instance", (index, source_material)),
+                    ("create_and_set_material_instance_dynamic", (index,)),
+                ):
+                    method = getattr(component, method_name, None)
+                    if not callable(method):
+                        continue
+                    try:
+                        dynamic_material = method(*args)
+                    except Exception:
+                        continue
+                    if dynamic_material is not None:
+                        break
+                if dynamic_material is None:
+                    continue
+                for parameter_name, texture in (
+                    ("bodytexture", body_texture),
+                    ("BodyTexture", body_texture),
+                    ("clothingtextureoverlay", overlay_texture),
+                    ("ClothingTextureOverlay", overlay_texture),
+                ):
+                    try:
+                        dynamic_material.set_texture_parameter_value(parameter_name, texture)
+                        overlay_report["parameters_set"] = int(overlay_report["parameters_set"]) + 1
+                    except Exception:
+                        continue
+    report["overlay"] = overlay_report
+    report["appearance_ok"] = bool(
+        report["clothing_material_applied"]
+        or int(overlay_report["parameters_set"]) > 0
+        or not (body_name or clothing_asset_name or overlay_name)
+    )
+    return report
+
+
 def spawn_genesis_driven_visible_human(
     *,
     scene_spec,
@@ -3476,7 +4494,7 @@ def spawn_genesis_driven_visible_human(
     Always spawns a native ``SkeletalMeshActor`` so PIE reliably duplicates the mesh component.
     """
     global _VISIBLE_HUMAN_SMPL_BONE_NAMES, _VISIBLE_HUMAN_BONE_PRESET_NAME
-    global _VISIBLE_HUMAN_SKELETAL_MESH_PATH, _VISIBLE_HUMAN_RELATIVE_SCALE
+    global _VISIBLE_HUMAN_SKELETAL_MESH_PATH, _VISIBLE_HUMAN_BODY_NAME, _VISIBLE_HUMAN_RELATIVE_SCALE
     global _PELVIS_DEFERRED_ALIGN_COMPLETED, _PELVIS_DEFERRED_ALIGN_ATTEMPTS
     global _PELVIS_SOCKET_WORLD_ALIGN_DONE, _PELVIS_ALIGN_TRACKED_WORLD
 
@@ -3510,6 +4528,7 @@ def spawn_genesis_driven_visible_human(
             pass
 
     _VISIBLE_HUMAN_SKELETAL_MESH_PATH = skeletal_mesh_path
+    _VISIBLE_HUMAN_BODY_NAME = str(getattr(scene_spec.ue_avatar, "body_name", "") or "")
     _VISIBLE_HUMAN_RELATIVE_SCALE = float(relative_scale)
 
     actor = actor_subsystem.spawn_actor_from_class(
@@ -3586,6 +4605,34 @@ def spawn_genesis_driven_visible_human(
         else:
             human_component_kind = "skeletal_mesh_actor_no_poseable"
 
+    material_application = _apply_bedlam_subject_materials(component, scene_spec.ue_avatar)
+
+    # The dynamic PoseableMesh path is the render source in PIE and in
+    # SceneCapture2D.  Reassert actor/component visibility after material
+    # assignment because the BEDLAM SkeletalMeshActor can inherit hidden state
+    # from a duplicated editor component.
+    try:
+        actor_hidden = getattr(actor, "set_actor_hidden_in_game", None)
+        if callable(actor_hidden):
+            actor_hidden(False)
+        component.set_visibility(True, True)
+        hidden_fn = getattr(component, "set_hidden_in_game", None)
+        if callable(hidden_fn):
+            try:
+                hidden_fn(False)
+            except TypeError:
+                hidden_fn(False, True)
+        render_main_fn = getattr(component, "set_render_in_main_pass", None)
+        if callable(render_main_fn):
+            render_main_fn(True)
+        for method_name in ("activate", "mark_render_state_dirty", "recreate_render_state_concurrent"):
+            method = getattr(component, method_name, None)
+            if not callable(method):
+                continue
+            method(True) if method_name == "activate" else method()
+    except Exception as exc:
+        unreal.log_warning(f"UE_SCENE: visible human render-state setup failed: {exc!r}")
+
     bone_list = collect_bone_names_from_skeletal_mesh_asset(skeletal_mesh)
     if not bone_list:
         bone_list = _collect_skeletal_mesh_bone_names(component)
@@ -3660,6 +4707,7 @@ def spawn_genesis_driven_visible_human(
         "preset_hit_count": hits,
         "bone_dump_path": str(Path(session_root) / "visible_human_bones.json") if session_root else "",
         "human_component": human_component_kind,
+        "material_application": material_application,
     }
 
 
@@ -3803,6 +4851,10 @@ AMONGUS_CAPTURE_FOLDER = f"{GENERATED_SCENE_FOLDER}/amongus_capture"
 AMONGUS_CAPTURE_HOST_DEFAULT = "127.0.0.1"
 AMONGUS_CAPTURE_PORT_DEFAULT = 17355
 AMONGUS_CAPTURE_JPEG_QUALITY_DEFAULT = 85
+# The capture component is created on the editor world and duplicated into
+# PIE.  Keep the authored K in Python as a second source so a live PIE copy
+# can be repaired if Unreal drops reflected component state during duplication.
+_CAPTURE_RIG_PROJECTION_CONTRACT: list[dict[str, Any]] = []
 
 
 def _amongus_capture_component_class():
@@ -3845,6 +4897,81 @@ def _set_property_if_available(target_object, candidates: list[str], value) -> s
             continue
         return prop
     return None
+
+
+def _camera_projection_contract(camera_spec) -> dict[str, Any]:
+    """Return one explicit UE/benchmark projection contract for a scene camera.
+
+    Scene specs historically mixed horizontal and vertical FOV values.  UE's
+    SceneCapture FOVAngle is treated as horizontal here; Genesis can retain its
+    own axis conversion through the scene metadata.  Rendered UE images are
+    synthetic and therefore carry a zero-distortion image contract.
+    """
+    width = max(int(camera_spec.res[0]), 1)
+    height = max(int(camera_spec.res[1]), 1)
+    metadata = dict(getattr(camera_spec, "metadata", {}) or {})
+    axis = str(
+        metadata.get("fov_axis")
+        or getattr(camera_spec, "fov_axis", "")
+        or "vertical"
+    ).strip().lower()
+    if axis not in {"horizontal", "vertical"}:
+        axis = "vertical"
+    fov = float(camera_spec.fov)
+    if axis == "vertical":
+        ue_horizontal_fov = math.degrees(
+            2.0 * math.atan(math.tan(math.radians(fov) * 0.5) * float(width) / float(height))
+        )
+    else:
+        ue_horizontal_fov = fov
+
+    raw_K = metadata.get("K", metadata.get("intrinsics"))
+    K: np.ndarray | None = None
+    if isinstance(raw_K, dict):
+        raw_K = raw_K.get("K")
+    try:
+        candidate = np.asarray(raw_K, dtype=np.float64)
+        if candidate.size == 9:
+            K = candidate.reshape(3, 3)
+    except Exception:
+        K = None
+    if K is None or not np.all(np.isfinite(K)) or K[0, 0] <= 0.0 or K[1, 1] <= 0.0:
+        if axis == "vertical":
+            fy = 0.5 * float(height) / max(math.tan(math.radians(fov) * 0.5), 1.0e-9)
+            fx = fy
+        else:
+            fx = 0.5 * float(width) / max(math.tan(math.radians(fov) * 0.5), 1.0e-9)
+            fy = fx
+        K = np.asarray(
+            [[fx, 0.0, 0.5 * float(width)], [0.0, fy, 0.5 * float(height)], [0.0, 0.0, 1.0]],
+            dtype=np.float64,
+        )
+    else:
+        # Scale a calibration K when the scene capture resolution differs.
+        source_wh = metadata.get("image_size") or metadata.get("calibration_image_size")
+        try:
+            sw, sh = int(source_wh[0]), int(source_wh[1])
+        except Exception:
+            sw, sh = width, height
+        if sw > 0 and sh > 0 and (sw != width or sh != height):
+            K = K.copy()
+            K[0, 0] *= float(width) / float(sw)
+            K[0, 2] *= float(width) / float(sw)
+            K[1, 1] *= float(height) / float(sh)
+            K[1, 2] *= float(height) / float(sh)
+    return {
+        "fov_axis": axis,
+        "scene_fov_degrees": fov,
+        "ue_horizontal_fov_degrees": float(ue_horizontal_fov),
+        "K": K.tolist(),
+        "distortion": [0.0, 0.0, 0.0, 0.0, 0.0],
+        "image_geometry": {
+            "undistorted": True,
+            "effective_K": K.tolist(),
+            "projection_distortion_model": "zero",
+            "source": "ue_scene_capture",
+        },
+    }
 
 
 def _spawn_scene_capture_for_amongus(
@@ -3930,7 +5057,15 @@ def _spawn_scene_capture_for_amongus(
             pass
 
     capture.set_editor_property("texture_target", render_target)
-    capture.set_editor_property("fov_angle", float(camera_spec.fov))
+    projection = _camera_projection_contract(camera_spec)
+    # ``ue_camera_payload_from_spec`` is the shared bridge contract.  It already
+    # returns the horizontal FOV expected by UE SceneCapture (including the K
+    # based conversion added for calibrated cameras).  Keep the local
+    # projection record for metadata/K, but never convert this returned value a
+    # second time as though it were vertical.
+    ue_fov_degrees = float(payload.get("fov", projection["ue_horizontal_fov_degrees"]))
+    projection["ue_horizontal_fov_degrees"] = ue_fov_degrees
+    capture.set_editor_property("fov_angle", ue_fov_degrees)
     capture.set_editor_property("capture_every_frame", True)
     capture.set_editor_property("capture_on_movement", True)
 
@@ -3960,6 +5095,55 @@ def _instantiate_actor_component(component_class, outer_actor):
     raise RuntimeError(f"Cannot instantiate {component_class}: {last_exc!r}")
 
 
+def restore_capture_rig_projection_contract() -> dict[str, Any]:
+    """Reapply authored camera K to the live PIE capture component.
+
+    The rig is configured on the editor world before Play.  Some UE 5.3
+    duplication paths copy the capture component but clear custom reflected
+    arrays, so the plugin's metadata would otherwise fall back to a symmetric
+    projection.  The plugin setter also installs the actual off-centre
+    projection matrix on each SceneCaptureComponent2D.
+    """
+    contract = list(_CAPTURE_RIG_PROJECTION_CONTRACT)
+    if not contract:
+        return {"restored": False, "count": 0, "reason": "no_cached_projection_contract"}
+    actor = find_world_actor_by_label(AMONGUS_CAPTURE_RIG_LABEL)
+    if actor is None:
+        return {"restored": False, "count": 0, "reason": "capture_rig_not_found"}
+    cls = _amongus_capture_component_class()
+    if cls is None:
+        return {"restored": False, "count": 0, "reason": "capture_plugin_not_loaded"}
+    try:
+        component = actor.get_component_by_class(cls)
+    except Exception as exc:
+        return {"restored": False, "count": 0, "reason": f"component_lookup_failed:{exc!r}"}
+    setter = getattr(component, "set_camera_projection", None)
+    if not callable(setter):
+        return {"restored": False, "count": 0, "reason": "set_camera_projection_unavailable"}
+    errors: list[str] = []
+    restored = 0
+    for index, projection in enumerate(contract):
+        try:
+            K = np.asarray(projection["K"], dtype=np.float64).reshape(3, 3)
+            setter(
+                int(index),
+                float(K[0, 0]),
+                float(K[1, 1]),
+                float(K[0, 2]),
+                float(K[1, 2]),
+            )
+            restored += 1
+        except Exception as exc:
+            errors.append(f"{index}:{exc!r}")
+    return {
+        "restored": restored == len(contract),
+        "count": restored,
+        "expected_count": len(contract),
+        "errors": errors,
+        "camera_names": [str(item.get("camera_name", "")) for item in contract],
+    }
+
+
 def spawn_amongus_capture_rig(
     cameras,
     *,
@@ -3974,6 +5158,8 @@ def spawn_amongus_capture_rig(
     The rig actor is a concrete TargetPoint (has a root component) so editor-mode component
     creation works; the AmongUs component itself ticks at runtime/PIE and connects to mux.
     """
+    global _CAPTURE_RIG_PROJECTION_CONTRACT
+    _CAPTURE_RIG_PROJECTION_CONTRACT = []
     cls = _amongus_capture_component_class()
     if cls is None:
         return {
@@ -4059,6 +5245,35 @@ def spawn_amongus_capture_rig(
         ["b_auto_connect", "auto_connect", "bAutoConnect"],
         True,
     )
+    projection_payloads = [_camera_projection_contract(camera_spec) for camera_spec in cameras]
+    _CAPTURE_RIG_PROJECTION_CONTRACT = [
+        {
+            "camera_name": str(camera_spec.name),
+            **projection,
+        }
+        for camera_spec, projection in zip(cameras, projection_payloads)
+    ]
+    projection_set = 0
+    set_projection = getattr(component, "set_camera_projection", None)
+    if callable(set_projection):
+        for index, projection in enumerate(projection_payloads):
+            try:
+                K = np.asarray(projection["K"], dtype=np.float64).reshape(3, 3)
+                set_projection(
+                    int(index),
+                    float(K[0, 0]),
+                    float(K[1, 1]),
+                    float(K[0, 2]),
+                    float(K[1, 2]),
+                )
+                projection_set += 1
+            except Exception as exc:
+                unreal.log_warning(f"UE_SCENE: camera projection metadata setup failed index={index}: {exc!r}")
+    used_props["capture_on_request"] = _set_property_if_available(
+        component,
+        ["b_capture_on_request", "capture_on_request"],
+        _env_truthy("AMONGUS_CAPTURE_ON_REQUEST"),
+    )
 
     return {
         "installed": True,
@@ -4072,14 +5287,102 @@ def spawn_amongus_capture_rig(
         "tcp_port": int(port),
         "jpeg_quality": int(jpeg_quality),
         "render_target_count": len(capture_render_targets),
+        "projection_contract": {
+            str(camera_spec.name): projection
+            for camera_spec, projection in zip(cameras, projection_payloads)
+        },
+        "projection_set_count": int(projection_set),
         "applied_property_names": used_props,
     }
+
+
+def prepare_tpose_avatar(
+    scene_spec_path: str | Path,
+    augmentation_spec_path: str | Path | None = None,
+    *,
+    capture_on_request: bool | None = None,
+) -> dict[str, Any]:
+    """Prepare the UE scene with the textured avatar in its reference T-pose.
+
+    This is intentionally a lightweight dynamic-driving path: it uses the
+    selected BEDLAM skeletal mesh and PoseableMeshComponent already created by
+    the scene loader, clears any animation/pose transforms, and waits for
+    canonical ticks.  It does not import or bake an FBX animation.
+    """
+    result = apply_scene_to_current_level(
+        scene_spec_path,
+        augmentation_spec_path,
+        preserve_visible_human=False,
+        force_spawn_human=True,
+    )
+    actor = find_world_actor_by_label(VISIBLE_HUMAN_LABEL)
+    component = None
+    if actor is not None:
+        try:
+            component = actor.get_component_by_class(unreal.PoseableMeshComponent)
+        except Exception:
+            component = None
+        if component is None:
+            try:
+                component = actor.get_component_by_class(unreal.SkeletalMeshComponent)
+            except Exception:
+                component = None
+    reset = False
+    if component is not None:
+        reset_fn = getattr(component, "reset_all_bone_transforms", None)
+        if callable(reset_fn):
+            try:
+                reset_fn()
+                reset = True
+            except Exception as exc:
+                unreal.log_warning(f"UE_SCENE: T-pose reset_all_bone_transforms failed: {exc!r}")
+        refresh_fn = getattr(component, "refresh_bone_transforms", None)
+        if callable(refresh_fn):
+            try:
+                refresh_fn()
+            except Exception:
+                pass
+    capture_mode: dict[str, Any] = {}
+    if capture_on_request is not None:
+        for capture in _iter_amongus_capture_components():
+            setter = getattr(capture, "set_capture_on_request", None)
+            try:
+                if callable(setter):
+                    setter(bool(capture_on_request))
+                else:
+                    _set_property_if_available(
+                        capture,
+                        ["b_capture_on_request", "capture_on_request"],
+                        bool(capture_on_request),
+                    )
+                capture_mode["capture_on_request"] = bool(capture_on_request)
+            except Exception as exc:
+                capture_mode.setdefault("errors", []).append(repr(exc))
+    result["tpose_avatar"] = {
+        "prepared": actor is not None and component is not None,
+        "tpose_source": "skeletal_mesh_reference_pose",
+        "actor_label": VISIBLE_HUMAN_LABEL,
+        "skeletal_mesh_path": str(_VISIBLE_HUMAN_SKELETAL_MESH_PATH),
+        "body_name": str(_VISIBLE_HUMAN_BODY_NAME),
+        "component_kind": type(component).__name__ if component is not None else "",
+        "reset_all_bone_transforms": bool(reset),
+        "capture_mode": capture_mode,
+        "shape_contract": {
+            "source": "ue_skeletal_mesh_asset",
+            "skeletal_mesh_path": str(_VISIBLE_HUMAN_SKELETAL_MESH_PATH),
+            "canonical_betas_are_provenance_only": True,
+        },
+    }
+    if actor is None or component is None:
+        result["tpose_avatar"]["warning"] = "visible_human_poseable_component_missing"
+    return result
 
 
 def apply_scene_to_current_level(
     scene_spec_path: str | Path,
     augmentation_spec_path: str | Path | None = None,
     preserve_visible_human: bool = False,
+    force_spawn_human: bool = False,
 ) -> dict:
     scene_spec, augmentation_summary = load_scene_spec(scene_spec_path, augmentation_spec_path)
     _preload_human_ue_calibration(scene_spec)
@@ -4088,12 +5391,33 @@ def apply_scene_to_current_level(
     load_level(level_binding.map_path)
     preserve_labels = {"GEN_visible_human"} if preserve_visible_human else set()
     clear_sync_actors(preserve_labels=preserve_labels)
+    environment_summary = apply_scene_environment(scene_spec.environment)
 
     if scene_spec.support_surface is not None and scene_spec.support_surface.spawn_in_ue:
+        support_rotation_deg = (0.0, 0.0, 0.0)
+        support_quat = getattr(scene_spec.support_surface, "quat_xyzw", None)
+        if isinstance(support_quat, (list, tuple)) and len(support_quat) >= 4:
+            try:
+                ue_quat = ue_world_quat_xyzw_from_genesis([float(v) for v in support_quat[:4]])
+                if ue_quat is not None:
+                    support_mat = ue_rotation_matrix_from_quat_xyzw(ue_quat.tolist())
+                    support_rotation_deg = tuple(
+                        float(v) for v in ue_rotator_deg_from_matrix(np.asarray(support_mat, dtype=np.float64))
+                    )
+            except Exception as exc:
+                unreal.log_warning(f"UE_SCENE: support surface rotation conversion failed: {exc!r}")
+        else:
+            raw_rotation = getattr(scene_spec.support_surface, "rotation_deg", None)
+            if isinstance(raw_rotation, (list, tuple)) and len(raw_rotation) >= 3:
+                support_rotation_deg = tuple(float(v) for v in raw_rotation[:3])
+            elif isinstance(raw_rotation, (int, float)):
+                # Historical scene YAML stores this as the small bed yaw in degrees.
+                support_rotation_deg = (0.0, 0.0, float(raw_rotation))
         spawn_box(
             label=f"{GENERATED_SCENE_LABEL_PREFIX}{scene_spec.support_surface.name}",
             pos_m=tuple(scene_spec.support_surface.pos),
             size_m=tuple(scene_spec.support_surface.size),
+            rotation_deg=support_rotation_deg,
             folder=f"{GENERATED_SCENE_FOLDER}/support_surface",
             color_rgba=tuple(float(v) for v in scene_spec.support_surface.color),
         )
@@ -4163,14 +5487,17 @@ def apply_scene_to_current_level(
 
     human_anchor_m, human_world_offset_ue_m, human_align_floor, placement_json_path = _motion_human_offsets_from_scene(scene_spec)
     visible_human_summary: dict[str, Any] | None = None
-    if scene_spec.render.ue_spawn_human:
+    if scene_spec.render.ue_spawn_human or force_spawn_human:
         if _amongus_truthy_env("AMONGUS_UE_SPAWN_HUMAN_ANCHOR_MARKER", default=True):
-            spawn_marker(
+            anchor_marker = spawn_marker(
                 label=f"{GENERATED_SCENE_LABEL_PREFIX}human_anchor",
                 pos_m=human_anchor_m,
                 scale_m=0.06,
                 folder=f"{GENERATED_SCENE_FOLDER}/human",
             )
+            # Editor placement aid; exclude it from PIE and all rendered cameras.
+            anchor_marker.set_actor_hidden_in_game(True)
+            anchor_marker.static_mesh_component.set_editor_property("cast_shadow", False)
         visible_human_summary = spawn_genesis_driven_visible_human(
             scene_spec=scene_spec,
             anchor_m=human_anchor_m,
@@ -4180,6 +5507,7 @@ def apply_scene_to_current_level(
         "scene_name": str(scene_spec.name),
         "ue_map": str(level_binding.map_path),
         "ue_hdri_name": str(level_binding.hdri_name),
+        "environment": environment_summary,
         "support_surface": None
         if scene_spec.support_surface is None
         else {
@@ -4187,6 +5515,9 @@ def apply_scene_to_current_level(
             "semantic_role": str(scene_spec.support_surface.semantic_role),
             "pos_m": [float(x) for x in scene_spec.support_surface.pos],
             "size_m": [float(x) for x in scene_spec.support_surface.size],
+            "rotation_deg": [float(x) for x in support_rotation_deg]
+            if scene_spec.support_surface.spawn_in_ue
+            else [0.0, 0.0, 0.0],
         },
         "robot_visual_debug": robot_visual_debug[0] if len(robot_visual_debug) == 1 else robot_visual_debug,
         "robot_visual_debug_all": robot_visual_debug,

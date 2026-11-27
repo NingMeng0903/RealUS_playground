@@ -1,0 +1,267 @@
+{
+  "pooled": {
+    "worlds": 192,
+    "replicas_per_world": 4,
+    "means": {
+      "confirm_at_capture": {
+        "corrected_complete": 0.5,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.005208333333333333,
+        "verified_intervals": 5.322916666666667
+      },
+      "retain_candidates": {
+        "corrected_complete": 1.0,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.005208333333333333,
+        "verified_intervals": 6.0
+      }
+    },
+    "vs_reference": {
+      "retain_candidates": {
+        "corrected_complete": {
+          "delta": 0.5,
+          "ci95": [
+            0.4270833333333333,
+            0.5729166666666666
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "verified_intervals": {
+          "delta": 0.677083333333333,
+          "ci95": [
+            0.5677083333333334,
+            0.7864583333333334
+          ]
+        }
+      }
+    },
+    "counts": {
+      "confirm_at_capture": {
+        "corrected_complete": 384,
+        "final_wrong": 0,
+        "ever_wrong": 4
+      },
+      "retain_candidates": {
+        "corrected_complete": 768,
+        "final_wrong": 0,
+        "ever_wrong": 4
+      }
+    },
+    "contrast_checks": {
+      "retain_candidates": {
+        "completion": true,
+        "mistakes_within_margin": true,
+        "execution_within_upper_margins": true,
+        "execution_equivalent": true
+      }
+    },
+    "timing": {
+      "confirm_at_capture": {
+        "frame_cpu_ms_p50_p95": [
+          0.26311150000016964,
+          0.6591065499999882
+        ],
+        "measured_corrections": 4,
+        "correction_simulated_s_median": 0.30000000000000004
+      },
+      "retain_candidates": {
+        "frame_cpu_ms_p50_p95": [
+          0.2925770000001826,
+          0.7544607999999453
+        ],
+        "measured_corrections": 8,
+        "correction_simulated_s_median": 0.30000000000000004
+      }
+    }
+  },
+  "connection": {
+    "worlds": 96,
+    "replicas_per_world": 4,
+    "means": {
+      "confirm_at_capture": {
+        "corrected_complete": 1.0,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "verified_intervals": 6.0
+      },
+      "retain_candidates": {
+        "corrected_complete": 1.0,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.0,
+        "verified_intervals": 6.0
+      }
+    },
+    "vs_reference": {
+      "retain_candidates": {
+        "corrected_complete": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "verified_intervals": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "counts": {
+      "confirm_at_capture": {
+        "corrected_complete": 384,
+        "final_wrong": 0,
+        "ever_wrong": 0
+      },
+      "retain_candidates": {
+        "corrected_complete": 384,
+        "final_wrong": 0,
+        "ever_wrong": 0
+      }
+    },
+    "contrast_checks": {
+      "retain_candidates": {
+        "completion": false,
+        "mistakes_within_margin": true,
+        "execution_within_upper_margins": true,
+        "execution_equivalent": true
+      }
+    },
+    "timing": {
+      "confirm_at_capture": {
+        "frame_cpu_ms_p50_p95": [
+          0.278803499999869,
+          0.6725149999999847
+        ],
+        "measured_corrections": 0,
+        "correction_simulated_s_median": null
+      },
+      "retain_candidates": {
+        "frame_cpu_ms_p50_p95": [
+          0.2987490000003201,
+          0.7558289000002215
+        ],
+        "measured_corrections": 0,
+        "correction_simulated_s_median": null
+      }
+    }
+  },
+  "parallel": {
+    "worlds": 96,
+    "replicas_per_world": 4,
+    "means": {
+      "confirm_at_capture": {
+        "corrected_complete": 0.0,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.010416666666666666,
+        "verified_intervals": 4.645833333333333
+      },
+      "retain_candidates": {
+        "corrected_complete": 1.0,
+        "final_wrong": 0.0,
+        "ever_wrong": 0.010416666666666666,
+        "verified_intervals": 6.0
+      }
+    },
+    "vs_reference": {
+      "retain_candidates": {
+        "corrected_complete": {
+          "delta": 1.0,
+          "ci95": [
+            1.0,
+            1.0
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "ever_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "verified_intervals": {
+          "delta": 1.354166666666667,
+          "ci95": [
+            1.2604166666666667,
+            1.4479166666666667
+          ]
+        }
+      }
+    },
+    "counts": {
+      "confirm_at_capture": {
+        "corrected_complete": 0,
+        "final_wrong": 0,
+        "ever_wrong": 4
+      },
+      "retain_candidates": {
+        "corrected_complete": 384,
+        "final_wrong": 0,
+        "ever_wrong": 4
+      }
+    },
+    "contrast_checks": {
+      "retain_candidates": {
+        "completion": true,
+        "mistakes_within_margin": true,
+        "execution_within_upper_margins": true,
+        "execution_equivalent": true
+      }
+    },
+    "timing": {
+      "confirm_at_capture": {
+        "frame_cpu_ms_p50_p95": [
+          0.2547385000006841,
+          0.64267194999994
+        ],
+        "measured_corrections": 4,
+        "correction_simulated_s_median": 0.30000000000000004
+      },
+      "retain_candidates": {
+        "frame_cpu_ms_p50_p95": [
+          0.2892920000006072,
+          0.7530921000000745
+        ],
+        "measured_corrections": 8,
+        "correction_simulated_s_median": 0.30000000000000004
+      }
+    }
+  },
+  "motion_source_sha256": "1f837222fe1f13dda17be0258917119906848e31a2c8ec588409bd9c0c97d97a"
+}

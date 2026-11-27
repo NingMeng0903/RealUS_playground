@@ -1,0 +1,38 @@
+{
+  "angle_samples": 129,
+  "samples_per_move": 65,
+  "arms": {
+    "rule": {
+      "c2": {
+        "samples": 2470,
+        "distance_mm_p95": 0.036686433341738836,
+        "distance_mm_max": 1.7373173465416336,
+        "worst_move": 8,
+        "worst_phase_index": 54
+      },
+      "piecewise_same_coordinate": {
+        "samples": 2470,
+        "distance_mm_p95": 0.26161279040573715,
+        "distance_mm_max": 1.5844860543818227,
+        "worst_move": 8,
+        "worst_phase_index": 52
+      }
+    },
+    "rl": {
+      "c2": {
+        "samples": 2600,
+        "distance_mm_p95": 0.038861287521175104,
+        "distance_mm_max": 1.6941622012634259,
+        "worst_move": 10,
+        "worst_phase_index": 25
+      },
+      "piecewise_same_coordinate": {
+        "samples": 2600,
+        "distance_mm_p95": 0.26613387876634154,
+        "distance_mm_max": 1.7498504005150406,
+        "worst_move": 10,
+        "worst_phase_index": 30
+      }
+    }
+  }
+}

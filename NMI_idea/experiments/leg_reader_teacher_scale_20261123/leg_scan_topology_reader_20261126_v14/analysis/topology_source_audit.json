@@ -1,0 +1,68 @@
+{
+  "reference_file": "ct_reference_topology.json.gz",
+  "sha256": "2bfde33b9e7cf07003542bb4e057b293286c3ac989c65d475e7c952e5dceb8aa",
+  "sources": {
+    "BodyParts3D right": {
+      "mapped_cross_role_edges": [],
+      "named_target_continuations": [
+        {
+          "labels": [
+            "femoral vein",
+            "popliteal vein"
+          ],
+          "stations_mm": [
+            750,
+            751
+          ],
+          "provenance": "inferred_junction",
+          "roles": [
+            0,
+            0
+          ]
+        }
+      ],
+      "distal_source_verified_cross_label_edges": []
+    },
+    "BodyParts3D mirrored left": {
+      "mapped_cross_role_edges": [],
+      "named_target_continuations": [],
+      "distal_source_verified_cross_label_edges": []
+    },
+    "Open3DModel right": {
+      "mapped_cross_role_edges": [],
+      "named_target_continuations": [
+        {
+          "labels": [
+            "Femoral_vein.r",
+            "Popliteal_vein.r"
+          ],
+          "stations_mm": [
+            746,
+            751
+          ],
+          "provenance": "inferred_junction",
+          "roles": [
+            0,
+            0
+          ]
+        },
+        {
+          "labels": [
+            "Popliteal_vein.r",
+            "Posterior_tibial_vein.r"
+          ],
+          "stations_mm": [
+            909,
+            910
+          ],
+          "provenance": "inferred_junction",
+          "roles": [
+            0,
+            0
+          ]
+        }
+      ],
+      "distal_source_verified_cross_label_edges": []
+    }
+  }
+}

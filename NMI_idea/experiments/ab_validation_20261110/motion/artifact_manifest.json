@@ -1,0 +1,986 @@
+{
+  "REPORT.txt": {
+    "bytes": 14379,
+    "sha256": "2e5598b379f43be6aae0cb027b4b27b1b220acfeb8124b500ba233c7b5a21db0"
+  },
+  "adapter.py": {
+    "bytes": 5300,
+    "sha256": "a606495738a6bff47fa5ac395976524ef19955ba0dd761ea8420aa34c326d403"
+  },
+  "build_report.py": {
+    "bytes": 14206,
+    "sha256": "e4819eba7d244be27a226480ee5d3bd628ea78bdddf2c74d5cbbc82180de0d27"
+  },
+  "candidate_paths.json": {
+    "bytes": 180050,
+    "sha256": "e84ebd20ed00223cf515326c1674cd271572caa332c498adba380e98ab76f464"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9732,
+    "sha256": "9dc166996a045870d55cc3655e45bac8ceca34eee25bbc4b94e189bfff88ef0f"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "cc5dd4eee4cdd9acb0c40b9c77be4e36f911a314d8d705795895cb5249006fa1"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain0/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "73522d8295c04ce18f6acf3c33dfef46413446317aeb843554eb41fad629a2ad"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain0.npz": {
+    "bytes": 25474,
+    "sha256": "982cfc7377bfde49b5b80a4594b26dedeaa0acd25fa7d0252e8f27e202aaa5e4"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9694,
+    "sha256": "677bd47945898a55e21419b382982bc070920ee4a8dcc23d7f477b74fac497f9"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6039,
+    "sha256": "b3aabbd8983bcfbdbcda7884a3978627088d4f327e158d95fd419f3661ef6acb"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain1/simulation/summary.json": {
+    "bytes": 231,
+    "sha256": "a12571ba662e46fe9a87a25526a0708ee8fd6b038b7dd67602fdb3654b71b62c"
+  },
+  "controlled_servo/dmp_mismatch_lateral_minus10mm_gain1.npz": {
+    "bytes": 25439,
+    "sha256": "7e988b1df877cb1714ffabfd8903b26f51977ffdd3b3e64794a0684b52f43af5"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9732,
+    "sha256": "9dc166996a045870d55cc3655e45bac8ceca34eee25bbc4b94e189bfff88ef0f"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "cc5dd4eee4cdd9acb0c40b9c77be4e36f911a314d8d705795895cb5249006fa1"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain0/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "73522d8295c04ce18f6acf3c33dfef46413446317aeb843554eb41fad629a2ad"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain0.npz": {
+    "bytes": 25486,
+    "sha256": "e89fd37bc413a6b4d16b70050a5b90c67afe655978441cbc27092a8aaff04737"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9645,
+    "sha256": "29322b704afcda4c7de6beed92e0611bb997955147f40f6981df3348834dab47"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6041,
+    "sha256": "a8b359a529b4b26d108435431eafcb1df05349f39c348cfd5898311747d95846"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain1/simulation/summary.json": {
+    "bytes": 227,
+    "sha256": "07c3a80a2aa0aeb461cdf756229a0c8a60472a639718f882b3ea5d2d897e2492"
+  },
+  "controlled_servo/dmp_mismatch_lateral_plus10mm_gain1.npz": {
+    "bytes": 25474,
+    "sha256": "0abf30e513c30dbe1325f866559afbd174f4b7b500fc0d708b0a06d72cee43de"
+  },
+  "controlled_servo/dmp_nominal_gain0/simulation/contact_replay.npz": {
+    "bytes": 9732,
+    "sha256": "9dc166996a045870d55cc3655e45bac8ceca34eee25bbc4b94e189bfff88ef0f"
+  },
+  "controlled_servo/dmp_nominal_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_nominal_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "cc5dd4eee4cdd9acb0c40b9c77be4e36f911a314d8d705795895cb5249006fa1"
+  },
+  "controlled_servo/dmp_nominal_gain0/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "73522d8295c04ce18f6acf3c33dfef46413446317aeb843554eb41fad629a2ad"
+  },
+  "controlled_servo/dmp_nominal_gain0.npz": {
+    "bytes": 25473,
+    "sha256": "69c01482211ae1b9363e0f6c3d5727e96499864acbf0b960218349a45a43758c"
+  },
+  "controlled_servo/dmp_nominal_gain1/simulation/contact_replay.npz": {
+    "bytes": 9873,
+    "sha256": "fdf3b4e52493b6849b5b860ef327e13a70c519f0c53fe0fbb99c8c6211132d62"
+  },
+  "controlled_servo/dmp_nominal_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_nominal_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "daf58be8043059121954ed156d22c7a4a9939af16d93f5dd30c92d0189f52389"
+  },
+  "controlled_servo/dmp_nominal_gain1/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "8b0b8a84d507d27c504c09286cfaf440b02b8a03b81be071e7cf55d96e8efe5b"
+  },
+  "controlled_servo/dmp_nominal_gain1.npz": {
+    "bytes": 25463,
+    "sha256": "c70c008573665c9c994afd8b9ebe504afc5055fe311371efe840a1a6f270bdd2"
+  },
+  "controlled_servo/dmp_nominal_ruckig/simulation/contact_replay.npz": {
+    "bytes": 8981,
+    "sha256": "8db80ece9af8aca3b50b027b04bd6e1a66b959d9994061a052ee186947363fa8"
+  },
+  "controlled_servo/dmp_nominal_ruckig/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_nominal_ruckig/simulation/probe_tcp_trace.obj": {
+    "bytes": 5939,
+    "sha256": "750490596cfe810e6cf0bfc7cfa96a5adebef8338f0bd60d78acbcc1ec2c89a8"
+  },
+  "controlled_servo/dmp_nominal_ruckig/simulation/summary.json": {
+    "bytes": 224,
+    "sha256": "c607330d141f78203e77e2b0992866991adb3b8d529ab7119bf9bec743ffd93c"
+  },
+  "controlled_servo/dmp_nominal_ruckig.npz": {
+    "bytes": 25384,
+    "sha256": "9e6c5d657c58210566b651d0604024351703e5ec9398c24a19b8e60444345958"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9732,
+    "sha256": "9dc166996a045870d55cc3655e45bac8ceca34eee25bbc4b94e189bfff88ef0f"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "cc5dd4eee4cdd9acb0c40b9c77be4e36f911a314d8d705795895cb5249006fa1"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain0/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "73522d8295c04ce18f6acf3c33dfef46413446317aeb843554eb41fad629a2ad"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain0.npz": {
+    "bytes": 25416,
+    "sha256": "f891979d924b4127507426bfb95af164c0416e4d68a0c45c552dabf3234f9d97"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9965,
+    "sha256": "b15539f109cbde64aecbab89266da6e37471b221279af2e10592ee6e0ec12f7f"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "4ed6d24ebab71207c7910ed11f92f2c3d9278347f1c1fd9650d014464e882a7e"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain1/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "ca69dc45b5ec158d380e4c6382629405b7f33d0c92c68097da2b75450616720d"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_gain1.npz": {
+    "bytes": 25385,
+    "sha256": "e4348ddbed8b22aaeb1bcc19f7229999338e98a84092ac3fcc518b8925af22c5"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9732,
+    "sha256": "9dc166996a045870d55cc3655e45bac8ceca34eee25bbc4b94e189bfff88ef0f"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "cc5dd4eee4cdd9acb0c40b9c77be4e36f911a314d8d705795895cb5249006fa1"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "73522d8295c04ce18f6acf3c33dfef46413446317aeb843554eb41fad629a2ad"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0.npz": {
+    "bytes": 25415,
+    "sha256": "a306499915871b5baab63df10da05c6cd20593f504ebe4b3fad934018a27dec2"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 10190,
+    "sha256": "d91e6f08c2c195bf6e62f1f472bc1321574c8a47b9b293e9894b7ee8658fdce7"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6039,
+    "sha256": "e9b171889171323a907e1306b38d182af2520809b2f9ec115a05df17e0e2a87b"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "8641641b3aaecdd3597132d593eed5c89d4122d459418e779045b635f4c54fcc"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1.npz": {
+    "bytes": 25388,
+    "sha256": "1d93b7c75aa22035db68d280c648da1be6213cb3cf8dc24993c7f2f90d157231"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9732,
+    "sha256": "9dc166996a045870d55cc3655e45bac8ceca34eee25bbc4b94e189bfff88ef0f"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "cc5dd4eee4cdd9acb0c40b9c77be4e36f911a314d8d705795895cb5249006fa1"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "73522d8295c04ce18f6acf3c33dfef46413446317aeb843554eb41fad629a2ad"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0.npz": {
+    "bytes": 25409,
+    "sha256": "172446235d0ab2e1af789be8484bea983a3ff93626dbd90ba0b3d8f3573129d7"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9706,
+    "sha256": "cb3367413b701f143691e0a6d0905e471d36e6403fe370bcec2b87f28d1b4887"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "69172f8b41933ac121a630223989a49911e45f45fec917ec70c20eb5ff77da73"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/summary.json": {
+    "bytes": 227,
+    "sha256": "6bb271cfef29243624e1f00d53100bb26b3bfeb06e99628264ded491be9afe77"
+  },
+  "controlled_servo/dmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1.npz": {
+    "bytes": 25420,
+    "sha256": "d6084e5ddcf6f4ab6e9e4b74846d3ca5f06e1f0c3e0b44539b7afa1d313ab2b0"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9704,
+    "sha256": "4696ac0591f8352e49262beac19000ef00dd1344bba420c25dbbf91c842ebd71"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6af82b28a3cf3c17796407d0674c0663f945a7a3615e3fab17cd839bdd8d8553"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain0/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "9e96c6f17960dca5bba83377b89bf9aa8acb4af5d37a206c8f2e6a249c25117b"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain0.npz": {
+    "bytes": 25449,
+    "sha256": "67a4eeb31257d10ea30018b61ff4dd838be0d1cb43aaf0947bc87ae9b4659213"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9630,
+    "sha256": "eb4f0a1e474495ae16a12ce9e85efdb3a8d3183be35124edc53c9b5b55c46251"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6d4c6f4fecb68349b597712eeb06c66ab33b5efe11534da48ab72dfbb5ac2863"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain1/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "e7c1b17da04f728cb2a8f40758608f637f43542d1b19aeac69ebd8a5260e1ec1"
+  },
+  "controlled_servo/kmp_mismatch_lateral_minus10mm_gain1.npz": {
+    "bytes": 25454,
+    "sha256": "4f6db8803ccc80c632eed03e594e1f437129c9f8a9dedc65b398701e2e7b949d"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9704,
+    "sha256": "4696ac0591f8352e49262beac19000ef00dd1344bba420c25dbbf91c842ebd71"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6af82b28a3cf3c17796407d0674c0663f945a7a3615e3fab17cd839bdd8d8553"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain0/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "9e96c6f17960dca5bba83377b89bf9aa8acb4af5d37a206c8f2e6a249c25117b"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain0.npz": {
+    "bytes": 25434,
+    "sha256": "5b486d5403ce06139f2898007da7aa35a4d440f6677152be537655b34d39ff04"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9710,
+    "sha256": "f1af2fb659a612cc388a3ed71a6a0f3bcf438eeb6a35ca223704646ba126381e"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6041,
+    "sha256": "c0ac2803c3176e1b6f5706862c03d73dc56f3ddad06f371d4d4406509803bcdd"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain1/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "e45fd18456f27e9f2696351907d5a35b0bb2c8d18ed840bcf59e285bf6fc8382"
+  },
+  "controlled_servo/kmp_mismatch_lateral_plus10mm_gain1.npz": {
+    "bytes": 25465,
+    "sha256": "826cd0963ba3ce32eca24e7138baefbf1a40bd311140130e344249d10de8c995"
+  },
+  "controlled_servo/kmp_nominal_gain0/simulation/contact_replay.npz": {
+    "bytes": 9704,
+    "sha256": "4696ac0591f8352e49262beac19000ef00dd1344bba420c25dbbf91c842ebd71"
+  },
+  "controlled_servo/kmp_nominal_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_nominal_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6af82b28a3cf3c17796407d0674c0663f945a7a3615e3fab17cd839bdd8d8553"
+  },
+  "controlled_servo/kmp_nominal_gain0/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "9e96c6f17960dca5bba83377b89bf9aa8acb4af5d37a206c8f2e6a249c25117b"
+  },
+  "controlled_servo/kmp_nominal_gain0.npz": {
+    "bytes": 25445,
+    "sha256": "369d9e931f6dc46d1e5b7fb441401c002918229de94cb9ae5fdfc9ff14780136"
+  },
+  "controlled_servo/kmp_nominal_gain1/simulation/contact_replay.npz": {
+    "bytes": 9777,
+    "sha256": "f77a233eb23ac1c7bd0e46fbbe9e2755ea970a4670a4916fd5faa7e799d23820"
+  },
+  "controlled_servo/kmp_nominal_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_nominal_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "9a148f36ba0d89e740a4f2506e245971a9202595c7201c940fad722027daaf5f"
+  },
+  "controlled_servo/kmp_nominal_gain1/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "96056b85c562e883abe547f4a4d2d91bc1f501ad43eaa82c99f0a4765fb3e27a"
+  },
+  "controlled_servo/kmp_nominal_gain1.npz": {
+    "bytes": 25439,
+    "sha256": "44f6873d49391a83f72f92f345e82303aa46e783f6103ba2aff6b5a2ff739e54"
+  },
+  "controlled_servo/kmp_nominal_ruckig/simulation/contact_replay.npz": {
+    "bytes": 9033,
+    "sha256": "8c5ef0cb5ae80c2a00e14751700499840adda109f52429c9d569bf095a11a045"
+  },
+  "controlled_servo/kmp_nominal_ruckig/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_nominal_ruckig/simulation/probe_tcp_trace.obj": {
+    "bytes": 5939,
+    "sha256": "e0c71a65272a3072d5efd5bac1ae4f2e1b7085f73944dc23ce1cce5d26759b45"
+  },
+  "controlled_servo/kmp_nominal_ruckig/simulation/summary.json": {
+    "bytes": 226,
+    "sha256": "6bd4c2f729d9443bf2ee50278d19bccdabae586e8fd1b18f7811764904030385"
+  },
+  "controlled_servo/kmp_nominal_ruckig.npz": {
+    "bytes": 25393,
+    "sha256": "902cd6a7ef3d6d4ecca91456135e855f3fdcf0077b8572199ae84a97251334db"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9704,
+    "sha256": "4696ac0591f8352e49262beac19000ef00dd1344bba420c25dbbf91c842ebd71"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6af82b28a3cf3c17796407d0674c0663f945a7a3615e3fab17cd839bdd8d8553"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain0/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "9e96c6f17960dca5bba83377b89bf9aa8acb4af5d37a206c8f2e6a249c25117b"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain0.npz": {
+    "bytes": 25385,
+    "sha256": "4729495825f84cb151c74b36afe748a4ac111d7abf5a6d4375d5f8f2f3918c64"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9910,
+    "sha256": "0584dccbb476b586ccf1b7fed690c9d7dcae0fba77ba35bbadd4fc69ee33f250"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6042,
+    "sha256": "53b125bd50d0fcaae159d4a96f31935dba5767ffc934a5e28d34629e888b7bcf"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain1/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "0db4a9d22abd6866691d5cb956835aa0c649106cdef9b07b6a2ad69774657b05"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_gain1.npz": {
+    "bytes": 25387,
+    "sha256": "a47edcba24adfb3936081e77e63c1fd7004dd0205a99faeb73a4d88ab3c47dbe"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9704,
+    "sha256": "4696ac0591f8352e49262beac19000ef00dd1344bba420c25dbbf91c842ebd71"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6af82b28a3cf3c17796407d0674c0663f945a7a3615e3fab17cd839bdd8d8553"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "9e96c6f17960dca5bba83377b89bf9aa8acb4af5d37a206c8f2e6a249c25117b"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain0.npz": {
+    "bytes": 25387,
+    "sha256": "7b9f176239cbbe3e09ce673b6444106148c9ed3a5e2c7997d815b3e9788e0727"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 10121,
+    "sha256": "ffe1c3f2cf396b3c6d5db68bba613b0fe289dbcb10655c7bdaf6bc90584b4457"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6042,
+    "sha256": "7ea25b3e3ffe8f08ad2551fa3580b5988da882762060f710abe10ae79c9b48b0"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "b65cedb9004c8ce5455eb2fdbbc5032b047ac79b5713e174c11dd991de1e0d87"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_minus10mm_gain1.npz": {
+    "bytes": 25373,
+    "sha256": "f5e77910f0c1de5a5210492f08660988ba185501be56c010a17e801b1f908d8d"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/contact_replay.npz": {
+    "bytes": 9704,
+    "sha256": "4696ac0591f8352e49262beac19000ef00dd1344bba420c25dbbf91c842ebd71"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6af82b28a3cf3c17796407d0674c0663f945a7a3615e3fab17cd839bdd8d8553"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "9e96c6f17960dca5bba83377b89bf9aa8acb4af5d37a206c8f2e6a249c25117b"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain0.npz": {
+    "bytes": 25386,
+    "sha256": "35d6bb6531eb681090b00381392079fc1bd927e02c1dae158e8a77f7f4646412"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/contact_replay.npz": {
+    "bytes": 9942,
+    "sha256": "03772e8d4fa53be2b39acf35ba13658349a6040076873741731c9e3e208162b8"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/probe_tcp_trace.obj": {
+    "bytes": 6043,
+    "sha256": "12fd93107e30f79b6c1f3ac3a6ff1ba42db70853f524d415b7fdeb4056bbc852"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1/simulation/summary.json": {
+    "bytes": 228,
+    "sha256": "7d35a3fa99c2c4f29d66a6dbddc62fd0938f6380ae144956037ea2e53fd45d17"
+  },
+  "controlled_servo/kmp_not_detected_depth_plus120mm_lateral_plus10mm_gain1.npz": {
+    "bytes": 25414,
+    "sha256": "c926f06e641696313082c1b5023d657b7d51464f8d7d8a7cf7e5ba33f456cda2"
+  },
+  "controlled_servo/knee_0/simulation/contact_replay.npz": {
+    "bytes": 15744,
+    "sha256": "da9f79a8a72fce4a1ddbcd37cdb843d7939930c27ecc327de9902b7388264b42"
+  },
+  "controlled_servo/knee_0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "5a8031d419f96a1af3b06e01a8f68ec4b6bbb3cbd1b2237f6f84195356a65a64"
+  },
+  "controlled_servo/knee_0/simulation/probe_tcp_trace.obj": {
+    "bytes": 10514,
+    "sha256": "19d4bcb0760e7fd9f203198b30eeba774fc2566bc32eb30f37c688c4d0015df9"
+  },
+  "controlled_servo/knee_0/simulation/summary.json": {
+    "bytes": 225,
+    "sha256": "e5ec5087893e401bff7d2410d1bed00a9b92ec3f6f1b9063dadd2648bbf00e52"
+  },
+  "controlled_servo/knee_0/surface_scan_curve.obj": {
+    "bytes": 10520,
+    "sha256": "80e73b20e27a3e3924c92161048744b4b2a09554a99052b6945ee1fc2bc12432"
+  },
+  "controlled_servo/knee_0/trajectory_replay.npz": {
+    "bytes": 44050,
+    "sha256": "416ca6432941f94c5fb274ae92d3c1f045d802c0aef4d2ca547a8a8b705175df"
+  },
+  "controlled_servo/knee_30/simulation/contact_replay.npz": {
+    "bytes": 15836,
+    "sha256": "8af82713ece9dc1203b6cb7804512d480be92fb38fbf109b0144b210b65fd768"
+  },
+  "controlled_servo/knee_30/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "b1d8fc600229832515214a8555b93fec59e415168c273f5ed8cc527458bbd929"
+  },
+  "controlled_servo/knee_30/simulation/probe_tcp_trace.obj": {
+    "bytes": 10513,
+    "sha256": "5da6eae3fe383940d060d340eddf49bae9e02dcfe0d65481b70bd2331755fd2b"
+  },
+  "controlled_servo/knee_30/simulation/summary.json": {
+    "bytes": 226,
+    "sha256": "c16706fcc82c8222dbcd79577961ab96fffc6b83d166045fc34ae9fd60d2280f"
+  },
+  "controlled_servo/knee_30/surface_scan_curve.obj": {
+    "bytes": 10520,
+    "sha256": "75d1025c1753a7a64925389e7606bfa46929bb8385d7275fb546be4d633fdac9"
+  },
+  "controlled_servo/knee_30/trajectory_replay.npz": {
+    "bytes": 44038,
+    "sha256": "40f2002d36bd8db78cd3cd19a878f7831a3b20a334f095452fa586846838969e"
+  },
+  "controlled_servo/knee_60/simulation/contact_replay.npz": {
+    "bytes": 15780,
+    "sha256": "76474c8a36b82dcd54e471367f89d823eab04ecf83e7db27821bee03ca4a6c3e"
+  },
+  "controlled_servo/knee_60/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "3850bc4e9b4f3d85c9d79e6d296c0a0163fae7b9b0b3ae3c0ffae88db55a2dd1"
+  },
+  "controlled_servo/knee_60/simulation/probe_tcp_trace.obj": {
+    "bytes": 10513,
+    "sha256": "dcbeaa6e71bd90da81aed7b3f93fe6cb1be072f55c2be88191adfb7a84064258"
+  },
+  "controlled_servo/knee_60/simulation/summary.json": {
+    "bytes": 227,
+    "sha256": "1f68dc2eb7a0cd40aef93ce76e610fffcd1e0b1d03f463395bb624174e527124"
+  },
+  "controlled_servo/knee_60/surface_scan_curve.obj": {
+    "bytes": 10520,
+    "sha256": "76a287350b1638bdc235cb09851c4aa6b7e978f3df27cdf03c9d09415f202d78"
+  },
+  "controlled_servo/knee_60/trajectory_replay.npz": {
+    "bytes": 44110,
+    "sha256": "7b5021e9cbd0693f31705aefb94a04bd73355ac176b7195ca5bdcfe116cbccf6"
+  },
+  "controlled_servo/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj": {
+    "bytes": 10517,
+    "sha256": "da1c618ad3b28892e5095dbff75cb00f9d370c4b819b51c5977a5fcf0bcc9f61"
+  },
+  "controlled_servo/prebake/R_COM_FEM_V_surface.obj": {
+    "bytes": 855,
+    "sha256": "2f27d6aa883a23dab4ed7474c9af28be170371e77c940110faf45ab2ae2b96f5"
+  },
+  "controlled_servo/prebake/R_COM_FEM_V_truth.obj": {
+    "bytes": 853,
+    "sha256": "055a11f0e19af0ca5773233d213d2c846b783dae930b32cd463bf6df7f24d8ad"
+  },
+  "controlled_servo/prebake/R_POPV_surface.obj": {
+    "bytes": 912,
+    "sha256": "6eef4ce9b3d76fd3d64c85de03bf9723e748c05f687506995420b7b865f89883"
+  },
+  "controlled_servo/prebake/R_POPV_truth.obj": {
+    "bytes": 910,
+    "sha256": "132065f1541cf94402aa731bbf2fe47b3f879e36ec388e701831220e8527fc36"
+  },
+  "controlled_servo/prebake/R_POST_TIB_V_surface.obj": {
+    "bytes": 5083,
+    "sha256": "6b6e913fd38220404b83b21b897bebd0d0cea66be3a773dddee0871cf832560f"
+  },
+  "controlled_servo/prebake/R_POST_TIB_V_truth.obj": {
+    "bytes": 5081,
+    "sha256": "71c2b74b03374d08316009504900d8928ffd6cfe28a198862ad740072305a8e2"
+  },
+  "controlled_servo/prebake/R_SUPFEMV_surface.obj": {
+    "bytes": 3699,
+    "sha256": "358cfe293bfe6c442d7228547c6a71a4143a584d27ffb0fbfc3ff50f28a89f54"
+  },
+  "controlled_servo/prebake/R_SUPFEMV_truth.obj": {
+    "bytes": 3712,
+    "sha256": "8922f545e527619d997c2a02dc0303250d6bf872d7735c55dd0626986167df4b"
+  },
+  "controlled_servo/prebake/right_thigh_patch_and_vessels.npz": {
+    "bytes": 158276,
+    "sha256": "02ef26d9daf561328958af37417736b24b5a11e476717d38ffb96b19d6d62dc6"
+  },
+  "controlled_servo/prebake/summary.json": {
+    "bytes": 6467,
+    "sha256": "1f1f1ee7f37fca580546498ff04c0b013cc996e02adf40a86338dfeffda53a30"
+  },
+  "controlled_servo/primary_production_harness_alias/simulation/contact_replay.npz": {
+    "bytes": 14329,
+    "sha256": "d5b370a163f1b588f3818c44f2cad9c7623bcdaf3f50dbbae3bef00c82e7ae2f"
+  },
+  "controlled_servo/primary_production_harness_alias/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "bce43fa17c98abffdea6493e7fad5bbe4ce2e2ed2aa56c56c60c7ed8191f3c2d"
+  },
+  "controlled_servo/primary_production_harness_alias/simulation/probe_tcp_trace.obj": {
+    "bytes": 12383,
+    "sha256": "dfd0183957f1249e6118e7ef9fd5083d1eec3945a218eff8d2fbe804da2267b0"
+  },
+  "controlled_servo/primary_production_harness_alias/simulation/summary.json": {
+    "bytes": 227,
+    "sha256": "9d2ffd0240ab999bd1b6832a86eb81dd62a54fb5c263b1c35460054cb7df5045"
+  },
+  "controlled_servo/primary_production_harness_alias.npz": {
+    "bytes": 24985,
+    "sha256": "35f81eda0e30e4429f4c347575d5280eefc57a3897e65c1f380d4a1e49dc5fd6"
+  },
+  "controlled_servo/se3/simulation/contact_replay.npz": {
+    "bytes": 9862,
+    "sha256": "3440ddfeb272842948fbda476f34dd54005d3807cfa232ac389175b257395bc9"
+  },
+  "controlled_servo/se3/simulation/probe_box_with_tcp.obj": {
+    "bytes": 525,
+    "sha256": "0ccc792c316cc63b7cda7c5bfaa1a7d110c856625d73ebfb8437817323a25c56"
+  },
+  "controlled_servo/se3/simulation/probe_tcp_trace.obj": {
+    "bytes": 5908,
+    "sha256": "dc6ffd5525757e8fbf118c22238bccaccc080d4f8fc7637c457b5908732a7bfe"
+  },
+  "controlled_servo/se3/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "db8879123d918d2996056b7320dda4a509edb8b7b607190e8e99ce8575ea401c"
+  },
+  "controlled_servo/se3.npz": {
+    "bytes": 16818,
+    "sha256": "57002fe339fbf8a75a75a0814db081621315399e5448be49d9e02123af18f4de"
+  },
+  "controlled_servo/visualization/open_loop/knee_0_pose_preview.png": {
+    "bytes": 198000,
+    "sha256": "55e5c3706b8ff7ed8fbb52ee7169281d0812851334496ff2cd14067f176fec70"
+  },
+  "controlled_servo/visualization/open_loop/knee_30_pose_preview.png": {
+    "bytes": 227002,
+    "sha256": "230bcfe7498fbbbfb1959e306845ba068596070683927be4451efc7036949bc9"
+  },
+  "controlled_servo/visualization/open_loop/knee_60_pose_preview.png": {
+    "bytes": 221559,
+    "sha256": "af73615239d5f870835dbf4156140cb0dbae68b039db4063d3f5dff83d24f81a"
+  },
+  "depth_adapter.py": {
+    "bytes": 969,
+    "sha256": "4cdc9bb29966267cdf984798475e25d4875da017e51d47d826bff9d897fd41bf"
+  },
+  "depth_contract.json": {
+    "bytes": 4389,
+    "sha256": "ec14fd587775ac8d5b5d1edca6d4c5dd63c8f8cbd2614709cf4f2364091f70fd"
+  },
+  "full_servo/bent_60deg/simulation/contact_replay.npz": {
+    "bytes": 15780,
+    "sha256": "76474c8a36b82dcd54e471367f89d823eab04ecf83e7db27821bee03ca4a6c3e"
+  },
+  "full_servo/bent_60deg/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "3850bc4e9b4f3d85c9d79e6d296c0a0163fae7b9b0b3ae3c0ffae88db55a2dd1"
+  },
+  "full_servo/bent_60deg/simulation/probe_tcp_trace.obj": {
+    "bytes": 10513,
+    "sha256": "dcbeaa6e71bd90da81aed7b3f93fe6cb1be072f55c2be88191adfb7a84064258"
+  },
+  "full_servo/bent_60deg/simulation/summary.json": {
+    "bytes": 227,
+    "sha256": "1f68dc2eb7a0cd40aef93ce76e610fffcd1e0b1d03f463395bb624174e527124"
+  },
+  "full_servo/bent_60deg/surface_scan_curve.obj": {
+    "bytes": 10523,
+    "sha256": "fb6ce7295faf561d94835920ae50e5ecf5eb1de92f2e8486bac596d2f51cd405"
+  },
+  "full_servo/bent_60deg/trajectory_replay.npz": {
+    "bytes": 44110,
+    "sha256": "7b5021e9cbd0693f31705aefb94a04bd73355ac176b7195ca5bdcfe116cbccf6"
+  },
+  "full_servo/comparison_metrics.json": {
+    "bytes": 16470,
+    "sha256": "439affbe1bdb85a26c9f92c7e8e2750355be3856fc5348e531396195d21c8cf0"
+  },
+  "full_servo/dmp/closed/simulation/contact_replay.npz": {
+    "bytes": 9769,
+    "sha256": "bc63a75b7813b868e716b546eb8dc5f0d3ce80c38ceb8c5ea58c47065b10adb2"
+  },
+  "full_servo/dmp/closed/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "full_servo/dmp/closed/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "817e0169a3fa53a2c116cc5f33697d46295a3166b7b69b68511ea36bb7ab8598"
+  },
+  "full_servo/dmp/closed/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "5a56253d949fca7a670f5a8f04de250ba57f3677be51d90ce45715b7ed0006a9"
+  },
+  "full_servo/dmp/open_k0/simulation/contact_replay.npz": {
+    "bytes": 9732,
+    "sha256": "9dc166996a045870d55cc3655e45bac8ceca34eee25bbc4b94e189bfff88ef0f"
+  },
+  "full_servo/dmp/open_k0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a765f27f7b222fe3c364e1ec1a005f7d9fe6b15835771d4f235217a033e22c81"
+  },
+  "full_servo/dmp/open_k0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "cc5dd4eee4cdd9acb0c40b9c77be4e36f911a314d8d705795895cb5249006fa1"
+  },
+  "full_servo/dmp/open_k0/simulation/summary.json": {
+    "bytes": 229,
+    "sha256": "73522d8295c04ce18f6acf3c33dfef46413446317aeb843554eb41fad629a2ad"
+  },
+  "full_servo/kmp/closed/simulation/contact_replay.npz": {
+    "bytes": 9777,
+    "sha256": "f77a233eb23ac1c7bd0e46fbbe9e2755ea970a4670a4916fd5faa7e799d23820"
+  },
+  "full_servo/kmp/closed/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "full_servo/kmp/closed/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "9a148f36ba0d89e740a4f2506e245971a9202595c7201c940fad722027daaf5f"
+  },
+  "full_servo/kmp/closed/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "96056b85c562e883abe547f4a4d2d91bc1f501ad43eaa82c99f0a4765fb3e27a"
+  },
+  "full_servo/kmp/open_k0/simulation/contact_replay.npz": {
+    "bytes": 9704,
+    "sha256": "4696ac0591f8352e49262beac19000ef00dd1344bba420c25dbbf91c842ebd71"
+  },
+  "full_servo/kmp/open_k0/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "a4423e62775f2615a01ddfbc47343b3129d8e1e84649590da67d467c67c201ef"
+  },
+  "full_servo/kmp/open_k0/simulation/probe_tcp_trace.obj": {
+    "bytes": 6040,
+    "sha256": "6af82b28a3cf3c17796407d0674c0663f945a7a3615e3fab17cd839bdd8d8553"
+  },
+  "full_servo/kmp/open_k0/simulation/summary.json": {
+    "bytes": 230,
+    "sha256": "9e96c6f17960dca5bba83377b89bf9aa8acb4af5d37a206c8f2e6a249c25117b"
+  },
+  "full_servo/prebake/LEG_VESSEL_CHAIN_scan_trunk.obj": {
+    "bytes": 10517,
+    "sha256": "da1c618ad3b28892e5095dbff75cb00f9d370c4b819b51c5977a5fcf0bcc9f61"
+  },
+  "full_servo/prebake/R_COM_FEM_V_surface.obj": {
+    "bytes": 855,
+    "sha256": "2f27d6aa883a23dab4ed7474c9af28be170371e77c940110faf45ab2ae2b96f5"
+  },
+  "full_servo/prebake/R_COM_FEM_V_truth.obj": {
+    "bytes": 853,
+    "sha256": "055a11f0e19af0ca5773233d213d2c846b783dae930b32cd463bf6df7f24d8ad"
+  },
+  "full_servo/prebake/R_POPV_surface.obj": {
+    "bytes": 912,
+    "sha256": "6eef4ce9b3d76fd3d64c85de03bf9723e748c05f687506995420b7b865f89883"
+  },
+  "full_servo/prebake/R_POPV_truth.obj": {
+    "bytes": 910,
+    "sha256": "132065f1541cf94402aa731bbf2fe47b3f879e36ec388e701831220e8527fc36"
+  },
+  "full_servo/prebake/R_POST_TIB_V_surface.obj": {
+    "bytes": 5083,
+    "sha256": "6b6e913fd38220404b83b21b897bebd0d0cea66be3a773dddee0871cf832560f"
+  },
+  "full_servo/prebake/R_POST_TIB_V_truth.obj": {
+    "bytes": 5081,
+    "sha256": "71c2b74b03374d08316009504900d8928ffd6cfe28a198862ad740072305a8e2"
+  },
+  "full_servo/prebake/R_SUPFEMV_surface.obj": {
+    "bytes": 3699,
+    "sha256": "358cfe293bfe6c442d7228547c6a71a4143a584d27ffb0fbfc3ff50f28a89f54"
+  },
+  "full_servo/prebake/R_SUPFEMV_truth.obj": {
+    "bytes": 3712,
+    "sha256": "8922f545e527619d997c2a02dc0303250d6bf872d7735c55dd0626986167df4b"
+  },
+  "full_servo/prebake/right_thigh_patch_and_vessels.npz": {
+    "bytes": 158276,
+    "sha256": "02ef26d9daf561328958af37417736b24b5a11e476717d38ffb96b19d6d62dc6"
+  },
+  "full_servo/prebake/summary.json": {
+    "bytes": 6467,
+    "sha256": "1f1f1ee7f37fca580546498ff04c0b013cc996e02adf40a86338dfeffda53a30"
+  },
+  "full_servo/prior_0deg/simulation/contact_replay.npz": {
+    "bytes": 15744,
+    "sha256": "da9f79a8a72fce4a1ddbcd37cdb843d7939930c27ecc327de9902b7388264b42"
+  },
+  "full_servo/prior_0deg/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "5a8031d419f96a1af3b06e01a8f68ec4b6bbb3cbd1b2237f6f84195356a65a64"
+  },
+  "full_servo/prior_0deg/simulation/probe_tcp_trace.obj": {
+    "bytes": 10514,
+    "sha256": "19d4bcb0760e7fd9f203198b30eeba774fc2566bc32eb30f37c688c4d0015df9"
+  },
+  "full_servo/prior_0deg/simulation/summary.json": {
+    "bytes": 225,
+    "sha256": "e5ec5087893e401bff7d2410d1bed00a9b92ec3f6f1b9063dadd2648bbf00e52"
+  },
+  "full_servo/prior_0deg/surface_scan_curve.obj": {
+    "bytes": 10524,
+    "sha256": "d7847eda684642cac25c2fa9ceb18b8d3a82bbc835704b59bcb22288be45b253"
+  },
+  "full_servo/prior_0deg/trajectory_replay.npz": {
+    "bytes": 44050,
+    "sha256": "416ca6432941f94c5fb274ae92d3c1f045d802c0aef4d2ca547a8a8b705175df"
+  },
+  "full_servo/prior_30deg/simulation/contact_replay.npz": {
+    "bytes": 15836,
+    "sha256": "8af82713ece9dc1203b6cb7804512d480be92fb38fbf109b0144b210b65fd768"
+  },
+  "full_servo/prior_30deg/simulation/probe_box_with_tcp.obj": {
+    "bytes": 537,
+    "sha256": "b1d8fc600229832515214a8555b93fec59e415168c273f5ed8cc527458bbd929"
+  },
+  "full_servo/prior_30deg/simulation/probe_tcp_trace.obj": {
+    "bytes": 10513,
+    "sha256": "5da6eae3fe383940d060d340eddf49bae9e02dcfe0d65481b70bd2331755fd2b"
+  },
+  "full_servo/prior_30deg/simulation/summary.json": {
+    "bytes": 226,
+    "sha256": "c16706fcc82c8222dbcd79577961ab96fffc6b83d166045fc34ae9fd60d2280f"
+  },
+  "full_servo/prior_30deg/surface_scan_curve.obj": {
+    "bytes": 10524,
+    "sha256": "d9900023a672aa9db5a76cea95062cdbb0f785ebe9445cc733473eb2b3e1c481"
+  },
+  "full_servo/prior_30deg/trajectory_replay.npz": {
+    "bytes": 44038,
+    "sha256": "40f2002d36bd8db78cd3cd19a878f7831a3b20a334f095452fa586846838969e"
+  },
+  "full_servo/visualization/closed_loop_servo/closed_loop_servo_dmp_bent60.png": {
+    "bytes": 1475671,
+    "sha256": "ecdb6f8a15ed0649ba84d39d065acc405a950d75751d2ad3f9453319b19c9644"
+  },
+  "full_servo/visualization/closed_loop_servo/closed_loop_servo_kmp_bent60.png": {
+    "bytes": 1439603,
+    "sha256": "aba9635c6d39e4db8a6e6611721b2a4b9acb06cd349e1ded6160ab802a60c6e2"
+  },
+  "full_servo/visualization/dmp_reproduction.png": {
+    "bytes": 170125,
+    "sha256": "c085859e802c0d1f3d6a5b68a0483585885254e366aa8b1bfc3a11007d632320"
+  },
+  "full_servo/visualization/dmp_vs_kmp_bars.png": {
+    "bytes": 82004,
+    "sha256": "c5fc5576da8dc043b7bc911353dc853a422b4c469e3cbcad11417af3fc04213c"
+  },
+  "full_servo/visualization/dmp_vs_kmp_overlay.png": {
+    "bytes": 675687,
+    "sha256": "a1ed72238fad6b25857e4846adf7fa08e98b1491aaf9548ffafd6e4e3cf5f6be"
+  },
+  "full_servo/visualization/open_loop/bent_60deg_pose_preview.png": {
+    "bytes": 222384,
+    "sha256": "cde2d94d3a0428193dded145687317b8a591744cf1f32a996d4bd3871ebb67c7"
+  },
+  "full_servo/visualization/open_loop/prior_0deg_pose_preview.png": {
+    "bytes": 198527,
+    "sha256": "0acde56bd9aecd4edb086c507e51fb437743523750ff7c5fd61b92af9736f27d"
+  },
+  "full_servo/visualization/open_loop/prior_30deg_pose_preview.png": {
+    "bytes": 227316,
+    "sha256": "c9f345c4739b4d406e022a3894c272dfc2a21e391de29b3a9af1cd74d669bd7e"
+  },
+  "logs/final_output_checks.txt": {
+    "bytes": 326,
+    "sha256": "a26e949260f45a0d9d39504ee5182a38d29e0111943fcec1130e4096ad0d0622"
+  },
+  "logs/final_validation.log": {
+    "bytes": 39104,
+    "sha256": "ba9bc347e68bb53fdcbc5635c4110cf78938b07d3ffb24a13ee131459acdafd6"
+  },
+  "logs/full_servo.log": {
+    "bytes": 1028,
+    "sha256": "294fe65bf2c14f8e585b55c295840a93ae935b8419dbbc46c0a4c66d05987add"
+  },
+  "logs/full_servo_recovered.log": {
+    "bytes": 16993,
+    "sha256": "89c239edb00e3e5e55c62ae0a1b523c3ed0d25b9e408b9926ac5a169e0d70d78"
+  },
+  "logs/primary_production_stock_failure.log": {
+    "bytes": 595,
+    "sha256": "2d8d5e7eccf58fcbea836efa9355df0a346c8e5dcc40e39943b42535b01a3a39"
+  },
+  "logs/primitive_geometry_final.log": {
+    "bytes": 27349,
+    "sha256": "68a8839923b54351bb0fd86e271e5f61b8aa9c9d1c2cee0f10a8203aa896c1e8"
+  },
+  "logs/servo_rerun.log": {
+    "bytes": 23802,
+    "sha256": "e0bffe7e68fc14fc88f4b08ce757b0521f9d73a8508ee0f3eb0401c7a761290b"
+  },
+  "logs/servo_samples_final.log": {
+    "bytes": 39049,
+    "sha256": "e6dd5ef7a4e6fcafb61cf7951b583fb91a853d35c920505338f489f5479440e4"
+  },
+  "logs/source_unit_tests.log": {
+    "bytes": 2443,
+    "sha256": "9c4d62d0b23d5cc1f18b79421f51e41ab6e77df66fa025bf4947c8b6edfc901f"
+  },
+  "logs/validation.log": {
+    "bytes": 5688,
+    "sha256": "99ce75b132cdfc22b3168f386546a74e69bf652d06a36cf107b294f35c3de8ce"
+  },
+  "metrics.json": {
+    "bytes": 108288,
+    "sha256": "e61e7549f9dd6f5717b8a7e053fcd65871ed081547c677bfe3bc29337f9019ef"
+  },
+  "production_geometry_samples.npz": {
+    "bytes": 15625,
+    "sha256": "bdfa25c9d0de7653588a8e234bd687d9841c3a67983c768d7c857af4de048dcb"
+  },
+  "run_motion_validation.py": {
+    "bytes": 22446,
+    "sha256": "358a0a71d83c74683f93b4d01a049df52b49b35366d07450c528f41c8adb2e86"
+  },
+  "servo_metrics.csv": {
+    "bytes": 5085,
+    "sha256": "b2cc088496a6a58b8ce3b9825b34d8b9573714e40c0e72488b635d452601329b"
+  }
+}

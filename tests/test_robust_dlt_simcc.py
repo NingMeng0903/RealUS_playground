@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from projects.genesis_ue_sync.multiview_realtime.triangulation import dlt as dlt_module
 from projects.genesis_ue_sync.multiview_realtime.triangulation.dlt import (
     TriangulationConfig,
     triangulate_multiview,
@@ -88,6 +89,45 @@ def test_consistent_four_view_distal_does_not_collapse_to_exact_dlt_pair() -> No
     assert detail["status"] == "observed_high"
 
 
+def test_refit_cache_preserves_all_hypotheses_and_reuses_duplicate_geometry(
+    monkeypatch,
+) -> None:
+    projections = _cameras()
+    expected = np.asarray([0.2, 0.3, 5.0])
+    image_points = _project(expected, projections)
+    keypoints = np.full((4, 25, 3), np.nan, dtype=np.float32)
+    keypoints[..., 2] = 0.0
+    keypoints[:, 21, :2] = image_points
+    keypoints[:, 21, 2] = 0.95
+
+    refit_calls = 0
+    original = dlt_module._triangulate_linear
+
+    def counting_triangulate(*args, **kwargs):
+        nonlocal refit_calls
+        refit_calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(dlt_module, "_triangulate_linear", counting_triangulate)
+    result, diagnostics = triangulate_multiview(
+        keypoints,
+        projections,
+        TriangulationConfig(confidence_threshold=0.2, two_view_min_ray_angle_deg=1.0),
+    )
+
+    np.testing.assert_allclose(result[21, :3], expected, atol=1e-4)
+    detail = diagnostics["joint_details"][21]
+    # Four cameras and one candidate mode produce 6 seed fits plus 11 unique
+    # pair/triple/quad refits.  The uncached implementation refits the same
+    # subsets for each seed (30 SVDs total); every diagnostic hypothesis must
+    # still remain present after the cache is used.
+    assert refit_calls == 17
+    assert len(detail["candidate_hypotheses"]) == 24
+    assert [h["hypothesis_id"] for h in detail["candidate_hypotheses"]] == list(range(24))
+    assert detail["selected_hypothesis_id"] == 3
+    assert all("rejection_reason" in h for h in detail["candidate_hypotheses"])
+
+
 def test_core_needs_three_views_but_hand_schema_allows_two() -> None:
     projections = _cameras()[:2]
     expected = np.asarray([0.1, -0.2, 4.0])
@@ -136,6 +176,54 @@ def test_core_needs_three_views_but_hand_schema_allows_two() -> None:
     )
     np.testing.assert_allclose(hand_result[0, :3], expected, atol=1e-4)
     assert hand_diagnostics["joint_details"][0]["status"] == "observed_low_two_view"
+
+
+def test_core_weighted_refit_respects_gross_reprojection_gate() -> None:
+    projections = _cameras()[:3]
+    expected = np.asarray([0.1, -0.2, 4.0])
+    image_points = _project(expected, projections)
+    config = TriangulationConfig(
+        confidence_threshold=0.2,
+        dist_max_px=22.0,
+        two_view_min_ray_angle_deg=1.0,
+    )
+
+    clean = np.full((3, 25, 3), np.nan, dtype=np.float32)
+    clean[..., 2] = 0.0
+    clean[:, 0, :2] = image_points
+    clean[:, 0, 2] = 0.9
+    clean_result, clean_diagnostics = triangulate_multiview(
+        clean, projections, config
+    )
+    np.testing.assert_allclose(clean_result[0, :3], expected, atol=1e-4)
+    clean_detail = clean_diagnostics["joint_details"][0]
+    assert clean_detail["status"] == "observed_high"
+    assert clean_detail["max_reprojection_error_px"] <= config.dist_max_px
+
+    # This is a weighted 3-view DLT refit: each seed pair can pull the third
+    # view inside the initial gross candidate set, but the final refit leaves
+    # a 24 px residual in that third view.  A core BODY25 joint requires all
+    # three views, so accepting this refit would publish a geometrically bad
+    # joint despite the 22 px configured gross gate.
+    corrupted = clean.copy()
+    corrupted[2, 0, 0] += 40.0
+    result, diagnostics = triangulate_multiview(corrupted, projections, config)
+    detail = diagnostics["joint_details"][0]
+    assert result[0, 3] == 0.0
+    assert detail["status"] == "missing_no_valid_hypothesis"
+    bad_postfits = [
+        hypothesis
+        for hypothesis in detail["candidate_hypotheses"]
+        if len(hypothesis["used_views"]) >= 3
+        and hypothesis["max_reprojection_error_px"] is not None
+        and hypothesis["max_reprojection_error_px"] > config.dist_max_px
+    ]
+    assert bad_postfits
+    assert all(
+        not hypothesis["geometry_ok"]
+        and hypothesis["rejection_reason"] == "gross_reprojection_outlier"
+        for hypothesis in bad_postfits
+    )
 
 
 def test_single_view_distal_is_missing_and_three_view_distal_uses_precision_gate() -> None:

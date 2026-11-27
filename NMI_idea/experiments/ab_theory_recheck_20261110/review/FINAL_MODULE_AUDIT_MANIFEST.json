@@ -1,0 +1,28 @@
+{
+  "created_utc": "2026-11-10T17:14:46.437836+00:00",
+  "scope": "Bounded independent normalized proposal and corrected synthetic trained-response checks; no formal cohort release, no training or native rerun. DEV summary is owner-reported, not a new independent performance rerun.",
+  "files": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/FINAL_MODULE_AUDIT.txt": "0f0de5108402f0e32885574f06e5036e1af77fb14ca05384c2c51abbbb130ae3",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/FINAL_MODULE_AUDIT_checks.py": "69b11b49eabf625e545413eee167c4ce45950845d7057b0edc01f537620fc811",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/FINAL_MODULE_AUDIT_checks_8e3af88e97a0.json": "61bf780b1c88f0c61673a6a536a8026c61676727cc0f6e9de2f1fde090ff0466",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/FINAL_MODULE_AUDIT_checks_visible_9ecc2979e1aa.json": "6e856b95aa002f74e7a809b4cd0ec7897da2d55a7ed20c2e40018b64f6732b35",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/FINAL_MODULE_AUDIT_manifest_check.json": "978cb3daccc590bcbce228efdf5249434523a9136066a24378d9b12251910040",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/FINAL_MODULE_AUDIT_mh.json": "7128c878f90a4f6425fa2ab68eee6bc4a99ce52a07cb6e1bae1232fddfb60346"
+  },
+  "read_only_inputs": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/informed_proposal.py": "9ecc2979e1aa24d3c05e06f44694dd004b80c07fe4bcb86ced94b1aa54cbf0b8",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/PROPOSAL_PROTOCOL.txt": "b5f8895d5b3c268dbc92b53f9b0619f03e68e5ded530c58d5d39c1b517823a14",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/PROPOSAL_DEV.txt": "95b3593ff5e3511c565c24adb478ab282daf952af5518f6b34e336514be532ae",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/PROTOCOL.txt": "29535155f1485c1cf0b5d974296dcfbe1de0a09b3eb2f8e18d568b537345504a",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/TASK_SCALE_ADDENDUM.txt": "410297167a4274f46c4ea8afa4d85f752725aa4a66c88ae058544fe7d0c458e3",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/run_corrected.py": "8847cf71d435dec087e8039ffaac23e062d549b57d9e3c563c34d805b15effc1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/RESULTS.json": "e25adc3e1d8b87c4e0ac376a1ef9bfd1af07c07152ac08093014aab051a69151",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/REPORT.txt": "e83d091140449d813178cfa0692d5cc34e0e8d989cc6d19d21796df9a97105db",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/MANIFEST.json": "f9ed5b722f1ff080ae2de26f2ea8507e2651657c618ba330e203af81c7c26e4f",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/RAW_RESULTS.npz": "df8e570a5b9507ec1a15da92301baabbf5649e8503ae3b0c9b9ad4e06ff6fb0b",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/weights/probe_local_dyadic_mlp_positive_n2048_seed101.pt": "eebabe07ef7d51227a548e8d997ecb9a178c0b9b3d647a26c40d6ee15fdd21ab",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/geometry_addendum/weights/e3nn_typed_basis_positive_n2048_seed101.pt": "b53dd3bc9cd75f3f56ea37aab353ef66d5642adbf32d3603b28871228311c979",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/response_learning_geometry/run_benchmark.py": "67db72a203310be0a1ef946c2a92db1ed7b1dd637b65fa979e7d61bf86f10bba",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/observation/environment.py": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef"
+  }
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "side": "left",
+    "base_sha256": "085b3abad3aaf83b10f898d7f2f326aa388ca5e090d58f9bdf1cc436e6091537",
+    "butterfly_sha256": "243a5e0a1cc0bc95cd647bf85a1645aa1640b7b188dfab2f2bd2c26b979a99a5",
+    "native_vertex_count": 480,
+    "subdivision_vertices": 29180,
+    "subdivision_faces": 57920,
+    "max_preserved_native_vertex_displacement_m": 0.0,
+    "all_subdivision_vertices_and_face_centers_to_native_triangles": {
+      "count": 87100,
+      "mean_m": 0.0006202914115798427,
+      "p95_m": 0.001569135755085194,
+      "max_m": 0.002572728805206508,
+      "max_xyz": [
+        0.1399061232805252,
+        -0.9337425827980042,
+        0.0035913658794015646
+      ]
+    },
+    "all_native_vertices_and_face_centers_to_subdivision_triangles": {
+      "count": 1385,
+      "mean_m": 0.0005143254927655596,
+      "p95_m": 0.001597295344267747,
+      "max_m": 0.0022684602605863237
+    },
+    "limit": "finite dense vertex/centroid samples, not a certified surface Hausdorff bound; interpolatory subdivision is not exact native triangle geometry"
+  },
+  {
+    "side": "right",
+    "base_sha256": "e9d4d5b4cf1be4b7950ccfcf24c5ff29bac47f679d409d399ebe7288ab3f9c8c",
+    "butterfly_sha256": "a5bb561415a2cc24c28de1ac1edef5619addbb1972f3e88a38ae031b74937da8",
+    "native_vertex_count": 480,
+    "subdivision_vertices": 29264,
+    "subdivision_faces": 58112,
+    "max_preserved_native_vertex_displacement_m": 0.0,
+    "all_subdivision_vertices_and_face_centers_to_native_triangles": {
+      "count": 87376,
+      "mean_m": 0.0006158088578230102,
+      "p95_m": 0.0015635589963156633,
+      "max_m": 0.0025726404634522607,
+      "max_xyz": [
+        -0.13990887999534607,
+        -0.9337440133094788,
+        0.003596970811486244
+      ]
+    },
+    "all_native_vertices_and_face_centers_to_subdivision_triangles": {
+      "count": 1388,
+      "mean_m": 0.0005110979162648966,
+      "p95_m": 0.001601603012102608,
+      "max_m": 0.0022683850082318093
+    },
+    "limit": "finite dense vertex/centroid samples, not a certified surface Hausdorff bound; interpolatory subdivision is not exact native triangle geometry"
+  }
+]

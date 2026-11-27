@@ -1,0 +1,150 @@
+[
+  {
+    "schema": "ultrapoc_motion_qp_path_v1",
+    "provenance": "frozen original no_dird proposal 0",
+    "backend": "native",
+    "tcp_mode": "cached",
+    "speed_m_s": 0.02,
+    "soft_start_ramp_s": 0.4,
+    "settle_s": 2.0,
+    "dt_s": 0.005,
+    "nominal_path_duration_s": 3.892827947091241,
+    "simulated_duration_s": 5.8950000000000005,
+    "n_steps": 1180,
+    "failures": [],
+    "qp1_status_counts": {
+      "solved": 1180
+    },
+    "position_error_mean_m": 0.0227995162328069,
+    "position_error_p95_m": 0.058469609622208076,
+    "position_error_max_m": 0.05929536378850429,
+    "rotation_error_p95_rad": 0.22645162795522203,
+    "endpoint_position_error_m": 0.01051430786719452,
+    "endpoint_rotation_error_rad": 0.04728802471462075,
+    "max_arm_step_rad": 0.003103661289703963,
+    "max_rail_step_m": 0.0002635775126730855,
+    "velocity_max_abs_by_coordinate": [
+      0.05323013523406657,
+      0.07394617176294807,
+      0.2213315871595948,
+      0.041669780320927434,
+      0.6207322579407945,
+      0.1413560232948909,
+      0.5891238064061805,
+      0.127338927914582
+    ],
+    "acceleration_max_abs_by_coordinate": [
+      0.16368369525840004,
+      1.5053896636456732,
+      1.8297267166583628,
+      1.5140165721951593,
+      2.9999948296124677,
+      2.9993920279674193,
+      2.9999862035673925,
+      2.6261761651838884
+    ],
+    "jerk_max_abs_by_coordinate": [
+      19.99590636775489,
+      299.9979135907338,
+      300.0001144624581,
+      299.9995885629194,
+      300.0027404066132,
+      300.00449112093827,
+      300.0367794864467,
+      300.00019367649907
+    ],
+    "velocity_limit_by_coordinate": [
+      0.4,
+      2.5120000000000005,
+      2.5120000000000005,
+      2.5120000000000005,
+      2.5120000000000005,
+      2.5120000000000005,
+      2.5120000000000005,
+      2.5120000000000005
+    ],
+    "acceleration_limit_by_coordinate": [
+      1.6,
+      3.0,
+      3.0,
+      3.0,
+      3.0,
+      3.0,
+      3.0,
+      3.0
+    ],
+    "jerk_limit_by_coordinate": [
+      320.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0,
+      300.0
+    ],
+    "velocity_margin_min": 0.34676986476593347,
+    "acceleration_margin_min": 5.170387532338339e-06,
+    "jerk_margin_min": -0.036779486446675946,
+    "joint_limit_min_margin_by_coordinate": [
+      0.2793724782613689,
+      2.969090423255068,
+      1.4516466801605503,
+      2.872717219791924,
+      1.2837114007067407,
+      3.0374539325150414,
+      1.6204017398366957,
+      4.801640937894303
+    ],
+    "minimum_self_collision_distance_m": 0.03909065734533397,
+    "self_collision_gate_m": 0.01,
+    "self_collision_sampled_at_every_control_tick": true,
+    "self_collision_pairs_per_tick": 35,
+    "qp_hard_residual_max": 9.985356426561123e-07,
+    "task_paused_count": 0,
+    "task_progress_p05": 0.0,
+    "q_exit": [
+      0.33066119426057367,
+      0.07467929377124476,
+      0.7086640220990206,
+      0.23328278020807572,
+      1.0045023992616198,
+      0.06854582454845247,
+      0.4936238703442713,
+      1.3934437720907964
+    ],
+    "pose_exit": [
+      [
+        -0.9434634409143327,
+        -0.325959371910799,
+        0.06022643540512007,
+        0.5720590999691127
+      ],
+      [
+        -0.31923194490602935,
+        0.9424157886569414,
+        0.09971683228838883,
+        0.08731659843747067
+      ],
+      [
+        -0.08926197964197038,
+        0.07485298359874694,
+        -0.9931914869937033,
+        0.23456068103259303
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "wall_seconds": 5.45814576200064,
+    "tick_compute_p50_s": 0.004225552998832427,
+    "tick_compute_p95_s": 0.00442653949958185,
+    "scope": "motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation",
+    "motion_tracking_pass_2mm_2deg": false,
+    "method": "no_dird",
+    "proposal": 0
+  }
+]

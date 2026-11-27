@@ -1,0 +1,62 @@
+{
+  "experiment": "leg_scan_segment_risk_20261126_v16",
+  "parent_commit": "e8837c832c2d6abda2151092c787377b81aed770",
+  "source_sha256": {
+    "physics_v16.py": "02af087f2825bb72b8f35b93b5c222bae0ea018912684389ce98ddd8461a8bb8",
+    "run_v16.py": "6534f17099f2f37c949192c469eeb2f2b2bb99e10505160b9fd0895fcce0f47c",
+    "segment_v16.py": "be8b50976c23b757959b918f022a9f835d2c7c8e7386aae059d58b23d3f8af77",
+    "variants_v16.py": "5643914a6e11106da55fe78fc6024a954a43d91270bbda552258fc9547ba93d1"
+  },
+  "v15_source_sha256": {
+    "control_v15.py": "bfb48cef5e1a6831edd53a2d13d59dd2403ecd51fb3766dc1d52cb30701cde9a",
+    "data_v15.py": "5d18479a09dd55b6e47d71c0394c6eac9d369a90cfb7b198c1806fccc62b833c",
+    "identity_v15.py": "6bbd57d03d8d62591b6563f7ce30bd5609b6a53e479e92a442d5160b40308b83",
+    "reader_fit_v15.py": "c928a32011d4c48668de406c408e1799f89053c53bc278d4480b4d5c540d6cfa",
+    "run_v15.py": "6be7732d2e75ce59269c676fab9998767a725271a772de898c64302bdb1c88f7",
+    "teacher_v15.py": "b5e703b6b2c46b594df9e5606b2cd4fe0747c8076898210983b425b2cc8a725e"
+  },
+  "v15_freeze_sha256": "6f4cea5af8dfe75746fec42fd180b0abbdc54aec6a0f351df73bb3d045f97173",
+  "v15_models": {
+    "reader.json": "b1a3248d6ee06a3784cc23bbac5f46f4b7897e46b3444fc79c79759df0fd7ffc",
+    "student.json": "96656c9e7a0ddab23a6d2a84e14b4af90f82a0b45fb4dd88c8de2379f14540aa",
+    "student.pt": "d90b220ba12db6d81a87041db2ee7237ce384338df2ac50ed4a24eb767ad5ed1"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "test_seeds": {
+    "smoke": 8616260000000000,
+    "development": 8616260100000000,
+    "blind": 8616260200000000,
+    "shear": 8616260300000000
+  },
+  "counts": {
+    "smoke": 6,
+    "development": 18,
+    "blind": 108,
+    "shear": 54
+  },
+  "bands": [
+    null,
+    338160257
+  ],
+  "arms": [
+    "masked_mean",
+    "masked_full",
+    "read_mean",
+    "read_full"
+  ],
+  "segment_residual_scales": [
+    4.0,
+    3.0,
+    0.17364817766693033,
+    0.17364817766693033
+  ],
+  "motion": "Inherited contact chart and clock, local orientation envelope, no added time or distance budget",
+  "alpha": 0.2,
+  "sweep_deg": 4.0,
+  "sweep_pulses": 7,
+  "probe_attitude_deg": 30.0,
+  "angular_rate_deg_s": 35.0,
+  "gates": "Full-segment endpoint Taylor enclosure over finite hypotheses; unresolved mass stays unresolved",
+  "endpoint": "Public fresh target echo AND continuously valid true short-axis condition at assigned material station",
+  "source": "Open3DModel right synthetic named route, independent layout and noise seeds; no Blender"
+}

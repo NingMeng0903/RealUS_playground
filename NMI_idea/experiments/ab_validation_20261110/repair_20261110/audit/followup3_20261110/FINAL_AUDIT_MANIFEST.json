@@ -1,0 +1,93 @@
+{
+  "scope": "Independent offline reference, four saved native traces, same-time FK, strict limits and YAML entry. No native reruns or hardware during audit.",
+  "files": {
+    "PROFILE_INTEGRATION_ADDENDUM.txt": {
+      "bytes": 3154,
+      "sha256": "d19b243ab3ca0a10bed1983d5ed2080bd30d0b5c830e1acecffbcf18dbd27e52"
+    },
+    "SMOOTH_REFERENCE_AUDIT.txt": {
+      "bytes": 7259,
+      "sha256": "d2f8bddfd274a98463b6e3e6750497a2ff21aef6a47c1328a37f17366242be3c"
+    },
+    "check_smooth_traces.py": {
+      "bytes": 11457,
+      "sha256": "c7c5f543fc1a4d1eba45fabb9c7c4dbb8c30e7c8426a64debd2abcb4576d46e0"
+    },
+    "check_spline_reference.py": {
+      "bytes": 6630,
+      "sha256": "26192c857efdae837355df1f28b09e3098263cb06639ef50383a96d920e9ebf7"
+    },
+    "manifest_and_aligned_files_check.json": {
+      "bytes": 2524,
+      "sha256": "cbc802716e0cfd6f2eac104cc7da904e4818895b46b189bf62afb854685918c8"
+    },
+    "profile_factory_boundary_check_initial.json": {
+      "bytes": 462,
+      "sha256": "3d895dd5f67c6afa98b62850736061e7f24138a569b51edaf30da829e69f2d51"
+    },
+    "profile_integration_independent.json": {
+      "bytes": 3432,
+      "sha256": "80f6d1d8936f2f8f75527c741a198c93a89528a4f0d3b6ba7bc9a71ff02f8ed2"
+    },
+    "profile_manifest_at_audit.json": {
+      "bytes": 1003,
+      "sha256": "c579bf1df6ccba74a6e10802790be4e560b857731bd93121361573f293f3ef48"
+    },
+    "profile_manifest_check.json": {
+      "bytes": 1801,
+      "sha256": "d29b6bad48826884a06f01e035bab7e06782fef13e614e9ffa4053a9dc7f9ff4"
+    },
+    "profile_tests.log": {
+      "bytes": 98,
+      "sha256": "3e5a759b196a2b04ac247e4be370da906b3a6c8fb7486e945e65e19d092933be"
+    },
+    "reference_tests.log": {
+      "bytes": 98,
+      "sha256": "0699f27a57117a61856dac022656af0fc9d7e745c5c8f8af3ea444beaf9036c6"
+    },
+    "smooth_jerk_boundary_audit.json": {
+      "bytes": 1848,
+      "sha256": "567ac69d80a9051a72b92059b1961e03241c94e3ddd9f1448e39a3f8803b1349"
+    },
+    "smooth_manifest_at_audit.json": {
+      "bytes": 2944,
+      "sha256": "5859540a7ee818630cd65a64aec346eb4c6c3bea86ddd2f6ffa24a3006ef534a"
+    },
+    "smooth_traces_independent.json": {
+      "bytes": 156455,
+      "sha256": "c0204725b454b862fbcda973342a41675ccdd2f80d48021a76804cb543eaa81c"
+    },
+    "smooth_traces_independent.log": {
+      "bytes": 4456,
+      "sha256": "5de6a9f1ac80d064ab9f572bd5c6e17f202cdeeaaf12b4ae3b4fcc14f9234c46"
+    },
+    "source_snapshot/qp_replay.py": {
+      "bytes": 30047,
+      "sha256": "18f659fcd87a80461d582137dcdaa6c3cc70712ed0ad8ce26582f2f5ad33b36c"
+    },
+    "source_snapshot/run_scan_profile.py": {
+      "bytes": 2824,
+      "sha256": "aeb703aa046d4ae0cd5b85570d0e113ad8da7893c355381328f5c7eada00e553"
+    },
+    "source_snapshot/scan_reference.py": {
+      "bytes": 5163,
+      "sha256": "9dc0f3008673eb25fced09db2129a3548c20e0547779136070ac1e00ea1ed757"
+    },
+    "source_snapshot/scan_replay.py": {
+      "bytes": 2635,
+      "sha256": "2ca8647ec664836f71072097d82d645e0c0a5f5e736e69537b50ecb9cc1c9461"
+    },
+    "source_snapshot/test_scan_replay_profile.py": {
+      "bytes": 2118,
+      "sha256": "87a91b8078e5762fa23e3919bf57ce9dcf69c6f378a999a0af39382039ae6c51"
+    },
+    "spline_reference_independent.json": {
+      "bytes": 6617,
+      "sha256": "d47be6089ee66bc92b1e0956e57e4b0495bd5d9287695008f5aca0bc8f54b45c"
+    },
+    "spline_reference_independent.log": {
+      "bytes": 5124,
+      "sha256": "bb27a024aca147aa5145c0a6e989d98b12ba38577b9b63a5f8fb078e1d9674dd"
+    }
+  }
+}

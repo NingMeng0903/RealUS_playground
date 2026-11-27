@@ -1,0 +1,15 @@
+{
+  "scope": "independent phase2 read-only audit; native anomaly and continuation derivative defect remain blockers",
+  "files_sha256": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/PHASE2_REPORT.txt": "7655f7129e8abb4a327af96f7a145e3feab9a997e25b95d8547782903c58f914",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/PHASE2_PROVENANCE.json": "2a5c72828eecc22dd5a7bcd258e6db0740dfeb15ab69fc38e4c2db0741d46fed",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/check_dird_phase2.py": "6db7fbd36eb3bfd395ed05f3575d87825ea2b346c98f33cf37c6cc7388f06570",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/dird_phase2_checks.json": "8b3089c9f52e9125bc42d2d297f9fad280dfb1d98cc6adaa21d3b1e4872f9996",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/dird_phase2_checks.log": "89d57099c36bf10bd2b65905d323322bd257e0b4e59bc137c3d9d89de89279e5",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/dird_54_regressions.log": "7c7cf61a71e6c5f48574caf429c111701f20bbafb57a64700eb0fb960799ced7",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/phase2_native_subset_inputs.npz": "7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/phase2_native_first_invalid_tick.json": "c0ed0e64b33aeb7f0d8c62d2d93523e3125e719cad8dc59cda8757bf06713abc",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/continuation_derivatives_native.json": "11a2412b74bafe68908dacbdf5871506f16f5f1c1e2baabbc95ee013bb2f8db2",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/continuation_derivatives_python.json": "805110f0d6c8d48eef1994c6161a41cc10d6b7781aae66434237b2f7c977b6e5"
+  }
+}

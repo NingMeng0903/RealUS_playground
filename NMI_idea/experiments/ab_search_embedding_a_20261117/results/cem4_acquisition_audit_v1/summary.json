@@ -1,0 +1,783 @@
+{
+  "source_archive_sha256": "a8022ffbde6a88f076d8c7f11d679d7dac84d1c8033a41550bd474ca94d703c9",
+  "all": {
+    "worlds": 128,
+    "replicas_per_world": 8,
+    "means": {
+      "fixed": {
+        "corrected_complete": 1.0,
+        "first_interval_recaptured": 1.0,
+        "first_block_target_in_first_interval": 0.9169921875,
+        "frames_in_first_interval_during_first_block": 10.0,
+        "expected_target_frames_in_first_interval_during_first_block": 3.065027411767056,
+        "correct_first_interval_witness_from_first_block": 0.623046875,
+        "early_witness_confirmed_later": 0.310546875,
+        "final_wrong": 0.0,
+        "new_identity_mistake": 0.0107421875,
+        "tcp_mm": 35.91849518129909,
+        "turn_degs": 5.943053819844806,
+        "seconds": 6.052734375
+      },
+      "completion_first": {
+        "corrected_complete": 0.9970703125,
+        "first_interval_recaptured": 0.9970703125,
+        "first_block_target_in_first_interval": 0.74609375,
+        "frames_in_first_interval_during_first_block": 9.8203125,
+        "expected_target_frames_in_first_interval_during_first_block": 2.3506253720581474,
+        "correct_first_interval_witness_from_first_block": 0.478515625,
+        "early_witness_confirmed_later": 0.255859375,
+        "final_wrong": 0.0009765625,
+        "new_identity_mistake": 0.009765625,
+        "tcp_mm": 36.781966085925035,
+        "turn_degs": 5.990306351979349,
+        "seconds": 6.21875
+      },
+      "no_gates": {
+        "corrected_complete": 0.9931640625,
+        "first_interval_recaptured": 0.998046875,
+        "first_block_target_in_first_interval": 0.7880859375,
+        "frames_in_first_interval_during_first_block": 9.65625,
+        "expected_target_frames_in_first_interval_during_first_block": 2.2893693634599592,
+        "correct_first_interval_witness_from_first_block": 0.5390625,
+        "early_witness_confirmed_later": 0.2666015625,
+        "final_wrong": 0.0009765625,
+        "new_identity_mistake": 0.0087890625,
+        "tcp_mm": 36.174897675274735,
+        "turn_degs": 6.0593451267161065,
+        "seconds": 6.080078125
+      },
+      "flat": {
+        "corrected_complete": 1.0,
+        "first_interval_recaptured": 1.0,
+        "first_block_target_in_first_interval": 0.89453125,
+        "frames_in_first_interval_during_first_block": 10.0,
+        "expected_target_frames_in_first_interval_during_first_block": 2.574820451997955,
+        "correct_first_interval_witness_from_first_block": 0.5625,
+        "early_witness_confirmed_later": 0.2841796875,
+        "final_wrong": 0.0,
+        "new_identity_mistake": 0.0107421875,
+        "tcp_mm": 35.78220541765271,
+        "turn_degs": 5.934521446644376,
+        "seconds": 6.046875
+      },
+      "no_lateral_endpoint": {
+        "corrected_complete": 0.9345703125,
+        "first_interval_recaptured": 0.9482421875,
+        "first_block_target_in_first_interval": 0.0361328125,
+        "frames_in_first_interval_during_first_block": 10.0,
+        "expected_target_frames_in_first_interval_during_first_block": 0.046435577935776115,
+        "correct_first_interval_witness_from_first_block": 0.0234375,
+        "early_witness_confirmed_later": 0.0107421875,
+        "final_wrong": 0.001953125,
+        "new_identity_mistake": 0.01171875,
+        "tcp_mm": 39.73493681396883,
+        "turn_degs": 6.522910679441588,
+        "seconds": 7.2548828125
+      },
+      "advance_faster": {
+        "corrected_complete": 0.833984375,
+        "first_interval_recaptured": 0.83984375,
+        "first_block_target_in_first_interval": 0.33203125,
+        "frames_in_first_interval_during_first_block": 5.0,
+        "expected_target_frames_in_first_interval_during_first_block": 0.3848365672906748,
+        "correct_first_interval_witness_from_first_block": 0.3271484375,
+        "early_witness_confirmed_later": 0.0732421875,
+        "final_wrong": 0.001953125,
+        "new_identity_mistake": 0.017578125,
+        "tcp_mm": 38.319125969683625,
+        "turn_degs": 7.2720489850503975,
+        "seconds": 6.509765625
+      },
+      "mirror": {
+        "corrected_complete": 0.9296875,
+        "first_interval_recaptured": 0.943359375,
+        "first_block_target_in_first_interval": 0.869140625,
+        "frames_in_first_interval_during_first_block": 10.0,
+        "expected_target_frames_in_first_interval_during_first_block": 2.9967774760663977,
+        "correct_first_interval_witness_from_first_block": 0.6748046875,
+        "early_witness_confirmed_later": 0.3564453125,
+        "final_wrong": 0.0009765625,
+        "new_identity_mistake": 0.0244140625,
+        "tcp_mm": 41.00118762295257,
+        "turn_degs": 6.210014791976296,
+        "seconds": 6.43359375
+      },
+      "wait": {
+        "corrected_complete": 0.8798828125,
+        "first_interval_recaptured": 0.904296875,
+        "first_block_target_in_first_interval": 0.0205078125,
+        "frames_in_first_interval_during_first_block": 10.0,
+        "expected_target_frames_in_first_interval_during_first_block": 0.030564897997494806,
+        "correct_first_interval_witness_from_first_block": 0.0107421875,
+        "early_witness_confirmed_later": 0.0048828125,
+        "final_wrong": 0.00390625,
+        "new_identity_mistake": 0.01171875,
+        "tcp_mm": 36.59128349202355,
+        "turn_degs": 6.430397401408103,
+        "seconds": 7.013671875
+      }
+    },
+    "vs_reference": {
+      "completion_first": {
+        "corrected_complete": {
+          "delta": -0.0029296875,
+          "ci95": [
+            -0.0068359375,
+            0.0
+          ]
+        },
+        "first_interval_recaptured": {
+          "delta": -0.0029296875,
+          "ci95": [
+            -0.0068359375,
+            0.0
+          ]
+        },
+        "first_block_target_in_first_interval": {
+          "delta": -0.1708984375,
+          "ci95": [
+            -0.2275390625,
+            -0.1171875
+          ]
+        },
+        "frames_in_first_interval_during_first_block": {
+          "delta": -0.1796875,
+          "ci95": [
+            -0.328125,
+            -0.0625
+          ]
+        },
+        "expected_target_frames_in_first_interval_during_first_block": {
+          "delta": -0.7144020397089088,
+          "ci95": [
+            -0.9317168333817448,
+            -0.5104195449700453
+          ]
+        },
+        "correct_first_interval_witness_from_first_block": {
+          "delta": -0.14453125,
+          "ci95": [
+            -0.18850097656249998,
+            -0.1015625
+          ]
+        },
+        "early_witness_confirmed_later": {
+          "delta": -0.0546875,
+          "ci95": [
+            -0.0830078125,
+            -0.0302734375
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0009765625,
+          "ci95": [
+            0.0,
+            0.0029296875
+          ]
+        },
+        "new_identity_mistake": {
+          "delta": -0.0009765625,
+          "ci95": [
+            -0.005859375,
+            0.00390625
+          ]
+        },
+        "tcp_mm": {
+          "delta": 0.8634709046259417,
+          "ci95": [
+            0.510524949960365,
+            1.24041815697329
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.047252532134542946,
+          "ci95": [
+            -0.013702937491076471,
+            0.11243781421324783
+          ]
+        },
+        "seconds": {
+          "delta": 0.166015625,
+          "ci95": [
+            0.11328125,
+            0.22265625
+          ]
+        }
+      },
+      "no_gates": {
+        "corrected_complete": {
+          "delta": -0.0068359375,
+          "ci95": [
+            -0.0146484375,
+            -0.0009765625
+          ]
+        },
+        "first_interval_recaptured": {
+          "delta": -0.001953125,
+          "ci95": [
+            -0.0048828125,
+            0.0
+          ]
+        },
+        "first_block_target_in_first_interval": {
+          "delta": -0.12890625,
+          "ci95": [
+            -0.1767578125,
+            -0.0830078125
+          ]
+        },
+        "frames_in_first_interval_during_first_block": {
+          "delta": -0.34375,
+          "ci95": [
+            -0.5390625,
+            -0.1796875
+          ]
+        },
+        "expected_target_frames_in_first_interval_during_first_block": {
+          "delta": -0.775658048307097,
+          "ci95": [
+            -0.9497263892318921,
+            -0.6141815270058292
+          ]
+        },
+        "correct_first_interval_witness_from_first_block": {
+          "delta": -0.083984375,
+          "ci95": [
+            -0.123046875,
+            -0.046875
+          ]
+        },
+        "early_witness_confirmed_later": {
+          "delta": -0.0439453125,
+          "ci95": [
+            -0.0703125,
+            -0.021484375
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0009765625,
+          "ci95": [
+            0.0,
+            0.0029296875
+          ]
+        },
+        "new_identity_mistake": {
+          "delta": -0.001953125,
+          "ci95": [
+            -0.0087890625,
+            0.0048828125
+          ]
+        },
+        "tcp_mm": {
+          "delta": 0.2564024939756422,
+          "ci95": [
+            -0.09106834652314673,
+            0.5970677782210281
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.11629130687130029,
+          "ci95": [
+            0.04197838261855622,
+            0.19919595846991098
+          ]
+        },
+        "seconds": {
+          "delta": 0.02734375,
+          "ci95": [
+            -0.015625,
+            0.0712890625
+          ]
+        }
+      },
+      "flat": {
+        "corrected_complete": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "first_interval_recaptured": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "first_block_target_in_first_interval": {
+          "delta": -0.0224609375,
+          "ci95": [
+            -0.033203125,
+            -0.0126953125
+          ]
+        },
+        "frames_in_first_interval_during_first_block": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "expected_target_frames_in_first_interval_during_first_block": {
+          "delta": -0.4902069597691012,
+          "ci95": [
+            -0.5195876516465636,
+            -0.45900270954689304
+          ]
+        },
+        "correct_first_interval_witness_from_first_block": {
+          "delta": -0.060546875,
+          "ci95": [
+            -0.0771484375,
+            -0.0439453125
+          ]
+        },
+        "early_witness_confirmed_later": {
+          "delta": -0.0263671875,
+          "ci95": [
+            -0.0380859375,
+            -0.015625
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "new_identity_mistake": {
+          "delta": 0.0,
+          "ci95": [
+            -0.0029296875,
+            0.0029296875
+          ]
+        },
+        "tcp_mm": {
+          "delta": -0.13628976364638135,
+          "ci95": [
+            -0.23110759671274783,
+            -0.07659132608090902
+          ]
+        },
+        "turn_degs": {
+          "delta": -0.008532373200430321,
+          "ci95": [
+            -0.025428178161290144,
+            0.0029442407935694054
+          ]
+        },
+        "seconds": {
+          "delta": -0.005859375,
+          "ci95": [
+            -0.017578125,
+            0.001953125
+          ]
+        }
+      },
+      "no_lateral_endpoint": {
+        "corrected_complete": {
+          "delta": -0.0654296875,
+          "ci95": [
+            -0.0888671875,
+            -0.044921875
+          ]
+        },
+        "first_interval_recaptured": {
+          "delta": -0.0517578125,
+          "ci95": [
+            -0.07421875,
+            -0.0322265625
+          ]
+        },
+        "first_block_target_in_first_interval": {
+          "delta": -0.880859375,
+          "ci95": [
+            -0.9072265625,
+            -0.8525390625
+          ]
+        },
+        "frames_in_first_interval_during_first_block": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "expected_target_frames_in_first_interval_during_first_block": {
+          "delta": -3.0185918338312803,
+          "ci95": [
+            -3.2422619952615834,
+            -2.789014461692039
+          ]
+        },
+        "correct_first_interval_witness_from_first_block": {
+          "delta": -0.599609375,
+          "ci95": [
+            -0.6435546875,
+            -0.5537109375
+          ]
+        },
+        "early_witness_confirmed_later": {
+          "delta": -0.2998046875,
+          "ci95": [
+            -0.361328125,
+            -0.2412109375
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.001953125,
+          "ci95": [
+            0.0,
+            0.0048828125
+          ]
+        },
+        "new_identity_mistake": {
+          "delta": 0.0009765625,
+          "ci95": [
+            -0.0068359375,
+            0.0087890625
+          ]
+        },
+        "tcp_mm": {
+          "delta": 3.8164416326697364,
+          "ci95": [
+            3.1627280193546,
+            4.480253934752689
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.5798568595967817,
+          "ci95": [
+            0.4074828519010969,
+            0.7613077049230786
+          ]
+        },
+        "seconds": {
+          "delta": 1.2021484375,
+          "ci95": [
+            1.1416015625,
+            1.26171875
+          ]
+        }
+      },
+      "advance_faster": {
+        "corrected_complete": {
+          "delta": -0.166015625,
+          "ci95": [
+            -0.2216796875,
+            -0.1162109375
+          ]
+        },
+        "first_interval_recaptured": {
+          "delta": -0.16015625,
+          "ci95": [
+            -0.2158203125,
+            -0.1103515625
+          ]
+        },
+        "first_block_target_in_first_interval": {
+          "delta": -0.5849609375,
+          "ci95": [
+            -0.6240234375,
+            -0.544921875
+          ]
+        },
+        "frames_in_first_interval_during_first_block": {
+          "delta": -5.0,
+          "ci95": [
+            -5.0,
+            -5.0
+          ]
+        },
+        "expected_target_frames_in_first_interval_during_first_block": {
+          "delta": -2.6801908444763813,
+          "ci95": [
+            -2.8567884597093633,
+            -2.4947630517772335
+          ]
+        },
+        "correct_first_interval_witness_from_first_block": {
+          "delta": -0.2958984375,
+          "ci95": [
+            -0.3388671875,
+            -0.2529296875
+          ]
+        },
+        "early_witness_confirmed_later": {
+          "delta": -0.2373046875,
+          "ci95": [
+            -0.2900390625,
+            -0.1875
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.001953125,
+          "ci95": [
+            0.0,
+            0.0048828125
+          ]
+        },
+        "new_identity_mistake": {
+          "delta": 0.0068359375,
+          "ci95": [
+            -0.001953125,
+            0.015625
+          ]
+        },
+        "tcp_mm": {
+          "delta": 2.4006307883845324,
+          "ci95": [
+            1.7866159861887396,
+            3.0156180838062476
+          ]
+        },
+        "turn_degs": {
+          "delta": 1.3289951652055914,
+          "ci95": [
+            1.1602768256511575,
+            1.5005459204728087
+          ]
+        },
+        "seconds": {
+          "delta": 0.45703125,
+          "ci95": [
+            0.33203125,
+            0.5859375
+          ]
+        }
+      },
+      "mirror": {
+        "corrected_complete": {
+          "delta": -0.0703125,
+          "ci95": [
+            -0.103515625,
+            -0.0400390625
+          ]
+        },
+        "first_interval_recaptured": {
+          "delta": -0.056640625,
+          "ci95": [
+            -0.0888671875,
+            -0.0283203125
+          ]
+        },
+        "first_block_target_in_first_interval": {
+          "delta": -0.0478515625,
+          "ci95": [
+            -0.10546875,
+            0.009765625
+          ]
+        },
+        "frames_in_first_interval_during_first_block": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "expected_target_frames_in_first_interval_during_first_block": {
+          "delta": -0.06824993570065852,
+          "ci95": [
+            -0.49184153782917994,
+            0.36625350157175385
+          ]
+        },
+        "correct_first_interval_witness_from_first_block": {
+          "delta": 0.0517578125,
+          "ci95": [
+            -0.0263671875,
+            0.130859375
+          ]
+        },
+        "early_witness_confirmed_later": {
+          "delta": 0.0458984375,
+          "ci95": [
+            -0.0068359375,
+            0.0986328125
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.0009765625,
+          "ci95": [
+            0.0,
+            0.0029296875
+          ]
+        },
+        "new_identity_mistake": {
+          "delta": 0.013671875,
+          "ci95": [
+            0.0029296875,
+            0.0263671875
+          ]
+        },
+        "tcp_mm": {
+          "delta": 5.082692441653478,
+          "ci95": [
+            4.198982327800493,
+            6.008285174626259
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.26696097213149006,
+          "ci95": [
+            0.15231125030044962,
+            0.39254287518948644
+          ]
+        },
+        "seconds": {
+          "delta": 0.380859375,
+          "ci95": [
+            0.2773193359375,
+            0.49123535156249964
+          ]
+        }
+      },
+      "wait": {
+        "corrected_complete": {
+          "delta": -0.1201171875,
+          "ci95": [
+            -0.15625,
+            -0.087890625
+          ]
+        },
+        "first_interval_recaptured": {
+          "delta": -0.095703125,
+          "ci95": [
+            -0.1318359375,
+            -0.0634765625
+          ]
+        },
+        "first_block_target_in_first_interval": {
+          "delta": -0.896484375,
+          "ci95": [
+            -0.923828125,
+            -0.8671630859375004
+          ]
+        },
+        "frames_in_first_interval_during_first_block": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "expected_target_frames_in_first_interval_during_first_block": {
+          "delta": -3.0344625137695616,
+          "ci95": [
+            -3.2626097696209144,
+            -2.802048118695833
+          ]
+        },
+        "correct_first_interval_witness_from_first_block": {
+          "delta": -0.6123046875,
+          "ci95": [
+            -0.65625,
+            -0.56640625
+          ]
+        },
+        "early_witness_confirmed_later": {
+          "delta": -0.3056640625,
+          "ci95": [
+            -0.3672119140625,
+            -0.2470703125
+          ]
+        },
+        "final_wrong": {
+          "delta": 0.00390625,
+          "ci95": [
+            0.0009765625,
+            0.0078125
+          ]
+        },
+        "new_identity_mistake": {
+          "delta": 0.0009765625,
+          "ci95": [
+            -0.0068359375,
+            0.0087890625
+          ]
+        },
+        "tcp_mm": {
+          "delta": 0.6727883107244566,
+          "ci95": [
+            0.109673410434839,
+            1.2579258065227947
+          ]
+        },
+        "turn_degs": {
+          "delta": 0.48734358156329716,
+          "ci95": [
+            0.347544004741631,
+            0.6347474281348456
+          ]
+        },
+        "seconds": {
+          "delta": 0.9609375,
+          "ci95": [
+            0.8896484375,
+            1.0322265625
+          ]
+        }
+      }
+    },
+    "counts": {
+      "fixed": {
+        "corrected_complete": 1024,
+        "first_interval_recaptured": 1024,
+        "first_block_target_in_first_interval": 939,
+        "correct_first_interval_witness_from_first_block": 638,
+        "early_witness_confirmed_later": 318
+      },
+      "completion_first": {
+        "corrected_complete": 1021,
+        "first_interval_recaptured": 1021,
+        "first_block_target_in_first_interval": 764,
+        "correct_first_interval_witness_from_first_block": 490,
+        "early_witness_confirmed_later": 262
+      },
+      "no_gates": {
+        "corrected_complete": 1017,
+        "first_interval_recaptured": 1022,
+        "first_block_target_in_first_interval": 807,
+        "correct_first_interval_witness_from_first_block": 552,
+        "early_witness_confirmed_later": 273
+      },
+      "flat": {
+        "corrected_complete": 1024,
+        "first_interval_recaptured": 1024,
+        "first_block_target_in_first_interval": 916,
+        "correct_first_interval_witness_from_first_block": 576,
+        "early_witness_confirmed_later": 291
+      },
+      "no_lateral_endpoint": {
+        "corrected_complete": 957,
+        "first_interval_recaptured": 971,
+        "first_block_target_in_first_interval": 37,
+        "correct_first_interval_witness_from_first_block": 24,
+        "early_witness_confirmed_later": 11
+      },
+      "advance_faster": {
+        "corrected_complete": 854,
+        "first_interval_recaptured": 860,
+        "first_block_target_in_first_interval": 340,
+        "correct_first_interval_witness_from_first_block": 335,
+        "early_witness_confirmed_later": 75
+      },
+      "mirror": {
+        "corrected_complete": 952,
+        "first_interval_recaptured": 966,
+        "first_block_target_in_first_interval": 890,
+        "correct_first_interval_witness_from_first_block": 691,
+        "early_witness_confirmed_later": 365
+      },
+      "wait": {
+        "corrected_complete": 901,
+        "first_interval_recaptured": 926,
+        "first_block_target_in_first_interval": 21,
+        "correct_first_interval_witness_from_first_block": 11,
+        "early_witness_confirmed_later": 5
+      }
+    }
+  }
+}

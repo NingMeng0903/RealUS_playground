@@ -1,0 +1,13 @@
+{
+  "original_16_skin_depth_abs_mean_before": 0.47561705112457275,
+  "original_16_skin_depth_abs_max_before": 0.9543755054473877,
+  "original_16_skin_depth_abs_mean_after": 0.0,
+  "original_16_skin_depth_abs_max_after": 0.0,
+  "original_16_h_theta_abs_change_max": [
+    0.0,
+    0.0
+  ],
+  "before_96_node_depth_error_mean": 0.40349018573760986,
+  "before_96_node_depth_error_max": 0.9262359738349915,
+  "after_explicit_baked_accepted_sampled_node_depth_error_max": 5.797559607283605e-18
+}

@@ -1,0 +1,67 @@
+{
+  "freeze_sha256": "943d038e0c2bed3d88814ca6d00fe2b1a61931ed65b88ae6ee038c0647bf1cb6",
+  "paired_sha256": "9e7f80de9935e874df5ab9871f20c75277c1eb2f95130aaa26b7c99aedabd48c",
+  "layouts": 108,
+  "r5": {
+    "old_evidence_latched": 108,
+    "regions5_key_changed": 29,
+    "updated_r5_wrong_to_right": 3,
+    "updated_r5_right_to_wrong": 5
+  },
+  "arms": {
+    "updated": {
+      "strict": [
+        72,
+        70,
+        66
+      ],
+      "wrong_branch": [
+        24,
+        24,
+        23
+      ]
+    },
+    "latched": {
+      "strict": [
+        73,
+        66,
+        65
+      ],
+      "wrong_branch": [
+        21,
+        26,
+        21
+      ]
+    }
+  },
+  "updated_minus_latched": {
+    "strict": {
+      "actual": [
+        -0.009259259259259259,
+        -0.08333333333333333,
+        0.05555555555555555
+      ],
+      "rescued": 7,
+      "lost": 8,
+      "independent": [
+        0.023148148148148147,
+        -0.004629629629629629,
+        0.05555555555555555
+      ]
+    },
+    "wrong_branch": {
+      "actual": [
+        0.027777777777777776,
+        -0.018518518518518517,
+        0.07407407407407407
+      ],
+      "rescued": 5,
+      "lost": 2,
+      "independent": [
+        0.0,
+        -0.027777777777777776,
+        0.027777777777777776
+      ]
+    }
+  }
+}

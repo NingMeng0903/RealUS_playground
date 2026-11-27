@@ -1,0 +1,58 @@
+OFFLINE PHYSICAL CAPABILITY BRIDGE v1
+
+Python: /media/camp/EXT_DRIVE/envs/genesis/bin/python
+Import: add this directory to sys.path, then `from adapter import CapabilityBridge`
+Create once: bridge = CapabilityBridge(device='cpu')
+Call: bridge.query_path(T_tcp_railbase, rail_m, q_seed, exact=True,
+                        provenance='actual motion module and path identifier')
+Inputs:
+  T_tcp_railbase: finite numpy [W,4,4], W>=1, proper rotations; TCP pose in
+                 rail_base, metres. Supply actual generated motion samples.
+  rail_m: finite numpy [W], raw URDF rail_y, physically [0,.8] m.
+  q_seed: finite numpy [8], departure state [rail_y,j1,j2,j3,j4,j5,j6,j7],
+          first coordinate metres, remaining radians. This locks the SRS branch.
+Optional psi_lower_deg/psi_upper_deg default [-180,180], matching production
+whole-path DP. This differs from the live controller's particular psi policy.
+
+JSON output (all arrays are JSON lists, invalid numerics become null):
+  schema: ab_dird_path_query_v1
+  raw_score_per_waypoint: [W], frozen field's guarded, nonmetric proxy
+  min_raw_score: scalar; proxy_threshold: m_safe=.00244944728910923
+  Calibration fits centered_score=raw_score-zero_bias, so raw acceptance is
+  raw_score>=zero_bias+safety_threshold, NOT raw_score>=safety_threshold.
+  The earlier comparison was corrected in repair_20261110/dird; historical
+  output JSONs retain their original threshold/labels for traceability.
+  proxy_pass: all waypoint scores >= calibrated threshold; NEVER a certificate
+  exact: null if disabled, otherwise:
+    lift_valid: selected production SRS DP returns continuous q path
+    q_ref: [W,8], q_exit:[8] if lift succeeded, psi_rad:[W], branch:integer
+    validated: lift, true URDF limits, FK tolerances, continuity, and sampled
+               full configured self-collision checks all pass
+    continuity_pass: consecutive original q samples INCLUDING q_seed→q_ref[0]
+                     satisfy the same12° arm /.04m rail limits
+    q_seed_to_first_max_joint_delta_rad, q_seed_to_first_rail_delta_m,
+    maximum_joint_step_rad_including_departure,
+    maximum_rail_step_m_including_departure, continuity_failure_reasons
+    min_self_collision_distance_m, self_collision_margin_m,
+    joint_limit_min_margin_by_coordinate:[8], fk_position_max_m,
+    fk_rotation_max_rad, collision_sample_count, collision_pairs_per_sample,
+    rail_travel_including_departure_m,
+    arm_joint_l1_travel_including_departure_rad, reason:string
+  seconds: {proxy, exact, total}; cold model load separately in manifest()
+
+All 35 configured physical robot/probe mesh collision pairs are evaluated at
+every checked state, including q_seed→q_ref[0] and consecutive q interpolation
+with max 1 degree / .005m sampling; this is NOT continuous collision detection.
+The continuity bound is checked separately on the ORIGINAL joint path edges,
+including departure, before interpolation can divide a large jump into small
+collision-check steps. All failed gates set validated=false with a reason.
+The selected SRS lift can fail despite another feasible lift existing. A false
+validated value is not a proof that no motion exists. External obstacles,
+human body, probe contact, torque/dynamics, robot communication and movement
+are excluded. Current live collision configuration uses capsule assets; this
+bridge deliberately matches the checkpoint's explicit mesh asset contract.
+
+CLI input NPZ keys: T_tcp_railbase, rail_m, q_seed
+  python adapter.py --input ACTUAL_PATH.npz --output QUERY.json
+CLI JSON contains manifest and result. --proxy-only disables exact checks.
+nominal_context.json provides the frozen public physical q/FK context.

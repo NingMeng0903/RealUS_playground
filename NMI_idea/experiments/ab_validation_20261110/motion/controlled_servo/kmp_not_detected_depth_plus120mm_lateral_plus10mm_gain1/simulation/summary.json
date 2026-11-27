@@ -1,0 +1,7 @@
+{
+  "frames": 147,
+  "mean_force_n": 3.6461148262023926,
+  "max_force_n": 21.565441131591797,
+  "target_force_n": 5.0,
+  "genesis_line_strategy": "Module C P_cmd/R_cmd -> robot position interface; HFMC is downstream black box"
+}

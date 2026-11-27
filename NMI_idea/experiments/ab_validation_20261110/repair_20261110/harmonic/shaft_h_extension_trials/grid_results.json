@@ -1,0 +1,401 @@
+[
+  {
+    "side": "right",
+    "h_min": 0.1,
+    "h_max": 0.94,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.015234135000355309
+  },
+  {
+    "side": "left",
+    "h_min": 0.1,
+    "h_max": 0.94,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.010020825000538025
+  },
+  {
+    "side": "right",
+    "h_min": 0.1,
+    "h_max": 0.95,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.010096821002662182
+  },
+  {
+    "side": "left",
+    "h_min": 0.1,
+    "h_max": 0.95,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.007840256999770645
+  },
+  {
+    "side": "right",
+    "h_min": 0.1,
+    "h_max": 0.96,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.007671793999179499
+  },
+  {
+    "side": "left",
+    "h_min": 0.1,
+    "h_max": 0.96,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.007749060998321511
+  },
+  {
+    "side": "right",
+    "h_min": 0.1,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.007780924999678973
+  },
+  {
+    "side": "left",
+    "h_min": 0.1,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.10000000",
+    "wall_s": 0.007813107000401942
+  },
+  {
+    "side": "right",
+    "h_min": 0.12,
+    "h_max": 0.94,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 7.326504163080224e-09,
+      "det_max": 2.7852521585357735e-06,
+      "material_J_min": -43741.18357527288,
+      "material_J_max": -108.61612259496623,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.2623590759515536,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.1049254704166553e-06
+    },
+    "wall_s": 1.0418450360011775
+  },
+  {
+    "side": "left",
+    "h_min": 0.12,
+    "h_max": 0.94,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 7.492058755233782e-09,
+      "det_max": 3.2573468813891734e-06,
+      "material_J_min": -42998.420872591174,
+      "material_J_max": -91.56481439040422,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.5851460058217056,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.093093511303008e-06
+    },
+    "wall_s": 1.0541420090012252
+  },
+  {
+    "side": "right",
+    "h_min": 0.12,
+    "h_max": 0.95,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 6.913503717700847e-09,
+      "det_max": 2.819248911252393e-06,
+      "material_J_min": -46628.01880478086,
+      "material_J_max": -108.49973812682033,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.30171861416556706,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.1978625693853397e-06
+    },
+    "wall_s": 1.052659950000816
+  },
+  {
+    "side": "left",
+    "h_min": 0.12,
+    "h_max": 0.95,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.95000000",
+    "wall_s": 0.49661011599891935
+  },
+  {
+    "side": "right",
+    "h_min": 0.12,
+    "h_max": 0.96,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 6.4481031246057925e-09,
+      "det_max": 2.8532617658877176e-06,
+      "material_J_min": -50261.5773364573,
+      "material_J_max": -108.38345504244155,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.4690438799367104,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.152201748000519e-06
+    },
+    "wall_s": 1.0335088479987462
+  },
+  {
+    "side": "left",
+    "h_min": 0.12,
+    "h_max": 0.96,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.96000000",
+    "wall_s": 0.5001924100033648
+  },
+  {
+    "side": "right",
+    "h_min": 0.12,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.96788732",
+    "wall_s": 0.49674584599779337
+  },
+  {
+    "side": "left",
+    "h_min": 0.12,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.95577465",
+    "wall_s": 0.494817956998304
+  },
+  {
+    "side": "right",
+    "h_min": 0.13,
+    "h_max": 0.94,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 7.232693554173691e-09,
+      "det_max": 2.7174620657490356e-06,
+      "material_J_min": -43727.5563992293,
+      "material_J_max": -110.01411199322082,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.27333819589976643,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.1685527431903208e-06
+    },
+    "wall_s": 1.0528873260009277
+  },
+  {
+    "side": "left",
+    "h_min": 0.13,
+    "h_max": 0.94,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 7.394493630217661e-09,
+      "det_max": 3.0516206050946223e-06,
+      "material_J_min": -42965.59695757105,
+      "material_J_max": -99.64331150628585,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.3935880187212469,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.194541678436191e-06
+    },
+    "wall_s": 1.0722829130027094
+  },
+  {
+    "side": "right",
+    "h_min": 0.13,
+    "h_max": 0.95,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 6.830042493934198e-09,
+      "det_max": 2.7509681613323135e-06,
+      "material_J_min": -46589.37697808845,
+      "material_J_max": -109.89840522432267,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.3017826367125217,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.1097298187655952e-06
+    },
+    "wall_s": 1.0395117309999478
+  },
+  {
+    "side": "left",
+    "h_min": 0.13,
+    "h_max": 0.95,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.30323944",
+    "wall_s": 0.11454138399858493
+  },
+  {
+    "side": "right",
+    "h_min": 0.13,
+    "h_max": 0.96,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 6.374438432897848e-09,
+      "det_max": 2.7844742569155863e-06,
+      "material_J_min": -50215.860532575694,
+      "material_J_max": -109.78336685506407,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.46856547804075077,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.1337613300252047e-06
+    },
+    "wall_s": 1.0434978060002322
+  },
+  {
+    "side": "left",
+    "h_min": 0.13,
+    "h_max": 0.96,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.96000000",
+    "wall_s": 0.5056287750012416
+  },
+  {
+    "side": "right",
+    "h_min": 0.13,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.96802817",
+    "wall_s": 0.4964632179980981
+  },
+  {
+    "side": "left",
+    "h_min": 0.13,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.78845070",
+    "wall_s": 0.3918868859982467
+  },
+  {
+    "side": "right",
+    "h_min": 0.14,
+    "h_max": 0.94,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 7.1403654738268586e-09,
+      "det_max": 2.635574959277723e-06,
+      "material_J_min": -43731.81486310838,
+      "material_J_max": -112.13024436148476,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.2746167261010111,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.125290183035787e-06
+    },
+    "wall_s": 1.0502772920008283
+  },
+  {
+    "side": "left",
+    "h_min": 0.14,
+    "h_max": 0.94,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 7.3026193215019805e-09,
+      "det_max": 3.0213411249597505e-06,
+      "material_J_min": -42986.5594361988,
+      "material_J_max": -95.9613103353807,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.3743476027904197,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.073314959108212e-06
+    },
+    "wall_s": 1.055195853998157
+  },
+  {
+    "side": "right",
+    "h_min": 0.14,
+    "h_max": 0.95,
+    "passed": true,
+    "metrics": {
+      "vertices": 23328,
+      "tets": 92016,
+      "det_min": 6.748832181921925e-09,
+      "det_max": 2.668335976938865e-06,
+      "material_J_min": -46535.08079678158,
+      "material_J_max": -112.0173978264952,
+      "nonpositive_tets": 0,
+      "material_fold_tets": 0,
+      "max_curvature_times_radius": 0.30150898349016286,
+      "ray_hit_count_min": 1,
+      "ray_hit_count_max": 1,
+      "harmonic_relative_residual": 2.1562477024546172e-06
+    },
+    "wall_s": 1.0509848530018644
+  },
+  {
+    "side": "left",
+    "h_min": 0.14,
+    "h_max": 0.95,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.77887324",
+    "wall_s": 0.41016285300065647
+  },
+  {
+    "side": "right",
+    "h_min": 0.14,
+    "h_max": 0.96,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.57887324",
+    "wall_s": 0.2830508560000453
+  },
+  {
+    "side": "left",
+    "h_min": 0.14,
+    "h_max": 0.96,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.96000000",
+    "wall_s": 0.510811107000336
+  },
+  {
+    "side": "right",
+    "h_min": 0.14,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.96816901",
+    "wall_s": 0.5006871190016682
+  },
+  {
+    "side": "left",
+    "h_min": 0.14,
+    "h_max": 0.98,
+    "passed": false,
+    "reason": "Open/nonmanifold geometric skin section at h=0.73154930",
+    "wall_s": 0.3642170300008729
+  }
+]

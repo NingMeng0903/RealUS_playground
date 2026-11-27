@@ -1,0 +1,51 @@
+{
+  "study": "Paired geometric vessel acquisition under incorrect detection and persistent loss",
+  "scope": "Independent continuous synthetic curves in the existing local scan patch, static robot endpoint witnesses, actual local ProDMP reference timing, separate native replay of selected motion segments. The observation model is a declared stress model rather than a calibrated acoustic renderer.",
+  "geometry": {
+    "generator": "ab_module_ladder_20261110/observation/environment.py",
+    "public_prior_seed": 721110,
+    "public_prior_count": 96,
+    "development_seed": 721111,
+    "development_objects": 3,
+    "test_seed": 721119,
+    "test_objects": 32,
+    "signed_registration_y_shift_m": 0.008,
+    "signed_curve_slope_shift": 0.10,
+    "shift_sign": "Alternate + and - by private object index. Only renderer and audit receive shifted curves.",
+    "pose_library": "Start (0,0,0). x=0 at y=-.024,-.016,-.008,0,.008,.016,.024 with yaw=-.34,0,.34. Also x=+/-.014 at y=+/-.016 with yaw=+/-.34, and x=0,y=+/-.032,yaw=0. Deduplicate in sorted order. Common 31 public poses.",
+    "contexts": ["prior_only_layout", "prior_only_layout_body_z_minus_0.08m", "prior_only_layout_partial_endpoint_witnesses"],
+    "capability": "Finite static FK, joint limits and configured self-collision at each pose, using the public seed and fixed rail. Future transition cost max(reference_duration, max coordinate displacement/configured vmax) plus .5s observation. Exact native tracking sampled separately.",
+    "capability_amendment_before_test": "Both original geometry-only contexts have 31/31 endpoint witnesses and zero joint timing effects. Retain both as null controls and add the first task-free placement in ordered world-horizontal shifts (distances .08:.01:.40 m; angles 0,45,-45,90,-90,135,-135,180 degrees) with center valid, 12–26 of 31 endpoint witnesses, and both yaw signs and both lateral sides represented. Selection uses only robot and public poses. The original CAPABILITY.json is retained. Formal study consumes CAPABILITY_STRESS.json."
+  },
+  "observation": {
+    "regimes": ["clean", "iid", "bursty"],
+    "hidden_state_clock": "One stationary good/bad Markov state per acquisition block. Common random numbers keyed by independent object, context, ordinal and regime; action changes conditional observation probabilities.",
+    "stationary_bad_fraction_iid_bursty": 0.30,
+    "bursty_P_bad_to_bad": 0.80,
+    "model": "Same finite categorical feature channel for all planners, normalized joint mass of hidden detection source and public category. True target, other vessel, clutter or absent. One block is one evidence unit.",
+    "publication": "Only public encoded feature category, pose and time enter policies. Mode, true source, anatomy and geometric audit are evaluator-only.",
+    "gate": "At each acquisition stop only if the public category is centered, long and high identity score and model conditional probability of actual correct qualified stop is at least .65. Shared by all primary policies.",
+    "diagnostics": ["first simple public-only stop on the same A_task trajectory", "target in slab vs genuine detection vs wrong source", "dropout followed by genuine target reacquisition", "identity-blind label-swap negative control"]
+  },
+  "task": {
+    "max_actions": 6,
+    "deadline_s": 60.0,
+    "observation_s": 0.5,
+    "stop_probability": 0.65,
+    "cost": "Wall planning and Bayesian update plus modeled travel and observation. Correct stop uses total charged time. Incorrect stop and failure count as deadline.",
+    "reference": "ProDMP, constant body frame per context, zero initial and terminal velocities for stop-and-acquire short segments. Optional paired DMP timing ablation on bursty A_task/B_two.",
+    "paired_horizon": "All two-step policies execute their saved continuation at step two when the first step did not stop. B_two and B_no_future_cap select its saved branch using the public outcome. B_fixed commits to one continuation. If a second step is absent or fails the shared current mask or updated deadline, apply the common legal A_task fallback and record it. Replan after step two. This amendment precedes any held-out outcomes."
+  },
+  "methods": ["A_geometry", "A_task", "A_iid", "A_hard", "B_two", "B_fixed", "B_no_future_cap"],
+  "comparisons": {
+    "A_geometry": "Full current posterior; maximize one-step public image utility plus .03 detection probability, shared stop and current feasible candidates.",
+    "A_task": "Full current posterior, matched sensor and exact one-step expected saved time.",
+    "A_iid": "A_task with an IID quality model with the same stationary marginal. Test chiefly against actual bursty data.",
+    "A_hard": "A_task with a single MAP detection source selected during each update. Same public outcome and candidate permissions.",
+    "B_two": "Exact two-step expectation over all categorical observation outcomes, task-risk stopping rule and future static capability.",
+    "B_fixed": "Same two steps and first-step stopping rule, with one continuation committed before seeing the particular first observation. Common exact forecasts aggregate all non-stopping branches for that choice.",
+    "B_no_future_cap": "Only future action feasibility masks and joint-displacement duration are removed from the forecast. Realized actions use the same current capability check."
+  },
+  "statistics": "Report paired correct stop, false stop, 60s restricted time, recovery exposure and recovery outcomes. Bootstrap independent objects, paired across placements and methods. Report oracle candidate coverage as an upper bound separate from any controller. Retain all worlds, resource failures and negative effects.",
+  "interpretation": "Stress coefficients are synthetic. No physical failure rate is inferred. A matched categorical channel and finite model catalogue can still have posterior misfit to independent continuous geometry. B gains require improvement over same-candidate A and fixed continuation."
+}

@@ -1,0 +1,83 @@
+{
+  "proposal_source_sha_before": "9ecc2979e1aa24d3c05e06f44694dd004b80c07fe4bcb86ced94b1aa54cbf0b8",
+  "proposal": {
+    "component_scipy_max_error": 1.4210854715202004e-14,
+    "component_count": 48,
+    "component_points_checked": 6,
+    "normalized_prior_scipy_max_error": 5.684341886080802e-14,
+    "mixture_scipy_max_error": 5.684341886080802e-14,
+    "prior_mixture_support_preserved": true,
+    "outside_prior_depth_zero_without_proposal_clipping": true,
+    "fullhistory_and_importance_passed": true,
+    "allzero_returns_invalid": true,
+    "duplicate_frame_check": {
+      "rejected": true,
+      "error": "duplicate public frame_id: ('independent-density-visible', 0)/0",
+      "counted_once": true
+    },
+    "invalid_mode_check": {
+      "rejected": true,
+      "error": "mode entries must be +/-1",
+      "all_negative_infinity": true
+    }
+  },
+  "response": {
+    "probe_local_dyadic_mlp": {
+      "trained_weight_sha256": "eebabe07ef7d51227a548e8d997ecb9a178c0b9b3d647a26c40d6ee15fdd21ab",
+      "double_fd_fro_errors": [
+        8.078223215282735e-12,
+        3.693138326486678e-12,
+        3.1197711509540095e-12
+      ]
+    },
+    "e3nn_typed_basis": {
+      "trained_weight_sha256": "b53dd3bc9cd75f3f56ea37aab353ef66d5642adbf32d3603b28871228311c979",
+      "double_fd_fro_errors": [
+        7.013848802391298e-12,
+        5.777281624140474e-12,
+        4.823946033913651e-12
+      ]
+    },
+    "task_recount": {
+      "analytic_zero_residual": {
+        "correct_count": 488,
+        "mean_regret_normalized": 0.024825928018304896,
+        "mean_regret_mm": 0.24825928018304896
+      },
+      "e3nn_typed_basis": {
+        "correct_count": 512,
+        "mean_regret_normalized": 0.0001281254743297558,
+        "mean_regret_mm": 0.001281254743297558
+      },
+      "global_fixed_linear": {
+        "correct_count": 512,
+        "mean_regret_normalized": 0.005547879403459694,
+        "mean_regret_mm": 0.05547879403459694
+      },
+      "online_RLS_3probe": {
+        "correct_count": 512,
+        "mean_regret_normalized": 0.00037888636304829167,
+        "mean_regret_mm": 0.0037888636304829167
+      },
+      "probe_local_dyadic_mlp": {
+        "correct_count": 512,
+        "mean_regret_normalized": 0.004147223338935038,
+        "mean_regret_mm": 0.04147223338935038
+      },
+      "world_dyadic_mlp": {
+        "correct_count": 512,
+        "mean_regret_normalized": 0.004278297143383777,
+        "mean_regret_mm": 0.042782971433837774
+      }
+    },
+    "negative_q_exactly_zero": true,
+    "vendor_e3nn_version": "0.6.0",
+    "real_tp_classes": [
+      "e3nn.o3._tensor_product._sub",
+      "e3nn.o3._tensor_product._sub"
+    ]
+  },
+  "scope": "Independent bounded fixtures and trained-weight checks; no training/native/locked720913.",
+  "proposal_source_sha_after": "9ecc2979e1aa24d3c05e06f44694dd004b80c07fe4bcb86ced94b1aa54cbf0b8",
+  "source_unchanged": true
+}

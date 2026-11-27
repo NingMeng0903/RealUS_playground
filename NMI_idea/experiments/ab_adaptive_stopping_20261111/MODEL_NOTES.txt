@@ -1,0 +1,77 @@
+SENSOR_V2 belief/calibration handoff
+====================================
+
+The old reviewed acoustics.py remains unchanged.  This directory adds a
+separate SENSOR_V2 model and training/evaluation utility.
+
+Frozen observation law
+----------------------
+
+The local response is the old target quality relation, with the old geometry
+and Gaussian w prior as the initial support.  A target candidate has the same
+public fields as clutter:
+
+  quality       target quality + N(0,(0.035*sqrt(.15/dwell))^2)
+  center_offset true signed beam-target offset + N(0,(.0005*sqrt(.15/dwell))^2)
+  axis_angle    true signed tilt-tangent error + N(0,(.03*sqrt(.15/dwell))^2)
+
+Clutter has quality N(.60,.12^2), center Uniform[-.022,.022] m, and axis
+Uniform[-.35,.35] rad.  Candidate association is never exposed.  The
+present/lost HMM starts present and transitions .03 present->lost and .70
+lost->present before each capture.  A present supported target detects with
+probability .80; if no target is detected, clutter occurs with probability
+.10; otherwise the packet is missing.
+
+Posterior representation
+-------------------------
+
+belief_model.py uses 512 fixed-seed Sobol geometry particles
+S=(offset,slope,curvature,depth).  Each particle carries present/lost mode
+weights and at most four Gaussian response components per mode.  Target
+candidate branches update Gaussian precision/information and use quality,
+center, and axis likelihoods.  Clutter branches retain response statistics;
+missing packets update only HMM/association weights.  Components above four
+are merged by the minimum symmetric Gaussian KL pair using exact first and
+second moments.  This is a bounded RB approximation, not exact global Bayes.
+
+All public updates are event-ID deduplicated.  A duplicate exact replay is a
+no-op; an ID reused with a different action/packet raises.  The default
+configuration keeps the common Sobol support fixed and reports ESS;
+resampling is disabled unless a separately approved move kernel is supplied.
+No MCMC move is used.
+
+Complete option
+---------------
+
+``public_predict`` also returns the public verifier mass and its hidden-state
+average decomposition ``p_public_accept``, ``p_correct_accept``, and
+``p_false_accept``.  These are probabilities, never target/clutter labels;
+they let a probe branch receive the same instant-accept value as a terminal
+branch without conditioning on private truth.
+
+CompleteOption models one selected window and at most two fresh terminal
+captures.  Each attempt uses the public verifier
+detected AND quality >= .58 AND abs(noisy center) <= 4.5 mm AND abs(noisy
+axis) <= .22 rad.  A public accept ends the option immediately.  Correct
+completion additionally requires true target association, true geometry gate,
+and same-frame target quality >= .58; a clutter or geometrically wrong public
+accept is an early false stop.  Same-pose attempts use exact shared-latent
+first/second quality moments (Owen-T for equal dwell); differing poses use a
+conditional joint-Gaussian GH fallback.  The HMM transitions once before the
+first capture and only on the retry branch.  ``p_public_success_stop`` includes
+both correct and false public acceptance.
+
+Calibration split
+-----------------
+
+train=512 objects seed 721501, calibration=128 seed 721502, test=128 seed
+721503, noise family 721504.  fit_model may use labelled train target/clutter
+and train geometry but never reads the true response coefficient w.  The
+calibration split fits only the monotone Platt map for complete-option raw
+probabilities after replaying common prefixes of lengths 0,1,2,4,6 and both
+terminal options, weighting each object equally across ten records.  The
+JSONL artifact retains object/prefix/window/raw/label/weight/seed/input hash
+for independent refitting.  Test truth is for evaluation only.  The returned
+risk_score is min(raw_complete_p, calibrated_p)
+and the .90 gate is a declared task admission rule, not a rigorous individual
+confidence lower bound.

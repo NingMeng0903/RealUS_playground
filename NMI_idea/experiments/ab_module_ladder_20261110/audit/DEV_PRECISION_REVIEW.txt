@@ -1,0 +1,43 @@
+Independent read-only review of frozen DEV precision results, 2026-11-10
+
+The released comparison remains a sampled-policy experiment. The development
+check demonstrates substantial numerical sensitivity; it does NOT demonstrate
+convergence of the predictive integral or exact value-equivalent compression.
+No settings were changed after this diagnostic, and no formal test result was
+read by this review.
+
+Source: planning/dev_precision/RESULTS.json; reviewed system c9983d1fd606...,
+protocol a1221257b245... match PLANNER_PROTOCOL_REVIEW_ADDENDUM.txt.
+
+Initial DEV state, 16 legal hypotheses:
+- 8, 32 and 64 compact samples choose THREE different physical root actions.
+- Relative to 32, max root-value changes are 5.4285785096 s for 8 samples and
+  2.1314034411 s for 64. More samples are not established as an exact reference.
+- 32 compact versus 32 same_full choose the same action, but its predicted value
+  differs by .9163751468 s; the maximum over all root candidates is .9205224841 s.
+- Measured wall time is 1.8453 s compact versus 15.8203 s same_full; static witness
+  queries are 74 versus 676. These are the producer's single development timing
+  observations, not independently repeated performance estimates.
+
+After the fixed first public block:
+- All four variants choose the same action, but 8/64 compact differ from 32 by
+  2.8607291249 s at the selected action. Action agreement is weaker than value
+  agreement and does not prove the risk estimate has converged.
+- 32 same_full and compact values agree within 4.21e-12 for this state, while
+  wall time is 25.0567 versus .5446 s and witness queries 1069 versus 14.
+  This is useful evidence that the compact forecast can avoid expensive noisy
+  target queries; it is not a uniform closure/sufficiency theorem.
+
+The earlier independent unnormalized-mass enumeration agrees to 7.11e-15 with
+the 32-sample COMPACT computation on the initial state. That verifies arithmetic
+for the SAME finite sampled kernel. It cannot remove the integration sensitivity
+shown above; numerical agreement with one's own sampled model is different from
+agreement with the true continuous predictive expectation.
+
+Implication for final claims: report formal B performance as that of the fixed
+32-sample/compact forecast implementation, including measured online compute.
+Do not label the value exact, the sampling error negligible, the forecast
+representation lossless, or any observed advantage a new POMDP principle. The
+same actual continuous permissions, legal prior and hard execution gate remain
+shared by A/B. This limitation does not reopen the corrected budget-contract
+block or require changes to native control/tiny jerk residuals.

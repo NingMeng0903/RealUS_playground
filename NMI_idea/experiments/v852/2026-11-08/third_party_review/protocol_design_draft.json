@@ -1,0 +1,186 @@
+{
+  "status": "experiment design; not run; pilot ranges and formal test allocation must be frozen before testing",
+  "source": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/ideas/Anatomical_GPS_V8.5.2.tex",
+  "core_question": "Can local same-object joint experience prospectively predict deadline completion of untrained request chains, and predict when existing evidence can still change useful execution?",
+  "initial_task_family": {
+    "training": "individual near SA, distal SA A/B, local probe, actual mode establishment and return, plus necessary same-object local pairs; no complete target-chain terminal labels",
+    "test": [
+      "request distal SA A, then newly requested fresh proximal recheck",
+      "request distal SA A and B, then newly requested fresh proximal recheck"
+    ],
+    "future": "Replace acquire with actual LA after its program contract passes; initial SA experiment makes no LA claim"
+  },
+  "world": {
+    "native_geometry": "existing male SMPL-X + material atlas",
+    "near_factor_U": "predeclared near-segment drift/tendency, observed via multi-frame SA features",
+    "far_factor_V": "predeclared far-segment tangent/offset class; audited from geometry, never assigned by eventual success",
+    "population_correlations": [
+      -0.8,
+      0.0,
+      0.8
+    ],
+    "correlation_note": "Controlled design populations, not patient statistics. Verify complete single-program marginals conditional on standardized entry, not only U/V histograms.",
+    "pilot_perturbation_search_only": {
+      "lateral_offset_mm": [
+        3,
+        6
+      ],
+      "tangent_change_deg": [
+        10,
+        20
+      ],
+      "depth_offset_mm": [
+        2,
+        4
+      ]
+    },
+    "perturbation_constraints": [
+      "smooth material-coordinate centerline variation",
+      "remain inside volume with radius/clearance check",
+      "no speed/skill/success labels assigned from hidden class",
+      "shape and internal factors varied independently",
+      "one fixed anatomy per full sequence"
+    ]
+  },
+  "experiments": [
+    {
+      "id": "A1",
+      "claim": "which local data identify the requested execution consequence",
+      "conditions": [
+        "same-object paired local records",
+        "cross-program identity permutation preserving within-program outcome/time/exit joint rows",
+        "oppositely coupled/independent controlled populations with checked marginals"
+      ],
+      "primary_readouts": [
+        "prospective completion CDF error near transition windows",
+        "partial-identification/model-set interval width",
+        "independent full-chain calibration",
+        "four-cell C_y_m(T) and Gamma(T)"
+      ],
+      "failure": "Pairing adds no recoverable predictive information or model remains wrong on new chains"
+    },
+    {
+      "id": "A2",
+      "claim": "joint local consequences compose to untrained full chains",
+      "conditions": [
+        "local joint model plus persistent object posterior",
+        "complete-history joint predictive model",
+        "outcome/time factorization ablation"
+      ],
+      "primary_readouts": [
+        "completion CDF and failure mass",
+        "actual policy finish rate",
+        "window edge error"
+      ],
+      "failure": "one-step accuracy does not transfer to chain prediction"
+    },
+    {
+      "id": "B",
+      "claim": "same evidence has a predictable timing-dependent execution value",
+      "conditions": [
+        "same packet release at request",
+        "same packet release at fixed pilot-selected delta_1",
+        "same packet release at fixed pilot-selected delta_2"
+      ],
+      "must_hold": [
+        "same capture time and acquisition cost",
+        "same actual start and public history",
+        "same wait/action/recovery permissions",
+        "all current feedback remains equally available",
+        "release queue controls all posterior/cache/derived copies; old packet is never fresh acceptance"
+      ],
+      "primary_readouts": [
+        "predicted versus measured early-late completion difference as function of deadline",
+        "predicted useful release window",
+        "actual mode transitions and recovery time"
+      ],
+      "failure": "predicted separation absent or appears outside predicted deadline region"
+    },
+    {
+      "id": "C",
+      "claim": "old knowledge reduces cost at equal fresh completion obligations",
+      "conditions": [
+        "retain old packet and its derived information",
+        "hide old contents and derived information; retain public physical-state information"
+      ],
+      "primary_readouts": [
+        "post-request fresh acquisition time",
+        "new unique frames",
+        "mode establishments and returns",
+        "same-threshold completion and prediction error",
+        "training interaction budget curve"
+      ],
+      "failure": "cost advantage disappears at matched completion/quality and strong baseline"
+    }
+  ],
+  "baselines": {
+    "strong": [
+      "full-history recurrent joint outcome/time/exit model with identical material features, data, permissions and candidate library",
+      "deadline-aware identify-then-execute with same recovery and fresh obligations"
+    ],
+    "consistency_reference": "same finite model and same robust/common-policy objective may be identical to proposed solver",
+    "mechanism_only": [
+      "cross-program identity shuffle",
+      "outcome/time independence",
+      "hide old contents"
+    ],
+    "separate_system_ablations": [
+      "material atlas vs rigid/keypoint transport with independent same-permission association implementations",
+      "fixed legal realization vs dIRD candidate choice"
+    ]
+  },
+  "common_policy": {
+    "required": true,
+    "implementation": "finite candidate models explaining all local probes; fixed legal history tree library; evaluate A[model,tree], call common_policy_mixture; choose one tree with model-independent RNG and branch only on visible history",
+    "persistent_state": "keep U,V and any persistent nuisance in each object posterior particle; alternatively fix nuisance in first finite experiment; no fresh object resampling per program",
+    "guarantee": "finite model-class guarantee only under its stated assumptions; real dynamics report independent calibration unless abstraction error is controlled"
+  },
+  "data_split": {
+    "unit": "body/anatomy configuration family; all pose/entry/repeats linked",
+    "pilot": "24-32 independent hidden configurations, 2-3 reset runs each, for feasibility/variance only",
+    "learning_curve_config_counts": [
+      16,
+      32,
+      64,
+      128
+    ],
+    "formal_test_n": "fix after pilot against a stated minimum useful effect and cluster variance; do not infer from frame count",
+    "pose_training_deg": [
+      0,
+      30
+    ],
+    "pose_test_deg": [
+      60
+    ],
+    "separate_holdouts": [
+      "new request composition",
+      "new anatomical configuration",
+      "new shape",
+      "new robot entry",
+      "same-object pose-change continuation"
+    ],
+    "note": "old SA from a held-out test object is test-time preparation, not model-fitting data"
+  },
+  "freeze_before_test": [
+    "program/controller versions and candidate permission set",
+    "training and independent calibration data",
+    "feature extraction and ledger visibility",
+    "model parameters and confidence/model set",
+    "request distribution and continuation rule",
+    "deadline grid chosen only using local/pilot time data",
+    "release delays",
+    "policy tree generation and LP execution rule",
+    "fresh and independent image/geometry acceptance",
+    "prospective predictions, intervals and intervention differences plus hashes"
+  ],
+  "current_evidence_limits": [
+    "current pilot lacks B/C execution and main common-policy LP",
+    "current durations are Cartesian surrogate; dIRD retiming is separate",
+    "existing coordinate ablation shares material-derived evidence and does not isolate full transport",
+    "existing pilot is development data and must not be reused as independent calibration/test"
+  ],
+  "randomized_mode_audit": "Measure C_y_m(T) using randomized do(m), including failed establishment; do not estimate four cells from policy-selected successes only.",
+  "shuffle_contract": "Permute cross-program associations within matched program/entry/pose/shape strata. Preserve each complete local outcome/time/exit row and report whether conditional marginals remain matched.",
+  "execution_backend": "Program bridge must explicitly load the new checkpoint with allow_stale=False and use full bent trajectory candidates, then execute from actual joint entry. Existing query_d_star fixed world-Y and direct set_dofs_position paths do not provide this.",
+  "capture_clock": "Distinguish hardware capture from existing host_frame_read_complete timestamp; keep source and receive/release clocks."
+}

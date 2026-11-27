@@ -1,0 +1,37 @@
+{
+  "coarse_pose_count": 31,
+  "dense_pose_count": 305,
+  "common_pose_count": 31,
+  "world_points_array_equal": true,
+  "uniforms_array_equal": true,
+  "regime_ids_array_equal": true,
+  "common_model_likelihood_max_abs": 0.0,
+  "common_model_correct_joint_max_abs": 0.0,
+  "common_model_joint_max_abs": 0.0,
+  "common_motion_time_max_abs": 0.0,
+  "common_free_cost_max_abs": 0.0,
+  "common_uniforms_array_equal": true,
+  "common_audit_target_visible_max_abs": 0.0,
+  "common_audit_target_qualified_max_abs": 0.0,
+  "common_audit_target_center_m_max_abs": 0.0,
+  "common_audit_target_geometric_length_m_max_abs": 0.0,
+  "common_audit_target_out_of_plane_angle_rad_max_abs": 0.0,
+  "capability_contexts": [
+    {
+      "id": "prior_only_layout",
+      "common_available_mask_equal": true,
+      "common_joint_time_max_abs": 0.0,
+      "coarse_initial_q_equal_dense": true,
+      "fixed_rail_equal": true
+    },
+    {
+      "id": "prior_only_layout_partial_endpoint_witnesses",
+      "common_available_mask_equal": true,
+      "common_joint_time_max_abs": 0.0,
+      "coarse_initial_q_equal_dense": true,
+      "fixed_rail_equal": true
+    }
+  ],
+  "all_numeric_common_zero": true,
+  "all_shared_inputs_equal": true
+}

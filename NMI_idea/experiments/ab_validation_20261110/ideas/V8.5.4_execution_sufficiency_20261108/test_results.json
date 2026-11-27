@@ -1,0 +1,7 @@
+{
+  "passed": 146,
+  "seconds": 13.83,
+  "environment": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+  "native_Smplx_and_Genesis_dependencies": true,
+  "source_only_generated_models_excluded": true
+}

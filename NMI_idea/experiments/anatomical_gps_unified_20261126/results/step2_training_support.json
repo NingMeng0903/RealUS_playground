@@ -1,0 +1,1985 @@
+{
+  "axis_1_original_ct_coverage": {
+    "clinical_station_labels_available": false,
+    "scope": "Role co-presence is necessary, not a clinical label; junction-window rows are a topological surrogate.",
+    "sources": {
+      "bodyparts3d_right": {
+        "source_family": "bodyparts3d_open3dmodel",
+        "source_supported_y_range_mm": [
+          -1280.0,
+          -480.0
+        ],
+        "supported_role_rows": {
+          "MAIN_VEIN": 141,
+          "MAIN_ARTERY": 161,
+          "GSV": 159,
+          "DFV": 113,
+          "SSV_TRIB": 92,
+          "DFA": 0
+        },
+        "nysora_role_copresence_rows": {
+          "S1_CFV_CFA": 80,
+          "S2_SFJ_MICKEY": 78,
+          "S3_ART_BIF": 0,
+          "S4_VEN_BIF": 0,
+          "S5_POPLITEAL": 11
+        },
+        "junction_window_role_copresence_rows": {
+          "S1_CFV_CFA": 17,
+          "S2_SFJ_MICKEY": 4,
+          "S3_ART_BIF": 0,
+          "S4_VEN_BIF": 0,
+          "S5_POPLITEAL": 11
+        },
+        "modeled_junctions": {
+          "SFJ": {
+            "native_nodes": [
+              29,
+              59
+            ],
+            "native_labels": [
+              23,
+              27
+            ],
+            "shared_voxel_faces": 59,
+            "vertex_id": 3,
+            "branch_root_h_mm": -490.0,
+            "connector_mm": 3.4096649107913977
+          },
+          "CFV_bif": {
+            "native_nodes": [
+              25,
+              72
+            ],
+            "native_labels": [
+              23,
+              29
+            ],
+            "shared_voxel_faces": 142,
+            "vertex_id": 2,
+            "branch_root_h_mm": -480.0,
+            "connector_mm": 7.566486979800284
+          }
+        },
+        "unlocated_junctions": {
+          "CFA_bif": "source_branch_unsupported"
+        }
+      },
+      "bodyparts3d_left_mirrored": {
+        "source_family": "bodyparts3d_open3dmodel",
+        "source_supported_y_range_mm": [
+          -1280.0,
+          -480.0
+        ],
+        "supported_role_rows": {
+          "MAIN_VEIN": 139,
+          "MAIN_ARTERY": 152,
+          "GSV": 148,
+          "DFV": 108,
+          "SSV_TRIB": 92,
+          "DFA": 0
+        },
+        "nysora_role_copresence_rows": {
+          "S1_CFV_CFA": 80,
+          "S2_SFJ_MICKEY": 78,
+          "S3_ART_BIF": 0,
+          "S4_VEN_BIF": 0,
+          "S5_POPLITEAL": 11
+        },
+        "junction_window_role_copresence_rows": {
+          "S1_CFV_CFA": 17,
+          "S2_SFJ_MICKEY": 4,
+          "S3_ART_BIF": 0,
+          "S4_VEN_BIF": 0,
+          "S5_POPLITEAL": 11
+        },
+        "modeled_junctions": {
+          "SFJ": {
+            "native_nodes": [
+              29,
+              59
+            ],
+            "native_labels": [
+              23,
+              27
+            ],
+            "shared_voxel_faces": 59,
+            "vertex_id": 3,
+            "branch_root_h_mm": -490.0,
+            "connector_mm": 3.3480886936554883
+          },
+          "CFV_bif": {
+            "native_nodes": [
+              25,
+              72
+            ],
+            "native_labels": [
+              23,
+              29
+            ],
+            "shared_voxel_faces": 142,
+            "vertex_id": 2,
+            "branch_root_h_mm": -480.0,
+            "connector_mm": 7.554520491449319
+          }
+        },
+        "unlocated_junctions": {
+          "CFA_bif": "source_branch_unsupported"
+        }
+      },
+      "open3dmodel_right": {
+        "source_family": "bodyparts3d_open3dmodel",
+        "source_supported_y_range_mm": [
+          -1280.0,
+          -480.0
+        ],
+        "supported_role_rows": {
+          "MAIN_VEIN": 156,
+          "MAIN_ARTERY": 160,
+          "GSV": 134,
+          "DFV": 70,
+          "SSV_TRIB": 90,
+          "DFA": 44
+        },
+        "nysora_role_copresence_rows": {
+          "S1_CFV_CFA": 78,
+          "S2_SFJ_MICKEY": 54,
+          "S3_ART_BIF": 44,
+          "S4_VEN_BIF": 36,
+          "S5_POPLITEAL": 11
+        },
+        "junction_window_role_copresence_rows": {
+          "S1_CFV_CFA": 17,
+          "S2_SFJ_MICKEY": 6,
+          "S3_ART_BIF": 4,
+          "S4_VEN_BIF": 4,
+          "S5_POPLITEAL": 11
+        },
+        "modeled_junctions": {
+          "SFJ": {
+            "native_nodes": [
+              29,
+              59
+            ],
+            "native_labels": [
+              23,
+              27
+            ],
+            "shared_voxel_faces": 59,
+            "vertex_id": 4,
+            "branch_root_h_mm": -485.0,
+            "connector_mm": 19.90640878183285
+          },
+          "CFA_bif": {
+            "native_nodes": [
+              9,
+              104
+            ],
+            "native_labels": [
+              21,
+              36
+            ],
+            "shared_voxel_faces": 31,
+            "vertex_id": 5,
+            "branch_root_h_mm": -495.0,
+            "connector_mm": 2.115402459526914
+          },
+          "CFV_bif": {
+            "native_nodes": [
+              25,
+              72
+            ],
+            "native_labels": [
+              23,
+              29
+            ],
+            "shared_voxel_faces": 142,
+            "vertex_id": 6,
+            "branch_root_h_mm": -525.0,
+            "connector_mm": 7.039066502956213
+          }
+        },
+        "unlocated_junctions": {}
+      },
+      "medseg_right": {
+        "source_family": "medseg",
+        "source_supported_y_range_mm": [
+          -560.0,
+          -480.0
+        ],
+        "supported_role_rows": {
+          "MAIN_VEIN": 17,
+          "MAIN_ARTERY": 17,
+          "GSV": 9,
+          "DFV": 7,
+          "SSV_TRIB": 8,
+          "DFA": 9
+        },
+        "nysora_role_copresence_rows": {
+          "S1_CFV_CFA": 17,
+          "S2_SFJ_MICKEY": 9,
+          "S3_ART_BIF": 9,
+          "S4_VEN_BIF": 7,
+          "S5_POPLITEAL": 0
+        },
+        "junction_window_role_copresence_rows": {
+          "S1_CFV_CFA": 17,
+          "S2_SFJ_MICKEY": 3,
+          "S3_ART_BIF": 5,
+          "S4_VEN_BIF": 4,
+          "S5_POPLITEAL": 0
+        },
+        "modeled_junctions": {
+          "SFJ": {
+            "native_nodes": [
+              29,
+              59
+            ],
+            "native_labels": [
+              23,
+              27
+            ],
+            "shared_voxel_faces": 59,
+            "vertex_id": 4,
+            "branch_root_h_mm": -520.0,
+            "connector_mm": 13.774491264881819
+          },
+          "CFA_bif": {
+            "native_nodes": [
+              9,
+              104
+            ],
+            "native_labels": [
+              21,
+              36
+            ],
+            "shared_voxel_faces": 31,
+            "vertex_id": 6,
+            "branch_root_h_mm": -520.0,
+            "connector_mm": 7.889861739566526
+          },
+          "CFV_bif": {
+            "native_nodes": [
+              25,
+              72
+            ],
+            "native_labels": [
+              23,
+              29
+            ],
+            "shared_voxel_faces": 142,
+            "vertex_id": 7,
+            "branch_root_h_mm": -530.0,
+            "connector_mm": 4.885385931814883
+          }
+        },
+        "unlocated_junctions": {}
+      }
+    },
+    "splits": {
+      "LOAO_OPEN3D": {
+        "train_source_ids": [
+          "bodyparts3d_right",
+          "bodyparts3d_left_mirrored",
+          "medseg_right"
+        ],
+        "test_source_ids": [
+          "open3dmodel_right"
+        ],
+        "relationship": "cross-atlas, same atlas family; not an independent anatomy",
+        "supported_stations": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S3_ART_BIF",
+          "S4_VEN_BIF",
+          "S5_POPLITEAL"
+        ],
+        "per_test_source_supported_stations": {
+          "open3dmodel_right": [
+            "S1_CFV_CFA",
+            "S2_SFJ_MICKEY",
+            "S3_ART_BIF",
+            "S4_VEN_BIF",
+            "S5_POPLITEAL"
+          ]
+        }
+      },
+      "LOAO_BODYPARTS": {
+        "train_source_ids": [
+          "open3dmodel_right",
+          "medseg_right"
+        ],
+        "test_source_ids": [
+          "bodyparts3d_right",
+          "bodyparts3d_left_mirrored"
+        ],
+        "relationship": "cross-atlas, same atlas family; not an independent anatomy",
+        "supported_stations": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S5_POPLITEAL"
+        ],
+        "per_test_source_supported_stations": {
+          "bodyparts3d_right": [
+            "S1_CFV_CFA",
+            "S2_SFJ_MICKEY",
+            "S5_POPLITEAL"
+          ],
+          "bodyparts3d_left_mirrored": [
+            "S1_CFV_CFA",
+            "S2_SFJ_MICKEY",
+            "S5_POPLITEAL"
+          ]
+        }
+      },
+      "FAMILY_HELD_OUT_ATLASES": {
+        "train_source_ids": [
+          "medseg_right"
+        ],
+        "test_source_ids": [
+          "bodyparts3d_right",
+          "bodyparts3d_left_mirrored",
+          "open3dmodel_right"
+        ],
+        "relationship": "keeps atlas family together; CT-only training lacks distal support",
+        "supported_stations": [
+          "S1_CFV_CFA",
+          "S2_SFJ_MICKEY",
+          "S3_ART_BIF",
+          "S4_VEN_BIF"
+        ],
+        "per_test_source_supported_stations": {
+          "bodyparts3d_right": [
+            "S1_CFV_CFA",
+            "S2_SFJ_MICKEY"
+          ],
+          "bodyparts3d_left_mirrored": [
+            "S1_CFV_CFA",
+            "S2_SFJ_MICKEY"
+          ],
+          "open3dmodel_right": [
+            "S1_CFV_CFA",
+            "S2_SFJ_MICKEY",
+            "S3_ART_BIF",
+            "S4_VEN_BIF"
+          ]
+        }
+      }
+    }
+  },
+  "axis_2_atlas_registration": {
+    "canonical_mesh_beta0_max_component_difference_mm": 0.00010017764611802704,
+    "legacy_shape_max_component_difference_mm": 47.943396305696524,
+    "legacy_beta": [
+      0.7497693083949906,
+      0.050389516900993706,
+      -0.03001714143996312,
+      0.08189267944603904,
+      -0.0021207984097881723,
+      0.016629353580370956,
+      -0.009940500563490932,
+      -0.0010628271762014151,
+      -0.01275786197769593,
+      0.004657044145225384
+    ],
+    "chart_round_trip_max_error": 2.3314683517128287e-15,
+    "chart_round_trip_world_mm_max_error": 0.0,
+    "analytic_chart_jacobian_max_error": 5.891544354597045e-07,
+    "dworld_dxi_max_error": 5.891544354597045e-07,
+    "dworld_dtilde_xi_max_error": 5.891544354597045e-07,
+    "beta0_pose_jacobian_mm_per_rad_max_error": 1.5451806945065982e-08,
+    "beta0_pose_jacobian_y_range_mm": [
+      -880.0,
+      -475.0
+    ],
+    "legacy_harmonic_shaft_minmax_world_y_mm": [
+      -1209.44775390625,
+      -562.1398315429688
+    ],
+    "legacy_contact_skin_file": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+    "canonical_skin_file": "/media/camp/PEI_T7/SMPLX_Vascular_Probability_Cloud/neutral_smplx_surface_mm.npz",
+    "canonical_skin_sha256": "882b54e9bfefaa6d5329fcb056a81a3750b4b01e4de456f088d39eade337c6ba",
+    "legacy_contact_lower_body_boundary_edges": 474,
+    "canonical_lower_body_boundary_edges": 0,
+    "sources": {
+      "bodyparts3d_right": {
+        "legacy_contact_nominal_geometry": {
+          "checked_points": 1246,
+          "checked_segments": 293,
+          "max_step_mm": 1.5,
+          "skin_unknown": 235,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 97,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "canonical_raw_nominal_geometry": {
+          "checked_points": 1246,
+          "checked_segments": 293,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 97,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "raw_knots_inside_legacy_shaft_y_range": 235,
+        "canonical_nominal_exclusion_knots": [
+          {
+            "knot_index": 215,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -88.0919656564623,
+              -755.0,
+              -4.315069776382538
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 218,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -91.69399189724216,
+              -760.0,
+              -7.531666820401974
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 221,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -94.89210739122956,
+              -765.0,
+              -10.309447791030836
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 224,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -97.72425858030911,
+              -770.0,
+              -12.779084131883193
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 227,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -100.08821600873577,
+              -775.0,
+              -14.886202309578895
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 231,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -88.796174498502,
+              -780.0,
+              -12.09961572123698
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 234,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -92.27962546758327,
+              -785.0,
+              -16.09608718633106
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 257,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -109.77781393680318,
+              -825.0,
+              -29.502852516954107
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 261,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -110.67349667640602,
+              -830.0,
+              -30.761661700181175
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 262,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -103.64478085109572,
+              -830.0,
+              -34.43210514208821
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 265,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -111.6412539044188,
+              -835.0,
+              -32.00476070303607
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 266,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -104.98938858756948,
+              -835.0,
+              -35.28938009131066
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 269,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -112.65111767343429,
+              -840.0,
+              -33.06104001457668
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 270,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -106.40423007235782,
+              -840.0,
+              -35.59386462415977
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 273,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -113.67997632959914,
+              -845.0,
+              -33.63109112530529
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 274,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -107.8600049358016,
+              -845.0,
+              -35.33374181791354
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 277,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -114.66122375140348,
+              -850.0,
+              -33.78135256531408
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 278,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -109.29816578430271,
+              -850.0,
+              -34.50200757107632
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 281,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -115.47277366538034,
+              -855.0,
+              -33.72395279175575
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 282,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -110.43611275685494,
+              -855.0,
+              -33.335583547713696
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 293,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -115.95433957303179,
+              -870.0,
+              -33.460493174604295
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 294,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -111.18385682556408,
+              -870.0,
+              -31.022109477417334
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 297,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -116.26806114672283,
+              -875.0,
+              -33.03427009326041
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 298,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -111.51152392297307,
+              -875.0,
+              -30.37215151648228
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          }
+        ],
+        "nominal_projection_audit": {
+          "n_knots": 301,
+          "n_projected_knots": 46,
+          "median_projection_residual_mm": 8.753533099802397,
+          "max_projection_residual_mm": 41.514697065094694,
+          "projected_knot_indices": [
+            209,
+            212,
+            215,
+            218,
+            221,
+            224,
+            225,
+            227,
+            228,
+            230,
+            231,
+            233,
+            234,
+            236,
+            237,
+            239,
+            240,
+            242,
+            243,
+            245,
+            248,
+            251,
+            254,
+            257,
+            260,
+            261,
+            262,
+            265,
+            266,
+            269,
+            270,
+            272,
+            273,
+            274,
+            277,
+            278,
+            281,
+            282,
+            285,
+            289,
+            290,
+            293,
+            294,
+            297,
+            298,
+            300
+          ],
+          "projection_residual_mm": [
+            1.8979112604241115,
+            5.956027568594672,
+            9.498695382506382,
+            11.141817427850677,
+            11.730845251349576,
+            10.988204670621158,
+            2.219418223125381,
+            8.62015959062127,
+            6.57255974248656,
+            6.40454154154224,
+            8.255127826501985,
+            7.96307155838833,
+            7.70773742488612,
+            6.342461309846371,
+            4.024082966090382,
+            4.738692242030186,
+            3.8692818175092634,
+            3.29353909367392,
+            1.4373665460083012,
+            4.7430155992206195,
+            2.9593938505686728,
+            6.8855041388504485,
+            6.42421773192739,
+            14.276075488334762,
+            1.681307414299817,
+            18.99801504120964,
+            12.075211466746964,
+            20.78591395706773,
+            11.121281427508821,
+            22.833819781203125,
+            13.340501685280698,
+            2.9976053449038065,
+            22.40886521008547,
+            14.918412282924967,
+            22.67220539366663,
+            17.505586728108874,
+            19.871001776743338,
+            16.045883333808575,
+            10.076928323148463,
+            0.3679662170313702,
+            8.886906608983525,
+            31.177444062659426,
+            21.581508942496423,
+            33.711279245045844,
+            41.514697065094694,
+            2.9476316905522104
+          ]
+        },
+        "projected_material_nominal_geometry": {
+          "checked_points": 1535,
+          "checked_segments": 293,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 0,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "source_station_rows": 161
+      },
+      "bodyparts3d_left_mirrored": {
+        "legacy_contact_nominal_geometry": {
+          "checked_points": 1256,
+          "checked_segments": 294,
+          "max_step_mm": 1.5,
+          "skin_unknown": 233,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 122,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "canonical_raw_nominal_geometry": {
+          "checked_points": 1256,
+          "checked_segments": 294,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 122,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "raw_knots_inside_legacy_shaft_y_range": 235,
+        "canonical_nominal_exclusion_knots": [
+          {
+            "knot_index": 209,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -90.79588561137622,
+              -745.0,
+              -0.5834804240470808
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 212,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -95.20067411988023,
+              -750.0,
+              -2.9781718120189398
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 215,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -99.2617825717423,
+              -755.0,
+              -6.375119901301307
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 218,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -103.34439931706852,
+              -760.0,
+              -9.608542227991146
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 219,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -85.52120081739046,
+              -760.0,
+              -1.148247404994887
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 221,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -106.75622296434435,
+              -765.0,
+              -12.300758287708529
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 222,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -87.24126643024516,
+              -765.0,
+              -2.2084087118651716
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 224,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -109.73405386388275,
+              -770.0,
+              -14.675920973201197
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 225,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -91.30193673898677,
+              -770.0,
+              -5.668225826825593
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 228,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -95.83900047338467,
+              -775.0,
+              -9.53011071024055
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 231,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -100.36848601225148,
+              -780.0,
+              -13.561585596037204
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 234,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -104.43233543668951,
+              -785.0,
+              -17.447854283330418
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 257,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -123.24666595491502,
+              -825.0,
+              -29.654872759972385
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 258,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -116.5361992325428,
+              -825.0,
+              -33.34947796853838
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 261,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -124.25096583626757,
+              -830.0,
+              -30.763005017256678
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 262,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -118.00549601379387,
+              -830.0,
+              -34.41737521120974
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 265,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -125.29614576341201,
+              -835.0,
+              -31.857062045055688
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 266,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -119.5622175765971,
+              -835.0,
+              -35.149837763398324
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 269,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -126.36511639199757,
+              -840.0,
+              -32.76499004456809
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 270,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -121.1874212730076,
+              -840.0,
+              -35.321869341990414
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 273,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -127.43421020875024,
+              -845.0,
+              -33.183133602416014
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 274,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -122.86624773156954,
+              -845.0,
+              -34.92110461561266
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 277,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -128.45677344797718,
+              -850.0,
+              -33.17354283087441
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 278,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -124.55001819084066,
+              -850.0,
+              -33.93846839826374
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 281,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -129.27987490497247,
+              -855.0,
+              -32.93525874103374
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 282,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -125.88908743628909,
+              -855.0,
+              -32.55166150997143
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 297,
+            "roles": [
+              "MAIN_VEIN"
+            ],
+            "xyz_mm": [
+              -128.63102636713876,
+              -875.0,
+              -32.281306795232396
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          },
+          {
+            "knot_index": 298,
+            "roles": [
+              "MAIN_ARTERY"
+            ],
+            "xyz_mm": [
+              -125.4188840067829,
+              -875.0,
+              -29.617894896599495
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          }
+        ],
+        "nominal_projection_audit": {
+          "n_knots": 301,
+          "n_projected_knots": 54,
+          "median_projection_residual_mm": 8.725962795755963,
+          "max_projection_residual_mm": 21.028195994592494,
+          "projected_knot_indices": [
+            202,
+            206,
+            209,
+            212,
+            215,
+            216,
+            218,
+            219,
+            221,
+            222,
+            224,
+            225,
+            227,
+            228,
+            230,
+            231,
+            233,
+            234,
+            236,
+            237,
+            240,
+            243,
+            246,
+            248,
+            249,
+            251,
+            252,
+            254,
+            255,
+            257,
+            258,
+            261,
+            262,
+            264,
+            265,
+            266,
+            268,
+            269,
+            270,
+            272,
+            273,
+            274,
+            276,
+            277,
+            278,
+            281,
+            282,
+            285,
+            286,
+            293,
+            294,
+            297,
+            298,
+            300
+          ],
+          "projection_residual_mm": [
+            5.889601646953355,
+            9.131696320437777,
+            12.642565838862364,
+            16.829075193360897,
+            17.36120077680257,
+            1.8701992875980595,
+            15.066677030950448,
+            6.877369809150948,
+            12.308641763700313,
+            8.60218537544133,
+            9.076805959834655,
+            13.160773399859192,
+            5.796711835970874,
+            12.429813026937522,
+            3.1768956335310423,
+            9.899442861324921,
+            2.283728077587883,
+            8.85456114542717,
+            0.5673878893938913,
+            5.157653926238514,
+            2.0487984960637844,
+            3.0960018432371035,
+            0.7579290812583427,
+            0.6758963688057791,
+            2.1790840546202714,
+            3.3957429852710637,
+            3.738941701429408,
+            3.8854799973782286,
+            5.337328805347527,
+            8.849740216070597,
+            10.322385981078117,
+            13.41115921685602,
+            14.991875859481002,
+            8.463609135507554,
+            11.453969882895787,
+            15.809946891033302,
+            5.377546732777635,
+            11.417255618233941,
+            14.462790193759034,
+            5.034954288344084,
+            9.601463509403354,
+            13.641793811498891,
+            2.338182864649721,
+            7.947172897666383,
+            12.793176430311387,
+            6.7110396708093045,
+            11.046842242461668,
+            3.408998722673666,
+            7.123440593450851,
+            16.325406152008526,
+            19.418379342855623,
+            18.66090773756528,
+            21.028195994592494,
+            8.469350211990847
+          ]
+        },
+        "projected_material_nominal_geometry": {
+          "checked_points": 1582,
+          "checked_segments": 294,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 0,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "source_station_rows": 161
+      },
+      "open3dmodel_right": {
+        "legacy_contact_nominal_geometry": {
+          "checked_points": 1249,
+          "checked_segments": 295,
+          "max_step_mm": 1.5,
+          "skin_unknown": 224,
+          "outside_skin": 35,
+          "bone_unknown": 0,
+          "in_excluded_bone": 2,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "canonical_raw_nominal_geometry": {
+          "checked_points": 1249,
+          "checked_segments": 295,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 2,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "raw_knots_inside_legacy_shaft_y_range": 230,
+        "canonical_nominal_exclusion_knots": [
+          {
+            "knot_index": 219,
+            "roles": [
+              "DFA"
+            ],
+            "xyz_mm": [
+              -92.1196900718475,
+              -710.0,
+              -12.112090491715753
+            ],
+            "outside_canonical_skin": false,
+            "in_excluded_bone": true
+          }
+        ],
+        "nominal_projection_audit": {
+          "n_knots": 302,
+          "n_projected_knots": 50,
+          "median_projection_residual_mm": 1.730131947599447,
+          "max_projection_residual_mm": 9.173426116590445,
+          "projected_knot_indices": [
+            176,
+            180,
+            181,
+            185,
+            190,
+            191,
+            195,
+            196,
+            200,
+            201,
+            205,
+            206,
+            210,
+            211,
+            215,
+            219,
+            222,
+            225,
+            228,
+            231,
+            234,
+            237,
+            238,
+            239,
+            240,
+            241,
+            242,
+            243,
+            244,
+            245,
+            246,
+            247,
+            249,
+            251,
+            253,
+            255,
+            257,
+            259,
+            263,
+            265,
+            267,
+            269,
+            271,
+            272,
+            273,
+            274,
+            275,
+            278,
+            299,
+            300
+          ],
+          "projection_residual_mm": [
+            1.3597090634313151,
+            0.2312034479202574,
+            0.748091235013083,
+            0.9072083639259054,
+            2.0152384854473735,
+            1.1232859933158874,
+            0.34139129231613097,
+            2.410452595241457,
+            1.4340684101247625,
+            3.8398997250421933,
+            5.984535041603384,
+            5.390549720832474,
+            5.406672013032699,
+            7.195925182463606,
+            8.779906149637762,
+            9.173426116590445,
+            0.301570681424154,
+            0.5848220555151722,
+            0.8218683854646086,
+            1.0810904240312456,
+            1.2796068297438172,
+            1.3394005501411717,
+            3.4201012599411467,
+            0.34250154222431234,
+            1.2769099248163454,
+            3.2898622119175007,
+            1.2219174806814062,
+            4.0772004594595455,
+            3.0569700941526348,
+            5.338971713474825,
+            0.7444653639987909,
+            5.576120278084635,
+            3.4333891841638264,
+            1.5762273645421307,
+            0.17678924783167943,
+            1.9515382392873335,
+            1.0164353829747508,
+            0.24147872107949708,
+            2.2905883653778023,
+            1.6295501402776043,
+            3.6105901316176747,
+            1.8307137549212897,
+            1.9983499190451492,
+            6.727124699945093,
+            8.320823223309878,
+            3.7623673938407585,
+            4.297758232407087,
+            0.460497358511722,
+            0.7162996180100019,
+            0.13033961129215707
+          ]
+        },
+        "projected_material_nominal_geometry": {
+          "checked_points": 1429,
+          "checked_segments": 295,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 0,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "source_station_rows": 161
+      },
+      "medseg_right": {
+        "legacy_contact_nominal_geometry": {
+          "checked_points": 280,
+          "checked_segments": 63,
+          "max_step_mm": 1.5,
+          "skin_unknown": 199,
+          "outside_skin": 16,
+          "bone_unknown": 0,
+          "in_excluded_bone": 0,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "canonical_raw_nominal_geometry": {
+          "checked_points": 280,
+          "checked_segments": 63,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 7,
+          "bone_unknown": 0,
+          "in_excluded_bone": 0,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "raw_knots_inside_legacy_shaft_y_range": 0,
+        "canonical_nominal_exclusion_knots": [
+          {
+            "knot_index": 59,
+            "roles": [
+              "GSV"
+            ],
+            "xyz_mm": [
+              -21.372392369027963,
+              -555.0,
+              80.63230434942245
+            ],
+            "outside_canonical_skin": true,
+            "in_excluded_bone": false
+          },
+          {
+            "knot_index": 64,
+            "roles": [
+              "GSV"
+            ],
+            "xyz_mm": [
+              -20.373697707732063,
+              -560.0,
+              80.26894669475041
+            ],
+            "outside_canonical_skin": true,
+            "in_excluded_bone": false
+          }
+        ],
+        "nominal_projection_audit": {
+          "n_knots": 67,
+          "n_projected_knots": 3,
+          "median_projection_residual_mm": 8.189949489919504,
+          "max_projection_residual_mm": 11.35086339888052,
+          "projected_knot_indices": [
+            54,
+            59,
+            64
+          ],
+          "projection_residual_mm": [
+            2.9373922898109095,
+            8.189949489919504,
+            11.35086339888052
+          ]
+        },
+        "projected_material_nominal_geometry": {
+          "checked_points": 298,
+          "checked_segments": 63,
+          "max_step_mm": 1.5,
+          "skin_unknown": 0,
+          "outside_skin": 0,
+          "bone_unknown": 0,
+          "in_excluded_bone": 0,
+          "axial_reversals": 0,
+          "unsupported_material_points": 0
+        },
+        "source_station_rows": 17
+      }
+    }
+  },
+  "axis_3_perturbed_sample_yield": {
+    "domain": "thigh_nysora",
+    "seed": 58,
+    "n_proposals": 64,
+    "scope": "Raw Gaussian draws. Same beta=0 checker in both modes; shifts are relative to each mode's zero-latent world centers.",
+    "cartesian_xyz": {
+      "bodyparts3d_right": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 0,
+          "effective_valid_yield": 0.0,
+          "checked_points": 85359,
+          "skin_unknown": 0,
+          "bone_unknown": 1117,
+          "outside_skin": 12726,
+          "in_excluded_bone": 4681,
+          "unsupported_material_points": 0,
+          "axial_reversals": 290,
+          "achieved_euclidean_shift_mm_median_p90": [
+            34.03086846658785,
+            59.62869047355467
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            36.17857766189944,
+            52.31669209268701
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 0,
+          "effective_valid_yield": 0.0,
+          "checked_points": 95317,
+          "skin_unknown": 0,
+          "bone_unknown": 8152,
+          "outside_skin": 29632,
+          "in_excluded_bone": 3866,
+          "unsupported_material_points": 0,
+          "axial_reversals": 735,
+          "achieved_euclidean_shift_mm_median_p90": [
+            63.49505514168704,
+            110.19119232923428
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            66.78740813877711,
+            97.0463924893844
+          ]
+        }
+      },
+      "bodyparts3d_left_mirrored": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 0,
+          "effective_valid_yield": 0.0,
+          "checked_points": 85476,
+          "skin_unknown": 0,
+          "bone_unknown": 721,
+          "outside_skin": 11190,
+          "in_excluded_bone": 4513,
+          "unsupported_material_points": 0,
+          "axial_reversals": 340,
+          "achieved_euclidean_shift_mm_median_p90": [
+            34.47268905194177,
+            57.98089059387615
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            36.3152369759012,
+            51.05402298428781
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 0,
+          "effective_valid_yield": 0.0,
+          "checked_points": 95474,
+          "skin_unknown": 0,
+          "bone_unknown": 5770,
+          "outside_skin": 26993,
+          "in_excluded_bone": 3586,
+          "unsupported_material_points": 0,
+          "axial_reversals": 834,
+          "achieved_euclidean_shift_mm_median_p90": [
+            64.25870006683283,
+            107.45550284033959
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            67.20603498004735,
+            95.69801278660191
+          ]
+        }
+      },
+      "open3dmodel_right": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 0,
+          "effective_valid_yield": 0.0,
+          "checked_points": 85540,
+          "skin_unknown": 0,
+          "bone_unknown": 229,
+          "outside_skin": 9878,
+          "in_excluded_bone": 4055,
+          "unsupported_material_points": 0,
+          "axial_reversals": 375,
+          "achieved_euclidean_shift_mm_median_p90": [
+            34.22665359140443,
+            57.448464775565725
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            36.244658152957854,
+            51.44997855160403
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 0,
+          "effective_valid_yield": 0.0,
+          "checked_points": 96154,
+          "skin_unknown": 0,
+          "bone_unknown": 3573,
+          "outside_skin": 27423,
+          "in_excluded_bone": 3114,
+          "unsupported_material_points": 0,
+          "axial_reversals": 958,
+          "achieved_euclidean_shift_mm_median_p90": [
+            63.55603020603422,
+            106.5956382517317
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            66.98635832806329,
+            96.50208015680748
+          ]
+        }
+      },
+      "medseg_right": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 18,
+          "effective_valid_yield": 0.28125,
+          "checked_points": 19747,
+          "skin_unknown": 0,
+          "bone_unknown": 372,
+          "outside_skin": 3384,
+          "in_excluded_bone": 0,
+          "unsupported_material_points": 0,
+          "axial_reversals": 337,
+          "achieved_euclidean_shift_mm_median_p90": [
+            33.595512608461405,
+            60.45504771171317
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            34.55040015823455,
+            57.42207526906286
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 12,
+          "effective_valid_yield": 0.1875,
+          "checked_points": 24045,
+          "skin_unknown": 0,
+          "bone_unknown": 2952,
+          "outside_skin": 7590,
+          "in_excluded_bone": 35,
+          "unsupported_material_points": 0,
+          "axial_reversals": 803,
+          "achieved_euclidean_shift_mm_median_p90": [
+            62.114243872536846,
+            111.8568174726737
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            63.56308617666412,
+            107.72660806626735
+          ]
+        }
+      }
+    },
+    "material": {
+      "bodyparts3d_right": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 64,
+          "effective_valid_yield": 1.0,
+          "checked_points": 105366,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 0,
+          "unsupported_material_points": 0,
+          "axial_reversals": 294,
+          "achieved_euclidean_shift_mm_median_p90": [
+            27.617740303118996,
+            55.085961595932815
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            30.861400788994338,
+            43.32701312221909
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 64,
+          "effective_valid_yield": 1.0,
+          "checked_points": 114116,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 0,
+          "unsupported_material_points": 0,
+          "axial_reversals": 700,
+          "achieved_euclidean_shift_mm_median_p90": [
+            45.769883934658736,
+            88.77790721161898
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            51.17326390911392,
+            70.04545341861756
+          ]
+        }
+      },
+      "bodyparts3d_left_mirrored": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 63,
+          "effective_valid_yield": 0.984375,
+          "checked_points": 110876,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 2,
+          "unsupported_material_points": 0,
+          "axial_reversals": 334,
+          "achieved_euclidean_shift_mm_median_p90": [
+            26.36623093990432,
+            52.07203660122517
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            30.591452184776692,
+            44.72861979315592
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 62,
+          "effective_valid_yield": 0.96875,
+          "checked_points": 120831,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 2,
+          "unsupported_material_points": 0,
+          "axial_reversals": 755,
+          "achieved_euclidean_shift_mm_median_p90": [
+            43.44018563876901,
+            84.37530332104902
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            49.77665721649629,
+            74.07185876709484
+          ]
+        }
+      },
+      "open3dmodel_right": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 64,
+          "effective_valid_yield": 1.0,
+          "checked_points": 102658,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 0,
+          "unsupported_material_points": 0,
+          "axial_reversals": 378,
+          "achieved_euclidean_shift_mm_median_p90": [
+            25.61955918064058,
+            50.738444608995174
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            30.179271677020424,
+            45.57045757389775
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 64,
+          "effective_valid_yield": 1.0,
+          "checked_points": 113083,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 0,
+          "unsupported_material_points": 0,
+          "axial_reversals": 849,
+          "achieved_euclidean_shift_mm_median_p90": [
+            42.69706625919855,
+            81.34341279708086
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            49.427442013589584,
+            72.17709220697813
+          ]
+        }
+      },
+      "medseg_right": {
+        "ordinary": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 64,
+          "effective_valid_yield": 1.0,
+          "checked_points": 25152,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 0,
+          "unsupported_material_points": 0,
+          "axial_reversals": 326,
+          "achieved_euclidean_shift_mm_median_p90": [
+            33.703073472633776,
+            66.81955519353143
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            35.316573784552666,
+            63.34046782446587
+          ]
+        },
+        "stress": {
+          "n_proposals": 64,
+          "fully_known_and_passing": 64,
+          "effective_valid_yield": 1.0,
+          "checked_points": 29275,
+          "skin_unknown": 0,
+          "bone_unknown": 0,
+          "outside_skin": 0,
+          "in_excluded_bone": 0,
+          "unsupported_material_points": 0,
+          "axial_reversals": 838,
+          "achieved_euclidean_shift_mm_median_p90": [
+            53.45913884223532,
+            100.30510429686501
+          ],
+          "achieved_euclidean_rms_shift_mm_median_p90": [
+            54.61360762149246,
+            91.27116757499736
+          ]
+        }
+      }
+    }
+  },
+  "evidence_gaps": [
+    "no_independent_clinical_station_labels",
+    "ct_fov_proximal_only",
+    "bodyparts3d_lacks_dfa"
+  ],
+  "engineering_preflight": {
+    "passed": true,
+    "zero_holdout_leakage": true,
+    "minimum_fully_known_and_passing": 58,
+    "minimum_median_achieved_shift_mm": {
+      "ordinary": 14.0,
+      "stress": 25.0
+    },
+    "blockers": []
+  }
+}

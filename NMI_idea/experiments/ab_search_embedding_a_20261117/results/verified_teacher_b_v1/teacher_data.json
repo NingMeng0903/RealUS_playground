@@ -1,0 +1,24 @@
+{
+  "scenes": 416,
+  "labeled": 416,
+  "scenes_by_source": {
+    "archived_training": 288,
+    "public_stratum": 80,
+    "new_random": 48
+  },
+  "scenes_by_family": {
+    "connection": 144,
+    "parallel": 272
+  },
+  "scouted_strata": {
+    "coverage_ahead": 40,
+    "past_gap": 40
+  },
+  "tapes_per_candidate": 12,
+  "nominees": 1453,
+  "elapsed_s": 208.43919171400194,
+  "archive_sha256": "1aa8e09f96b0dad10e0693621f83df7c0d711253715e6c2972a2ffaff0871bed",
+  "v1_training_sha256": "95410799d7e9dfc93844302adfac2e9d7362a570bd889cbb95965efdbd28f06d",
+  "library_sha256": "f7b19cd6e4a7a9e0b84fd7381a33f59ac2f4288295e771412c6dcde8720b8444",
+  "prodmp_sha256": "a96a71304fa8e04af9bfae18fe03ac6bc502b5a496e6bf7d15d9ec49f4c54d0e"
+}

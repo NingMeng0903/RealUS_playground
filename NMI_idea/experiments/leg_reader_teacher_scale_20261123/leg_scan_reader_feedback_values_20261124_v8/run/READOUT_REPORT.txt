@@ -1,0 +1,81 @@
+v8 public/oracle readout symmetry diagnostic
+=============================================
+
+Run command
+-----------
+The run used Genesis Python with six spawn workers:
+
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python -u \
+    leg_scan_reader_feedback_values_20261124_v8/readout_v8.py \
+    --out leg_scan_reader_feedback_values_20261124_v8/run --workers 6
+
+The v8 GPU preflight was already passed by the parent experiment. This
+readout factorial is CPU logistic calibration; it does not claim a CUDA
+training update. `readout_protocol.json` records the input hashes and split.
+
+Design
+------
+The development data are the v4 `select_reader` terminal trajectories. Layouts
+are disjoint by ordinal//2 modulo 3: candidate joint fit is fold 0, regional
+winner fit is fold 1, and threshold selection is fold 2. The final panel is
+only the v6 `reader_fresh` terminal panel (160 rows: femoral 64 and
+groin_to_distal_calf 96). The eight variants are public/oracle graph times
+frozen/refit candidate joint times frozen/refit winner. Both graph types use
+the same feature and fitting code. The oracle graph is diagnostic only and
+must not be used at deployment.
+
+`fit_decoder(fit_rows, risk_rows, threshold_rows, old, mode, joint_mode=...,`
+`winner_mode=...)` returns a deployment config. `mode` is `public` or
+`oracle`; rows contain `public`, `states`, `labels`, `layout`, `route`, and
+`fold` (the runner also attaches `old_calibration`). `decode(public, state,
+config, mask=None)` returns one anonymous-candidate score per row, with -1
+for non-selected/abstained rows; it does not access labels or truth.
+
+Matched results
+---------------
+Matched evaluation fixes every case's submission count to the frozen unary
+reader's count. Numbers are `strict/cases`, `wrong_branch cases`, and
+`late correct-region count/late wrong-branch region count` for regions 4--6.
+Paired values are rescue/loss against unary.
+
+  variant                 route                    strict  wrong  late correct/wrong   paired strict
+  public frozen/frozen    femoral                  31/64     0     151/0               0/0
+  public frozen/frozen    groin_to_distal_calf     35/96    32     197/37             0/3 (-3.1 pp)
+  public refit/refit      femoral                  31/64     0     151/0               0/0
+  public refit/refit      groin_to_distal_calf     34/96    32     197/37             0/4 (-4.2 pp)
+  oracle frozen/frozen    femoral                  33/64     0     153/0               2/0 (+3.1 pp)
+  oracle frozen/frozen    groin_to_distal_calf      6/96    25     192/28             0/32 (-33.3 pp)
+  oracle refit/refit      femoral                  33/64     0     155/0               2/0 (+3.1 pp)
+  oracle refit/refit      groin_to_distal_calf     62/96     7     246/8              25/1 (+25.0 pp)
+
+The full eight-variant factorial, region-by-region counts, wrong-delivery
+counts, calibrated results, threshold reports, and layout-level paired
+rescue/loss are in `readout_symmetry_results.json`.
+
+Calibrated (threshold-selected) headline
+-----------------------------------------
+Thresholds are selected only on fold-2 development layouts, with the
+development aggregate constrained to the frozen unary submission count and
+not exceeding its wrong-branch count. On the untouched v6 panel:
+
+  public frozen/frozen    femoral 33/64, whole 26/96, wrong_branch 24
+  public refit/refit      femoral 32/64, whole 27/96, wrong_branch 23
+  oracle frozen/frozen    femoral 38/64, whole  7/96, wrong_branch 25
+  oracle refit/refit      femoral 37/64, whole 70/96, wrong_branch  9
+
+Interpretation and limits
+-------------------------
+Refitting the candidate joint and the winner score together is not a public
+improvement on this archived terminal panel: public refit/refit is 34/96
+matched versus 35/96 for public frozen/frozen, with 32 wrong-branch cases in
+both. In contrast, oracle refit/refit is 62/96 matched versus 6/96 for oracle
+frozen/frozen and reduces wrong-branch cases from 25 to 7. This demonstrates
+that the old candidate delivery score is severely mismatched to the oracle
+graph state; it does not establish deployable public gains. The public and
+oracle graphs remain a necessary diagnostic pair for the next reader/edge
+revision.
+
+All final metrics are terminal and non-causal; no student or teacher action
+policy was retrained here. The v6 panel is an archived holdout, but this is a
+readout re-evaluation rather than a new anatomical acquisition. `gpu_preflight`
+and parent-owned edge artifacts are retained untouched.

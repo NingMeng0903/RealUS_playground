@@ -1,4 +1,4 @@
-"""Acquire synced multiview frames: always FIFO (try_pop_synced), never pop_latest."""
+"""Acquire synchronized multiview groups, with FIFO as the default policy."""
 
 from __future__ import annotations
 
@@ -58,15 +58,25 @@ def wait_pop_next_synced(
     max_frame_span: int | None = 2,
     sync_mode: str | None = None,
     max_hardware_spread_ms: float | None = None,
+    prefer_latest: bool = False,
 ) -> tuple[SyncedMultiviewFrame | None, int | None, str | None]:
+    """Wait for an accepted group, optionally draining stale complete groups.
+
+    Latest selection uses the same synchronization and motion-window gates as
+    FIFO.  It never chooses each camera's newest image independently.  Bound
+    each drain by the buffer capacity so an active producer cannot starve
+    inference by continually appending new groups.
+    """
     deadline = time.perf_counter() + float(wait_timeout_s)
     last_reason = "no_synced_frame"
+    drain_limit = max(2, int(stream.config.max_buffer_per_camera)) if prefer_latest else 0
     while time.perf_counter() < deadline:
         if canonical is not None:
             canonical.poll()
         if not stream.ingest_running:
             stream.poll_once()
         drained = 0
+        latest: tuple[SyncedMultiviewFrame, int | None, str | None] | None = None
         while True:
             synced, motion_fi, reason = try_pop_next_synced(
                 stream,
@@ -78,11 +88,24 @@ def wait_pop_next_synced(
             )
             if synced is None:
                 last_reason = reason or last_reason
+                # A motion-window rejection consumed one complete group.  It
+                # must not hide a newer valid group or erase a previous one.
+                if prefer_latest and reason != "no_synced_frame":
+                    drained += 1
+                    if drained < drain_limit:
+                        continue
                 break
             drained += 1
             if motion_window is None or motion_fi is None or motion_window.contains(int(motion_fi)):
-                return synced, motion_fi, None
-            last_reason = reason or f"outside_motion_window:{motion_fi}"
+                if not prefer_latest:
+                    return synced, motion_fi, None
+                latest = (synced, motion_fi, None)
+            else:
+                last_reason = reason or f"outside_motion_window:{motion_fi}"
+            if prefer_latest and drained >= drain_limit:
+                break
+        if latest is not None:
+            return latest
         if drained == 0:
             time.sleep(0.002)
     return None, None, last_reason

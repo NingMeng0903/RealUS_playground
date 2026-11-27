@@ -1,0 +1,986 @@
+{
+  "scope": "Synthetic same-patient calibration with a prescribed mode; static LBS pose knots.",
+  "heldout_pose_deg": 19,
+  "sites": [
+    6,
+    9,
+    13,
+    18
+  ],
+  "runs": [
+    {
+      "seed": 302345501,
+      "synthetic_slip_mm": -0.8494694580248392,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": -0.4330479432862432,
+          "slip_sd_mm": 0.6171939486653172,
+          "heldout_19deg_mse": 0.22177667044564525,
+          "heldout_19deg_frozen_mse": 0.5742765681851902
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.28065748292621,
+          "heldout_19deg_frozen_mse": 0.28065748292621
+        }
+      }
+    },
+    {
+      "seed": 4018776823,
+      "synthetic_slip_mm": 1.0001673614139217,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 1.2279578409947949,
+          "slip_sd_mm": 0.5447887582086438,
+          "heldout_19deg_mse": 0.2911857837993529,
+          "heldout_19deg_frozen_mse": 0.6500716610877049
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.2690041008382772,
+          "heldout_19deg_frozen_mse": 0.2690041008382772
+        }
+      }
+    },
+    {
+      "seed": 2407437670,
+      "synthetic_slip_mm": -1.1291220629606786,
+      "protocols": {
+        "varied_train": {
+          "captures": 20,
+          "fitted_slip_mm": -1.5657419139055024,
+          "slip_sd_mm": 0.6192358165049017,
+          "heldout_19deg_mse": 0.24839104837716328,
+          "heldout_19deg_frozen_mse": 1.0355444852605928
+        },
+        "single_pose_train": {
+          "captures": 20,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.6033714249055462,
+          "heldout_19deg_frozen_mse": 0.6033714249055462
+        }
+      }
+    },
+    {
+      "seed": 2093382841,
+      "synthetic_slip_mm": -1.3954973822228067,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": -1.1784746346204023,
+          "slip_sd_mm": 0.5765710416508314,
+          "heldout_19deg_mse": 0.1610496420012461,
+          "heldout_19deg_frozen_mse": 1.965365884513011
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.8977991063841719,
+          "heldout_19deg_frozen_mse": 0.8977991063841719
+        }
+      }
+    },
+    {
+      "seed": 1371836016,
+      "synthetic_slip_mm": -1.504538765308588,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": -1.1440477072843085,
+          "slip_sd_mm": 0.5444374795931809,
+          "heldout_19deg_mse": 0.4616308672794489,
+          "heldout_19deg_frozen_mse": 2.742107326557635
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.4021212894564474,
+          "heldout_19deg_frozen_mse": 1.4021212894564474
+        }
+      }
+    },
+    {
+      "seed": 524595438,
+      "synthetic_slip_mm": -0.770647820149094,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": -0.7938281566875571,
+          "slip_sd_mm": 0.5855040420870529,
+          "heldout_19deg_mse": 0.06393554248458116,
+          "heldout_19deg_frozen_mse": 0.7113652824338619
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.3830238139071446,
+          "heldout_19deg_frozen_mse": 0.3830238139071446
+        }
+      }
+    },
+    {
+      "seed": 839122275,
+      "synthetic_slip_mm": 2.915566828128429,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 2.2267336511105738,
+          "slip_sd_mm": 0.5323609609267167,
+          "heldout_19deg_mse": 0.8509877027310917,
+          "heldout_19deg_frozen_mse": 9.100219996452859
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 4.3638885954901365,
+          "heldout_19deg_frozen_mse": 4.3638885954901365
+        }
+      }
+    },
+    {
+      "seed": 501411236,
+      "synthetic_slip_mm": -1.5333106203762334,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": -1.9068056580147725,
+          "slip_sd_mm": 0.5569387398594356,
+          "heldout_19deg_mse": 0.21694375422277037,
+          "heldout_19deg_frozen_mse": 2.522349554539596
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.1353678830963398,
+          "heldout_19deg_frozen_mse": 1.1353678830963398
+        }
+      }
+    },
+    {
+      "seed": 2093951093,
+      "synthetic_slip_mm": -0.26301041449907975,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": -0.23812632871870257,
+          "slip_sd_mm": 0.5278924815467138,
+          "heldout_19deg_mse": 0.22903126460776882,
+          "heldout_19deg_frozen_mse": 0.3313089562604224
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.2822964676469325,
+          "heldout_19deg_frozen_mse": 0.2822964676469325
+        }
+      }
+    },
+    {
+      "seed": 2132858760,
+      "synthetic_slip_mm": 2.053784633700396,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": 1.9691927532380584,
+          "slip_sd_mm": 0.5571369722630078,
+          "heldout_19deg_mse": 0.13663988248786246,
+          "heldout_19deg_frozen_mse": 4.486664795876737
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.0065910631873223,
+          "heldout_19deg_frozen_mse": 2.0065910631873223
+        }
+      }
+    },
+    {
+      "seed": 3724595934,
+      "synthetic_slip_mm": 2.6189142716583436,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 2.039573703109869,
+          "slip_sd_mm": 0.5568536495344256,
+          "heldout_19deg_mse": 0.4707781282913033,
+          "heldout_19deg_frozen_mse": 6.296446546503325
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.9098371585392457,
+          "heldout_19deg_frozen_mse": 2.9098371585392457
+        }
+      }
+    },
+    {
+      "seed": 897395596,
+      "synthetic_slip_mm": -1.8818719876974923,
+      "protocols": {
+        "varied_train": {
+          "captures": 20,
+          "fitted_slip_mm": -1.6492872163424386,
+          "slip_sd_mm": 0.5829294902082677,
+          "heldout_19deg_mse": 0.05049223195103765,
+          "heldout_19deg_frozen_mse": 3.372913544828478
+        },
+        "single_pose_train": {
+          "captures": 20,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.2851221728763793,
+          "heldout_19deg_frozen_mse": 1.2851221728763793
+        }
+      }
+    },
+    {
+      "seed": 4143917926,
+      "synthetic_slip_mm": -2.1892761611582165,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": -1.4817206935200775,
+          "slip_sd_mm": 0.5445918311084053,
+          "heldout_19deg_mse": 0.6788118412662899,
+          "heldout_19deg_frozen_mse": 4.709871737870628
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.362540796709706,
+          "heldout_19deg_frozen_mse": 2.362540796709706
+        }
+      }
+    },
+    {
+      "seed": 1074586877,
+      "synthetic_slip_mm": 0.7878155905266385,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 1.6975144390686738,
+          "slip_sd_mm": 0.5568725531500525,
+          "heldout_19deg_mse": 1.1476036249422423,
+          "heldout_19deg_frozen_mse": 0.39028674078989545
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.13971034603499977,
+          "heldout_19deg_frozen_mse": 0.13971034603499977
+        }
+      }
+    },
+    {
+      "seed": 3923628096,
+      "synthetic_slip_mm": 1.0485681837502974,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.6144335797514693,
+          "slip_sd_mm": 0.5728386326097312,
+          "heldout_19deg_mse": 0.069464032531963,
+          "heldout_19deg_frozen_mse": 0.7349545730003781
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.2285920188169653,
+          "heldout_19deg_frozen_mse": 0.2285920188169653
+        }
+      }
+    },
+    {
+      "seed": 4259366259,
+      "synthetic_slip_mm": -0.8427648770563813,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": -1.1832019887434604,
+          "slip_sd_mm": 0.5354135320537626,
+          "heldout_19deg_mse": 0.14910426693451362,
+          "heldout_19deg_frozen_mse": 0.8356369523728036
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.45055229224217175,
+          "heldout_19deg_frozen_mse": 0.45055229224217175
+        }
+      }
+    },
+    {
+      "seed": 2241685087,
+      "synthetic_slip_mm": 2.1260110114673307,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 1.9726616373310397,
+          "slip_sd_mm": 0.5495192966587997,
+          "heldout_19deg_mse": 0.11702980712607197,
+          "heldout_19deg_frozen_mse": 4.39124029797954
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.2125667811635634,
+          "heldout_19deg_frozen_mse": 2.2125667811635634
+        }
+      }
+    },
+    {
+      "seed": 1139644263,
+      "synthetic_slip_mm": -2.5545887808264354,
+      "protocols": {
+        "varied_train": {
+          "captures": 20,
+          "fitted_slip_mm": -2.2980190693449973,
+          "slip_sd_mm": 0.5984495552717198,
+          "heldout_19deg_mse": 0.3305752965855918,
+          "heldout_19deg_frozen_mse": 5.371934505386254
+        },
+        "single_pose_train": {
+          "captures": 20,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.6681899977278762,
+          "heldout_19deg_frozen_mse": 2.6681899977278762
+        }
+      }
+    },
+    {
+      "seed": 2516718174,
+      "synthetic_slip_mm": 2.1339187887809574,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": 2.5303045708096743,
+          "slip_sd_mm": 0.5278414116550862,
+          "heldout_19deg_mse": 0.16929628750081294,
+          "heldout_19deg_frozen_mse": 4.580486815674581
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.204259761799051,
+          "heldout_19deg_frozen_mse": 2.204259761799051
+        }
+      }
+    },
+    {
+      "seed": 2279154420,
+      "synthetic_slip_mm": 3.5,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": 3.0656414845675815,
+          "slip_sd_mm": 0.5572278907680567,
+          "heldout_19deg_mse": 0.34989047743214763,
+          "heldout_19deg_frozen_mse": 10.797174216988557
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 4.87702963433141,
+          "heldout_19deg_frozen_mse": 4.87702963433141
+        }
+      }
+    },
+    {
+      "seed": 1363694901,
+      "synthetic_slip_mm": -2.43325609406031,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": -2.5497423722832657,
+          "slip_sd_mm": 0.6171939486653172,
+          "heldout_19deg_mse": 0.10055623337116673,
+          "heldout_19deg_frozen_mse": 5.7274320670510335
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.061951477716093,
+          "heldout_19deg_frozen_mse": 2.061951477716093
+        }
+      }
+    },
+    {
+      "seed": 1228544055,
+      "synthetic_slip_mm": -0.964290109466725,
+      "protocols": {
+        "varied_train": {
+          "captures": 18,
+          "fitted_slip_mm": -0.9840046049802795,
+          "slip_sd_mm": 0.6201709791392193,
+          "heldout_19deg_mse": 0.243768808879755,
+          "heldout_19deg_frozen_mse": 1.9388749733769635
+        },
+        "single_pose_train": {
+          "captures": 18,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.2025671575305932,
+          "heldout_19deg_frozen_mse": 1.2025671575305932
+        }
+      }
+    },
+    {
+      "seed": 190325033,
+      "synthetic_slip_mm": -0.6753645969508352,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": -0.43476458295991277,
+          "slip_sd_mm": 0.5775196688184335,
+          "heldout_19deg_mse": 0.20722913444558036,
+          "heldout_19deg_frozen_mse": 0.6658518111861961
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.42213019674921864,
+          "heldout_19deg_frozen_mse": 0.42213019674921864
+        }
+      }
+    },
+    {
+      "seed": 3268039807,
+      "synthetic_slip_mm": 2.310928648875564,
+      "protocols": {
+        "varied_train": {
+          "captures": 20,
+          "fitted_slip_mm": 2.574634762542298,
+          "slip_sd_mm": 0.5461871816068624,
+          "heldout_19deg_mse": 0.06448624939758296,
+          "heldout_19deg_frozen_mse": 5.952540512460885
+        },
+        "single_pose_train": {
+          "captures": 20,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.7671031950643905,
+          "heldout_19deg_frozen_mse": 2.7671031950643905
+        }
+      }
+    },
+    {
+      "seed": 740807844,
+      "synthetic_slip_mm": 2.440637473467628,
+      "protocols": {
+        "varied_train": {
+          "captures": 18,
+          "fitted_slip_mm": 2.2413176113067674,
+          "slip_sd_mm": 0.637604778836064,
+          "heldout_19deg_mse": 0.006615208100371399,
+          "heldout_19deg_frozen_mse": 4.822525303700711
+        },
+        "single_pose_train": {
+          "captures": 18,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.9498981155954755,
+          "heldout_19deg_frozen_mse": 1.9498981155954755
+        }
+      }
+    },
+    {
+      "seed": 732027461,
+      "synthetic_slip_mm": 2.350931930751277,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 2.437177321022339,
+          "slip_sd_mm": 0.5732864394643954,
+          "heldout_19deg_mse": 0.09114307014527437,
+          "heldout_19deg_frozen_mse": 3.9236837644155687
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.8323834907207286,
+          "heldout_19deg_frozen_mse": 1.8323834907207286
+        }
+      }
+    },
+    {
+      "seed": 259963171,
+      "synthetic_slip_mm": 0.7337000210647193,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.8204597662557862,
+          "slip_sd_mm": 0.5629160196620477,
+          "heldout_19deg_mse": 0.01734375994697705,
+          "heldout_19deg_frozen_mse": 0.4692288889935063
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.24063751618152257,
+          "heldout_19deg_frozen_mse": 0.24063751618152257
+        }
+      }
+    },
+    {
+      "seed": 3211433423,
+      "synthetic_slip_mm": 0.3957164559839287,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.2838952738391163,
+          "slip_sd_mm": 0.5578434926875576,
+          "heldout_19deg_mse": 0.32898608362042914,
+          "heldout_19deg_frozen_mse": 0.6493429697453996
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.4970073331280829,
+          "heldout_19deg_frozen_mse": 0.4970073331280829
+        }
+      }
+    },
+    {
+      "seed": 4064541527,
+      "synthetic_slip_mm": -1.9931885546992965,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": -1.4488879629852656,
+          "slip_sd_mm": 0.5278924815467138,
+          "heldout_19deg_mse": 0.30121284271368187,
+          "heldout_19deg_frozen_mse": 3.5500919924520526
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.6037905949297508,
+          "heldout_19deg_frozen_mse": 1.6037905949297508
+        }
+      }
+    },
+    {
+      "seed": 3964368932,
+      "synthetic_slip_mm": 0.09095553651614117,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.05404490739983808,
+          "slip_sd_mm": 0.576550490231382,
+          "heldout_19deg_mse": 0.13785402871607622,
+          "heldout_19deg_frozen_mse": 0.11889717482742115
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.1298688956624117,
+          "heldout_19deg_frozen_mse": 0.1298688956624117
+        }
+      }
+    },
+    {
+      "seed": 2883537030,
+      "synthetic_slip_mm": -3.0227295164173107,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": -2.453588716330854,
+          "slip_sd_mm": 0.5447887582086438,
+          "heldout_19deg_mse": 0.11459854730722233,
+          "heldout_19deg_frozen_mse": 6.877064868879749
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 2.6038295412485497,
+          "heldout_19deg_frozen_mse": 2.6038295412485497
+        }
+      }
+    },
+    {
+      "seed": 1704247408,
+      "synthetic_slip_mm": -1.7399925555331666,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": -0.7838584866833763,
+          "slip_sd_mm": 0.5454618818086081,
+          "heldout_19deg_mse": 0.6404147346641538,
+          "heldout_19deg_frozen_mse": 2.242316593574786
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.0180583002774015,
+          "heldout_19deg_frozen_mse": 1.0180583002774015
+        }
+      }
+    },
+    {
+      "seed": 1442766244,
+      "synthetic_slip_mm": -1.054980782916352,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": -1.0504897097853425,
+          "slip_sd_mm": 0.5320315154262742,
+          "heldout_19deg_mse": 0.07072218238183374,
+          "heldout_19deg_frozen_mse": 1.2250909485091273
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.6283282005463511,
+          "heldout_19deg_frozen_mse": 0.6283282005463511
+        }
+      }
+    },
+    {
+      "seed": 1719859535,
+      "synthetic_slip_mm": -1.6079928315179182,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": -0.745106494238106,
+          "slip_sd_mm": 0.6196885906791341,
+          "heldout_19deg_mse": 0.8972468235946577,
+          "heldout_19deg_frozen_mse": 2.491188988457279
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.4645186283716494,
+          "heldout_19deg_frozen_mse": 1.4645186283716494
+        }
+      }
+    },
+    {
+      "seed": 3014744926,
+      "synthetic_slip_mm": 0.31614560288459637,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.5225769489472679,
+          "slip_sd_mm": 0.5320890628486452,
+          "heldout_19deg_mse": 0.21651216570248497,
+          "heldout_19deg_frozen_mse": 0.11699327700397587
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.09900951398576231,
+          "heldout_19deg_frozen_mse": 0.09900951398576231
+        }
+      }
+    },
+    {
+      "seed": 2496923189,
+      "synthetic_slip_mm": -0.3550617564906325,
+      "protocols": {
+        "varied_train": {
+          "captures": 24,
+          "fitted_slip_mm": 0.03205550976122023,
+          "slip_sd_mm": 0.5275742490713438,
+          "heldout_19deg_mse": 0.35712463944128037,
+          "heldout_19deg_frozen_mse": 0.3374140625487139
+        },
+        "single_pose_train": {
+          "captures": 24,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.28051778829012364,
+          "heldout_19deg_frozen_mse": 0.28051778829012364
+        }
+      }
+    },
+    {
+      "seed": 3903043208,
+      "synthetic_slip_mm": -0.2767188383925214,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.11268000098935682,
+          "slip_sd_mm": 0.5445918311084053,
+          "heldout_19deg_mse": 0.05709827153818264,
+          "heldout_19deg_frozen_mse": 0.024948161651716518
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.014328311183490653,
+          "heldout_19deg_frozen_mse": 0.014328311183490653
+        }
+      }
+    },
+    {
+      "seed": 1473538042,
+      "synthetic_slip_mm": -0.16787145867984762,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.16787289121456755,
+          "slip_sd_mm": 0.5323609609267167,
+          "heldout_19deg_mse": 0.22614754937654433,
+          "heldout_19deg_frozen_mse": 0.16055788607791222
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.14905570747323643,
+          "heldout_19deg_frozen_mse": 0.14905570747323643
+        }
+      }
+    },
+    {
+      "seed": 1631053354,
+      "synthetic_slip_mm": 2.418018571684076,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": 1.9509452937338756,
+          "slip_sd_mm": 0.6021619697736644,
+          "heldout_19deg_mse": 0.11202523615167666,
+          "heldout_19deg_frozen_mse": 4.087432946638584
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 1.5022094018740129,
+          "heldout_19deg_frozen_mse": 1.5022094018740129
+        }
+      }
+    },
+    {
+      "seed": 841837199,
+      "synthetic_slip_mm": 1.260047307447811,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.35159151155969304,
+          "slip_sd_mm": 0.5834159187277115,
+          "heldout_19deg_mse": 1.0036980113744745,
+          "heldout_19deg_frozen_mse": 1.5899968088613063
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.9924756498033794,
+          "heldout_19deg_frozen_mse": 0.9924756498033794
+        }
+      }
+    },
+    {
+      "seed": 1222555711,
+      "synthetic_slip_mm": -2.8764248759228694,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": -2.552732627625634,
+          "slip_sd_mm": 0.5572668399950953,
+          "heldout_19deg_mse": 0.20216170151400914,
+          "heldout_19deg_frozen_mse": 7.212137900217767
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 3.5652084222430673,
+          "heldout_19deg_frozen_mse": 3.5652084222430673
+        }
+      }
+    },
+    {
+      "seed": 496516323,
+      "synthetic_slip_mm": -1.8578340297228342,
+      "protocols": {
+        "varied_train": {
+          "captures": 19,
+          "fitted_slip_mm": -1.3457981206533236,
+          "slip_sd_mm": 0.5668041890859956,
+          "heldout_19deg_mse": 0.08419291099331463,
+          "heldout_19deg_frozen_mse": 2.2012954400302664
+        },
+        "single_pose_train": {
+          "captures": 19,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.9367324752365357,
+          "heldout_19deg_frozen_mse": 0.9367324752365357
+        }
+      }
+    },
+    {
+      "seed": 2051718677,
+      "synthetic_slip_mm": 1.8313108934348235,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 1.156913281348821,
+          "slip_sd_mm": 0.5568725531500525,
+          "heldout_19deg_mse": 0.2455828087070668,
+          "heldout_19deg_frozen_mse": 2.563312010453417
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.9483937675827544,
+          "heldout_19deg_frozen_mse": 0.9483937675827544
+        }
+      }
+    },
+    {
+      "seed": 3627759195,
+      "synthetic_slip_mm": 1.3947813571470078,
+      "protocols": {
+        "varied_train": {
+          "captures": 21,
+          "fitted_slip_mm": 1.3262785102711276,
+          "slip_sd_mm": 0.6173411228490343,
+          "heldout_19deg_mse": 0.04264292069520297,
+          "heldout_19deg_frozen_mse": 1.9316131114739215
+        },
+        "single_pose_train": {
+          "captures": 21,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.688106149451325,
+          "heldout_19deg_frozen_mse": 0.688106149451325
+        }
+      }
+    },
+    {
+      "seed": 4192690196,
+      "synthetic_slip_mm": 0.48021840724209747,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.1274788344674178,
+          "slip_sd_mm": 0.5765710416508314,
+          "heldout_19deg_mse": 0.2643212724402235,
+          "heldout_19deg_frozen_mse": 0.3679377552974344
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.24571986786286704,
+          "heldout_19deg_frozen_mse": 0.24571986786286704
+        }
+      }
+    },
+    {
+      "seed": 2673310948,
+      "synthetic_slip_mm": -0.17999141689937675,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": -0.39171017905968936,
+          "slip_sd_mm": 0.5494241162176263,
+          "heldout_19deg_mse": 0.24715670873840043,
+          "heldout_19deg_frozen_mse": 0.2983557094797615
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.27355602721547034,
+          "heldout_19deg_frozen_mse": 0.27355602721547034
+        }
+      }
+    },
+    {
+      "seed": 262520439,
+      "synthetic_slip_mm": -1.0816096728461877,
+      "protocols": {
+        "varied_train": {
+          "captures": 23,
+          "fitted_slip_mm": -0.706266065889568,
+          "slip_sd_mm": 0.5278414116550862,
+          "heldout_19deg_mse": 0.3092877101053775,
+          "heldout_19deg_frozen_mse": 1.1481628153339156
+        },
+        "single_pose_train": {
+          "captures": 23,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.6093179272572056,
+          "heldout_19deg_frozen_mse": 0.6093179272572056
+        }
+      }
+    },
+    {
+      "seed": 221692186,
+      "synthetic_slip_mm": -0.935013180173654,
+      "protocols": {
+        "varied_train": {
+          "captures": 22,
+          "fitted_slip_mm": -0.10860088557474601,
+          "slip_sd_mm": 0.5495192966587997,
+          "heldout_19deg_mse": 0.6919125818086096,
+          "heldout_19deg_frozen_mse": 0.8581936524021057
+        },
+        "single_pose_train": {
+          "captures": 22,
+          "fitted_slip_mm": 0.0,
+          "slip_sd_mm": 1.8,
+          "heldout_19deg_mse": 0.44464082013972017,
+          "heldout_19deg_frozen_mse": 0.44464082013972017
+        }
+      }
+    }
+  ],
+  "summary": {
+    "varied_train": {
+      "holdout_19deg_rmse_mm": 0.5341788938187928,
+      "holdout_19deg_zero_slip_rmse_mm": 1.6403296342863498,
+      "mean_slip_sd_mm": 0.5647410182254952,
+      "mean_captures": 21.583333333333332
+    },
+    "single_pose_train": {
+      "holdout_19deg_rmse_mm": 1.1192805228266902,
+      "holdout_19deg_zero_slip_rmse_mm": 1.1192805228266902,
+      "mean_slip_sd_mm": 1.8,
+      "mean_captures": 21.583333333333332
+    }
+  }
+}

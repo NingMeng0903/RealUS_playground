@@ -1,0 +1,12 @@
+{
+  "world_to_image": {
+    "cases": 6876,
+    "max_projection_error_mm_after_common_se3": 4.050093593832571e-13,
+    "max_difference_from_frozen_world_projection_mm": 5.684341886080802e-14
+  },
+  "knee_change_11_to_19_degrees": {
+    "same_material_addresses": 28,
+    "best_single_global_rigid_fit_rmse_mm": 0.5615341069228125,
+    "max_change_of_inter_address_distance_mm": 0.9539096869116861
+  }
+}

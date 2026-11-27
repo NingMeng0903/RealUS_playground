@@ -1,0 +1,2665 @@
+{
+  "scope": "offline intervention only",
+  "v7_question_sha256": "bdd34284ffbd56f8f2d10d1eff0300adb6f7e5d019ef07b2256d417a9ecef3b1",
+  "v8_edge_sha256": "be5c0a9dd30fa960378c57edb94037d10c62d27a8094e5c3c090535e1875c851",
+  "archive_shards_sha256": [
+    "aab9c1ec8abd2fa72a2a76a5a2bc90f7c572843a476d37c8cd3d87d8dd3042f4",
+    "b772581398954bf714b482323bac84413b7f6d704332d7d45203ac10e76cb1b1",
+    "be81194334d67109bd6899ec3bb13253064fab32b37c50771e09375bcca20635",
+    "18a2538a1dd7a6d841c01c8d3065a911c53cc7237d6f6213d0a872303440d69b",
+    "a1417ccbbc467643cec1123585d70fd9042a5b8b76e01ff6313cb3824e839082"
+  ],
+  "summary": {
+    "reseen": 76,
+    "public_retrieval_true_paths": 64,
+    "old_target_cases": 82,
+    "model_results": {
+      "v5_measured": {
+        "same_instance_edges_kept_before_matching": 17803,
+        "thresholded_true_path": 9,
+        "public_forest_reconnected": 9
+      },
+      "v5_cosine_truth_to_1": {
+        "same_instance_edges_kept_before_matching": 20792,
+        "thresholded_true_path": 11,
+        "public_forest_reconnected": 11
+      },
+      "v8_measured": {
+        "same_instance_edges_kept_before_matching": 16912,
+        "thresholded_true_path": 15,
+        "public_forest_reconnected": 15
+      },
+      "v8_cosine_truth_to_1": {
+        "same_instance_edges_kept_before_matching": 25543,
+        "thresholded_true_path": 34,
+        "public_forest_reconnected": 34
+      }
+    }
+  },
+  "rows": [
+    {
+      "case": "v6_reader_fresh_00001",
+      "layout": "atlas_v2_dc7e5cd45036f8962a1b",
+      "fresh_same_instance": 13,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 415,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 496,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 380,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 576,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00005",
+      "layout": "atlas_v2_bddef495e21c06b66d8e",
+      "fresh_same_instance": 20,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 252,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 302,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 276,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 404,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00007",
+      "layout": "atlas_v2_fa786b5bda8688ffaf53",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 59,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 66,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 97,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 150,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00009",
+      "layout": "atlas_v2_a99aa4faeb564c6fe840",
+      "fresh_same_instance": 14,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 314,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 373,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 280,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 414,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00013",
+      "layout": "atlas_v2_94a9f0181e50552629fc",
+      "fresh_same_instance": 17,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 541,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 603,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 390,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 580,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00015",
+      "layout": "atlas_v2_5cbefb578077f9d7711d",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 126,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 185,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 165,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 291,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00017",
+      "layout": "atlas_v2_73c05463bb70d876e7dd",
+      "fresh_same_instance": 0,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 242,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 285,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 253,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 333,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00019",
+      "layout": "atlas_v2_9080a0bbd69677a94774",
+      "fresh_same_instance": 3,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 15,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 19,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 38,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 58,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00021",
+      "layout": "atlas_v2_de1d957e703f6ba8bd07",
+      "fresh_same_instance": 17,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 431,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 474,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 325,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 482,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00023",
+      "layout": "atlas_v2_85dc13f76b40ab6d9ab8",
+      "fresh_same_instance": 12,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 64,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 75,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 88,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 167,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00025",
+      "layout": "atlas_v2_7268d3bf8ed90eba96da",
+      "fresh_same_instance": 5,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 469,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 535,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 380,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 549,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00029",
+      "layout": "atlas_v2_fa2b8304b4e4a9e68083",
+      "fresh_same_instance": 15,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 204,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 228,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 219,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 316,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00031",
+      "layout": "atlas_v2_71c70bda5c40bf2b308f",
+      "fresh_same_instance": 3,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 37,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 45,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 57,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 106,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00033",
+      "layout": "atlas_v2_e95998448023eb7cc5a4",
+      "fresh_same_instance": 12,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 275,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 320,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 273,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 415,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00037",
+      "layout": "atlas_v2_33cc0bb4f960aac4c7a6",
+      "fresh_same_instance": 13,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 504,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 591,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 393,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 577,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00041",
+      "layout": "atlas_v2_6ef1643e5a75a4179882",
+      "fresh_same_instance": 16,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 176,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 202,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 204,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 280,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00043",
+      "layout": "atlas_v2_9a5264c0711a53c9d109",
+      "fresh_same_instance": 13,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 20,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 34,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 53,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 143,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00045",
+      "layout": "atlas_v2_9857e97feb6e1f7a36bc",
+      "fresh_same_instance": 14,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 195,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 251,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 192,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 307,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00047",
+      "layout": "atlas_v2_3e79b54a7cefdbe3fedb",
+      "fresh_same_instance": 8,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 64,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 81,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 101,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 156,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00049",
+      "layout": "atlas_v2_8830b492dd66b7c8afa7",
+      "fresh_same_instance": 19,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 547,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 624,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 420,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 581,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00051",
+      "layout": "atlas_v2_033cd47d1c2b523bdb39",
+      "fresh_same_instance": 8,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 68,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 88,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 105,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 167,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00053",
+      "layout": "atlas_v2_48c009c7c08091c169fd",
+      "fresh_same_instance": 2,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 238,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 276,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 268,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 341,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00055",
+      "layout": "atlas_v2_5f612180b1f3b2b31047",
+      "fresh_same_instance": 1,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 53,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 74,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 81,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 136,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00057",
+      "layout": "atlas_v2_c973c9d886e7c7880341",
+      "fresh_same_instance": 19,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 261,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 298,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 302,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 469,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00059",
+      "layout": "atlas_v2_bd55ee0f7e7520cbce2b",
+      "fresh_same_instance": 10,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 87,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 114,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 104,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 210,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00061",
+      "layout": "atlas_v2_1c6b4c52e0560b2120aa",
+      "fresh_same_instance": 12,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 591,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 638,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 401,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 589,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00063",
+      "layout": "atlas_v2_63f06a362f81e71e9f14",
+      "fresh_same_instance": 7,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 118,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 147,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 128,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 181,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00065",
+      "layout": "atlas_v2_6f7dd7430e84ae9c97e7",
+      "fresh_same_instance": 11,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 204,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 226,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 216,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 319,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00067",
+      "layout": "atlas_v2_ff6e742ea4dd8fcec48e",
+      "fresh_same_instance": 2,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 38,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 59,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 70,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 133,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00069",
+      "layout": "atlas_v2_8dcccbd9272b2f7316d9",
+      "fresh_same_instance": 17,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 314,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 357,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 275,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 422,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00071",
+      "layout": "atlas_v2_3090d20b417068deee3e",
+      "fresh_same_instance": 7,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 86,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 124,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 105,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 177,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00073",
+      "layout": "atlas_v2_e6ad9770603dc8e9609e",
+      "fresh_same_instance": 8,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 454,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 525,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 355,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 561,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00075",
+      "layout": "atlas_v2_da8b79abaea1237a4a6f",
+      "fresh_same_instance": 7,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 78,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 99,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 102,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 156,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00077",
+      "layout": "atlas_v2_5e9251914bca623c71af",
+      "fresh_same_instance": 17,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 225,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 260,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 212,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 348,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00081",
+      "layout": "atlas_v2_d939b7b040e2a972cc41",
+      "fresh_same_instance": 14,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 354,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 391,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 305,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 415,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00083",
+      "layout": "atlas_v2_69348958beacc88f36f5",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 70,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 73,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 88,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 128,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00085",
+      "layout": "atlas_v2_54bf3ae974e78b54fab6",
+      "fresh_same_instance": 26,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 428,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 515,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 362,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 548,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00087",
+      "layout": "atlas_v2_fd3b177b41f12fc13b79",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 54,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 82,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 97,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 224,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00089",
+      "layout": "atlas_v2_5ec136a41d06caffbbdf",
+      "fresh_same_instance": 0,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 187,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 225,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 194,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 281,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00091",
+      "layout": "atlas_v2_e41a59d4722822d9dd30",
+      "fresh_same_instance": 0,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 26,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 33,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 45,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 79,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00093",
+      "layout": "atlas_v2_6ad5dca9cd7df12a40b0",
+      "fresh_same_instance": 19,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 302,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 335,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 274,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 360,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00095",
+      "layout": "atlas_v2_6dedf245ca8df65b0de5",
+      "fresh_same_instance": 11,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 36,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 63,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 62,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 143,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00099",
+      "layout": "atlas_v2_8d9d2ce8e91816e6190f",
+      "fresh_same_instance": 6,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 89,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 125,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 110,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 201,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00101",
+      "layout": "atlas_v2_8b82cc3d757818e58646",
+      "fresh_same_instance": 11,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 181,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 201,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 184,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 310,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00103",
+      "layout": "atlas_v2_767398abe3a36994a8d1",
+      "fresh_same_instance": 7,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 29,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 31,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 47,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 102,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00105",
+      "layout": "atlas_v2_63b30f172d662e514270",
+      "fresh_same_instance": 10,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 321,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 361,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 277,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 407,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00107",
+      "layout": "atlas_v2_ea2f25e3423050548c8f",
+      "fresh_same_instance": 5,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 41,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 52,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 64,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 128,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00113",
+      "layout": "atlas_v2_b8b865051c33fd0b1118",
+      "fresh_same_instance": 11,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 198,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 245,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 237,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 406,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00115",
+      "layout": "atlas_v2_9ad451014fc1b7bbccbc",
+      "fresh_same_instance": 12,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 20,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 30,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 43,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 152,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00117",
+      "layout": "atlas_v2_4d7d6f3e5d35a35387a5",
+      "fresh_same_instance": 10,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 274,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 296,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 273,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 361,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00119",
+      "layout": "atlas_v2_80392450889b1aec68dc",
+      "fresh_same_instance": 8,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 92,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 117,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 128,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 170,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00121",
+      "layout": "atlas_v2_aac2fbf94b0a1162f45a",
+      "fresh_same_instance": 10,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 604,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 693,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 434,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 621,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00123",
+      "layout": "atlas_v2_cf1032b9c67c7fcb81fb",
+      "fresh_same_instance": 18,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 64,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 84,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 100,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 161,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00125",
+      "layout": "atlas_v2_c641c93b942c757b6de3",
+      "fresh_same_instance": 0,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 212,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 259,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 219,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 327,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00127",
+      "layout": "atlas_v2_00669fe16b68df5b4e56",
+      "fresh_same_instance": 0,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 29,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 36,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 41,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 59,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00129",
+      "layout": "atlas_v2_1206a4ae102b4a8b512e",
+      "fresh_same_instance": 19,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 338,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 378,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 305,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 424,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00131",
+      "layout": "atlas_v2_f148ef5c202688a05828",
+      "fresh_same_instance": 8,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 51,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 60,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 70,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 107,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00133",
+      "layout": "atlas_v2_21ac8b74e682f373095b",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 528,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 595,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 443,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 636,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00135",
+      "layout": "atlas_v2_5bfed8241827612f50fe",
+      "fresh_same_instance": 4,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 87,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 118,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 121,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 169,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00137",
+      "layout": "atlas_v2_2f07885f2abfb778a23f",
+      "fresh_same_instance": 10,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 122,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 143,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 147,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 239,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00141",
+      "layout": "atlas_v2_1a8ca8222f6422265818",
+      "fresh_same_instance": 11,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 419,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 467,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 349,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 505,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00143",
+      "layout": "atlas_v2_88dc51180bfaacdb39f9",
+      "fresh_same_instance": 4,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 27,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 47,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 51,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 84,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00145",
+      "layout": "atlas_v2_ef6b3d03877c25549cc2",
+      "fresh_same_instance": 8,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 552,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 633,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 439,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 638,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00149",
+      "layout": "atlas_v2_e5a143ef188e9b0808c2",
+      "fresh_same_instance": 12,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 213,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 244,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 225,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 329,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00153",
+      "layout": "atlas_v2_c79fc7058fe261ca3188",
+      "fresh_same_instance": 15,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 267,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 305,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 232,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 354,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00155",
+      "layout": "atlas_v2_fdfaba9840b616b33bdc",
+      "fresh_same_instance": 6,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 78,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 87,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 92,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 115,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00157",
+      "layout": "atlas_v2_21b169d1577f17ac9cda",
+      "fresh_same_instance": 19,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 585,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 650,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 457,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 628,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00159",
+      "layout": "atlas_v2_63bf9a9c09c782fc1616",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 130,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 163,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 163,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 248,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00161",
+      "layout": "atlas_v2_b55af30844343f599cc1",
+      "fresh_same_instance": 2,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 158,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 177,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 158,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 240,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00163",
+      "layout": "atlas_v2_6f4e541dac7e6e7f9f33",
+      "fresh_same_instance": 0,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 28,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 43,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 44,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 78,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00165",
+      "layout": "atlas_v2_fad6360ba09275cf9b70",
+      "fresh_same_instance": 13,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 288,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 340,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 280,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 380,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00167",
+      "layout": "atlas_v2_7cb2174f045bbb0fa4ca",
+      "fresh_same_instance": 4,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 83,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 98,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 99,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 174,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00169",
+      "layout": "atlas_v2_c08763f59c4192770ea4",
+      "fresh_same_instance": 10,
+      "retrieval_true_path": false,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 612,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 698,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 456,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 687,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00173",
+      "layout": "atlas_v2_2bd234a37a447d70a325",
+      "fresh_same_instance": 13,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 220,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 265,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 246,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 361,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00175",
+      "layout": "atlas_v2_68d2c7bc77e029b3af4e",
+      "fresh_same_instance": 3,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 51,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 63,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 79,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 139,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00177",
+      "layout": "atlas_v2_6283751e3825719aa8ff",
+      "fresh_same_instance": 7,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 296,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 342,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 290,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 421,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00179",
+      "layout": "atlas_v2_57fff34154e17d50bd1c",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 76,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 90,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 106,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 184,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00181",
+      "layout": "atlas_v2_a8e35664a5c410957871",
+      "fresh_same_instance": 9,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 498,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 587,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 389,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 607,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00185",
+      "layout": "atlas_v2_3561f2b683ce97a857c9",
+      "fresh_same_instance": 7,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 217,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 257,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 233,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 309,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00187",
+      "layout": "atlas_v2_ba6266a713e6ffce4a7d",
+      "fresh_same_instance": 11,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 62,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 79,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 103,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 166,
+          "thresholded_true_path": true,
+          "public_forest_reconnected": true,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00189",
+      "layout": "atlas_v2_7142f2f1ddbfb622459b",
+      "fresh_same_instance": 12,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 372,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 447,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 328,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 466,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    },
+    {
+      "case": "v6_reader_fresh_00191",
+      "layout": "atlas_v2_6b20fcdbfacc302bd20b",
+      "fresh_same_instance": 7,
+      "retrieval_true_path": true,
+      "results": {
+        "v5_measured": {
+          "same_instance_edges_kept_before_matching": 69,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v5_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 95,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.9
+        },
+        "v8_measured": {
+          "same_instance_edges_kept_before_matching": 115,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        },
+        "v8_cosine_truth_to_1": {
+          "same_instance_edges_kept_before_matching": 178,
+          "thresholded_true_path": false,
+          "public_forest_reconnected": false,
+          "threshold": 0.7233270207460591
+        }
+      }
+    }
+  ]
+}

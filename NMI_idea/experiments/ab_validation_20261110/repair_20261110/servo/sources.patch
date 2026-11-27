@@ -1,0 +1,134 @@
+diff --git a/DMP_playground/kmp_honest/servo.py b/DMP_playground/kmp_honest/servo.py
+index 9757b99..c6e5438 100644
+--- a/DMP_playground/kmp_honest/servo.py
++++ b/DMP_playground/kmp_honest/servo.py
+@@ -40,7 +40,17 @@ ALLOWED_OBS_KEYS = frozenset(
+ 
+ 
+ def filter_obs_for_control(obs: dict[str, float]) -> dict[str, float]:
+-    return {key: float(obs[key]) for key in ALLOWED_OBS_KEYS if key in obs}
++    """Keep public measurements; a miss carries no target geometry/confidence.
++
++    The simulator may retain a geometric intersection for evaluation when the
++    target is outside the image. Those coordinates are not sensor readings.
++    """
++    public = {key: float(obs[key]) for key in ALLOWED_OBS_KEYS if key in obs}
++    if not bool(public.get("visible", 0.0)):
++        for key in ("image_u_m", "image_depth_m", "image_out_of_plane_m", "slice_margin"):
++            public.pop(key, None)
++        public.update(visible=0.0, gamma=0.0, gamma_pos=0.0, gamma_tangent=0.0)
++    return public
+ 
+ 
+ @dataclass
+@@ -179,6 +189,13 @@ def run_honest_kmp_servo(
+     use_module_c: bool = True,
+     open_loop_result=None,
+ ):
++    """Simulate the full local probe loop with visibility-gated feedback.
++
++    Existing ``image_*`` result arrays retain simulator geometry for evaluation;
++    ``public_image_*`` arrays contain NaN on a miss. Only filtered public
++    measurements enter feedback/reconstruction. The prepared nominal path and
++    surface geometry are inputs; this is not a blind target-acquisition policy.
++    """
+     from DMP_playground.run_trajectory_extraction_demo import ClosedLoopServoResult, _tangent_errors
+ 
+     servo_cfg = HonestServoConfig()
+@@ -227,8 +244,25 @@ def run_honest_kmp_servo(
+         image_oop = float(dp[1])
+         image_depth = float(-dp[2])
+         visible = bool(in_slice) and abs(image_u) <= half_width and 0.0 <= image_depth <= depth_max
+-        gamma = 1.0 if visible else 0.08
+-        p_v = reconstruct_vessel_point(p_cmd, r_cmd, image_u, image_depth)
++        control_obs = filter_obs_for_control(
++            {
++                "visible": float(visible),
++                "gamma": 1.0 if visible else 0.0,
++                "image_u_m": image_u,
++                "image_depth_m": image_depth,
++                "image_out_of_plane_m": image_oop,
++            }
++        )
++        gamma = float(control_obs["gamma"])
++        # Zero is a guarded arithmetic placeholder, not a detected center.
++        control_image_u = float(control_obs.get("image_u_m", 0.0))
++        p_v = (
++            reconstruct_vessel_point(
++                p_cmd, r_cmd, control_image_u, float(control_obs["image_depth_m"])
++            )
++            if visible
++            else np.full(3, np.nan, dtype=np.float64)
++        )
+         lookat_deg = lookat_angle_deg(image_u, image_depth)
+ 
+         y_chart = normalize(r_bake[:, 1])
+@@ -286,7 +320,11 @@ def run_honest_kmp_servo(
+             p_tgt = p_bake_next.copy()
+             r_tgt = r_bake_next.copy()
+         else:
+-            lat_m = float(np.clip(gain * image_u, -lat_step_max, lat_step_max))
++            lat_m = (
++                float(np.clip(gain * control_image_u, -lat_step_max, lat_step_max))
++                if visible and gamma > 0.0
++                else 0.0
++            )
+             p_tgt = p_cmd + lat_m * normalize(r_cmd[:, 0]) + walk
+             if float(z_bake @ n_tcp) < 0.0:
+                 z_see = -z_bake
+@@ -326,7 +364,7 @@ def run_honest_kmp_servo(
+                 "p_cmd": p_cmd.copy(),
+                 "r_tgt": r_tgt.copy(),
+                 "r_cmd": r_cmd.copy(),
+-                "external_force": np.asarray([lat_m, image_u, 0.0, 0.0, 0.0], dtype=np.float64),
++                "external_force": np.asarray([lat_m, control_image_u, 0.0, 0.0, 0.0], dtype=np.float64),
+                 "gamma_pos": gamma,
+                 "gamma_tangent": gamma,
+                 "truth_vessel": np.asarray(hit, dtype=np.float64),
+@@ -492,4 +530,14 @@ def run_honest_kmp_servo(
+         tilt_lr_err_closed_deg=tilt_lr_this[: s_arr.size],
+         tilt_fa_err_open_deg=tilt_fa_open[: s_arr.size],
+         tilt_fa_err_closed_deg=tilt_fa_this[: s_arr.size],
++        public_image_u_m=np.where(
++            _this_run_series(records, "visible", s_arr.size) > 0.0,
++            _this_run_series(records, "image_u_m", s_arr.size),
++            np.nan,
++        ),
++        public_image_depth_m=np.where(
++            _this_run_series(records, "visible", s_arr.size) > 0.0,
++            _this_run_series(records, "image_depth_m", s_arr.size),
++            np.nan,
++        ),
+     )
+diff --git a/DMP_playground/run_trajectory_extraction_demo.py b/DMP_playground/run_trajectory_extraction_demo.py
+index c0a4cc7..43fd216 100644
+--- a/DMP_playground/run_trajectory_extraction_demo.py
++++ b/DMP_playground/run_trajectory_extraction_demo.py
+@@ -178,6 +178,10 @@ class ClosedLoopServoResult:
+     tilt_lr_err_closed_deg: np.ndarray | None = None
+     tilt_fa_err_open_deg: np.ndarray | None = None
+     tilt_fa_err_closed_deg: np.ndarray | None = None
++    # Explicit sensor-only arrays; legacy image_* arrays may include simulator
++    # diagnostics outside visibility. A miss is NaN, never a centered detection.
++    public_image_u_m: np.ndarray | None = None
++    public_image_depth_m: np.ndarray | None = None
+ 
+ 
+ @dataclass(frozen=True)
+@@ -1032,6 +1036,7 @@ def run_closed_loop_servo_on_bent(
+     dynamic_leg: DynamicLegScanContext | None = None,
+ ) -> ClosedLoopServoResult:
+     servo_cfg = dict(cfg.get("closed_loop_servo", {}))  # type: ignore[arg-type]
++    use_scheduled_vessel = scheduled_observation_truth_enabled(servo_cfg)
+     rng = np.random.default_rng(int(cfg.get("seed", 7)) + 202)
+     obs_noise_rng = np.random.default_rng(int(cfg.get("seed", 7)) + 204)
+     obs_noise_s, obs_noise_u = build_observation_lateral_noise_profile(
+@@ -1192,7 +1197,7 @@ def run_closed_loop_servo_on_bent(
+         chart_orientation_field=bent.chart_orientation_field,
+     )
+     state0 = _prior_state_at_s(0.0)
+-    use_scheduled_obs = scheduled_observation_truth_enabled(servo_cfg)
++    use_scheduled_obs = use_scheduled_vessel
+     if dynamic_leg is not None and bake_scan_p is not None and bake_scan_r is not None:
+         p_feedback = np.asarray(bake_scan_p[0], dtype=np.float64).reshape(3)
+         r_feedback = np.asarray(bake_scan_r[0], dtype=np.float64).reshape(3, 3)

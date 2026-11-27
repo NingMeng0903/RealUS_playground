@@ -1,0 +1,32 @@
+{
+  "scope": "development API checks only; not acquisition cohort or heldout performance",
+  "development_seed": 720281,
+  "locked_test_seed_instantiated": false,
+  "contract_tests_passed": 9,
+  "python": "3.10.12",
+  "numpy": "2.2.6",
+  "batch_benchmark": {
+    "particles": 128,
+    "poses": 12,
+    "seconds": 0.08256243800133234,
+    "shape": [
+      128,
+      12,
+      2,
+      5
+    ]
+  },
+  "protocol_sha256": "df05ad2ac1b6c4a93a7329aee0ff0882943182fb971e9d48ea64df7dfe92cf1d",
+  "source_sha256": {
+    "__init__.py": "b6b7fb2d3de68a614dce8f923fb8bdd46d41aa7e346d1161d6702af0e8a2e641",
+    "environment.py": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+    "servo.py": "ae506a793d419118cf32e7ce466b8591721a7cc9fefe45c9b7cb16e8606b2697",
+    "test_contract.py": "f08e652540bb9e784573d7bb57b224e0d5037683498199dd1a0f75ccdfa15209"
+  },
+  "known_limits": [
+    "Declared L0 geometric image features, no B-mode",
+    "Out-of-plane angle is audit-only or an explicitly estimated particle posterior risk",
+    "Continuous SMC raw ESS may collapse; post-resample ESS is not coverage",
+    "No learned response benefit claimed"
+  ]
+}

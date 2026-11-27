@@ -22,8 +22,26 @@ from projects.genesis_ue_sync.multiview_realtime.config import MultiviewRealtime
 from projects.genesis_ue_sync.multiview_realtime.egress.track_pose_publisher import TrackPosePublisher
 from projects.genesis_ue_sync.multiview_realtime.inference.multiview_tracker import MultiviewTrackerSession
 from projects.genesis_ue_sync.multiview_realtime.ingress.camera_stream import MultiviewCameraStream
+from projects.genesis_ue_sync.multiview_realtime.ingress.camera_metadata import is_ue_source_profile
+from projects.genesis_ue_sync.multiview_realtime.ingress.undistort_burst import ensure_undistorted_burst
 from projects.genesis_ue_sync.multiview_realtime.track_stream import DEFAULT_TRACK_PUB_BIND
 from common.project import project_paths
+
+
+def _pop_latest_configured(stream: MultiviewCameraStream):
+    """Drain the newest synced frame using the profile's clock contract."""
+
+    mode = str(stream.config.sync_mode or "hardware_timestamp").strip().lower()
+    latest = None
+    while True:
+        if mode == "hardware_timestamp":
+            spread_ns = int(max(float(stream.config.max_hardware_spread_ms), 1.0) * 1_000_000)
+            synced = stream.try_pop_synced_hardware(max_spread_ns=spread_ns)
+        else:
+            synced = stream.try_pop_synced()
+        if synced is None:
+            return latest
+        latest = synced
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,6 +76,10 @@ def main() -> int:
                 recv_timeout_ms=ingress.recv_timeout_ms,
                 sync_tolerance_frames=ingress.sync_tolerance_frames,
                 max_buffer_per_camera=ingress.max_buffer_per_camera,
+                source_profile=ingress.source_profile,
+                metadata_intrinsics=ingress.metadata_intrinsics,
+                sync_mode=ingress.sync_mode,
+                max_hardware_spread_ms=ingress.max_hardware_spread_ms,
             ),
             pose_backend=cfg.pose_backend,
             world_reconstruction=cfg.world_reconstruction,
@@ -105,11 +127,12 @@ def main() -> int:
 
     stream.connect()
     stream.start_ingest()
+    undistort_maps: dict[str, tuple] = {}
     wait_start = time.perf_counter()
     last_wait_log = wait_start
     try:
         while True:
-            synced = stream.pop_latest_synced()
+            synced = _pop_latest_configured(stream)
             if synced is None:
                 now = time.perf_counter()
                 if now - last_wait_log >= 5.0:
@@ -134,6 +157,12 @@ def main() -> int:
             t0 = time.perf_counter()
             if synced_seen <= 3 or synced_seen % 30 == 0:
                 logging.info("infer frame=%s (synced_seen=%s) …", synced.frame_index, synced_seen)
+            if not is_ue_source_profile(cfg.ingress.source_profile):
+                synced = ensure_undistorted_burst(
+                    [synced],
+                    list(cfg.camera_ids),
+                    map_cache=undistort_maps,
+                )[0]
             track = session.track_synced_frame(synced)
             publisher.publish(track)
             dt = time.perf_counter() - t0

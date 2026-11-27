@@ -1,0 +1,44 @@
+{
+  "variant": "matched_candidate_information_features",
+  "base_driver": "426a5b5532612164fee31509d9e7b57e955cf9526b2296c896f77a7dfd8034ca",
+  "wrapper": "de79b37844a21ae9b2b1a96a0fb0e759a1787ee755034570f889d46143aedfd3",
+  "compact_root": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_live_anchor_firstscan_20261112/first_scan",
+  "models": {
+    "cql_firstscan_matched_7.pt": "aea03be38bde68e145be2218f89cdd0bcfd16b0db1f19e95d5847d1c23e98805",
+    "cql_firstscan_matched_29.pt": "875147d869612715e7cbe73dfc50d4e697b065fd48c607110eb73ea87a5ce026"
+  },
+  "config": {
+    "train_count": 128,
+    "test_start": 512,
+    "test_count": 128,
+    "steps": 120,
+    "seeds": [
+      7,
+      29
+    ]
+  },
+  "parity": {
+    "mask": true,
+    "action": true,
+    "reward": true,
+    "next_mask": true,
+    "done": true,
+    "row_count_equal": true,
+    "feature_shapes": {
+      "compact": [
+        768,
+        9,
+        32
+      ],
+      "matched": [
+        768,
+        9,
+        32
+      ]
+    },
+    "features_differ": true,
+    "case_seed_and_paths_equal": true,
+    "all_transition_parity": true
+  },
+  "no_recheck_checkpoint_reused": true
+}

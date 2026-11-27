@@ -1,0 +1,826 @@
+{
+  "poses_deg": [
+    0,
+    45,
+    75
+  ],
+  "per_pose_per_regime": 16,
+  "methods": [
+    "A_joint",
+    "A_independent",
+    "B_joint",
+    "B_open_loop",
+    "B_endpoint"
+  ],
+  "regimes": [
+    "matched",
+    "continuous",
+    "permanent_occlusion",
+    "temporary_dropout"
+  ],
+  "episode_seed": 718201,
+  "start_index": 100,
+  "identity_gate": 0.88,
+  "max_segments_censoring_guard": 62,
+  "joint_identity_gate": 0.9,
+  "continuous_refinement": true,
+  "importance_min_ess": 64.0,
+  "map_radius_gate_mm": 3.0,
+  "targets": [
+    "trunk_-36",
+    "trunk_-28",
+    "trunk_-20",
+    "trunk_-12",
+    "trunk_-6",
+    "junction_-2",
+    "junction_+4",
+    "fork_+10",
+    "lower_+14",
+    "lower_+20",
+    "lower_+26",
+    "lower_+32",
+    "lower_+36",
+    "upper_+14",
+    "upper_+20",
+    "upper_+26",
+    "upper_+32",
+    "upper_+36"
+  ],
+  "robot_table": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_leg_bifurcation_20261112/pilot/ROBOT_VIEWS.json",
+  "robot_table_sha256": "62bd0e99cef2b42d332c05ba3fff42f751353ae787967858ec472d96f8dfd318",
+  "source_sha256": {
+    "scan_bifurcation.py": "afac24fa40ce2aa9fef95b45ed44d47423c4157c1e7622113de49bdddef83df6",
+    "bifurcation_model.py": "4345e40ac8aa0f791811112e30b79a0a384e413f711348f17fcf37b6eb87bee0",
+    "continuous_map.py": "5524ac86f8fc8320df0b9e825abecf474e01a43a46d93c501463627311f416ef",
+    "gps_projection.py": "0ddc20f175f7f4c9235a3628fe4310a72d8deb5e013c7909705e3178e727893c",
+    "leg_chart.py": "807a838c95b8e994c0759ce995f995d5021abed74d7d7c1f65d61e678f3353c0",
+    "learned_prodmp.py": "5b7536345314cb6bddc5beb2d6d9093cd64cb250d42ddae7d7df2742566ab4c7"
+  },
+  "atlas": {
+    "0": {
+      "module": "ab_leg_bifurcation_20261112.leg_chart",
+      "asset_paths_and_hashes": {
+        "atlas_right.npz": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+          "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+        },
+        "right_pose_00.npz": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_00.npz",
+          "sha256": "1575ef5701f90fb98046da774e17951da438507d94287da11e766969c87a9d30"
+        }
+      },
+      "pose_deg": 0,
+      "supported_pose_degrees": [
+        0,
+        45,
+        75
+      ],
+      "source_asset_metadata": {
+        "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+        "mesh_type": "geometric_section_shaft_roi",
+        "coordinate_domain": "shaft_roi",
+        "default_depth_mode": "baked",
+        "domain_h_range": [
+          0.14,
+          0.94
+        ],
+        "station_count": 72,
+        "theta_count": 108,
+        "radial_count": 8,
+        "inner_fraction": 0.04,
+        "centerline_method": "cubic_smoothing_spline",
+        "frame_method": "parallel_transport",
+        "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+        "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+        "h_method": "transported_centerline_station",
+        "theta_method": "parallel_transport_periodic_angle",
+        "volume_vertex_count": 62208,
+        "volume_tet_count": 322056,
+        "volume_sample_count": 62208,
+        "skin_vertex_count": 7776,
+        "skin_face_count": 15336,
+        "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+        "material_coordinate_orientation": -1,
+        "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+        "scope": "restricted_shaft_roi_not_whole_leg",
+        "side_face_ownership": {
+          "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+          "ipsilateral_joint_indices": [
+            2,
+            5,
+            8,
+            11
+          ],
+          "contralateral_joint_indices": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "joint_chain": [
+            "hip",
+            "knee",
+            "ankle",
+            "foot"
+          ],
+          "coordinates_modified": false
+        },
+        "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+        "centerline_source": "recomputed_ipsilateral_canonical_base",
+        "asset_revision": "native_boundary_float64_queries_metadata_normalized",
+        "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets",
+        "source_surface_metadata": {
+          "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+          "topology": "single_leg_cylindrical_chart_without_foot",
+          "proximal_station": 0.02,
+          "distal_station": 1.0,
+          "distal_boundary": "ankle_cut",
+          "foot_policy": "excluded_from_leg_chart",
+          "max_radius_m": 0.26,
+          "skin_vertex_count": 7776,
+          "skin_face_count": 15336,
+          "volume_sample_count": 62208,
+          "surface_solver": "cotan_laplace_beltrami_dirichlet",
+          "volume_solver": "tet_linear_fem_dirichlet_h_theta",
+          "volume_d_method": "normalized_skin_to_shrink_medial_distance",
+          "core_method": "cross_section_shrink_distance_transform",
+          "volume_vertex_count": 62208,
+          "volume_tet_count": 322056,
+          "proximal_anchor_count": 28,
+          "distal_anchor_count": 32,
+          "medial_curve_count": 48,
+          "medial_anchor_count": 24,
+          "source_base_atlas": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/leg_volume_coordinates/atlas_right.npz",
+          "source_layered_npz": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/ultimate_graph_refined/right_layered_laplace3d.npz",
+          "volume_point_count": 186624,
+          "native_layered_surface": true,
+          "surface_source": "finite_loop_smooth_shell",
+          "smooth_shell_level": 3,
+          "smooth_shell_vertex_count": 31785,
+          "smooth_shell_face_count": 63104,
+          "layered_metadata": {
+            "station_count": 72,
+            "theta_count": 108,
+            "radial_count": 24,
+            "inner_frac": 0.04,
+            "surface_source": "finite_loop_smooth_shell",
+            "smooth_shell_level": 3,
+            "smooth_shell_vertex_count": 31785,
+            "smooth_shell_face_count": 63104,
+            "smooth_shell_stencil_nnz": 307595,
+            "vertex_count": 186624,
+            "tet_count": 1058184,
+            "inner_fixed_count": 7776,
+            "skin_fixed_count": 7776,
+            "d_quantiles": {
+              "0.0": 0.0,
+              "0.05": 0.04849228262901306,
+              "0.25": 0.27062106132507324,
+              "0.5": 0.5468907356262207,
+              "0.75": 0.7933767437934875,
+              "0.95": 0.9657193422317505,
+              "1.0": 1.0
+            }
+          },
+          "side_face_ownership": {
+            "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+            "ipsilateral_joint_indices": [
+              2,
+              5,
+              8,
+              11
+            ],
+            "contralateral_joint_indices": [
+              1,
+              4,
+              7,
+              10
+            ],
+            "joint_chain": [
+              "hip",
+              "knee",
+              "ankle",
+              "foot"
+            ],
+            "coordinates_modified": false,
+            "candidate_only": true,
+            "volume_arrays_are_old_and_invalid": true
+          },
+          "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+          "centerline_source": "recomputed_ipsilateral_canonical_base",
+          "mesh_type": "geometric_section_shaft_roi",
+          "coordinate_domain": "shaft_roi",
+          "default_depth_mode": "baked",
+          "domain_h_range": [
+            0.14,
+            0.94
+          ],
+          "station_count": 72,
+          "theta_count": 108,
+          "radial_count": 8,
+          "inner_fraction": 0.04,
+          "centerline_method": "cubic_smoothing_spline",
+          "frame_method": "parallel_transport",
+          "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+          "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+          "h_method": "transported_centerline_station",
+          "theta_method": "parallel_transport_periodic_angle",
+          "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+          "material_coordinate_orientation": -1,
+          "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+          "scope": "restricted_shaft_roi_not_whole_leg",
+          "asset_revision": "native_boundary_and_float64_queries",
+          "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets"
+        }
+      },
+      "units": {
+        "chart": "mm nominal",
+        "atlas_and_world_arrays": "m",
+        "theta": "radians"
+      },
+      "chart_definition": {
+        "x_mm": [
+          -42.0,
+          42.0
+        ],
+        "y_mm": [
+          -36.0,
+          36.0
+        ],
+        "z_mm": [
+          0.0,
+          26.0
+        ],
+        "x_positive": "increasing atlas h / distal centerline arclength",
+        "y_positive": "projection onto fixed lateral axis with positive world-x component",
+        "z_positive": "inward from visible anterior skin toward atlas d=1 inner shell",
+        "skin": "z=0 exactly maps to atlas d=0",
+        "interior": "d=z / local Euclidean skin-to-d=1 distance; no d extrapolation",
+        "theta_window_radians": [
+          0.23808577060699454,
+          2.4380857706069947
+        ],
+        "theta_reference_radians": 1.3380857706069946,
+        "h_window": [
+          0.4141869909946833,
+          0.5220106006393216
+        ],
+        "h_center": 0.4682696677848881,
+        "knee_projection_offset_mm": 14.690107959672934,
+        "centerline_s_window_mm": [
+          -42.0,
+          42.0
+        ]
+      },
+      "atlas_labels": {
+        "coordinate": "(theta, h, d)",
+        "theta_seam": "0/2pi avoided; all chart theta queries are interior to selected window",
+        "h_atlas_range": [
+          0.14000000059604645,
+          0.9399999976158142
+        ],
+        "d_atlas_range": [
+          0.0,
+          1.0
+        ],
+        "skin_d_unique": [
+          0.0,
+          0.0
+        ],
+        "interpolation": "piecewise-linear barycentric interpolation in attached atlas tets",
+        "outside_policy": "raise ChartDomainError; no nearest snap or silent extrapolation"
+      },
+      "geometry_assumptions": {
+        "right_leg": true,
+        "visible_arc": "anterior +depth-reference arc selected from true skin grid",
+        "lateral_axis_world_m": [
+          0.9928126863291222,
+          -0.11739888731427811,
+          -0.023248034784073564
+        ],
+        "depth_reference_axis_world_m": [
+          0.0,
+          -0.1942538824953231,
+          0.9809512878504688
+        ],
+        "longitudinal_axis_at_knee_world_m": [
+          -0.11967861072034577,
+          -0.9739008832488358,
+          -0.19285771891004336
+        ],
+        "shaft_roi_only": true,
+        "no_tissue_or_probe_model": true
+      }
+    },
+    "45": {
+      "module": "ab_leg_bifurcation_20261112.leg_chart",
+      "asset_paths_and_hashes": {
+        "atlas_right.npz": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+          "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+        },
+        "right_pose_45.npz": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_45.npz",
+          "sha256": "efd1a63d4912033fd14a4c8eb50d0e3f9bd45ae9497c75efa9ed6f74e0277723"
+        }
+      },
+      "pose_deg": 45,
+      "supported_pose_degrees": [
+        0,
+        45,
+        75
+      ],
+      "source_asset_metadata": {
+        "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+        "mesh_type": "geometric_section_shaft_roi",
+        "coordinate_domain": "shaft_roi",
+        "default_depth_mode": "baked",
+        "domain_h_range": [
+          0.14,
+          0.94
+        ],
+        "station_count": 72,
+        "theta_count": 108,
+        "radial_count": 8,
+        "inner_fraction": 0.04,
+        "centerline_method": "cubic_smoothing_spline",
+        "frame_method": "parallel_transport",
+        "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+        "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+        "h_method": "transported_centerline_station",
+        "theta_method": "parallel_transport_periodic_angle",
+        "volume_vertex_count": 62208,
+        "volume_tet_count": 322056,
+        "volume_sample_count": 62208,
+        "skin_vertex_count": 7776,
+        "skin_face_count": 15336,
+        "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+        "material_coordinate_orientation": -1,
+        "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+        "scope": "restricted_shaft_roi_not_whole_leg",
+        "side_face_ownership": {
+          "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+          "ipsilateral_joint_indices": [
+            2,
+            5,
+            8,
+            11
+          ],
+          "contralateral_joint_indices": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "joint_chain": [
+            "hip",
+            "knee",
+            "ankle",
+            "foot"
+          ],
+          "coordinates_modified": false
+        },
+        "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+        "centerline_source": "recomputed_ipsilateral_canonical_base",
+        "asset_revision": "native_boundary_float64_queries_metadata_normalized",
+        "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets",
+        "source_surface_metadata": {
+          "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+          "topology": "single_leg_cylindrical_chart_without_foot",
+          "proximal_station": 0.02,
+          "distal_station": 1.0,
+          "distal_boundary": "ankle_cut",
+          "foot_policy": "excluded_from_leg_chart",
+          "max_radius_m": 0.26,
+          "skin_vertex_count": 7776,
+          "skin_face_count": 15336,
+          "volume_sample_count": 62208,
+          "surface_solver": "cotan_laplace_beltrami_dirichlet",
+          "volume_solver": "tet_linear_fem_dirichlet_h_theta",
+          "volume_d_method": "normalized_skin_to_shrink_medial_distance",
+          "core_method": "cross_section_shrink_distance_transform",
+          "volume_vertex_count": 62208,
+          "volume_tet_count": 322056,
+          "proximal_anchor_count": 28,
+          "distal_anchor_count": 32,
+          "medial_curve_count": 48,
+          "medial_anchor_count": 24,
+          "source_base_atlas": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/leg_volume_coordinates/atlas_right.npz",
+          "source_layered_npz": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/ultimate_graph_refined/right_layered_laplace3d.npz",
+          "volume_point_count": 186624,
+          "native_layered_surface": true,
+          "surface_source": "finite_loop_smooth_shell",
+          "smooth_shell_level": 3,
+          "smooth_shell_vertex_count": 31785,
+          "smooth_shell_face_count": 63104,
+          "layered_metadata": {
+            "station_count": 72,
+            "theta_count": 108,
+            "radial_count": 24,
+            "inner_frac": 0.04,
+            "surface_source": "finite_loop_smooth_shell",
+            "smooth_shell_level": 3,
+            "smooth_shell_vertex_count": 31785,
+            "smooth_shell_face_count": 63104,
+            "smooth_shell_stencil_nnz": 307595,
+            "vertex_count": 186624,
+            "tet_count": 1058184,
+            "inner_fixed_count": 7776,
+            "skin_fixed_count": 7776,
+            "d_quantiles": {
+              "0.0": 0.0,
+              "0.05": 0.04849228262901306,
+              "0.25": 0.27062106132507324,
+              "0.5": 0.5468907356262207,
+              "0.75": 0.7933767437934875,
+              "0.95": 0.9657193422317505,
+              "1.0": 1.0
+            }
+          },
+          "side_face_ownership": {
+            "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+            "ipsilateral_joint_indices": [
+              2,
+              5,
+              8,
+              11
+            ],
+            "contralateral_joint_indices": [
+              1,
+              4,
+              7,
+              10
+            ],
+            "joint_chain": [
+              "hip",
+              "knee",
+              "ankle",
+              "foot"
+            ],
+            "coordinates_modified": false,
+            "candidate_only": true,
+            "volume_arrays_are_old_and_invalid": true
+          },
+          "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+          "centerline_source": "recomputed_ipsilateral_canonical_base",
+          "mesh_type": "geometric_section_shaft_roi",
+          "coordinate_domain": "shaft_roi",
+          "default_depth_mode": "baked",
+          "domain_h_range": [
+            0.14,
+            0.94
+          ],
+          "station_count": 72,
+          "theta_count": 108,
+          "radial_count": 8,
+          "inner_fraction": 0.04,
+          "centerline_method": "cubic_smoothing_spline",
+          "frame_method": "parallel_transport",
+          "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+          "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+          "h_method": "transported_centerline_station",
+          "theta_method": "parallel_transport_periodic_angle",
+          "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+          "material_coordinate_orientation": -1,
+          "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+          "scope": "restricted_shaft_roi_not_whole_leg",
+          "asset_revision": "native_boundary_and_float64_queries",
+          "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets"
+        }
+      },
+      "units": {
+        "chart": "mm nominal",
+        "atlas_and_world_arrays": "m",
+        "theta": "radians"
+      },
+      "chart_definition": {
+        "x_mm": [
+          -42.0,
+          42.0
+        ],
+        "y_mm": [
+          -36.0,
+          36.0
+        ],
+        "z_mm": [
+          0.0,
+          26.0
+        ],
+        "x_positive": "increasing atlas h / distal centerline arclength",
+        "y_positive": "projection onto fixed lateral axis with positive world-x component",
+        "z_positive": "inward from visible anterior skin toward atlas d=1 inner shell",
+        "skin": "z=0 exactly maps to atlas d=0",
+        "interior": "d=z / local Euclidean skin-to-d=1 distance; no d extrapolation",
+        "theta_window_radians": [
+          0.23808577060699454,
+          2.4380857706069947
+        ],
+        "theta_reference_radians": 1.3380857706069946,
+        "h_window": [
+          0.4141869909946833,
+          0.5220106006393216
+        ],
+        "h_center": 0.4682696677848881,
+        "knee_projection_offset_mm": 14.690107959672934,
+        "centerline_s_window_mm": [
+          -42.0,
+          42.0
+        ]
+      },
+      "atlas_labels": {
+        "coordinate": "(theta, h, d)",
+        "theta_seam": "0/2pi avoided; all chart theta queries are interior to selected window",
+        "h_atlas_range": [
+          0.14000000059604645,
+          0.9399999976158142
+        ],
+        "d_atlas_range": [
+          0.0,
+          1.0
+        ],
+        "skin_d_unique": [
+          0.0,
+          0.0
+        ],
+        "interpolation": "piecewise-linear barycentric interpolation in attached atlas tets",
+        "outside_policy": "raise ChartDomainError; no nearest snap or silent extrapolation"
+      },
+      "geometry_assumptions": {
+        "right_leg": true,
+        "visible_arc": "anterior +depth-reference arc selected from true skin grid",
+        "lateral_axis_world_m": [
+          0.9928126863291222,
+          -0.11739888731427811,
+          -0.023248034784073564
+        ],
+        "depth_reference_axis_world_m": [
+          0.0,
+          -0.1942538824953231,
+          0.9809512878504688
+        ],
+        "longitudinal_axis_at_knee_world_m": [
+          -0.11967861072034577,
+          -0.9739008832488358,
+          -0.19285771891004336
+        ],
+        "shaft_roi_only": true,
+        "no_tissue_or_probe_model": true
+      }
+    },
+    "75": {
+      "module": "ab_leg_bifurcation_20261112.leg_chart",
+      "asset_paths_and_hashes": {
+        "atlas_right.npz": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+          "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+        },
+        "right_pose_75.npz": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/right_pose_75.npz",
+          "sha256": "274d8783535177c962ff405aedf336a9f038da3015e55b0e03ca9b0e88a80916"
+        }
+      },
+      "pose_deg": 75,
+      "supported_pose_degrees": [
+        0,
+        45,
+        75
+      ],
+      "source_asset_metadata": {
+        "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+        "mesh_type": "geometric_section_shaft_roi",
+        "coordinate_domain": "shaft_roi",
+        "default_depth_mode": "baked",
+        "domain_h_range": [
+          0.14,
+          0.94
+        ],
+        "station_count": 72,
+        "theta_count": 108,
+        "radial_count": 8,
+        "inner_fraction": 0.04,
+        "centerline_method": "cubic_smoothing_spline",
+        "frame_method": "parallel_transport",
+        "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+        "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+        "h_method": "transported_centerline_station",
+        "theta_method": "parallel_transport_periodic_angle",
+        "volume_vertex_count": 62208,
+        "volume_tet_count": 322056,
+        "volume_sample_count": 62208,
+        "skin_vertex_count": 7776,
+        "skin_face_count": 15336,
+        "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+        "material_coordinate_orientation": -1,
+        "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+        "scope": "restricted_shaft_roi_not_whole_leg",
+        "side_face_ownership": {
+          "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+          "ipsilateral_joint_indices": [
+            2,
+            5,
+            8,
+            11
+          ],
+          "contralateral_joint_indices": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "joint_chain": [
+            "hip",
+            "knee",
+            "ankle",
+            "foot"
+          ],
+          "coordinates_modified": false
+        },
+        "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+        "centerline_source": "recomputed_ipsilateral_canonical_base",
+        "asset_revision": "native_boundary_float64_queries_metadata_normalized",
+        "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets",
+        "source_surface_metadata": {
+          "method": "shaft_roi_radial_transport_graph_harmonic_depth",
+          "topology": "single_leg_cylindrical_chart_without_foot",
+          "proximal_station": 0.02,
+          "distal_station": 1.0,
+          "distal_boundary": "ankle_cut",
+          "foot_policy": "excluded_from_leg_chart",
+          "max_radius_m": 0.26,
+          "skin_vertex_count": 7776,
+          "skin_face_count": 15336,
+          "volume_sample_count": 62208,
+          "surface_solver": "cotan_laplace_beltrami_dirichlet",
+          "volume_solver": "tet_linear_fem_dirichlet_h_theta",
+          "volume_d_method": "normalized_skin_to_shrink_medial_distance",
+          "core_method": "cross_section_shrink_distance_transform",
+          "volume_vertex_count": 62208,
+          "volume_tet_count": 322056,
+          "proximal_anchor_count": 28,
+          "distal_anchor_count": 32,
+          "medial_curve_count": 48,
+          "medial_anchor_count": 24,
+          "source_base_atlas": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/leg_volume_coordinates/atlas_right.npz",
+          "source_layered_npz": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/bake/ultimate_graph_refined/right_layered_laplace3d.npz",
+          "volume_point_count": 186624,
+          "native_layered_surface": true,
+          "surface_source": "finite_loop_smooth_shell",
+          "smooth_shell_level": 3,
+          "smooth_shell_vertex_count": 31785,
+          "smooth_shell_face_count": 63104,
+          "layered_metadata": {
+            "station_count": 72,
+            "theta_count": 108,
+            "radial_count": 24,
+            "inner_frac": 0.04,
+            "surface_source": "finite_loop_smooth_shell",
+            "smooth_shell_level": 3,
+            "smooth_shell_vertex_count": 31785,
+            "smooth_shell_face_count": 63104,
+            "smooth_shell_stencil_nnz": 307595,
+            "vertex_count": 186624,
+            "tet_count": 1058184,
+            "inner_fixed_count": 7776,
+            "skin_fixed_count": 7776,
+            "d_quantiles": {
+              "0.0": 0.0,
+              "0.05": 0.04849228262901306,
+              "0.25": 0.27062106132507324,
+              "0.5": 0.5468907356262207,
+              "0.75": 0.7933767437934875,
+              "0.95": 0.9657193422317505,
+              "1.0": 1.0
+            }
+          },
+          "side_face_ownership": {
+            "rule": "face_mean_ipsilateral_leg_chain_lbs_mass_greater_equal_contralateral",
+            "ipsilateral_joint_indices": [
+              2,
+              5,
+              8,
+              11
+            ],
+            "contralateral_joint_indices": [
+              1,
+              4,
+              7,
+              10
+            ],
+            "joint_chain": [
+              "hip",
+              "knee",
+              "ankle",
+              "foot"
+            ],
+            "coordinates_modified": false,
+            "candidate_only": true,
+            "volume_arrays_are_old_and_invalid": true
+          },
+          "roi_source_surface": "ipsilateral_faces_of_original_production_loop_surface",
+          "centerline_source": "recomputed_ipsilateral_canonical_base",
+          "mesh_type": "geometric_section_shaft_roi",
+          "coordinate_domain": "shaft_roi",
+          "default_depth_mode": "baked",
+          "domain_h_range": [
+            0.14,
+            0.94
+          ],
+          "station_count": 72,
+          "theta_count": 108,
+          "radial_count": 8,
+          "inner_fraction": 0.04,
+          "centerline_method": "cubic_smoothing_spline",
+          "frame_method": "parallel_transport",
+          "surface_method": "true_triangle_plane_intersection_single_ray_hit",
+          "depth_method": "positive_edge_weight_graph_laplace_dirichlet",
+          "h_method": "transported_centerline_station",
+          "theta_method": "parallel_transport_periodic_angle",
+          "depth_one_boundary": "inner_shell_at_radial_fraction; centerline_is_outside_annular_domain",
+          "material_coordinate_orientation": -1,
+          "full_vertex_indices_semantics": "dominant_source_triangle_vertex_diagnostic_only",
+          "scope": "restricted_shaft_roi_not_whole_leg",
+          "asset_revision": "native_boundary_and_float64_queries",
+          "surface_connectivity_source": "oriented_outer_boundary_faces_of_native_tets"
+        }
+      },
+      "units": {
+        "chart": "mm nominal",
+        "atlas_and_world_arrays": "m",
+        "theta": "radians"
+      },
+      "chart_definition": {
+        "x_mm": [
+          -42.0,
+          42.0
+        ],
+        "y_mm": [
+          -36.0,
+          36.0
+        ],
+        "z_mm": [
+          0.0,
+          26.0
+        ],
+        "x_positive": "increasing atlas h / distal centerline arclength",
+        "y_positive": "projection onto fixed lateral axis with positive world-x component",
+        "z_positive": "inward from visible anterior skin toward atlas d=1 inner shell",
+        "skin": "z=0 exactly maps to atlas d=0",
+        "interior": "d=z / local Euclidean skin-to-d=1 distance; no d extrapolation",
+        "theta_window_radians": [
+          0.23808577060699454,
+          2.4380857706069947
+        ],
+        "theta_reference_radians": 1.3380857706069946,
+        "h_window": [
+          0.4141869909946833,
+          0.5220106006393216
+        ],
+        "h_center": 0.4682696677848881,
+        "knee_projection_offset_mm": 14.690107959672934,
+        "centerline_s_window_mm": [
+          -42.0,
+          42.0
+        ]
+      },
+      "atlas_labels": {
+        "coordinate": "(theta, h, d)",
+        "theta_seam": "0/2pi avoided; all chart theta queries are interior to selected window",
+        "h_atlas_range": [
+          0.14000000059604645,
+          0.9399999976158142
+        ],
+        "d_atlas_range": [
+          0.0,
+          1.0
+        ],
+        "skin_d_unique": [
+          0.0,
+          0.0
+        ],
+        "interpolation": "piecewise-linear barycentric interpolation in attached atlas tets",
+        "outside_policy": "raise ChartDomainError; no nearest snap or silent extrapolation"
+      },
+      "geometry_assumptions": {
+        "right_leg": true,
+        "visible_arc": "anterior +depth-reference arc selected from true skin grid",
+        "lateral_axis_world_m": [
+          0.9928126863291222,
+          -0.11739888731427811,
+          -0.023248034784073564
+        ],
+        "depth_reference_axis_world_m": [
+          0.0,
+          -0.1942538824953231,
+          0.9809512878504688
+        ],
+        "longitudinal_axis_at_knee_world_m": [
+          -0.11967861072034577,
+          -0.9739008832488358,
+          -0.19285771891004336
+        ],
+        "shaft_roi_only": true,
+        "no_tissue_or_probe_model": true
+      }
+    }
+  }
+}

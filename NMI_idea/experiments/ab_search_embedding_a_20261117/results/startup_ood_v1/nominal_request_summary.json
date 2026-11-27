@@ -1,0 +1,3858 @@
+{
+  "holdout": {
+    "factorial_sha256": "961245132d470f5cbe488650bf61bc33787def231c8b6a93c8f3601465b4cb5b",
+    "all": {
+      "pooled": {
+        "worlds": 64,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.9453125,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 37.08692519239844,
+            "turn_degs": 6.687108824843193,
+            "seconds": 5.96875,
+            "frames": 60.6875,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 19.037109375,
+            "centered_complete": 0.06640625,
+            "first_interval_recaptured": 0.94921875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.92578125,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.013671875,
+            "tcp_mm": 37.31949651122729,
+            "turn_degs": 7.009881203859553,
+            "seconds": 6.185546875,
+            "frames": 62.85546875,
+            "ever_wrong": 0.013671875,
+            "feedback_revisions": 19.234375,
+            "centered_complete": 0.0625,
+            "first_interval_recaptured": 0.9296875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.9453125,
+            "final_wrong": 0.001953125,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 37.08781262294824,
+            "turn_degs": 6.687108824843193,
+            "seconds": 5.96875,
+            "frames": 60.6875,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 19.037109375,
+            "centered_complete": 0.06640625,
+            "first_interval_recaptured": 0.94921875,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.01953125,
+              "ci95": [
+                -0.044921875,
+                -0.001953125
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": -0.001953125,
+              "ci95": [
+                -0.005859375,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.23257131882885318,
+              "ci95": [
+                -0.12250473534613823,
+                0.5939986394793227
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.32277237901636013,
+              "ci95": [
+                0.18801539430925399,
+                0.47420260859743857
+              ]
+            },
+            "seconds": {
+              "delta": 0.216796875,
+              "ci95": [
+                0.1328125,
+                0.314453125
+              ]
+            },
+            "frames": {
+              "delta": 2.16796875,
+              "ci95": [
+                1.328125,
+                3.14453125
+              ]
+            },
+            "ever_wrong": {
+              "delta": -0.001953125,
+              "ci95": [
+                -0.005859375,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.197265625,
+              "ci95": [
+                -0.115234375,
+                0.544921875
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01953125,
+                0.0078125
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.01953125,
+              "ci95": [
+                -0.044921875,
+                -0.001953125
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0008874305498025592,
+              "ci95": [
+                0.00022227395426011043,
+                0.0016766925551830597
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 484,
+            "final_wrong": 1,
+            "new_identity_mistake": 8,
+            "ever_wrong": 8
+          },
+          "cem_old_retain": {
+            "corrected_complete": 474,
+            "final_wrong": 1,
+            "new_identity_mistake": 7,
+            "ever_wrong": 7
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 484,
+            "final_wrong": 1,
+            "new_identity_mistake": 8,
+            "ever_wrong": 8
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "connection": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 38.10085300719417,
+            "turn_degs": 6.842565916295067,
+            "seconds": 5.94921875,
+            "frames": 60.4921875,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 21.21875,
+            "centered_complete": 0.02734375,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 38.579300827619825,
+            "turn_degs": 7.21940141586011,
+            "seconds": 6.12890625,
+            "frames": 62.2890625,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 21.55078125,
+            "centered_complete": 0.03125,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 38.10262786829377,
+            "turn_degs": 6.842565916295067,
+            "seconds": 5.94921875,
+            "frames": 60.4921875,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 21.21875,
+            "centered_complete": 0.02734375,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.47844782042565726,
+              "ci95": [
+                0.0889923845982072,
+                0.9447099473120905
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.37683549956504336,
+              "ci95": [
+                0.18266609563191225,
+                0.5925239149702468
+              ]
+            },
+            "seconds": {
+              "delta": 0.1796875,
+              "ci95": [
+                0.08203125,
+                0.28515625
+              ]
+            },
+            "frames": {
+              "delta": 1.796875,
+              "ci95": [
+                0.8203125,
+                2.8515625
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.33203125,
+              "ci95": [
+                -0.08203125,
+                0.8515625
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.01171875
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0017748610996051184,
+              "ci95": [
+                0.0005127354857155098,
+                0.003346043321325203
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 256,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          },
+          "cem_old_retain": {
+            "corrected_complete": 256,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 256,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.890625,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.02734375,
+            "tcp_mm": 36.07299737760268,
+            "turn_degs": 6.53165173339132,
+            "seconds": 5.98828125,
+            "frames": 60.8828125,
+            "ever_wrong": 0.02734375,
+            "feedback_revisions": 16.85546875,
+            "centered_complete": 0.10546875,
+            "first_interval_recaptured": 0.8984375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.8515625,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 36.05969219483474,
+            "turn_degs": 6.800360991858991,
+            "seconds": 6.2421875,
+            "frames": 63.421875,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 16.91796875,
+            "centered_complete": 0.09375,
+            "first_interval_recaptured": 0.859375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.890625,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.02734375,
+            "tcp_mm": 36.07299737760268,
+            "turn_degs": 6.53165173339132,
+            "seconds": 5.98828125,
+            "frames": 60.8828125,
+            "ever_wrong": 0.02734375,
+            "feedback_revisions": 16.85546875,
+            "centered_complete": 0.10546875,
+            "first_interval_recaptured": 0.8984375,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.0390625,
+              "ci95": [
+                -0.08984375,
+                -0.00390625
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.01330518276794379,
+              "ci95": [
+                -0.551090310771943,
+                0.5420948597199456
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.2687092584676707,
+              "ci95": [
+                0.08604316283575936,
+                0.4838022187150208
+              ]
+            },
+            "seconds": {
+              "delta": 0.25390625,
+              "ci95": [
+                0.109375,
+                0.41796875
+              ]
+            },
+            "frames": {
+              "delta": 2.5390625,
+              "ci95": [
+                1.09375,
+                4.1796875
+              ]
+            },
+            "ever_wrong": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0625,
+              "ci95": [
+                -0.375,
+                0.546875
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.01171875,
+              "ci95": [
+                -0.0390625,
+                0.0078125
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.0390625,
+              "ci95": [
+                -0.08984375,
+                -0.00390625
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 228,
+            "final_wrong": 1,
+            "new_identity_mistake": 7,
+            "ever_wrong": 7
+          },
+          "cem_old_retain": {
+            "corrected_complete": 218,
+            "final_wrong": 1,
+            "new_identity_mistake": 6,
+            "ever_wrong": 6
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 228,
+            "final_wrong": 1,
+            "new_identity_mistake": 7,
+            "ever_wrong": 7
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      }
+    },
+    "zero": {
+      "pooled": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.99609375,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 38.61542823867763,
+            "turn_degs": 6.9754998730290945,
+            "seconds": 5.94140625,
+            "frames": 60.4140625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 19.8671875,
+            "centered_complete": 0.1328125,
+            "first_interval_recaptured": 0.99609375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 39.44888702614004,
+            "turn_degs": 7.620984843693613,
+            "seconds": 6.27734375,
+            "frames": 63.7734375,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 20.3359375,
+            "centered_complete": 0.125,
+            "first_interval_recaptured": 0.9921875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.99609375,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 38.61542823867763,
+            "turn_degs": 6.9754998730290945,
+            "seconds": 5.94140625,
+            "frames": 60.4140625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 19.8671875,
+            "centered_complete": 0.1328125,
+            "first_interval_recaptured": 0.99609375,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.833458787462412,
+              "ci95": [
+                0.33130848298245513,
+                1.4094588838883413
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.6454849706645183,
+              "ci95": [
+                0.4088408632347,
+                0.8934806759487669
+              ]
+            },
+            "seconds": {
+              "delta": 0.3359375,
+              "ci95": [
+                0.21484375,
+                0.46875
+              ]
+            },
+            "frames": {
+              "delta": 3.359375,
+              "ci95": [
+                2.1484375,
+                4.6875
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.46875,
+              "ci95": [
+                -0.1171875,
+                1.1171875
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0390625,
+                0.015625
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 255,
+            "final_wrong": 1,
+            "new_identity_mistake": 6,
+            "ever_wrong": 6
+          },
+          "cem_old_retain": {
+            "corrected_complete": 254,
+            "final_wrong": 1,
+            "new_identity_mistake": 6,
+            "ever_wrong": 6
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 255,
+            "final_wrong": 1,
+            "new_identity_mistake": 6,
+            "ever_wrong": 6
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "connection": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0078125,
+            "tcp_mm": 39.335570161446896,
+            "turn_degs": 6.84489399914569,
+            "seconds": 5.9609375,
+            "frames": 60.609375,
+            "ever_wrong": 0.0078125,
+            "feedback_revisions": 22.7734375,
+            "centered_complete": 0.0546875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0078125,
+            "tcp_mm": 40.29246580229821,
+            "turn_degs": 7.598564998275781,
+            "seconds": 6.3203125,
+            "frames": 64.203125,
+            "ever_wrong": 0.0078125,
+            "feedback_revisions": 23.4375,
+            "centered_complete": 0.0625,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0078125,
+            "tcp_mm": 39.335570161446896,
+            "turn_degs": 6.84489399914569,
+            "seconds": 5.9609375,
+            "frames": 60.609375,
+            "ever_wrong": 0.0078125,
+            "feedback_revisions": 22.7734375,
+            "centered_complete": 0.0546875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.9568956408513145,
+              "ci95": [
+                0.21594869655964957,
+                1.8273783546090885
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.7536709991300912,
+              "ci95": [
+                0.4311361866534117,
+                1.0961221272646855
+              ]
+            },
+            "seconds": {
+              "delta": 0.359375,
+              "ci95": [
+                0.203125,
+                0.53125
+              ]
+            },
+            "frames": {
+              "delta": 3.59375,
+              "ci95": [
+                2.03125,
+                5.3125
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.6640625,
+              "ci95": [
+                -0.1796875,
+                1.6171875
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.0234375
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          },
+          "cem_old_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0078125,
+            "new_identity_mistake": 0.0390625,
+            "tcp_mm": 37.89528631590836,
+            "turn_degs": 7.106105746912497,
+            "seconds": 5.921875,
+            "frames": 60.21875,
+            "ever_wrong": 0.0390625,
+            "feedback_revisions": 16.9609375,
+            "centered_complete": 0.2109375,
+            "first_interval_recaptured": 0.9921875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.984375,
+            "final_wrong": 0.0078125,
+            "new_identity_mistake": 0.0390625,
+            "tcp_mm": 38.6053082499819,
+            "turn_degs": 7.643404689111446,
+            "seconds": 6.234375,
+            "frames": 63.34375,
+            "ever_wrong": 0.0390625,
+            "feedback_revisions": 17.234375,
+            "centered_complete": 0.1875,
+            "first_interval_recaptured": 0.984375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0078125,
+            "new_identity_mistake": 0.0390625,
+            "tcp_mm": 37.89528631590836,
+            "turn_degs": 7.106105746912497,
+            "seconds": 5.921875,
+            "frames": 60.21875,
+            "ever_wrong": 0.0390625,
+            "feedback_revisions": 16.9609375,
+            "centered_complete": 0.2109375,
+            "first_interval_recaptured": 0.9921875,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0234375,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.710021934073545,
+              "ci95": [
+                0.05040797655654712,
+                1.5310673197421194
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.5372989421989498,
+              "ci95": [
+                0.2146445549858778,
+                0.9240298228563473
+              ]
+            },
+            "seconds": {
+              "delta": 0.3125,
+              "ci95": [
+                0.13261718750000018,
+                0.5234375
+              ]
+            },
+            "frames": {
+              "delta": 3.125,
+              "ci95": [
+                1.3261718750000018,
+                5.234375
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.2734375,
+              "ci95": [
+                -0.5001953124999998,
+                1.15625
+              ]
+            },
+            "centered_complete": {
+              "delta": -0.0234375,
+              "ci95": [
+                -0.078125,
+                0.015625
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0234375,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 1,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          },
+          "cem_old_retain": {
+            "corrected_complete": 126,
+            "final_wrong": 1,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 1,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      }
+    },
+    "one": {
+      "pooled": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.89453125,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0078125,
+            "tcp_mm": 35.55842214611922,
+            "turn_degs": 6.398717776657293,
+            "seconds": 5.99609375,
+            "frames": 60.9609375,
+            "ever_wrong": 0.0078125,
+            "feedback_revisions": 18.20703125,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 0.90234375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.859375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.00390625,
+            "tcp_mm": 35.190105996314514,
+            "turn_degs": 6.398777564025489,
+            "seconds": 6.09375,
+            "frames": 61.9375,
+            "ever_wrong": 0.00390625,
+            "feedback_revisions": 18.1328125,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 0.8671875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.89453125,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0078125,
+            "tcp_mm": 35.560197007218825,
+            "turn_degs": 6.398717776657293,
+            "seconds": 5.99609375,
+            "frames": 60.9609375,
+            "ever_wrong": 0.0078125,
+            "feedback_revisions": 18.20703125,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 0.90234375,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.03515625,
+              "ci95": [
+                -0.08203125,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.3683161498047056,
+              "ci95": [
+                -0.7637650695324034,
+                -0.05469963240940867
+              ]
+            },
+            "turn_degs": {
+              "delta": 5.9787368196673185e-05,
+              "ci95": [
+                -5.978736819625685e-05,
+                0.0002092557886866908
+              ]
+            },
+            "seconds": {
+              "delta": 0.09765625,
+              "ci95": [
+                -0.00390625,
+                0.234375
+              ]
+            },
+            "frames": {
+              "delta": 0.9765625,
+              "ci95": [
+                -0.0390625,
+                2.34375
+              ]
+            },
+            "ever_wrong": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -0.07421875,
+              "ci95": [
+                -0.2890625,
+                0.08623046874999574
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.03515625,
+              "ci95": [
+                -0.08203125,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0017748610996051184,
+              "ci95": [
+                0.0004617914247255772,
+                0.00328976613029508
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 229,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          },
+          "cem_old_retain": {
+            "corrected_complete": 220,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 229,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "connection": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0,
+            "tcp_mm": 36.86613585294145,
+            "turn_degs": 6.840237833444441,
+            "seconds": 5.9375,
+            "frames": 60.375,
+            "ever_wrong": 0.0,
+            "feedback_revisions": 19.6640625,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0,
+            "tcp_mm": 36.86613585294145,
+            "turn_degs": 6.840237833444441,
+            "seconds": 5.9375,
+            "frames": 60.375,
+            "ever_wrong": 0.0,
+            "feedback_revisions": 19.6640625,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0,
+            "tcp_mm": 36.86968557514066,
+            "turn_degs": 6.840237833444441,
+            "seconds": 5.9375,
+            "frames": 60.375,
+            "ever_wrong": 0.0,
+            "feedback_revisions": 19.6640625,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.003549722199210237,
+              "ci95": [
+                0.0012601818759430117,
+                0.006220580147683119
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 0,
+            "ever_wrong": 0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 0,
+            "ever_wrong": 0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 0,
+            "ever_wrong": 0
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.7890625,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 34.25070843929702,
+            "turn_degs": 5.957197719870144,
+            "seconds": 6.0546875,
+            "frames": 61.546875,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 16.75,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 0.8046875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.71875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0078125,
+            "tcp_mm": 33.514076139687596,
+            "turn_degs": 5.957317294606536,
+            "seconds": 6.25,
+            "frames": 63.5,
+            "ever_wrong": 0.0078125,
+            "feedback_revisions": 16.6015625,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 0.734375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.7890625,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 34.25070843929702,
+            "turn_degs": 5.957197719870144,
+            "seconds": 6.0546875,
+            "frames": 61.546875,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 16.75,
+            "centered_complete": 0.0,
+            "first_interval_recaptured": 0.8046875,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.0703125,
+              "ci95": [
+                -0.1640625,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0234375,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": -0.7366322996094254,
+              "ci95": [
+                -1.4418268381202874,
+                -0.1650019970747998
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.00011957473639245819,
+              "ci95": [
+                -0.0001195747363925137,
+                0.0004185115773733816
+              ]
+            },
+            "seconds": {
+              "delta": 0.1953125,
+              "ci95": [
+                -0.0078125,
+                0.4453125
+              ]
+            },
+            "frames": {
+              "delta": 1.953125,
+              "ci95": [
+                -0.078125,
+                4.453125
+              ]
+            },
+            "ever_wrong": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0234375,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": -0.1484375,
+              "ci95": [
+                -0.578125,
+                0.1953125
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.0703125,
+              "ci95": [
+                -0.1640625,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 101,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          },
+          "cem_old_retain": {
+            "corrected_complete": 92,
+            "final_wrong": 0,
+            "new_identity_mistake": 1,
+            "ever_wrong": 1
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 101,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      }
+    }
+  },
+  "blank": {
+    "factorial_sha256": "13153452a4bdc023d733688a458a80a9ca1bbeb3554ada7f545bb83eecf9ecab",
+    "all": {
+      "pooled": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.99609375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.01953125,
+            "tcp_mm": 38.24166346701618,
+            "turn_degs": 6.690261431474979,
+            "seconds": 5.74609375,
+            "frames": 58.4609375,
+            "ever_wrong": 0.01953125,
+            "feedback_revisions": 20.43359375,
+            "centered_complete": 0.02734375,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.98828125,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.03125,
+            "tcp_mm": 38.989982241462336,
+            "turn_degs": 7.315573991665842,
+            "seconds": 6.0703125,
+            "frames": 61.703125,
+            "ever_wrong": 0.03125,
+            "feedback_revisions": 21.16796875,
+            "centered_complete": 0.03125,
+            "first_interval_recaptured": 0.99609375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.99609375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.01953125,
+            "tcp_mm": 38.24166346701618,
+            "turn_degs": 6.690261431474979,
+            "seconds": 5.74609375,
+            "frames": 58.4609375,
+            "ever_wrong": 0.01953125,
+            "feedback_revisions": 20.43359375,
+            "centered_complete": 0.02734375,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.01953125,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.01171875
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.01171875,
+              "ci95": [
+                0.0,
+                0.02734375
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.7483187744461546,
+              "ci95": [
+                0.1279750654787396,
+                1.443678616875504
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.6253125601908636,
+              "ci95": [
+                0.34599363807870004,
+                0.9241822806452479
+              ]
+            },
+            "seconds": {
+              "delta": 0.32421875,
+              "ci95": [
+                0.1796875,
+                0.4921875
+              ]
+            },
+            "frames": {
+              "delta": 3.2421875,
+              "ci95": [
+                1.796875,
+                4.921875
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.01171875,
+              "ci95": [
+                0.0,
+                0.02734375
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.734375,
+              "ci95": [
+                -0.01953125,
+                1.72265625
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.01171875
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 255,
+            "final_wrong": 0,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          },
+          "cem_old_retain": {
+            "corrected_complete": 253,
+            "final_wrong": 1,
+            "new_identity_mistake": 8,
+            "ever_wrong": 8
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 255,
+            "final_wrong": 0,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": false,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "connection": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 39.84523902939731,
+            "turn_degs": 6.901605443865901,
+            "seconds": 6.1015625,
+            "frames": 62.015625,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 23.0546875,
+            "centered_complete": 0.0078125,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.984375,
+            "final_wrong": 0.0078125,
+            "new_identity_mistake": 0.0390625,
+            "tcp_mm": 41.34187657828962,
+            "turn_degs": 8.152230564247628,
+            "seconds": 6.75,
+            "frames": 68.5,
+            "ever_wrong": 0.0390625,
+            "feedback_revisions": 24.5234375,
+            "centered_complete": 0.015625,
+            "first_interval_recaptured": 0.9921875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 39.84523902939731,
+            "turn_degs": 6.901605443865901,
+            "seconds": 6.1015625,
+            "frames": 62.015625,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 23.0546875,
+            "centered_complete": 0.0078125,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.015625,
+              "ci95": [
+                -0.0390625,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.0234375
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0234375,
+              "ci95": [
+                0.0,
+                0.046875
+              ]
+            },
+            "tcp_mm": {
+              "delta": 1.4966375488923092,
+              "ci95": [
+                0.34268946082014795,
+                2.7031598192233086
+              ]
+            },
+            "turn_degs": {
+              "delta": 1.2506251203817262,
+              "ci95": [
+                0.8812922314373994,
+                1.6209146072171925
+              ]
+            },
+            "seconds": {
+              "delta": 0.6484375,
+              "ci95": [
+                0.453125,
+                0.875
+              ]
+            },
+            "frames": {
+              "delta": 6.484375,
+              "ci95": [
+                4.53125,
+                8.75
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0234375,
+              "ci95": [
+                0.0,
+                0.046875
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 1.46875,
+              "ci95": [
+                0.007617187500000178,
+                3.25
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.0234375
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0234375,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          },
+          "cem_old_retain": {
+            "corrected_complete": 126,
+            "final_wrong": 1,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": false,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 36.63808790463505,
+            "turn_degs": 6.478917419084058,
+            "seconds": 5.390625,
+            "frames": 54.90625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 17.8125,
+            "centered_complete": 0.046875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 36.63808790463505,
+            "turn_degs": 6.478917419084058,
+            "seconds": 5.390625,
+            "frames": 54.90625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 17.8125,
+            "centered_complete": 0.046875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 36.63808790463505,
+            "turn_degs": 6.478917419084058,
+            "seconds": 5.390625,
+            "frames": 54.90625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 17.8125,
+            "centered_complete": 0.046875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 0,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          },
+          "cem_old_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 0,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 0,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      }
+    },
+    "zero": {
+      "pooled": {
+        "worlds": 32,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.99609375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.01953125,
+            "tcp_mm": 38.24166346701618,
+            "turn_degs": 6.690261431474979,
+            "seconds": 5.74609375,
+            "frames": 58.4609375,
+            "ever_wrong": 0.01953125,
+            "feedback_revisions": 20.43359375,
+            "centered_complete": 0.02734375,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.98828125,
+            "final_wrong": 0.00390625,
+            "new_identity_mistake": 0.03125,
+            "tcp_mm": 38.989982241462336,
+            "turn_degs": 7.315573991665842,
+            "seconds": 6.0703125,
+            "frames": 61.703125,
+            "ever_wrong": 0.03125,
+            "feedback_revisions": 21.16796875,
+            "centered_complete": 0.03125,
+            "first_interval_recaptured": 0.99609375,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.99609375,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.01953125,
+            "tcp_mm": 38.24166346701618,
+            "turn_degs": 6.690261431474979,
+            "seconds": 5.74609375,
+            "frames": 58.4609375,
+            "ever_wrong": 0.01953125,
+            "feedback_revisions": 20.43359375,
+            "centered_complete": 0.02734375,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.01953125,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.01171875
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.01171875,
+              "ci95": [
+                0.0,
+                0.02734375
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.7483187744461546,
+              "ci95": [
+                0.1279750654787396,
+                1.443678616875504
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.6253125601908636,
+              "ci95": [
+                0.34599363807870004,
+                0.9241822806452479
+              ]
+            },
+            "seconds": {
+              "delta": 0.32421875,
+              "ci95": [
+                0.1796875,
+                0.4921875
+              ]
+            },
+            "frames": {
+              "delta": 3.2421875,
+              "ci95": [
+                1.796875,
+                4.921875
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.01171875,
+              "ci95": [
+                0.0,
+                0.02734375
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.734375,
+              "ci95": [
+                -0.01953125,
+                1.72265625
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.00390625,
+              "ci95": [
+                0.0,
+                0.01171875
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.00390625,
+              "ci95": [
+                -0.01171875,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 255,
+            "final_wrong": 0,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          },
+          "cem_old_retain": {
+            "corrected_complete": 253,
+            "final_wrong": 1,
+            "new_identity_mistake": 8,
+            "ever_wrong": 8
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 255,
+            "final_wrong": 0,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": false,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "connection": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 39.84523902939731,
+            "turn_degs": 6.901605443865901,
+            "seconds": 6.1015625,
+            "frames": 62.015625,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 23.0546875,
+            "centered_complete": 0.0078125,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.984375,
+            "final_wrong": 0.0078125,
+            "new_identity_mistake": 0.0390625,
+            "tcp_mm": 41.34187657828962,
+            "turn_degs": 8.152230564247628,
+            "seconds": 6.75,
+            "frames": 68.5,
+            "ever_wrong": 0.0390625,
+            "feedback_revisions": 24.5234375,
+            "centered_complete": 0.015625,
+            "first_interval_recaptured": 0.9921875,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 1.0,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.015625,
+            "tcp_mm": 39.84523902939731,
+            "turn_degs": 6.901605443865901,
+            "seconds": 6.1015625,
+            "frames": 62.015625,
+            "ever_wrong": 0.015625,
+            "feedback_revisions": 23.0546875,
+            "centered_complete": 0.0078125,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": -0.015625,
+              "ci95": [
+                -0.0390625,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.0234375
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0234375,
+              "ci95": [
+                0.0,
+                0.046875
+              ]
+            },
+            "tcp_mm": {
+              "delta": 1.4966375488923092,
+              "ci95": [
+                0.34268946082014795,
+                2.7031598192233086
+              ]
+            },
+            "turn_degs": {
+              "delta": 1.2506251203817262,
+              "ci95": [
+                0.8812922314373994,
+                1.6209146072171925
+              ]
+            },
+            "seconds": {
+              "delta": 0.6484375,
+              "ci95": [
+                0.453125,
+                0.875
+              ]
+            },
+            "frames": {
+              "delta": 6.484375,
+              "ci95": [
+                4.53125,
+                8.75
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0234375,
+              "ci95": [
+                0.0,
+                0.046875
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 1.46875,
+              "ci95": [
+                0.007617187500000178,
+                3.25
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0078125,
+              "ci95": [
+                0.0,
+                0.0234375
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": -0.0078125,
+              "ci95": [
+                -0.0234375,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          },
+          "cem_old_retain": {
+            "corrected_complete": 126,
+            "final_wrong": 1,
+            "new_identity_mistake": 5,
+            "ever_wrong": 5
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 128,
+            "final_wrong": 0,
+            "new_identity_mistake": 2,
+            "ever_wrong": 2
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": false,
+            "execution_within_upper_margins": false,
+            "execution_equivalent": false
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      },
+      "parallel": {
+        "worlds": 16,
+        "replicas_per_world": 8,
+        "means": {
+          "cem_nominal_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 36.63808790463505,
+            "turn_degs": 6.478917419084058,
+            "seconds": 5.390625,
+            "frames": 54.90625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 17.8125,
+            "centered_complete": 0.046875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_old_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 36.63808790463505,
+            "turn_degs": 6.478917419084058,
+            "seconds": 5.390625,
+            "frames": 54.90625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 17.8125,
+            "centered_complete": 0.046875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 0.9921875,
+            "final_wrong": 0.0,
+            "new_identity_mistake": 0.0234375,
+            "tcp_mm": 36.63808790463505,
+            "turn_degs": 6.478917419084058,
+            "seconds": 5.390625,
+            "frames": 54.90625,
+            "ever_wrong": 0.0234375,
+            "feedback_revisions": 17.8125,
+            "centered_complete": 0.046875,
+            "first_interval_recaptured": 1.0,
+            "both_vessels_observed": 1.0
+          }
+        },
+        "vs_reference": {
+          "cem_old_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "final_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "new_identity_mistake": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "tcp_mm": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "turn_degs": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "seconds": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "frames": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "ever_wrong": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "feedback_revisions": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "centered_complete": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "first_interval_recaptured": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            },
+            "both_vessels_observed": {
+              "delta": 0.0,
+              "ci95": [
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "counts": {
+          "cem_nominal_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 0,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          },
+          "cem_old_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 0,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          },
+          "cem_cemfit_retain": {
+            "corrected_complete": 127,
+            "final_wrong": 0,
+            "new_identity_mistake": 3,
+            "ever_wrong": 3
+          }
+        },
+        "contrast_checks": {
+          "cem_old_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          },
+          "cem_cemfit_retain": {
+            "completion": false,
+            "mistakes_within_margin": true,
+            "execution_within_upper_margins": true,
+            "execution_equivalent": true
+          }
+        }
+      }
+    }
+  }
+}

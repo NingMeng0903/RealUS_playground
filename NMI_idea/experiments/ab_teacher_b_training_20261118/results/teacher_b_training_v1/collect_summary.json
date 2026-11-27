@@ -1,0 +1,11 @@
+{
+  "rows": 128,
+  "source_nomination_counts": {
+    "random": 512,
+    "direct": 512,
+    "evidence": 512
+  },
+  "archive_sha256": "6e9cc9d15114f9700a3f84f85f7c6ebbf09187b7e3093aa93059fbba0a836e83",
+  "precomputed_source": "/tmp/realus_b_train_teacher_stage_7dc878a_741.jsonl.gz",
+  "precomputed_sha256": "871f823341769c64d34bfb4cf662198657d4b5629232de9d5ae58c5f2f1a0f8a"
+}

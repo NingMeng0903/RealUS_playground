@@ -1,0 +1,168 @@
+{
+  "input": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_independent/ownership_right_flip_plc.npz",
+  "cap_only_steiner_attempts": [
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.10050895361109922,
+        -1.2333263911203962,
+        0.004398669249838585
+      ],
+      "lift_m": 0.0001,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.10054629745081713,
+        -1.2331337176366228,
+        0.0044371707600127964
+      ],
+      "lift_m": -0.0001,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.10034090633236865,
+        -1.2341934217973771,
+        0.004225412454054633
+      ],
+      "lift_m": 0.001,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.1007143447295477,
+        -1.232266686959642,
+        0.004610427555796748
+      ],
+      "lift_m": -0.001,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.09959402953801054,
+        -1.2380468914728477,
+        0.0034553822505704003
+      ],
+      "lift_m": 0.005,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.10146122152390581,
+        -1.2284132172841713,
+        0.005380457759280981
+      ],
+      "lift_m": -0.005,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.0986604335450629,
+        -1.242863728567186,
+        0.00249284449621511
+      ],
+      "lift_m": 0.01,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.10239481751685345,
+        -1.223596380189833,
+        0.006342995513636271
+      ],
+      "lift_m": -0.01,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.09679324155916763,
+        -1.2524974027558624,
+        0.0005677689875045297
+      ],
+      "lift_m": 0.02,
+      "cgal_intersections": 2,
+      "accepted": false
+    },
+    {
+      "edge": [
+        465,
+        466
+      ],
+      "new_vertex": [
+        -0.10426200950274872,
+        -1.2139627060011566,
+        0.008268071022346852
+      ],
+      "lift_m": -0.02,
+      "cgal_intersections": 2,
+      "accepted": false
+    }
+  ],
+  "unchanged_original_skin_faces": true,
+  "unchanged_original_vertices": true,
+  "added_cap_vertices": 0,
+  "topology": {
+    "vertices": 480,
+    "faces": 956,
+    "boundary_edges": 0,
+    "boundary_components": 0,
+    "boundary_component_vertices": [],
+    "boundary_degrees_not_two": 0,
+    "nonmanifold_edges": 1,
+    "inconsistent_interior_winding": 0,
+    "unused_vertices": 0,
+    "watertight": false,
+    "boundary_vertex_ids": []
+  },
+  "cgal_intersections": {
+    "complete_detect_only": true,
+    "cgal_intersecting_face_pairs": 0,
+    "categories": {},
+    "examples": [],
+    "seconds": 0.002137286999641219
+  }
+}

@@ -59,6 +59,10 @@ class DwposeOnnxConfig:
     trt_max_batch: int = 8
     retain_simcc: bool = True
     simcc_topk: int = 5
+    # Keep the historical detector-only behavior by default.  When enabled,
+    # the batched multiview path may reuse a real detector box for a camera
+    # whose current detector result is empty.
+    temporal_bbox_fallback: bool = False
 
     @classmethod
     def from_dict(cls, payload: dict | None) -> "DwposeOnnxConfig":
@@ -92,6 +96,7 @@ class DwposeOnnxConfig:
             trt_max_batch=int(payload.get("trt_max_batch", 8)),
             retain_simcc=bool(payload.get("retain_simcc", True)),
             simcc_topk=max(1, int(payload.get("simcc_topk", 5))),
+            temporal_bbox_fallback=bool(payload.get("temporal_bbox_fallback", False)),
         )
 
 
@@ -242,6 +247,11 @@ class DwposeOnnxDetector:
         self._preprocess_pose = None
         self._decode_pose = None
         self._execution_providers: tuple[str, ...] = ()
+        # These maps are deliberately kept on the detector instance so a
+        # synchronized camera keeps its own history across frame calls.  The
+        # batch helper only mutates them when the opt-in fallback is enabled.
+        self._temporal_bbox_by_camera: dict[str, np.ndarray] = {}
+        self._temporal_bbox_shape_by_camera: dict[str, tuple[int, int]] = {}
 
     @staticmethod
     def _onnx_input_name(model_path: Path) -> str:
@@ -448,6 +458,9 @@ class DwposeOnnxDetector:
                 retain_simcc=bool(self.config.retain_simcc),
                 simcc_topk=int(self.config.simcc_topk),
                 build_simcc_candidates=bool(build_simcc_candidates),
+                temporal_bbox_fallback=bool(self.config.temporal_bbox_fallback),
+                previous_boxes_by_camera=self._temporal_bbox_by_camera,
+                previous_bbox_shapes_by_camera=self._temporal_bbox_shape_by_camera,
             )
 
         annots: dict[str, dict[str, np.ndarray]] = {}
@@ -517,11 +530,16 @@ class DwposeOnnxDetector:
             confidence_threshold=float(self.config.confidence_threshold),
             retain_simcc=bool(self.config.retain_simcc),
             simcc_topk=int(self.config.simcc_topk),
+            temporal_bbox_fallback=bool(self.config.temporal_bbox_fallback),
+            previous_boxes_by_camera=self._temporal_bbox_by_camera,
+            previous_bbox_shapes_by_camera=self._temporal_bbox_shape_by_camera,
         )
 
     def close(self) -> None:
         self._session_det = None
         self._session_pose = None
+        self._temporal_bbox_by_camera.clear()
+        self._temporal_bbox_shape_by_camera.clear()
 
 
 __all__ = ["BODY25_FOOT_INDICES", "DwposeOnnxConfig", "DwposeOnnxDetector"]

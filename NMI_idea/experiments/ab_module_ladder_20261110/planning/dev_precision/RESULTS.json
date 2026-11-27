@@ -1,0 +1,720 @@
+{
+  "scope": "DEV sensitivity only; no locked test; no parameter selection",
+  "dev_seed": 720501,
+  "particles": 16,
+  "variants": [
+    {
+      "state": "initial",
+      "samples": 8,
+      "future": "compact",
+      "selected": [
+        0.0,
+        0.0188393,
+        0.2669232
+      ],
+      "value": 46.13464752913765,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            0.0,
+            -0.0162289,
+            0.1944908
+          ],
+          "value": 50.125556057421974,
+          "entropy_after": 0.4032405538213084
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            -0.2985508
+          ],
+          "value": 50.04522416599515,
+          "entropy_after": 0.4479523035125922
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            0.0
+          ],
+          "value": 46.68217243734501,
+          "entropy_after": 0.173388288931338
+        },
+        {
+          "action": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "value": 53.66199950221095,
+          "entropy_after": 2.167738448884983
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            -0.2423625
+          ],
+          "value": 48.99191533366843,
+          "entropy_after": 0.9730363802917568
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            0.0
+          ],
+          "value": 49.08736131806487,
+          "entropy_after": 1.0397420484823126
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 46.13464752913765,
+          "entropy_after": 0.9729811649413218
+        }
+      ],
+      "wall_s": 1.5138103930003126,
+      "endpoint_queries": 59,
+      "geometry_queries": 59
+    },
+    {
+      "state": "initial",
+      "samples": 32,
+      "future": "compact",
+      "selected": [
+        0.0,
+        -0.0136952,
+        0.0
+      ],
+      "value": 50.0822751322156,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            0.0,
+            -0.0162289,
+            0.1944908
+          ],
+          "value": 51.5546809292237,
+          "entropy_after": 0.5040506922766355
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            -0.2985508
+          ],
+          "value": 51.873781156799225,
+          "entropy_after": 0.6719284552688882
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            0.0
+          ],
+          "value": 50.0822751322156,
+          "entropy_after": 0.346776577862676
+        },
+        {
+          "action": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "value": 54.08033625349567,
+          "entropy_after": 1.7806422972983786
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            -0.2423625
+          ],
+          "value": 51.653118216880735,
+          "entropy_after": 0.8514068327552872
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            0.0
+          ],
+          "value": 51.55740380712627,
+          "entropy_after": 1.0397420484823126
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 51.56322603876576,
+          "entropy_after": 0.8513585193236566
+        }
+      ],
+      "wall_s": 1.8452860959951067,
+      "endpoint_queries": 74,
+      "geometry_queries": 74
+    },
+    {
+      "state": "initial",
+      "samples": 64,
+      "future": "compact",
+      "selected": [
+        0.0,
+        -0.0162289,
+        0.1944908
+      ],
+      "value": 49.4232774881654,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            0.0,
+            -0.0162289,
+            0.1944908
+          ],
+          "value": 49.4232774881654,
+          "entropy_after": 0.5040506922766355
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            -0.2985508
+          ],
+          "value": 51.873781156799225,
+          "entropy_after": 0.6719284552688882
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            0.0
+          ],
+          "value": 50.082275132215614,
+          "entropy_after": 0.346776577862676
+        },
+        {
+          "action": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "value": 54.112499459833025,
+          "entropy_after": 1.741932682139718
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            -0.2423625
+          ],
+          "value": 51.653118216880735,
+          "entropy_after": 0.8514068327552872
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            0.0
+          ],
+          "value": 51.557403807126256,
+          "entropy_after": 1.0397420484823126
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 50.47424996874701,
+          "entropy_after": 0.8513585193236566
+        }
+      ],
+      "wall_s": 2.0595748829946388,
+      "endpoint_queries": 74,
+      "geometry_queries": 74
+    },
+    {
+      "state": "initial",
+      "samples": 32,
+      "future": "same_full",
+      "selected": [
+        0.0,
+        -0.0136952,
+        0.0
+      ],
+      "value": 49.16589998546003,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            0.0,
+            -0.0162289,
+            0.1944908
+          ],
+          "value": 51.58679615222941,
+          "entropy_after": 0.5040506922766355
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            -0.2985508
+          ],
+          "value": 51.79387568503081,
+          "entropy_after": 0.6719284552688882
+        },
+        {
+          "action": [
+            0.0,
+            -0.0136952,
+            0.0
+          ],
+          "value": 49.16589998546003,
+          "entropy_after": 0.346776577862676
+        },
+        {
+          "action": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "value": 54.08049628539177,
+          "entropy_after": 1.7806422972983786
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            -0.2423625
+          ],
+          "value": 52.4902532265894,
+          "entropy_after": 0.8514068327552872
+        },
+        {
+          "action": [
+            0.0,
+            0.0167511,
+            0.0
+          ],
+          "value": 52.47792629126993,
+          "entropy_after": 1.0397420484823126
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 51.574379014793585,
+          "entropy_after": 0.8513585193236566
+        }
+      ],
+      "wall_s": 15.820305391003785,
+      "endpoint_queries": 676,
+      "geometry_queries": 676
+    },
+    {
+      "state": "after_first_public_block",
+      "samples": 8,
+      "future": "compact",
+      "selected": [
+        0.0,
+        0.0155921,
+        -0.2748978
+      ],
+      "value": 35.98765633301166,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            -0.0065977,
+            0.0185902,
+            0.2669232
+          ],
+          "value": 47.47112123788877,
+          "entropy_after": 1.7474427851276666e-85
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2069232
+          ],
+          "value": 47.44439430070277,
+          "entropy_after": 2.539590916516954e-87
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2669232
+          ],
+          "value": 47.469328175360076,
+          "entropy_after": 2.6104805742417946e-81
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.3269232
+          ],
+          "value": 47.494262050017376,
+          "entropy_after": 4.563050786780158e-79
+        },
+        {
+          "action": [
+            -0.0058064,
+            0.0156965,
+            0.2669232
+          ],
+          "value": 47.47212548143093,
+          "entropy_after": 2.292739341008746e-84
+        },
+        {
+          "action": [
+            0.0,
+            0.0155921,
+            -0.2748978
+          ],
+          "value": 35.98765633301166,
+          "entropy_after": 4.443385516059317e-78
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 47.43057283280391,
+          "entropy_after": 4.534423188665034e-80
+        }
+      ],
+      "wall_s": 0.37634361499658553,
+      "endpoint_queries": 14,
+      "geometry_queries": 14
+    },
+    {
+      "state": "after_first_public_block",
+      "samples": 32,
+      "future": "compact",
+      "selected": [
+        0.0,
+        0.0155921,
+        -0.2748978
+      ],
+      "value": 33.12692720806355,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            -0.0065977,
+            0.0185902,
+            0.2669232
+          ],
+          "value": 47.47112123788877,
+          "entropy_after": 9.980808480261355e-84
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2069232
+          ],
+          "value": 47.44439430070277,
+          "entropy_after": 2.6100446330232476e-79
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2669232
+          ],
+          "value": 47.469328175360076,
+          "entropy_after": 1.0167124125380028e-71
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.3269232
+          ],
+          "value": 47.494262050017376,
+          "entropy_after": 1.1968170130439338e-72
+        },
+        {
+          "action": [
+            -0.0058064,
+            0.0156965,
+            0.2669232
+          ],
+          "value": 47.47212548143093,
+          "entropy_after": 3.404162891870588e-73
+        },
+        {
+          "action": [
+            0.0,
+            0.0155921,
+            -0.2748978
+          ],
+          "value": 33.12692720806355,
+          "entropy_after": 2.678979009912762e-73
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 47.43057283280391,
+          "entropy_after": 2.396112428001006e-72
+        }
+      ],
+      "wall_s": 0.5445741299990914,
+      "endpoint_queries": 14,
+      "geometry_queries": 14
+    },
+    {
+      "state": "after_first_public_block",
+      "samples": 64,
+      "future": "compact",
+      "selected": [
+        0.0,
+        0.0155921,
+        -0.2748978
+      ],
+      "value": 35.987656333011586,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            -0.0065977,
+            0.0185902,
+            0.2669232
+          ],
+          "value": 47.47112123788876,
+          "entropy_after": 1.3480791632177775e-74
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2069232
+          ],
+          "value": 47.44439430070277,
+          "entropy_after": 1.4408487415754195e-79
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2669232
+          ],
+          "value": 47.469328175360076,
+          "entropy_after": 5.083562079297047e-72
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.3269232
+          ],
+          "value": 47.494262050017376,
+          "entropy_after": 2.0917352005955288e-66
+        },
+        {
+          "action": [
+            -0.0058064,
+            0.0156965,
+            0.2669232
+          ],
+          "value": 47.47212548143093,
+          "entropy_after": 1.7021262730936076e-73
+        },
+        {
+          "action": [
+            0.0,
+            0.0155921,
+            -0.2748978
+          ],
+          "value": 35.987656333011586,
+          "entropy_after": 1.3440582425626942e-73
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 47.43057283280391,
+          "entropy_after": 1.198068311449816e-72
+        }
+      ],
+      "wall_s": 0.7667140589983319,
+      "endpoint_queries": 14,
+      "geometry_queries": 14
+    },
+    {
+      "state": "after_first_public_block",
+      "samples": 32,
+      "future": "same_full",
+      "selected": [
+        0.0,
+        0.0155921,
+        -0.2748978
+      ],
+      "value": 33.12692720805934,
+      "kind": "branch",
+      "root_values": [
+        {
+          "action": [
+            -0.0065977,
+            0.0185902,
+            0.2669232
+          ],
+          "value": 47.47112123788877,
+          "entropy_after": 9.980808480261355e-84
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2069232
+          ],
+          "value": 47.44439430070277,
+          "entropy_after": 2.6100446330232476e-79
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.2669232
+          ],
+          "value": 47.469328175360076,
+          "entropy_after": 1.0167124125380028e-71
+        },
+        {
+          "action": [
+            -0.0062021,
+            0.0171433,
+            0.3269232
+          ],
+          "value": 47.494262050017376,
+          "entropy_after": 1.1968170130439338e-72
+        },
+        {
+          "action": [
+            -0.0058064,
+            0.0156965,
+            0.2669232
+          ],
+          "value": 47.47212548143093,
+          "entropy_after": 3.404162891870588e-73
+        },
+        {
+          "action": [
+            0.0,
+            0.0155921,
+            -0.2748978
+          ],
+          "value": 33.12692720805934,
+          "entropy_after": 2.678979009912762e-73
+        },
+        {
+          "action": [
+            0.0,
+            0.0188393,
+            0.2669232
+          ],
+          "value": 47.43057283280391,
+          "entropy_after": 2.396112428001006e-72
+        }
+      ],
+      "wall_s": 25.056711338998866,
+      "endpoint_queries": 1069,
+      "geometry_queries": 1069
+    }
+  ],
+  "comparisons": [
+    {
+      "state": "initial",
+      "reference": "32_compact",
+      "variant": "8_compact",
+      "selected_action_changed": true,
+      "max_root_value_abs_difference": 5.42857850962811,
+      "selected_value_difference": -3.9476276030779474
+    },
+    {
+      "state": "initial",
+      "reference": "32_compact",
+      "variant": "32_compact",
+      "selected_action_changed": false,
+      "max_root_value_abs_difference": 0.0,
+      "selected_value_difference": 0.0
+    },
+    {
+      "state": "initial",
+      "reference": "32_compact",
+      "variant": "64_compact",
+      "selected_action_changed": true,
+      "max_root_value_abs_difference": 2.1314034410583034,
+      "selected_value_difference": -0.6589976440502028
+    },
+    {
+      "state": "initial",
+      "reference": "32_compact",
+      "variant": "32_same_full",
+      "selected_action_changed": false,
+      "max_root_value_abs_difference": 0.9205224841436603,
+      "selected_value_difference": -0.9163751467555699
+    },
+    {
+      "state": "after_first_public_block",
+      "reference": "32_compact",
+      "variant": "8_compact",
+      "selected_action_changed": false,
+      "max_root_value_abs_difference": 2.860729124948108,
+      "selected_value_difference": 2.860729124948108
+    },
+    {
+      "state": "after_first_public_block",
+      "reference": "32_compact",
+      "variant": "32_compact",
+      "selected_action_changed": false,
+      "max_root_value_abs_difference": 0.0,
+      "selected_value_difference": 0.0
+    },
+    {
+      "state": "after_first_public_block",
+      "reference": "32_compact",
+      "variant": "64_compact",
+      "selected_action_changed": false,
+      "max_root_value_abs_difference": 2.860729124948037,
+      "selected_value_difference": 2.860729124948037
+    },
+    {
+      "state": "after_first_public_block",
+      "reference": "32_compact",
+      "variant": "32_same_full",
+      "selected_action_changed": false,
+      "max_root_value_abs_difference": 4.206412995699793e-12,
+      "selected_value_difference": -4.206412995699793e-12
+    }
+  ],
+  "source_sha256": {
+    "planning/check_dev_precision.py": "08f2c68905d10a13fbb325f4d609512685df7f04ec61af8d71be750ed6a5095d",
+    "planning/system.py": "c9983d1fd606223612d7f6b3dffac132bf4f8bd176c8d1ac46a88ae5be7c29c7",
+    "planning/PROTOCOL.json": "a1221257b245977bbf8888d996e76f2213cc3002e3b156c967e62797fd900d84",
+    "observation/environment.py": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+    "observation/servo.py": "ae506a793d419118cf32e7ce466b8591721a7cc9fefe45c9b7cb16e8606b2697"
+  }
+}

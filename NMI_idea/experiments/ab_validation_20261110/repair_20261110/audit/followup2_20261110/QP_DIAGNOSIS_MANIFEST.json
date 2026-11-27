@@ -1,0 +1,62 @@
+{
+  "sealed_utc": "2026-11-10T09:40:16.782426+00:00",
+  "scope": "QP timing audit and frozen 2cm/s cross-track source diagnosis only; streaming A and contact multichart pending",
+  "files": {
+    "CROSS_TRACK_DIAGNOSIS.txt": {
+      "bytes": 5547,
+      "sha256": "ad4f1e2849f9a1140a489630c0840d03b728624f932c17d7ac82775ff6744023"
+    },
+    "QP_TIMING_AUDIT.txt": {
+      "bytes": 3852,
+      "sha256": "1ac281a1b3fbdfc696d47459a28305f9e71eb5dfeb7d69d1c961488dd3bc74a1"
+    },
+    "check_qp_timing.py": {
+      "bytes": 12604,
+      "sha256": "accc4797dec4f0a9b63345102a1457b30dc88f6d68694208a0b2b26d330619b2"
+    },
+    "cross_track_diagnosis.json": {
+      "bytes": 35986,
+      "sha256": "df069b508f846910e9cfdcc631aa75a83526a56546786336fb85eda3aebd4f70"
+    },
+    "cross_track_diagnosis.log": {
+      "bytes": 35986,
+      "sha256": "df069b508f846910e9cfdcc631aa75a83526a56546786336fb85eda3aebd4f70"
+    },
+    "diagnose_cross_track.py": {
+      "bytes": 8454,
+      "sha256": "c3caf460a6861fc99925711f8181a240ffdf2f2e90b0dc2727049dc6de350a77"
+    },
+    "qp_timing_independent.json": {
+      "bytes": 25804,
+      "sha256": "1589cf3119b844b3f5fd2b9cbccb2851108ac75ccfe072d814d4429cc19f3933"
+    },
+    "qp_timing_independent.log": {
+      "bytes": 25804,
+      "sha256": "1589cf3119b844b3f5fd2b9cbccb2851108ac75ccfe072d814d4429cc19f3933"
+    },
+    "source_at_diagnosis/controller.yaml": {
+      "bytes": 27446,
+      "sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f"
+    },
+    "source_at_diagnosis/native_inner.cpp": {
+      "bytes": 94924,
+      "sha256": "bd86583c3508d4879fa47d8b1bdf31bf8307a2a5ae39ebca4ebd9f8e42eafec5"
+    },
+    "source_at_diagnosis/native_kinematics.cpp": {
+      "bytes": 3457,
+      "sha256": "de93aad4e0f449fbb41dfacc21519e7dbb2aa223b2c43efb9241c92b5c509ad9"
+    },
+    "source_at_diagnosis/native_types.hpp": {
+      "bytes": 16079,
+      "sha256": "f98826cea468eb0562f32df5725da0cd360bf4f2b969df8c18f46c6e5e61d55c"
+    },
+    "source_at_diagnosis/python_client.py": {
+      "bytes": 46788,
+      "sha256": "d831ab4ff4b277fb08310492136e444d0df74730f69c6ca6af36216742de2ad4"
+    },
+    "source_at_diagnosis/python_loop.py": {
+      "bytes": 374191,
+      "sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40"
+    }
+  }
+}

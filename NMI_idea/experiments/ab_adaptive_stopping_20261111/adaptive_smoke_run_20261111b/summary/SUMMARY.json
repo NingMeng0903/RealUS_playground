@@ -1,0 +1,204 @@
+{
+  "schema": "ab_adaptive_stopping_summary_v1",
+  "protocol": {
+    "bootstrap_seed": 721505,
+    "bootstrap_samples": 200,
+    "confidence_level": 0.975,
+    "two_sided_alpha": 0.025000000000000022,
+    "bootstrap_unit": "object/subject cluster; 2 mirrors retained within cluster",
+    "primary_effect_requirement": ">= +10 percentage points and 97.5% two-sided CI lower bound > 0 for both comparisons",
+    "all_subject_denominator": true,
+    "false_stop_is_not_success": true
+  },
+  "input": {
+    "root": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_smoke_run_20261111b",
+    "stage": "smoke",
+    "raw_rows": 0,
+    "selected_rows": 0,
+    "metadata": {
+      "input_root": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_smoke_run_20261111b",
+      "source_files": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_smoke_run_20261111b/MANIFEST_smoke_00.json"
+      ],
+      "schema": "adaptive_stopping_runner_v1",
+      "stage": "smoke",
+      "count": 1,
+      "case_start": 0,
+      "fixture_index": 0,
+      "arms": [
+        "B_H1"
+      ],
+      "mode": "constrained",
+      "train_seed": 721501,
+      "calibration_seed": 721502,
+      "test_seed": 721503,
+      "noise_seed": 721504,
+      "model_artifact": null,
+      "no_deadline": true,
+      "watchdog_max_probe_frames": 2,
+      "pair_dwell": 0.3,
+      "backend": "native",
+      "source_manifest": {
+        "acoustics": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/acoustics.py",
+          "sha256": "c246cfe812af9fa3552efc385b1b20d767baaf59c60fa15f246d297f13e07ac9"
+        },
+        "fixture": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/fixture.py",
+          "sha256": "51b599678149201e48dda65e669c2b1de6aefd9bd749f4718f1e614e98036d32"
+        },
+        "robot_motion": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/robot_motion.py",
+          "sha256": "e14393104c76b4bf96512062d35c14a83c1a962458e3a402565a0bcee0fa6994"
+        },
+        "belief_model": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/belief_model.py",
+          "sha256": "2f6b83597ff982303142e0a417bc5d54f54f8001972d0d69c98bf14734ec8687"
+        },
+        "native_adapter": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/native_adapter.py",
+          "sha256": "1f8b580b782f76ec3c6f3a5f4f1688d72d7f66a4c8d7764ef2abacfd7b62d406"
+        },
+        "adaptive_planning": {
+          "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_planning.py",
+          "sha256": "225564a316553c797baa20e09a02bc9c2ea35959e225fa15419af26b9a3a3804"
+        }
+      }
+    },
+    "diagnostics": {
+      "files_seen": 1,
+      "files_parsed": 1,
+      "parse_errors": [],
+      "non_record_files": [
+        "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_smoke_run_20261111b/MANIFEST_smoke_00.json"
+      ],
+      "raw_rows": 0
+    }
+  },
+  "primary_methods": {
+    "B": null,
+    "strongA": null,
+    "complete_pair": null
+  },
+  "arms": [],
+  "arms_summary": {},
+  "completeness": {
+    "complete": false,
+    "reasons": [],
+    "required_arms": {},
+    "observed_arms": [],
+    "expected_object_clusters": 1,
+    "expected_object_ids": [
+      "0"
+    ],
+    "expected_object_ids_from_metadata": true,
+    "expected_mirror_count": 2,
+    "expected_mirror_ids": [
+      "0",
+      "1"
+    ],
+    "expected_subject_contract": {
+      "subjects": null,
+      "mirrors_per_subject": 2
+    },
+    "missing_records": [],
+    "duplicate_records": [],
+    "rows_missing_identity": []
+  },
+  "primary_comparisons": {
+    "B_minus_strongA": {
+      "reason": "B_or_strongA_arm_missing",
+      "estimate": null
+    },
+    "B_minus_complete_pair": {
+      "reason": "B_or_complete_pair_arm_missing",
+      "estimate": null
+    }
+  },
+  "risk_gate_audit": {
+    "status": "incomplete",
+    "reason": "B_arm_missing",
+    "threshold": 0.9
+  },
+  "calibration": {},
+  "controls": {
+    "guard8_vs_guard12": {
+      "guard8": {
+        "guard": 8,
+        "rows": 0,
+        "arms": [],
+        "status": "incomplete",
+        "reason": "guard_variant_not_run"
+      },
+      "guard12": {
+        "guard": 12,
+        "rows": 0,
+        "arms": [],
+        "status": "incomplete",
+        "reason": "guard_variant_not_run"
+      }
+    },
+    "common_observation_caps_2_4_6_8": {
+      "2": {
+        "observation_cap": 2,
+        "rows": 0,
+        "arms": [],
+        "status": "incomplete",
+        "reason": "common_observation_cap_not_run"
+      },
+      "4": {
+        "observation_cap": 4,
+        "rows": 0,
+        "arms": [],
+        "status": "incomplete",
+        "reason": "common_observation_cap_not_run"
+      },
+      "6": {
+        "observation_cap": 6,
+        "rows": 0,
+        "arms": [],
+        "status": "incomplete",
+        "reason": "common_observation_cap_not_run"
+      },
+      "8": {
+        "observation_cap": 8,
+        "rows": 0,
+        "arms": [],
+        "status": "incomplete",
+        "reason": "common_observation_cap_not_run"
+      }
+    },
+    "first32_shadow_2_4": {
+      "2": {
+        "observation_cap": 2,
+        "expected_subjects": 0,
+        "rows": 0,
+        "observed_subject_ids": [],
+        "missing_subject_ids": [],
+        "missing_required_arms": [],
+        "status": "incomplete",
+        "reason": "first32_shadow_not_run_or_incomplete"
+      },
+      "4": {
+        "observation_cap": 4,
+        "expected_subjects": 0,
+        "rows": 0,
+        "observed_subject_ids": [],
+        "missing_subject_ids": [],
+        "missing_required_arms": [],
+        "status": "incomplete",
+        "reason": "first32_shadow_not_run_or_incomplete"
+      }
+    },
+    "attribution_complete": false,
+    "shadow_subject_ids": [],
+    "note": "Missing guard/cap/shadow runs remain explicitly incomplete; no rows are imputed."
+  },
+  "research_gate": {
+    "status": "incomplete",
+    "researchgate_pass": false,
+    "effect_requirement_met": false,
+    "requires_complete_primary_records": true,
+    "requires_complete_guard_cap_shadow_controls": true
+  }
+}

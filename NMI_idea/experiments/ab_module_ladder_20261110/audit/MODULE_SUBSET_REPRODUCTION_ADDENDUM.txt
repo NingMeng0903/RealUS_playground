@@ -1,0 +1,66 @@
+Independent numerical reproduction addendum, 2026-11-10
+
+PASS for the bounded checks below. This supersedes the pending-replay status in
+M8_COMPRESSION_REVIEW.txt. The root explicitly released computation after both
+timed policy batches completed. No native controller or new optimizer trajectory
+was run. All writes remained in audit/; all stable module files were read-only.
+
+Executed:
+  check_module_subset.py --timed-policy-run-finished
+  OPENBLAS_NUM_THREADS=OMP_NUM_THREADS=MKL_NUM_THREADS=1
+  /media/camp/EXT_DRIVE/envs/genesis/bin/python
+Evidence: module_subset_checks.json and module_subset_checks.log.
+
+M8 independently recomputed
+- Recomputed the NumPy expected-image energy for all48 saved initial/image-only/
+  joint endpoints: maximum difference3.552713678800501e-15.
+- Rebuilt each corresponding41-node physical DMP path with scipy SE(3), queried
+  the original field and raw calibration: maximum path-margin difference
+  3.9968028886505635e-15. No surrogate table or unrelated trajectory was used.
+- Independently rechecked all48 saved q witnesses through actual FK, URDF limits
+  and configured robot/probe collision pairs. Initial16/16, image-only16/16,
+  joint16/16 remain valid. Added endpoint gain remains zero. No IK search was
+  rerun and no dynamic/path/force conclusion follows from these endpoint checks.
+- Cases0 and5, each image/joint objective, were differentiated through the actual
+  Torch geometry/dIRD chain and compared against independent NumPy geometry and
+  scipy pose finite differences. Case0 errors are about2.606e-7 at h=1e-4 and
+  2.383e-9 at h=1e-5. Case5 reproduces the large-step failure1.835332 and small-
+  step agreement5.879e-7. The branch-switch failure was retained.
+- Independent NumPy finite differences reproduce the equal-component centroid
+  discrepancy2240.0002 and slab-boundary u/depth/length discrepancies1250/1500/
+  2500. These are nondifferentiable/discontinuous branch fixtures; there is no
+  globally valid derivative guarantee to infer from the smooth subset.
+
+Operator compression independently recomputed
+- Rebuilt the4275x64 matrix from the sealed L[h,a,y] and R[h,j], regenerated the
+  32 frozen Dirichlet weights, and performed a fresh economy SVD. Numerical rank
+  is64. All96 exact beliefs yield95 direct policies and1 probe policy; all64
+  original aliases remain direct at c=.5.
+- Rank32: global-policy differences34/96, including33 direct/probe-kind changes;
+  future-value sup error .9698989338373991; negative Xi3611, minimum
+  -.3946170825172927; matrix minimum-10.362336445366637. The simplex entry bound
+  is29.04103093092553 and backup bound233.17136865578655. Both are honestly
+  conservative; the backup bound is uninformative at the60-unit risk scale.
+  Supplementary true-model regret of the selected compressed policy is at most
+  .4534589382413401 on these96 saved weights only, not a uniform guarantee.
+- Rank64: global-policy differences0, future-value error2.2026824808563106e-13,
+  zero negative Xi. Raw matrix negatives are roundoff (minimum-4.82e-13).
+  Raw conditional argmin changes33/96 all occur at exact/near ties; substantive
+  non-tie changes0. Exact factor storage2,221,568 bytes exceeds full-matrix
+  storage2,188,800 bytes. This is an exact recovery check with no compression
+  benefit, not a proof that every nonlinear/task-specific compression fails.
+
+Independent saved-order check of separate dIRD retrieval benchmark
+capability_query_order_checks.json reconstructs all deterministic and32 seeded
+random orders from the frozen candidate/score/endpoint records.53/86 endpoints
+are found;33 remain unresolved finite searches. At32 endpoint queries, dIRD
+finds32 valid witnesses, geometry-only29 and manifest-order23. At8 and16 queries,
+dIRD and geometry-only both find8 and16; all deterministic methods find their
+first valid witness on query1. This is a limited positive endpoint-retrieval
+increment, separate from ultrasound task success and dynamic execution. One
+endpoint query includes the declared entire finite SRS search.
+
+The methodological conclusions remain: optional M8 response/gradient machinery
+is numerically usable within its local branches but shows no added endpoint or
+task success here; rank32 unconstrained SVD is a failed preservation candidate;
+rank64 is exact bookkeeping; dIRD has a bounded robot-only retrieval benefit.

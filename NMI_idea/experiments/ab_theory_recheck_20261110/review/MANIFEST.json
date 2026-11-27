@@ -1,0 +1,83 @@
+{
+  "review_date": "2026-11-11",
+  "scope": "Independent method/theory review; no production edits, training or native trajectories. Earlier experiment facts are read-only evidence, not newly rerun results.",
+  "artifacts": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/MECHANISM_DERIVATIONS.txt",
+      "bytes": 19811,
+      "sha256": "36ab1e2bb4aee7053cbf10ad57ea7a7f62866bc5fb27d2a42c8801f3ed02ca21"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/PRIMARY_PAPERS.txt",
+      "bytes": 6845,
+      "sha256": "851b9a41ad96e9f03207bb2d1fa06a0d824294f991179daa0eb852009568acc1"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/REVIEW.txt",
+      "bytes": 10703,
+      "sha256": "c2986f38a94a7c5c6f731aa605a374682b9d0a331e711af487ce1c47b52f4aae"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/check_mechanism_examples.py",
+      "bytes": 9854,
+      "sha256": "7e38038defe40bc92e625360094f960544ea6131b5c6afde52a24e28636a1bd3"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/mechanism_checks.json",
+      "bytes": 5238,
+      "sha256": "3e9e10cbc8010cccaae19ef76f6a07b9f3166afc5b18ea997512948dfb73088f"
+    }
+  ],
+  "input_evidence": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/AB_ROADMAP.txt",
+      "bytes": 9768,
+      "sha256": "e1cd90e6dee3d4782611a146e4c33028ab996f9b67f7103d6b8b819e82a11db1"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/FINAL_REPORT.txt",
+      "bytes": 12953,
+      "sha256": "35346837545757112e35ef899d3cc8293f78891ba325412e330317317695ca3c"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_regression_20261110/FOLLOWUP_REPORT.txt",
+      "bytes": 5544,
+      "sha256": "495560ceec19931b4b65a29d7cfa29c4bcf7933ef91e05553a5d392f54015503"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/native_regression_20261110/DIRD_CONTRACT_FINDING.txt",
+      "bytes": 3552,
+      "sha256": "faee6c23d284bead3fb539bb46123562868c7ada9d334e6726d697ba0bd34353"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/audit/THEORY_CONDITIONS.txt",
+      "bytes": 11792,
+      "sha256": "d81f7fa650cbceb527d2e0c6e56bab35646ea843b0cd4d3eefe5bc4d6b553830"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/test_frozen/results.json",
+      "bytes": 10599210,
+      "sha256": "913be5af55c0d85b969e203635bdbb0979413ccfbd4e1192668bec9efd69ab85"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/continuous_mismatch/formal_run_20261110/RESULTS.json",
+      "bytes": 1965955,
+      "sha256": "6da6319338367651d235a9c82b245dedea987888484ee02e87bc87b976f4adbe"
+    },
+    {
+      "path": "/home/camp/Documents/Codex/2026-11-09/vscode-codex-2/work/manuscript-review/Anatomical_GPS_V9.3.tex",
+      "bytes": 83517,
+      "sha256": "6948528c426313fe9383469d5ebb0b2f4cd7a2a63291f5d098c421f74cdb0471"
+    }
+  ],
+  "reproduction": {
+    "python": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+    "python_version": "3.10.20",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3",
+    "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 /media/camp/EXT_DRIVE/envs/genesis/bin/python /media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/check_mechanism_examples.py",
+    "result": "all_checks_passed"
+  },
+  "primary_source_record": "PRIMARY_PAPERS.txt; web originals checked on review date; bounded review, not exhaustive novelty search",
+  "ownership": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review"
+}

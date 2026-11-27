@@ -12,6 +12,59 @@ from projects.genesis_ue_sync.sim_platform.control.controllers.common import qua
 SMPL_BODY_JOINT_COUNT = 23
 
 
+def amongus_human_payload_from_smplx_frame(
+    *,
+    frame_index: int,
+    motion_fps: float,
+    root_translation_world_m: Any,
+    smplx_pose55: Any,
+    betas: Any = (),
+    gender: str = "neutral",
+    loop_index: int = 0,
+    expression: Any = (),
+    source_id: str = "fitted",
+) -> dict[str, Any]:
+    """Lossless SMPL-X local pose plus legacy SMPL body compatibility.
+
+    Translation is already in the caller's Genesis world convention. Callers
+    decoding EasyMocap Rh/Th must account for that model's pelvis pivot once;
+    this adapter must not introduce a second world/UE coordinate conversion.
+    """
+    from projects.genesis_ue_sync.anatomy_retarget.canonical_export import SMPLX_JOINT_NAMES_55
+
+    pose = np.asarray(smplx_pose55, dtype=np.float32).reshape(55, 3)
+    translation = np.asarray(root_translation_world_m, dtype=np.float32).reshape(3)
+    shapes = np.asarray(betas, dtype=np.float32).reshape(-1)
+    expr = np.asarray(expression, dtype=np.float32).reshape(-1)
+    if not all(np.isfinite(value).all() for value in (pose, translation, shapes, expr)):
+        raise ValueError("SMPL-X canonical pose, translation and shape must be finite")
+    if gender not in {"male", "female", "neutral"}:
+        raise ValueError(f"Invalid SMPL-X gender: {gender}")
+    # SMPL has 22 shared body joints plus two terminal hand joints; SMPL-X
+    # indices 22..24 are jaw and eyes, so copying the first 72 floats is wrong.
+    legacy = np.zeros((24, 3), dtype=np.float32)
+    legacy[:22] = pose[:22]
+    out = amongus_human_payload_from_motion_frame(
+        frame_index=frame_index,
+        motion_fps=motion_fps,
+        root_translation_world_m=translation,
+        smpl_pose_row=legacy.reshape(-1),
+    )
+    out.update({
+        "human_pose_encoding": "smplx_axis_angle_v1",
+        "model_type": "smplx",
+        "smplx_pose_axis_angle": pose.reshape(-1).tolist(),
+        "smplx_joint_names": list(SMPLX_JOINT_NAMES_55),
+        "smplx_joint_count": 55,
+        "betas": shapes.tolist(),
+        "gender": gender,
+        "expression": expr.tolist(),
+        "loop_index": int(loop_index),
+        "source_id": str(source_id),
+    })
+    return out
+
+
 def quaternion_wxyz_to_xyzwGenesis(q_wxyz: np.ndarray) -> list[float]:
     w, x, y, z = np.asarray(q_wxyz, dtype=np.float64).reshape(4).tolist()
     return [float(x), float(y), float(z), float(w)]

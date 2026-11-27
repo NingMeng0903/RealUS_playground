@@ -1,0 +1,372 @@
+{
+  "schema": "offline_current_rm75_joint_execution_v1",
+  "source_audit": "/home/camp/Documents/Codex/2026-11-08/cd-downloads-sudo-apt-install-chatgpt/outputs/dird_current_robot_20261108/smplx_mode_audit.json",
+  "source_audit_sha256": "30f8e42d1bf1c13d60d81972326d2efc6f766119a8826d229e5e96b80baad7d3",
+  "strict_checkpoint": {
+    "status": "score_only",
+    "physical_execution": false,
+    "ready_for_execution": false,
+    "device": "cpu",
+    "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints/rm4d_signed_current_robot_20261108/selected.pt",
+    "checkpoint_sha256": "08698c273bd1f0f4f2a86d956df95448ba502ee9d7fc17445f06258a13286e51",
+    "allow_stale_audit": false,
+    "checkpoint_artifact_schema": "ird_signed_field_v2",
+    "checkpoint_calibration_schema": "ird_clearance_calibration_v2",
+    "robot_contract_matches": true,
+    "robot_contract_differences": {},
+    "placement_label": "virtual_unregistered",
+    "physical_registration_verified": false,
+    "input_tcp_frame": "physical_probe45_tcp",
+    "base_world_convention": "T_world_railbase",
+    "rail_convention": "raw_URDF_rail_y_m",
+    "rail_limits_m": [
+      0.0,
+      0.8
+    ],
+    "T_railbase_j1_axis_at_zero": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        -0.4
+      ],
+      [
+        0.0,
+        0.0,
+        1.0,
+        0.2405
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "T_flange_tcp_current_URDF": [
+      [
+        0.014774022132612807,
+        0.9998908401730626,
+        -0.0001897578249923093,
+        0.0
+      ],
+      [
+        -0.6440522759647374,
+        0.009371115199288349,
+        -0.7649240799089563,
+        -0.01523
+      ],
+      [
+        -0.7648388026863352,
+        0.011423219245411842,
+        0.644120420393116,
+        0.12135
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "T_flange_tcp_used_by_field": [
+      [
+        0.014774021692574024,
+        0.9998908638954163,
+        -0.000189757818588987,
+        0.0
+      ],
+      [
+        -0.644052267074585,
+        0.009371114894747734,
+        -0.7649241089820862,
+        -0.015230000019073486
+      ],
+      [
+        -0.7648388147354126,
+        0.011423218995332718,
+        0.6441203951835632,
+        0.12134999781847
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "score_units": "uncalibrated_checkpoint_output_not_metres",
+    "score_is_success_probability": false,
+    "limitations": [
+      "No environment collision certificate",
+      "No actual-entry transition plan",
+      "No contact or image acceptance",
+      "No measured execution duration"
+    ]
+  },
+  "plant": {
+    "config": {
+      "backend": "genesis_pd",
+      "dt": 0.01,
+      "velocity_fraction": 0.25,
+      "acceleration_rail_m_s2": 0.5,
+      "acceleration_arm_rad_s2": 2.0,
+      "lag_time_s": 0.08,
+      "collision_margin_m": 0.01,
+      "rail_tolerance_m": 0.0002,
+      "arm_tolerance_rad": 0.002,
+      "velocity_tolerance": 0.01,
+      "maximum_duration_s": 120.0,
+      "scan_speed_m_s": 0.02
+    },
+    "robot_contract": {
+      "schema": "realman_robot_contract_v1",
+      "kinematics_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf",
+      "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+      "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+      "collision_urdf_sha256": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+      "collision_pairs": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml",
+      "collision_pairs_sha256": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+      "collision_mesh_sha256": {
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl": "d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl": "90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl": "8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl": "a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl": "525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl": "bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl": "d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl": "a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c",
+        "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl": "8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5"
+      },
+      "tcp_frame": "tcp",
+      "tcp_joint": "link_7_to_tcp",
+      "flange_frame": "link_7",
+      "root_frame": "rail_base",
+      "rail_joint": "rail_y",
+      "rail_locked_at_m": 0.0,
+      "rail_limits_m": [
+        0.0,
+        0.8
+      ],
+      "j1_joint": "joint_1",
+      "T_root_j1_axis": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          -0.4
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.2405
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "T_flange_tcp": [
+        [
+          0.014774022132612807,
+          0.9998908401730626,
+          -0.0001897578249923093,
+          0.0
+        ],
+        [
+          -0.6440522759647374,
+          0.009371115199288349,
+          -0.7649240799089563,
+          -0.01523
+        ],
+        [
+          -0.7648388026863352,
+          0.011423219245411842,
+          0.644120420393116,
+          0.12135
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "tool_frame": {
+        "joint_name": "link_7_to_tcp",
+        "parent_frame": "link_7",
+        "child_frame": "tcp",
+        "T_flange_tcp": [
+          [
+            0.014774022132612807,
+            0.9998908401730626,
+            -0.0001897578249923093,
+            0.0
+          ],
+          [
+            -0.6440522759647374,
+            0.009371115199288349,
+            -0.7649240799089563,
+            -0.01523
+          ],
+          [
+            -0.7648388026863352,
+            0.011423219245411842,
+            0.644120420393116,
+            0.12135
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "T_tcp_flange": [
+          [
+            0.014774022132612865,
+            -0.6440522759647375,
+            -0.7648388026863353,
+            0.08300427254304381
+          ],
+          [
+            0.9998908401730625,
+            0.00937111519928828,
+            0.011423219245411823,
+            -0.001243485570945564
+          ],
+          [
+            -0.0001897578249922692,
+            -0.7649240799089563,
+            0.6441204203931159,
+            -0.08981380675171803
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "collision_security_margin_m": 0.01,
+      "metric": {
+        "schema": "se3_weighted_l2_v1",
+        "lambda_m_per_rad": 0.5729577951308232,
+        "cm_per_deg": 1.0,
+        "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic"
+      },
+      "collision_scope": "arm_body_self_collision_only",
+      "yaw_invariant_static_links": [
+        "base_link"
+      ]
+    },
+    "base_world": [
+      [
+        -0.5603328320382464,
+        -0.019219958300892823,
+        0.8280445100010676,
+        0.06405992770702956
+      ],
+      [
+        0.10992189341876685,
+        0.9891620088173884,
+        0.09734319524023852,
+        -1.2003526523149355
+      ],
+      [
+        -0.8209411030562603,
+        0.1455648086429474,
+        -0.5521472555374248,
+        0.2968236361318173
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "T_image_tcp": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        -1.0,
+        -1.2246467991473532e-16,
+        0.0
+      ],
+      [
+        0.0,
+        1.2246467991473532e-16,
+        -1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "physical_execution": false,
+    "contact_model": null,
+    "environment_collision_model": null,
+    "initialization_only_direct_position_assignment": true,
+    "state_source": "Genesis get_dofs_position/get_dofs_velocity",
+    "execution_duration_source": "simulation clock advanced on actual plant ticks; not path retiming",
+    "control_law": "position_PD"
+  },
+  "entry_states": [
+    [
+      0.4,
+      -1.562069680534925,
+      -1.6493361431346414,
+      1.137954672300303,
+      1.6755160819145565,
+      1.5585790220309363,
+      1.064650843716541,
+      1.6510814723866356
+    ],
+    [
+      0.41558667653043646,
+      -1.5797620729202606,
+      -1.6533930815758835,
+      1.1330221019718925,
+      1.6571964548101124,
+      1.5745389822756388,
+      1.0462242999792917,
+      1.6355586124623642
+    ]
+  ],
+  "entry_seed": 20261108,
+  "trial_rule": "execute all audited candidates, including preflight or IK failures; do not select only successful paths",
+  "physical_execution": false,
+  "ready_for_hardware": false,
+  "limitations": [
+    "virtual placement, not measured registration",
+    "illustrative image-to-TCP transform",
+    "no body/bed contact or environment collision",
+    "no B-mode/image acceptance",
+    "Genesis collision response disabled; current configured self-collision checked and stopped independently"
+  ]
+}

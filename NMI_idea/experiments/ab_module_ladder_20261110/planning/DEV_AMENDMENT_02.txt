@@ -1,0 +1,24 @@
+Before opening test, independent audit corrections and public compute approximation,2026-11-10
+The initial dev planner omitted remaining action/time state and could count a late
+public decision as success; repaired both resource transition and actor deadline.
+Terminal loss now matches censored RMT exactly: R-(R-c)*p_correct, instead of
+adding motion cost to a full timeout penalty. False stops still cost deadline.
+Fixed-two value uses analytic world-shared probability of first stop/no-stop.
+All snapshots and old dev episodes retained; none are formal test results.
+
+Predictive integration remains sampled, not exact value iteration. Increase model
+blocks from8 to32 so a uniform32-catalogue prior covers every latent once; noise
+integration error still checked on independent dev states. Exact finite Bayes is
+not confused with exact predictive expectation.
+
+To avoid spending seconds solving every noisy hypothetical centroid target, the
+forecast terminal family uses posterior-mode geometry + expected image centering,
+which depends on all-h posterior, not selected hidden h. Real action decisions
+retain the same full continuous servo family for A/B. This is a declared planning
+approximation; comparison with full future family is a required development check,
+not evidence that compressed representation is exactly sufficient.
+
+B_no_future_cap drops BOTH future availability and joint-time cost; it does not
+disable actual hard execution checks. dIRD is exact-task-value tie preference;
+its independent fixed-query-budget retrieval result is separate from B gain.
+No biological/sensor/prior/test truth or test-world result informed these changes.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Terminal 8: hardware-sync RGB burst + robust 4-camera EasyMocap SMPL-X fit.
+"""Terminal 8: synchronized RGB burst + robust 4-camera EasyMocap SMPL-X fit.
 
-  1. Grab a 0.5 s hardware-timestamp synchronized burst from camera ingress.
+  1. Grab a 0.5 s profile-selected synchronized burst from camera ingress.
   2. Run DWPose133 and adaptive per-joint robust DLT for every group.
   3. Fit shared beta on the 0.5 s burst; extract pose/mesh from one synced
      frame. The bed SDF only prevents penetration and never attracts joints.
@@ -32,6 +32,10 @@ from projects.genesis_ue_sync.multiview_realtime.easymocap.moment_pipeline impor
     process_burst,
 )
 from projects.genesis_ue_sync.multiview_realtime.ingress.camera_stream import MultiviewCameraStream
+from projects.genesis_ue_sync.multiview_realtime.ingress.camera_metadata import (
+    is_ue_source_profile,
+    normalize_frame_for_source,
+)
 from projects.genesis_ue_sync.multiview_realtime.ingress.motion_frame_gate import (
     CanonicalMotionIndexClient,
     motion_window_from_scene_spec,
@@ -56,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--skip-beta-calib", action="store_true", help="Use betas from yaml smpl_fit.betas_path instead of optimizeShape.")
     p.add_argument("--betas-path", type=Path, default=None, help="Use existing betas; skip optimizeShape when set.")
     p.add_argument("--capture-wait-timeout-s", type=float, default=90.0)
-    p.add_argument("--capture-burst-s", type=float, default=0.5, help="Hardware-sync RGB burst duration (default: 0.5 s).")
+    p.add_argument("--capture-burst-s", type=float, default=0.5, help="Synchronized RGB burst duration (default: 0.5 s).")
     p.add_argument("--min-burst-frames", type=int, default=8, help="Reject a short burst rather than fitting it as high precision.")
     p.add_argument("--sync-tolerance-frames", type=int, default=16)
     p.add_argument("--max-output-frame-span", type=int, default=2)
@@ -182,6 +186,8 @@ def _ingress_cfg(
             recv_timeout_ms=ing.recv_timeout_ms,
             sync_tolerance_frames=max(int(sync_tolerance_frames), int(ing.sync_tolerance_frames)),
             max_buffer_per_camera=max(16, int(ing.max_buffer_per_camera)),
+            source_profile=ing.source_profile,
+            metadata_intrinsics=ing.metadata_intrinsics,
             sync_mode=ing.sync_mode,
             max_hardware_spread_ms=ing.max_hardware_spread_ms,
         ),
@@ -393,10 +399,28 @@ def main() -> int:
             )
             return 2
 
-        burst_frames = ensure_undistorted_burst(burst_frames, list(cfg.camera_ids))
+        source_profile = str(cfg.ingress.source_profile or "realsense").strip().lower()
+        metadata_reports: list[dict[str, Any]] = []
+        normalized_burst: list[Any] = []
+        for frame in burst_frames:
+            normalized, frame_calibration, metadata_report = normalize_frame_for_source(
+                frame,
+                calibration,
+                list(cfg.camera_ids),
+                source_profile=source_profile
+                if bool(cfg.ingress.metadata_intrinsics) or is_ue_source_profile(source_profile)
+                else "realsense",
+            )
+            if metadata_report.get("cameras"):
+                calibration = frame_calibration
+            metadata_reports.append(metadata_report)
+            normalized_burst.append(normalized)
+        burst_frames = normalized_burst
+        if not is_ue_source_profile(source_profile):
+            burst_frames = ensure_undistorted_burst(burst_frames, list(cfg.camera_ids))
         synced = burst_frames[len(burst_frames) // 2]
         motion_fi = burst_motion_fi[len(burst_motion_fi) // 2]
-        logging.info("captured %d hardware-sync groups over %.3fs", len(burst_frames), (burst_frames[-1].timestamp_ns - burst_frames[0].timestamp_ns) * 1e-9)
+        logging.info("captured %d synced groups over %.3fs", len(burst_frames), (burst_frames[-1].timestamp_ns - burst_frames[0].timestamp_ns) * 1e-9)
         # Do not dump 11×4 1080p PNGs to USB before DWPose — that blocked
         # recognition for ~45s on EXT_DRIVE. Metadata only until after publish.
         _write_frozen_burst(moment_dir, burst_frames, list(cfg.camera_ids), write_images=False)
@@ -405,6 +429,9 @@ def main() -> int:
 
         summary["betas_path"] = str(betas_path.resolve()) if betas_path else None
         summary["fixed_betas"] = [float(v) for v in fixed_betas.tolist()] if fixed_betas is not None else None
+        summary["source_profile"] = source_profile
+        summary["metadata_intrinsics"] = bool(cfg.ingress.metadata_intrinsics)
+        summary["metadata_reports"] = metadata_reports[:1]
 
         detector = DwposeOnnxDetector(DwposeOnnxConfig.from_dict(dict(cfg.pose_backend.get("dwpose") or {})))
         detector.preload()

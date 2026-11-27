@@ -1,0 +1,53 @@
+{
+  "version": "n4-dense-update-v1",
+  "source": {
+    "current": "4abab61038cc2187153ca27e88f00efd2cb5fd0e175501c7270298145edc07c3",
+    "test": "da98e58e6e86cf482e6accfcd36558c1934d805a8a705805b31499487e2eb412",
+    "reference": "8a90a61b6783736a9bb69f6497e1deab540b57f53c2b3207ac36cc156ddd1396"
+  },
+  "seed": 721502,
+  "objects": [
+    0,
+    1
+  ],
+  "prefixes": [
+    1,
+    2,
+    4,
+    6
+  ],
+  "max_error": {
+    "particle_weights": 1.3322676295501878e-15,
+    "mode_weights": 3.6637359812630166e-15,
+    "component_weights": 8.659739592076221e-15,
+    "posterior_moments": 2.7755575615628914e-16,
+    "public_probabilities": 4.551914400963142e-15,
+    "complete_probabilities": 5.440092820663267e-15
+  },
+  "acceptance_batch": {
+    "actions": 12,
+    "max_abs_error": 1.1102230246251565e-16
+  },
+  "timing": {
+    "dense_update_prefix6": {
+      "mean_s": 0.08472846940057935,
+      "std_s": 0.0002219257337875859
+    },
+    "reference_update_prefix6": {
+      "mean_s": 0.1750146296006278,
+      "std_s": 0.0006397289266994511
+    },
+    "acceptance_12": {
+      "batch_mean_s": 0.002565078601037385,
+      "batch_std_s": 2.235414584753047e-05,
+      "scalar_mean_s": 0.028781234600319294,
+      "scalar_std_s": 0.00015683431194083493
+    }
+  },
+  "contract": {
+    "particles": 512,
+    "max_components": 4,
+    "reference_fallback": true,
+    "public_mixture_components_in_acceptance_batch": false
+  }
+}

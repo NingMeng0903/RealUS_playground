@@ -1,0 +1,39 @@
+{
+  "n_cases": 1,
+  "output": "/home/camp/Documents/Codex/2026-11-13/ieee-t-ro-b-mpc-b/work/legacy_headroom/HEADROOM_1.json",
+  "pooled": {
+    "narrow": {
+      "baseline_correct_fresh": 1,
+      "baseline_failed_but_any_strict": 0,
+      "baseline_failed_but_any_target_visible": 0,
+      "baseline_false_confirm": 0,
+      "baseline_strict": 1,
+      "baseline_terminal_visible": 1,
+      "cases_with_any_wrong_pair": 1,
+      "headroom_correct_fresh_cases": 0,
+      "headroom_strict_cases": 0,
+      "n_cases": 1,
+      "oracle_correct_fresh_cases": 1,
+      "oracle_false_safe_strict_cases": 1,
+      "oracle_strict_cases": 1,
+      "oracle_target_visible_cases": 1
+    },
+    "wide": {
+      "baseline_correct_fresh": 1,
+      "baseline_failed_but_any_strict": 0,
+      "baseline_failed_but_any_target_visible": 0,
+      "baseline_false_confirm": 0,
+      "baseline_strict": 1,
+      "baseline_terminal_visible": 1,
+      "cases_with_any_wrong_pair": 1,
+      "headroom_correct_fresh_cases": 0,
+      "headroom_strict_cases": 0,
+      "n_cases": 1,
+      "oracle_correct_fresh_cases": 1,
+      "oracle_false_safe_strict_cases": 1,
+      "oracle_strict_cases": 1,
+      "oracle_target_visible_cases": 1
+    }
+  },
+  "schema": "moving_y_same_action_truth_only_headroom_v1"
+}

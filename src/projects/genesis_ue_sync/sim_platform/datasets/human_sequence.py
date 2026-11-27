@@ -329,6 +329,20 @@ def _resolve_available_gender(model_dir: Path, requested_gender: str, *, extensi
 _SMPL_MODEL_CACHE: dict[tuple[Any, ...], Any] = {}
 
 
+def _smplx_model_file(sequence: HumanMotionSequence) -> Path:
+    """Resolve the exact model asset so different SMPL-X templates cannot share a cache entry."""
+    explicit = sequence.metadata.get("body_model_path")
+    if explicit:
+        path = Path(str(explicit)).expanduser()
+        if not path.is_absolute():
+            path = _repo_root() / path
+        path = path.resolve()
+        if not path.is_file():
+            raise FileNotFoundError(f"Explicit SMPL-X body model file does not exist: {path}")
+        return path
+    return (resolve_body_model_dir("smplx") / "smplx" / f"SMPLX_{sequence.gender.upper()}.npz").resolve()
+
+
 def _smpl_model_cache_key(sequence: HumanMotionSequence, torch_device) -> tuple[Any, ...]:
     model_type = sequence.model_type.lower()
     if model_type == "smpl":
@@ -336,8 +350,8 @@ def _smpl_model_cache_key(sequence: HumanMotionSequence, torch_device) -> tuple[
         gender = _resolve_available_gender(model_dir, sequence.gender, extension="pkl")
         return ("smpl", str(model_dir.resolve()), gender, str(torch_device))
     if model_type == "smplx":
-        model_dir = resolve_body_model_dir("smplx")
-        return ("smplx", str(model_dir.resolve()), sequence.gender.upper(), str(torch_device))
+        return ("smplx", str(_smplx_model_file(sequence)), sequence.gender.upper(),
+                int(sequence.betas.size), str(torch_device))
     raise ValueError(f"Unsupported model_type: {sequence.model_type}")
 
 
@@ -352,6 +366,7 @@ def _resolve_frame_slice_bounds(frame_slice: slice | None, frame_count: int) -> 
 
 def _create_smpl_model(sequence: HumanMotionSequence, torch_device):
     import smplx
+    import torch
 
     ensure_numpy_aliases_for_chumpy()
     key = _smpl_model_cache_key(sequence, torch_device)
@@ -360,7 +375,10 @@ def _create_smpl_model(sequence: HumanMotionSequence, torch_device):
         return cached
 
     model_type = sequence.model_type.lower()
-    with contextlib.redirect_stdout(io.StringIO()):
+    # Genesis may set Torch's global default device to CUDA. The upstream
+    # constructors combine NumPy arrays with newly allocated Torch tensors;
+    # construct on CPU explicitly, then transfer the finished model.
+    with torch.device("cpu"), contextlib.redirect_stdout(io.StringIO()):
         if model_type == "smpl":
             model_dir = resolve_body_model_dir("smpl")
             model = smplx.SMPL(
@@ -369,27 +387,43 @@ def _create_smpl_model(sequence: HumanMotionSequence, torch_device):
                 ext="pkl",
             ).to(torch_device)
         elif model_type == "smplx":
-            model = smplx.create(
-                model_path=str(resolve_body_model_dir("smplx")),
-                model_type="smplx",
+            kwargs = dict(
                 gender=sequence.gender.upper(),
                 ext="npz",
                 use_pca=False,
                 flat_hand_mean=True,
-            ).to(torch_device)
+                num_betas=int(sequence.betas.size),
+            )
+            if sequence.metadata.get("body_model_path"):
+                model = smplx.SMPLX(model_path=str(_smplx_model_file(sequence)), **kwargs).to(torch_device)
+            else:
+                model = smplx.create(model_path=str(resolve_body_model_dir("smplx")),
+                                     model_type="smplx", **kwargs).to(torch_device)
         else:
             raise ValueError(f"Unsupported model_type: {sequence.model_type}")
     _SMPL_MODEL_CACHE[key] = model
     return model
 
 
-def _build_smpl_kwargs(sequence: HumanMotionSequence, *, torch_device, frame_slice: slice | None = None):
+def _smpl_kwargs_for_pose_batch(
+    sequence: HumanMotionSequence,
+    poses: np.ndarray,
+    translations: np.ndarray,
+    *,
+    torch_device,
+) -> dict[str, Any]:
+    """Build one payload for both batch evaluation and viewer rendering.
+
+    Native 55-joint SMPL-X order is opt-in. Existing sequences without that
+    metadata retain the historical body/hands/face order, including 165 arrays.
+    """
     import torch
 
-    start, stop = _resolve_frame_slice_bounds(frame_slice, sequence.frame_count)
-    pose = np.asarray(sequence.poses[start:stop], dtype=np.float32)
-    trans = np.asarray(sequence.trans[start:stop, :3], dtype=np.float32)
-    frame_count = int(stop - start)
+    pose = np.asarray(poses, dtype=np.float32)
+    trans = np.asarray(translations, dtype=np.float32)
+    if pose.ndim != 2 or trans.shape != (pose.shape[0], 3):
+        raise ValueError("SMPL pose batches require poses (F, D) and translations (F, 3)")
+    frame_count = int(pose.shape[0])
     model_type = sequence.model_type.lower()
     if model_type == "smpl":
         return {
@@ -401,11 +435,29 @@ def _build_smpl_kwargs(sequence: HumanMotionSequence, *, torch_device, frame_sli
 
     if model_type == "smplx":
         kwargs = {
-            "betas": torch.from_numpy(np.repeat(sequence.betas[None, : min(len(sequence.betas), 16)], frame_count, axis=0)).float().to(torch_device),
+            "betas": torch.from_numpy(np.repeat(sequence.betas[None, :], frame_count, axis=0)).float().to(torch_device),
             "global_orient": torch.from_numpy(pose[:, :3]).float().to(torch_device),
             "body_pose": torch.from_numpy(pose[:, 3:66]).float().to(torch_device),
             "transl": torch.from_numpy(trans).float().to(torch_device),
+            # Cached models are constructed with batch_size=1. Pass every
+            # optional pose/face field explicitly so their defaults cannot
+            # introduce a batch-one tensor into multi-frame evaluation.
+            "expression": torch.zeros((frame_count, 10), dtype=torch.float32, device=torch_device),
+            "jaw_pose": torch.zeros((frame_count, 3), dtype=torch.float32, device=torch_device),
+            "leye_pose": torch.zeros((frame_count, 3), dtype=torch.float32, device=torch_device),
+            "reye_pose": torch.zeros((frame_count, 3), dtype=torch.float32, device=torch_device),
+            "left_hand_pose": torch.zeros((frame_count, 45), dtype=torch.float32, device=torch_device),
+            "right_hand_pose": torch.zeros((frame_count, 45), dtype=torch.float32, device=torch_device),
         }
+        if sequence.metadata.get("pose_layout") == "smplx55":
+            if pose.shape[1] != 165:
+                raise ValueError(f"Native smplx55 pose layout requires 165 values, got {pose.shape[1]}")
+            for name, start, stop in (
+                ("jaw_pose", 66, 69), ("leye_pose", 69, 72), ("reye_pose", 72, 75),
+                ("left_hand_pose", 75, 120), ("right_hand_pose", 120, 165),
+            ):
+                kwargs[name] = torch.from_numpy(pose[:, start:stop]).float().to(torch_device)
+            return kwargs
         if pose.shape[1] >= 111:
             kwargs["left_hand_pose"] = torch.from_numpy(pose[:, 66:111]).float().to(torch_device)
         if pose.shape[1] >= 156:
@@ -419,6 +471,12 @@ def _build_smpl_kwargs(sequence: HumanMotionSequence, *, torch_device, frame_sli
         return kwargs
 
     raise ValueError(f"Unsupported model_type: {sequence.model_type}")
+
+
+def _build_smpl_kwargs(sequence: HumanMotionSequence, *, torch_device, frame_slice: slice | None = None):
+    start, stop = _resolve_frame_slice_bounds(frame_slice, sequence.frame_count)
+    return _smpl_kwargs_for_pose_batch(sequence, sequence.poses[start:stop], sequence.trans[start:stop, :3],
+                                     torch_device=torch_device)
 
 
 def _build_smpl_model(sequence: HumanMotionSequence, *, device: str | None = None):
@@ -534,7 +592,7 @@ def build_shape_neutral_geometry(
         image_names=[],
         cam_int=None,
         cam_ext=None,
-        metadata={},
+        metadata=dict(sequence.metadata),
     )
     model, kwargs = _build_smpl_model(neutral_sequence, device=device)
     with torch.no_grad():
@@ -576,7 +634,7 @@ def build_pose_neutral_template_geometry(
         image_names=[],
         cam_int=None,
         cam_ext=None,
-        metadata={},
+        metadata=dict(sequence.metadata),
     )
     model, kwargs = _build_smpl_model(neutral_sequence, device=device)
     with torch.no_grad():

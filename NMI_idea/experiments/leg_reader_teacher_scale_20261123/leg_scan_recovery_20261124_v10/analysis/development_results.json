@@ -1,0 +1,2963 @@
+{
+  "00": {
+    "femoral": {
+      "MPC_new": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          13
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 128.05600090026854,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 0,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          19,
+          19,
+          19,
+          19,
+          20,
+          14
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 129.81405487060547,
+        "longest_mm": 53.37574462890625,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          0
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 1,
+              "actual95": [
+                -0.05,
+                -0.15,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 20,
+        "strict": 18,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 6,
+        "backward": 3,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 123,
+          "revisit": 2,
+          "submit": 20,
+          "disambiguate": 4
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          19
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 2,
+        "time_s": 10.68,
+        "travel_mm": 283.5198343991631,
+        "correct_mm": 129.46064682006835,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          18
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                0.3,
+                0.1,
+                0.5
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                2.155,
+                0.7650000000000002,
+                3.6901249999999997
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                59.83344861315887,
+                18.387037541519522,
+                105.22363740360986
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                0.3,
+                0.1,
+                0.5
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                2.155,
+                0.7650000000000002,
+                3.6901249999999997
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                59.83344861315887,
+                18.387037541519522,
+                105.22363740360986
+              ]
+            }
+          }
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "MPC_new": {
+        "layouts": 40,
+        "strict": 25,
+        "wrong_branch": 6,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          38,
+          39,
+          36,
+          35,
+          32
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          1,
+          2,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1
+        ],
+        "all_seen_failed": 15,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 321.48524589538573,
+        "longest_mm": 52.12783951759339,
+        "strict_by_tape": [
+          25
+        ],
+        "wrong_by_tape": [
+          6
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 4,
+              "loss": 3,
+              "actual95": [
+                0.025,
+                -0.1,
+                0.15
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 2,
+              "actual95": [
+                -0.025,
+                -0.125,
+                0.05
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 40,
+        "strict": 24,
+        "wrong_branch": 7,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          40,
+          39,
+          36,
+          30,
+          31
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          2,
+          3,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          4,
+          2
+        ],
+        "all_seen_failed": 16,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 326.2377422332764,
+        "longest_mm": 52.73056855201721,
+        "strict_by_tape": [
+          24
+        ],
+        "wrong_by_tape": [
+          7
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 3,
+              "loss": 4,
+              "actual95": [
+                -0.025,
+                -0.15,
+                0.1
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 1,
+              "actual95": [
+                0.025,
+                -0.05,
+                0.125
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 40,
+        "strict": 29,
+        "wrong_branch": 6,
+        "seen_all": 40,
+        "repair_count": 33,
+        "backward": 21,
+        "earlier_region": 7,
+        "multiple_repair_regions": 1,
+        "actions": {
+          "advance": 254,
+          "submit": 40,
+          "disambiguate": 8,
+          "revisit": 25
+        },
+        "per_region_correct": [
+          40,
+          38,
+          40,
+          37,
+          34,
+          35
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          1,
+          4,
+          2
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 11,
+        "time_s": 37.13,
+        "travel_mm": 968.9753647963191,
+        "correct_mm": 327.02498016357424,
+        "longest_mm": 52.26801962852478,
+        "strict_by_tape": [
+          29
+        ],
+        "wrong_by_tape": [
+          6
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 4,
+              "loss": 0,
+              "actual95": [
+                0.1,
+                0.025,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 1,
+              "actual95": [
+                0.0,
+                -0.075,
+                0.075
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 13,
+              "loss": 0,
+              "actual95": [
+                5.562500000000001,
+                2.3974375,
+                9.348187500000005
+              ]
+            },
+            "travel_mm": {
+              "add": 13,
+              "loss": 0,
+              "actual95": [
+                126.65230386059686,
+                51.624408199074054,
+                222.43745035435157
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 6,
+              "loss": 1,
+              "actual95": [
+                0.125,
+                0.0,
+                0.25
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 3,
+              "actual95": [
+                -0.025,
+                -0.15,
+                0.07562500000000227
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 13,
+              "loss": 0,
+              "actual95": [
+                5.562500000000001,
+                2.3974375,
+                9.348187500000005
+              ]
+            },
+            "travel_mm": {
+              "add": 13,
+              "loss": 0,
+              "actual95": [
+                126.65230386059686,
+                51.624408199074054,
+                222.43745035435157
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "01": {
+    "femoral": {
+      "MPC_new": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          13
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 128.05600090026854,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 0,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          19,
+          19,
+          19,
+          19,
+          20,
+          14
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 129.81405487060547,
+        "longest_mm": 53.37574462890625,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          0
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 1,
+              "actual95": [
+                -0.05,
+                -0.15,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 20,
+        "strict": 17,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 9,
+        "backward": 6,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 125,
+          "revisit": 7,
+          "submit": 20,
+          "recover": 1,
+          "disambiguate": 1
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          18
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 3,
+        "time_s": 10.530000000000001,
+        "travel_mm": 269.52933528008475,
+        "correct_mm": 129.84552879333495,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          17
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 5,
+              "loss": 0,
+              "actual95": [
+                0.25,
+                0.1,
+                0.45
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                2.005,
+                0.6150000000000002,
+                3.7049999999999996
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                45.84294949408054,
+                11.996890167063908,
+                86.80652462078476
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 5,
+              "loss": 0,
+              "actual95": [
+                0.25,
+                0.1,
+                0.45
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                2.005,
+                0.6150000000000002,
+                3.7049999999999996
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                45.84294949408054,
+                11.996890167063908,
+                86.80652462078476
+              ]
+            }
+          }
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "MPC_new": {
+        "layouts": 40,
+        "strict": 25,
+        "wrong_branch": 6,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          38,
+          39,
+          36,
+          35,
+          32
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          1,
+          2,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1
+        ],
+        "all_seen_failed": 15,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 321.48524589538573,
+        "longest_mm": 52.12783951759339,
+        "strict_by_tape": [
+          25
+        ],
+        "wrong_by_tape": [
+          6
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 4,
+              "loss": 3,
+              "actual95": [
+                0.025,
+                -0.1,
+                0.15
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 2,
+              "actual95": [
+                -0.025,
+                -0.125,
+                0.05
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 40,
+        "strict": 24,
+        "wrong_branch": 7,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          40,
+          39,
+          36,
+          30,
+          31
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          2,
+          3,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          4,
+          2
+        ],
+        "all_seen_failed": 16,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 326.2377422332764,
+        "longest_mm": 52.73056855201721,
+        "strict_by_tape": [
+          24
+        ],
+        "wrong_by_tape": [
+          7
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 3,
+              "loss": 4,
+              "actual95": [
+                -0.025,
+                -0.15,
+                0.1
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 1,
+              "actual95": [
+                0.025,
+                -0.05,
+                0.125
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 40,
+        "strict": 28,
+        "wrong_branch": 7,
+        "seen_all": 40,
+        "repair_count": 32,
+        "backward": 21,
+        "earlier_region": 7,
+        "multiple_repair_regions": 1,
+        "actions": {
+          "advance": 254,
+          "submit": 40,
+          "disambiguate": 9,
+          "revisit": 23
+        },
+        "per_region_correct": [
+          40,
+          38,
+          40,
+          37,
+          36,
+          34
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          1,
+          4,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 12,
+        "time_s": 37.095000000000006,
+        "travel_mm": 968.1139306711696,
+        "correct_mm": 326.8551544189453,
+        "longest_mm": 52.26801962852478,
+        "strict_by_tape": [
+          28
+        ],
+        "wrong_by_tape": [
+          7
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 4,
+              "loss": 1,
+              "actual95": [
+                0.075,
+                -0.025,
+                0.175
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 1,
+              "actual95": [
+                0.025,
+                -0.05,
+                0.1
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 14,
+              "loss": 0,
+              "actual95": [
+                5.527500000000001,
+                2.4548750000000004,
+                9.260875000000004
+              ]
+            },
+            "travel_mm": {
+              "add": 14,
+              "loss": 0,
+              "actual95": [
+                125.79086973544739,
+                52.37996979184228,
+                217.84843663210395
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 5,
+              "loss": 1,
+              "actual95": [
+                0.1,
+                0.0,
+                0.225
+              ]
+            },
+            "wrong_branch": {
+              "add": 3,
+              "loss": 3,
+              "actual95": [
+                0.0,
+                -0.125,
+                0.125
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 14,
+              "loss": 0,
+              "actual95": [
+                5.527500000000001,
+                2.4548750000000004,
+                9.260875000000004
+              ]
+            },
+            "travel_mm": {
+              "add": 14,
+              "loss": 0,
+              "actual95": [
+                125.79086973544739,
+                52.37996979184228,
+                217.84843663210395
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "02": {
+    "femoral": {
+      "MPC_new": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          13
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 128.05600090026854,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 0,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          19,
+          19,
+          19,
+          19,
+          20,
+          14
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 129.81405487060547,
+        "longest_mm": 53.37574462890625,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          0
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 1,
+              "actual95": [
+                -0.05,
+                -0.15,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 20,
+        "strict": 17,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 9,
+        "backward": 6,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 125,
+          "revisit": 8,
+          "submit": 20,
+          "recover": 1
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          18
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 3,
+        "time_s": 10.46,
+        "travel_mm": 266.6736382611713,
+        "correct_mm": 129.98041076660155,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          17
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 5,
+              "loss": 0,
+              "actual95": [
+                0.25,
+                0.1,
+                0.45
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                1.9350000000000005,
+                0.6100000000000001,
+                3.6
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                42.987252475167075,
+                11.996890167063908,
+                81.09513058295784
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 5,
+              "loss": 0,
+              "actual95": [
+                0.25,
+                0.1,
+                0.45
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                1.9350000000000005,
+                0.6100000000000001,
+                3.6
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                42.987252475167075,
+                11.996890167063908,
+                81.09513058295784
+              ]
+            }
+          }
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "MPC_new": {
+        "layouts": 40,
+        "strict": 25,
+        "wrong_branch": 6,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          38,
+          39,
+          36,
+          35,
+          32
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          1,
+          2,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1
+        ],
+        "all_seen_failed": 15,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 321.48524589538573,
+        "longest_mm": 52.12783951759339,
+        "strict_by_tape": [
+          25
+        ],
+        "wrong_by_tape": [
+          6
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 4,
+              "loss": 3,
+              "actual95": [
+                0.025,
+                -0.1,
+                0.15
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 2,
+              "actual95": [
+                -0.025,
+                -0.125,
+                0.05
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 40,
+        "strict": 24,
+        "wrong_branch": 7,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          40,
+          39,
+          36,
+          30,
+          31
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          2,
+          3,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          4,
+          2
+        ],
+        "all_seen_failed": 16,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 326.2377422332764,
+        "longest_mm": 52.73056855201721,
+        "strict_by_tape": [
+          24
+        ],
+        "wrong_by_tape": [
+          7
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 3,
+              "loss": 4,
+              "actual95": [
+                -0.025,
+                -0.15,
+                0.1
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 1,
+              "actual95": [
+                0.025,
+                -0.05,
+                0.125
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 40,
+        "strict": 26,
+        "wrong_branch": 6,
+        "seen_all": 40,
+        "repair_count": 54,
+        "backward": 37,
+        "earlier_region": 10,
+        "multiple_repair_regions": 2,
+        "actions": {
+          "advance": 262,
+          "submit": 40,
+          "disambiguate": 14,
+          "revisit": 40
+        },
+        "per_region_correct": [
+          40,
+          38,
+          40,
+          36,
+          35,
+          32
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          1,
+          4,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 14,
+        "time_s": 40.435,
+        "travel_mm": 1045.011796434878,
+        "correct_mm": 329.4253902435303,
+        "longest_mm": 52.26801962852478,
+        "strict_by_tape": [
+          26
+        ],
+        "wrong_by_tape": [
+          6
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 3,
+              "loss": 2,
+              "actual95": [
+                0.025,
+                -0.075,
+                0.125
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 1,
+              "actual95": [
+                0.0,
+                -0.075,
+                0.075
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                8.867500000000001,
+                4.29475,
+                14.312625
+              ]
+            },
+            "travel_mm": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                202.68873549915594,
+                96.45117348312459,
+                330.3414031149138
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 4,
+              "loss": 2,
+              "actual95": [
+                0.05,
+                -0.075,
+                0.175
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 3,
+              "actual95": [
+                -0.025,
+                -0.1256249999999998,
+                0.075
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                8.867500000000001,
+                4.29475,
+                14.312625
+              ]
+            },
+            "travel_mm": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                202.68873549915594,
+                96.45117348312459,
+                330.3414031149138
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "03": {
+    "femoral": {
+      "MPC_new": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          13
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 128.05600090026854,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 20,
+        "strict": 12,
+        "wrong_branch": 0,
+        "seen_all": 20,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 120,
+          "submit": 20
+        },
+        "per_region_correct": [
+          19,
+          19,
+          19,
+          19,
+          20,
+          14
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          1,
+          1,
+          1,
+          0,
+          5
+        ],
+        "all_seen_failed": 8,
+        "time_s": 8.525000000000002,
+        "travel_mm": 223.68638578600422,
+        "correct_mm": 129.81405487060547,
+        "longest_mm": 53.37574462890625,
+        "strict_by_tape": [
+          12
+        ],
+        "wrong_by_tape": [
+          0
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.2,
+                0.2
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 1,
+              "actual95": [
+                -0.05,
+                -0.15,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 20,
+        "strict": 17,
+        "wrong_branch": 1,
+        "seen_all": 20,
+        "repair_count": 9,
+        "backward": 6,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 125,
+          "revisit": 8,
+          "submit": 20,
+          "recover": 1
+        },
+        "per_region_correct": [
+          20,
+          19,
+          20,
+          20,
+          20,
+          18
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 3,
+        "time_s": 10.46,
+        "travel_mm": 266.6736382611713,
+        "correct_mm": 129.98041076660155,
+        "longest_mm": 53.13745431900024,
+        "strict_by_tape": [
+          17
+        ],
+        "wrong_by_tape": [
+          1
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 5,
+              "loss": 0,
+              "actual95": [
+                0.25,
+                0.1,
+                0.45
+              ]
+            },
+            "wrong_branch": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                1.9350000000000005,
+                0.6100000000000001,
+                3.6
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                42.987252475167075,
+                11.996890167063908,
+                81.09513058295784
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 5,
+              "loss": 0,
+              "actual95": [
+                0.25,
+                0.1,
+                0.45
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 0,
+              "actual95": [
+                0.05,
+                0.0,
+                0.15
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                1.9350000000000005,
+                0.6100000000000001,
+                3.6
+              ]
+            },
+            "travel_mm": {
+              "add": 6,
+              "loss": 0,
+              "actual95": [
+                42.987252475167075,
+                11.996890167063908,
+                81.09513058295784
+              ]
+            }
+          }
+        }
+      }
+    },
+    "groin_to_distal_calf": {
+      "MPC_new": {
+        "layouts": 40,
+        "strict": 25,
+        "wrong_branch": 6,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          38,
+          39,
+          36,
+          35,
+          32
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          1,
+          2,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1
+        ],
+        "all_seen_failed": 15,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 321.48524589538573,
+        "longest_mm": 52.12783951759339,
+        "strict_by_tape": [
+          25
+        ],
+        "wrong_by_tape": [
+          6
+        ],
+        "paired": {
+          "MPC_v9": {
+            "strict": {
+              "add": 4,
+              "loss": 3,
+              "actual95": [
+                0.025,
+                -0.1,
+                0.15
+              ]
+            },
+            "wrong_branch": {
+              "add": 1,
+              "loss": 2,
+              "actual95": [
+                -0.025,
+                -0.125,
+                0.05
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "MPC_v9": {
+        "layouts": 40,
+        "strict": 24,
+        "wrong_branch": 7,
+        "seen_all": 40,
+        "repair_count": 0,
+        "backward": 0,
+        "earlier_region": 0,
+        "multiple_repair_regions": 0,
+        "actions": {
+          "advance": 240,
+          "submit": 40
+        },
+        "per_region_correct": [
+          40,
+          40,
+          39,
+          36,
+          30,
+          31
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          2,
+          3,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          4,
+          2
+        ],
+        "all_seen_failed": 16,
+        "time_s": 31.567499999999995,
+        "travel_mm": 842.3230609357222,
+        "correct_mm": 326.2377422332764,
+        "longest_mm": 52.73056855201721,
+        "strict_by_tape": [
+          24
+        ],
+        "wrong_by_tape": [
+          7
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 3,
+              "loss": 4,
+              "actual95": [
+                -0.025,
+                -0.15,
+                0.1
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 1,
+              "actual95": [
+                0.025,
+                -0.05,
+                0.125
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "travel_mm": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        }
+      },
+      "candidate": {
+        "layouts": 40,
+        "strict": 25,
+        "wrong_branch": 7,
+        "seen_all": 40,
+        "repair_count": 61,
+        "backward": 41,
+        "earlier_region": 9,
+        "multiple_repair_regions": 2,
+        "actions": {
+          "advance": 263,
+          "submit": 40,
+          "disambiguate": 14,
+          "revisit": 47
+        },
+        "per_region_correct": [
+          40,
+          38,
+          40,
+          35,
+          35,
+          32
+        ],
+        "per_region_missing": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "per_region_wrong_named": [
+          0,
+          0,
+          0,
+          2,
+          4,
+          3
+        ],
+        "per_region_seen_rejected": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_seen_failed": 15,
+        "time_s": 40.555,
+        "travel_mm": 1043.1731913132385,
+        "correct_mm": 328.7835803985596,
+        "longest_mm": 52.26801962852478,
+        "strict_by_tape": [
+          25
+        ],
+        "wrong_by_tape": [
+          7
+        ],
+        "paired": {
+          "MPC_new": {
+            "strict": {
+              "add": 3,
+              "loss": 3,
+              "actual95": [
+                0.0,
+                -0.125,
+                0.125
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 1,
+              "actual95": [
+                0.025,
+                -0.05,
+                0.1
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                8.9875,
+                4.4875,
+                14.273437500000005
+              ]
+            },
+            "travel_mm": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                200.85013037751614,
+                100.34073264367173,
+                318.6247187688581
+              ]
+            }
+          },
+          "MPC_v9": {
+            "strict": {
+              "add": 3,
+              "loss": 2,
+              "actual95": [
+                0.025,
+                -0.075,
+                0.125
+              ]
+            },
+            "wrong_branch": {
+              "add": 2,
+              "loss": 2,
+              "actual95": [
+                0.0,
+                -0.1,
+                0.1
+              ]
+            },
+            "acquired_ceiling": {
+              "add": 0,
+              "loss": 0,
+              "actual95": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "time_s": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                8.9875,
+                4.4875,
+                14.273437500000005
+              ]
+            },
+            "travel_mm": {
+              "add": 15,
+              "loss": 0,
+              "actual95": [
+                200.85013037751614,
+                100.34073264367173,
+                318.6247187688581
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

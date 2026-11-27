@@ -151,8 +151,9 @@ class PadContactEvidence:
         noise = self.noise if self.noise is not None else np.full_like(echo, 1/255.)
         loss = np.maximum(reference-echo-self.settings['noise_sigma']*noise, 0.)
         relative = np.divide(loss, np.maximum(reference, self.settings['absolute_echo_floor']))
-        dark = ((echo < self.settings['echo_ratio']*reference) & (loss > 0)) | (
-            echo < self.settings['absolute_echo_floor'])
+        # Dark relative to this frame's brighter half. A dim but even
+        # abdomen is not a lost edge; a column far below its own reference is.
+        dark = (echo < self.settings['echo_ratio']*reference) & (loss > 0)
         runs = self._runs(dark, self.settings['minimum_dark_columns'])
         mask = np.zeros_like(dark)
         for a, b in runs: mask[a:b] = True

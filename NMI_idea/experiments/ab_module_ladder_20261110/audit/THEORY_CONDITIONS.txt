@@ -1,0 +1,73 @@
+Independent theory review: executable decision information, 2026-11-10
+
+Scope and prior work
+This is a review of conditions and falsifiable consequences, not a novelty or physical-performance certificate. Ordinary POMDP planning already combines physical effects, observations and future rewards; see Kaelbling, Littman & Cassandra (1998), pp.100-101 and belief-MDP discussion:
+https://people.csail.mit.edu/lpk/papers/aij98-pomdp.pdf
+Value-directed lossless/lossy compression predates this project; see Poupart & Boutilier (2002), Sections 3-4:
+https://proceedings.neurips.cc/paper_files/paper/2002/file/14ea0d5b0cf49525d1866cb1e95ada5d-Paper.pdf
+Reward/transition information-state conditions and approximate dynamic-programming loss bounds are established in Subramanian, Sinha, Seraj & Mahajan (2022), Theorem 9 and its later variants:
+https://www.jmlr.org/papers/volume23/20-1165/20-1165.pdf
+The formulas below explicitly derive the particular minimization/finite-horizon conventions needed here. Standard Bellman, tower-property and compression corollaries must not be relabelled as new anatomical theory.
+
+1. State and experiment semantics
+Let h be the public history and x the fully observed robot/execution/resource state. x must include sufficient controller history or a reproducible complete snapshot, rather than only endpoint q. Let b be the posterior over the persistent hidden anatomical, identity, registration and response variables under a declared model. The state may need the public stopping-verifier history and remaining deadline too. Fix the decision loss and legal action set before comparing methods.
+
+For a terminal decision d in D(x), define Bayes risk
+  R(b,x) = inf_{d in D(x)} E_b[ell(d,S,x)].
+After a probing/moving option a, let Z be ALL newly public non-image execution information: actual terminal x', elapsed time, proprioception, execution failures and observable controller outcomes. Let Y denote the additional image signal. Define b^-_Z = law(S'|h,a,Z), b^+_{Z,Y} = law(S'|h,a,Z,Y). The predictive law must include state dynamics; it is not automatically the old b. All expectations below use the same joint physical/observation kernel.
+
+2. Relocation / decision-information decomposition
+With expected option cost c_a, define its one-step executable benefit relative to acting now:
+  Delta(a) = R(b,x) - c_a - E_{Z,Y} R(b^+_{Z,Y},x'_Z).
+Add and subtract E_Z R(b^-_Z,x'_Z):
+  Delta(a) = [R(b,x) - c_a - E_Z R(b^-_Z,x'_Z)]
+             + E_Z [R(b^-_Z,x'_Z) - E_{Y|Z}R(b^+_{Z,Y},x'_Z)].
+This is an algebraic identity. The first bracket is the physical transition/resource/proprioceptive-information effect. Calling it PURE relocation requires that Z convey no additional hidden-state information beyond a deterministic/public transition, or that such information be separately accounted for. Remaining time belongs to x', so a delay cannot disappear from the comparator. Failures and recovery branches remain in the expectation.
+
+The second bracket is nonnegative under these explicit assumptions:
+  (i) D(x'_Z) and ell are the same for every Y given Z;
+  (ii) b^-_Z is the correct mixture E[b^+_{Z,Y}|Z];
+  (iii) the pre-signal decision remains legal after observing Y (the agent may ignore Y);
+  (iv) finite/integrable risks and measurable minimizing decisions, or infimum approximations.
+Proof: for every fixed d, E_Y E[ell(d,S',x')|Z,Y] equals E[ell(d,S',x')|Z]. Taking the minimum separately inside each Y branch cannot exceed using the same fixed d in all branches. Then minimize over fixed d. Net Delta can still be negative after cost/relocation.
+
+If posterior-dependent chance constraints, public evidence-based acceptance permissions, or Y-dependent physical outcomes change the terminal action set, this simple Jensen/minimum argument cannot be invoked without adjustment. Either condition on the appropriate public state and hold the remaining action set fixed, or compare a correctly nested common class of contingent policies. A closed-loop sensing option whose actual robot state depends on its image stream requires its JOINT state/observation kernel; a nominal fixed endpoint plus a free observation is not equivalent.
+
+Empirical attribution: compare B with a blind-to-extra-image decision at the SAME executed post-option state, costs and public execution information, plus a policy with no option/relocation. Giving the blind policy different movement, fewer local servo updates, or less available time confounds the two terms. The empirical comparison must respect the real public stopping contract; a mathematical terminal-loss decomposition is not automatically an exact decomposition of that verifier's success rate.
+
+3. Exact current-Gamma counterexample
+Use scalar loss (X-d)^2 with d unrestricted, residual r=X, B=-1, W=1. P puts half mass at +/-1. Q puts 2/3 at 0 and 1/6 at each +/-sqrt(3). Both have E[X]=0 and E[X^2]=1, so Gamma=E[[r,B]^T[r,B]]=diag(1,1), and every current action risk is 1+d^2.
+The signal is explicitly BINARY Y=1{X>0}. Under P, posterior minimum expected MSE is 0. Under Q, positive Y has mass1/6 and identifies +sqrt(3); nonpositive Y has mass5/6, mean -sqrt(3)/5 and variance12/25. Expected posterior minimum MSE is therefore (5/6)(12/25)=2/5. At observation cost4/5, P observes (4/5<1), Q skips (6/5>1).
+Ternary sign with a distinct zero outcome would reveal X under both priors and INVALIDATE this contrast. This is a counterexample to CURRENT quadratic risk moments being generally sufficient for future observation value. It does not show all moments fail, that full b is the only sufficient representation, that A must be belief-free, that B always wins, or that an ultrasound/robot gain or novel VOI theorem has been established.
+
+4. A possible task-specific one-backup operator, with a limited claim
+If the terminal loss truly is quadratic in a bounded continuous local command u, write v(u)=[1;u] and M(S',x')=[r,B]^T W[r,B]. For discrete public branches (Z,Y), retain the UNNORMALIZED observation-weighted matrix
+  Xi_a(Z,Y) = E[ 1{Z,Y} M(S',x') | h,a ]
+and branch mass mu_a(Z,Y). Then the exact one-backup terminal risk is
+  sum_{Z,Y} inf_{u in U(x'_Z)} v(u)^T Xi_a(Z,Y) v(u).
+For nonzero branch mass this equals mu times the conditional quadratic-risk minimum; zero-mass branches contribute zero. Continuous Y uses the analogous matrix-valued measure/density against a declared dominating measure, not an illicit sum over latent-generating particles. All latent states producing the same public signal must contribute before minimization.
+
+Ordinary Gamma integrates Xi over Y and loses the distinguishing observation structure. Xi may be a useful anatomy/robot-specific estimable interface, but this identity is a specialization of the usual observation-conditioned Bellman backup. It is NOT a novel general planning principle. One-backup sufficiency does not imply recursively closed compression at depth H. That requires preserving the next operator/state distribution under every relevant action/observation.
+
+If the same feasible set is used, ||u||<=U, and sum_branches ||Xi-Xi_hat||op <= epsilon_Xi, then terminal-value error is <=(1+U^2)epsilon_Xi, by the quadratic-form norm bound and |inf f-inf g|<=sup|f-g|. Add separately estimated immediate-cost, terminal-model remainder and solver errors. With uniform action-value error epsilon_Q, choosing the approximate minimizing action incurs at most2epsilon_Q current decision regret; a true action gap>2epsilon_Q preserves the argmin. These require uniform bounds over the stated action/state domain, not just average prediction RMSE.
+
+The actual public first-LA stop criterion is nonquadratic and history-dependent. A quadratic local loss operator is exact only for its declared surrogate; calibrated stopping/value predictions and their approximation error must be evaluated separately. No equation changes the experimental primary endpoint to a more convenient MSE.
+
+5. Exact and approximate history/belief compression
+For z=phi(h), a sufficient (not necessary) recursive contract is: identical legal actions; identical expected current cost; identical distribution of next compressed state; and identical terminal cost for all histories mapping to the same z. Induction through Bellman backups then preserves all finite-horizon values. Equivalently, a recursive z'=F(z,a,public_observation) plus preservation of the joint public observation/robot-transition law and cost is sufficient. Exact current V alone, current Gamma alone, or correct current argmax is a weaker property and need not allow future updates.
+
+Finite-horizon convention for a transparent bound: H remaining stages, stage costs and approximate stage costs in[0,C], terminal costs in[0,G], uniform cost error epsilon_c, terminal error epsilon_g, and uniform next-compressed-kernel distance epsilon_p in TV=sup_A|P(A)-Q(A)| (=half L1 in finite spaces). Legal actions/resource/stop semantics are shared. Then
+  E_H = epsilon_g + H epsilon_c + [C H(H-1)/2 + H G] epsilon_p
+bounds |V*_true(h)-V*_compressed(phi(h))|. The lifted exact compressed optimum has true regret <=2E_H. This is a standard approximate-information-state/simulation-lemma specialization, not a new general theorem.
+Proof recurrence: E_0=epsilon_g. With k stages left, the approximate continuation value has span at most(k-1)C+G. One backup adds at most epsilon_c + [(k-1)C+G]epsilon_p + E_{k-1}. Sum the recurrence. Apply the same uniform evaluation bound to the lifted compressed-optimal policy and the optimum to obtain2E_H. Approximate planners need a separate optimization-error term. The TV convention matters: papers using full L1 have a factor1/2 in the span inequality.
+
+These assumptions can fail at hard feasibility/visibility boundaries. If compression merges different feasible action sets, ordinary small reward/kernel errors do not certify safe execution; preserve the full public robot state and exact common gate, or explicitly bound finite failure costs and mask mistakes. Infinite penalties violate bounded-cost assumptions. Variable option durations require remaining time inside the state. A finite test set gives empirical error evidence, not a uniform theorem domain. For continuous kernels, TV may be uninformatively large; a Wasserstein/IPM alternative requires a justified continuation-value regularity constant, not merely a learned embedding distance.
+
+6. Required falsification checks before claiming theoretical contribution
+- Same public Y branch and same post-option robot state must produce the same posterior and policy, regardless of which hidden particle generated it. Verify probability normalization and the posterior tower property.
+- Show examples with equal current Gamma but differing observation operators; also include cases where Gamma really is closed/sufficient, e.g. a correctly specified linear-Gaussian subclass. Do not cherry-pick only the counterexample regime.
+- Vary true robot starting branches/limits using actual execution queries. If all downstream decisions are effectively equally executable, a capability-aware B may correctly have zero increment.
+- Compare exact/full-belief and compressed backups at the same horizon/integration accuracy, then compare quality under the same wall-clock budget. If exact counterparts agree, that is correctness; a computational advantage needs measured runtime/memory/query savings with controlled value loss.
+- Prove any new structural reduction in the actual anatomical/robot model and quantify its identification error on independent data. Renaming standard risk, VOI, sufficient-state or Bellman objects is not sufficient novelty.
+
+The root remains responsible for overall design and the decision to pursue B. This review only sets claim boundaries and tests; it does not replace the user's objective.

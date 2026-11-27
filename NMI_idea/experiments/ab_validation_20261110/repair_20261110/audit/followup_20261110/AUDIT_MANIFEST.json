@@ -1,0 +1,228 @@
+{
+  "status": "sealed_independent_read_only_audit",
+  "sealed_utc": "2026-11-10T09:20:34.435247+00:00",
+  "scope": "Public-prior protocol, synthetic no-prescan pilot, old and corrected-clock QP reference traces; harmonic full-domain pending and excluded",
+  "python": "/media/camp/EXT_DRIVE/envs/genesis/bin/python",
+  "production_source_edits_by_auditor": false,
+  "native_reexecuted_by_auditor_for_this_followup": false,
+  "independent_execution": "5196 saved observation regeneration/likelihood/posterior/metric checks; all QP saved-row FK/derivative/reference checks; 7 actual client publication tests, no native launch",
+  "audit_files": {
+    "CLOCK_PUBLICATION_AUDIT.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/CLOCK_PUBLICATION_AUDIT.txt",
+      "bytes": 5448,
+      "sha256": "d156a5378b229decc98562adf8ee980af4a77018fdc78bf89bb3f6776bdaa98b"
+    },
+    "FINAL_FOLLOWUP_AUDIT.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/FINAL_FOLLOWUP_AUDIT.txt",
+      "bytes": 3711,
+      "sha256": "28453026bcce4007c0e47a5d3622caa243e1d278f418616696ba618e3d2b52c7"
+    },
+    "NO_PRESCAN_AUDIT.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/NO_PRESCAN_AUDIT.txt",
+      "bytes": 5028,
+      "sha256": "469d2972a54fa8dae55ad2deb72ab560622ed34dab7fad059471a98bb9f10436"
+    },
+    "PROTOCOL_REVIEW.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/PROTOCOL_REVIEW.txt",
+      "bytes": 3896,
+      "sha256": "3284aa2daaf23ee2ed107dca1a52871f225c94e17fa345ee3e19a42ed62a274e"
+    },
+    "check_no_prescan.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/check_no_prescan.py",
+      "bytes": 6660,
+      "sha256": "c1e9f0228d6b811ed8dfd7cc29a8879248486ac6647c3992f0e0cb0ca53bba64"
+    },
+    "check_qp_reference.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/check_qp_reference.py",
+      "bytes": 9029,
+      "sha256": "15d7adb9a56e3a0c13664771f222cf19f02e4135dbc1b945cddcc2476c5e0ac2"
+    },
+    "clock_fault_independent.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/clock_fault_independent.json",
+      "bytes": 1116,
+      "sha256": "621449776a26a525c48cd1800b85a3d3794f5c39d6624651d8b134b16e30765b"
+    },
+    "clock_publication_tests.log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/clock_publication_tests.log",
+      "bytes": 98,
+      "sha256": "8e77b268860e20bfd1a0c8f416d4da525a08324403608345305a9eebf76ca0b2"
+    },
+    "clock_race_trace_consistency.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/clock_race_trace_consistency.json",
+      "bytes": 723,
+      "sha256": "52a380434bc71a9a732eaaa7b684202e5670b9d3ec12f1e603b25977dcd9f273"
+    },
+    "final_input_hash_check.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/final_input_hash_check.json",
+      "bytes": 2495,
+      "sha256": "77a8478ecc7b54b369c144f57bdbb7001774dce901bef23480ce978823069cb0"
+    },
+    "no_prescan_independent.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/no_prescan_independent.json",
+      "bytes": 6503,
+      "sha256": "2dd5ac46c87475ce85a13a406e88235c725d5d993050392ef315ad796c97f2d0"
+    },
+    "no_prescan_independent.log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/no_prescan_independent.log",
+      "bytes": 6504,
+      "sha256": "6e0b4849d12c45560b135693f42deeab937f37b3ab3a248765bc46cba9b85010"
+    },
+    "qp_clean_reference_independent.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/qp_clean_reference_independent.json",
+      "bytes": 7544,
+      "sha256": "13f8eba2e14f7f47ed1062d89d1c6a6d1cfbd8ce1d7b9e2ac27f7ab6b9ec5916"
+    },
+    "qp_clean_reference_independent.log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/qp_clean_reference_independent.log",
+      "bytes": 7545,
+      "sha256": "ea5bdb291e71ed48c001b161b0200cf978123dc5d7d2df4eae7d34fa26f9c6ce"
+    },
+    "qp_reference_independent.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/qp_reference_independent.json",
+      "bytes": 8377,
+      "sha256": "8a18c15a54aaaf4cce27c963d7a0ae0cab50cd3aece37e22fd5b905ad3167d1c"
+    },
+    "qp_reference_independent.log": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/followup_20261110/qp_reference_independent.log",
+      "bytes": 8001,
+      "sha256": "daa58e90bd53f8810b37ae8ad9b466ed997f555dd056fc37a1317019f8220942"
+    }
+  },
+  "read_only_inputs": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/NO_PRESCAN_FOLLOWUP_PROTOCOL.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/NO_PRESCAN_FOLLOWUP_PROTOCOL.txt",
+      "bytes": 5716,
+      "sha256": "9118d5a7084e3d65dfbbad17efb85de0c534ed5af6431cba6ffc13c268291c54"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/AB_ROADMAP.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/AB_ROADMAP.txt",
+      "bytes": 9768,
+      "sha256": "e1cd90e6dee3d4782611a146e4c33028ab996f9b67f7103d6b8b819e82a11db1"
+    },
+    "/home/camp/Documents/Codex/2026-11-09/vscode-codex-2/work/manuscript-review/Anatomical_GPS_V9.3.tex": {
+      "path": "/home/camp/Documents/Codex/2026-11-09/vscode-codex-2/work/manuscript-review/Anatomical_GPS_V9.3.tex",
+      "bytes": 83517,
+      "sha256": "6948528c426313fe9383469d5ebb0b2f4cd7a2a63291f5d098c421f74cdb0471"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/manifest.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/manifest.json",
+      "bytes": 6801,
+      "sha256": "e28bcdd03a49f48e9fea94bbe3d274c19855e1ed2f45da94876c1eb4ab43d633"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/REPORT.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/REPORT.txt",
+      "bytes": 8508,
+      "sha256": "e61e41ea73382b31148f6669d58ff98b4566a023bcac7caa255f73c74efc7901"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/results.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/results.json",
+      "bytes": 5016003,
+      "sha256": "2d15faf248eeb2977eccf60a3aa2e236170f1cccddbf2b8a1c77e5d4946480c7"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/benchmark.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/benchmark.py",
+      "bytes": 27761,
+      "sha256": "7ad1d57c24b89bf50ad26a50cfdd38fcad326757d44232e33457bb64b9beab54"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/PROTOCOL.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/no_prescan_ab/PROTOCOL.json",
+      "bytes": 6284,
+      "sha256": "36d9ee592336dbc6ea04cf75b1e4a1123498b16fe2544de649a8bf20ffb356c0"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/input_manifest.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/input_manifest.json",
+      "bytes": 1691,
+      "sha256": "48ebb43425935d96a9194e5490a972b31659070a3695969bd8d88eb1bb6329ad"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/RESULTS.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/RESULTS.json",
+      "bytes": 20127,
+      "sha256": "c597043746743b15ea3353930bb87c37779bc356c287faf3e6dccd9df2506607"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/PROTOCOL.txt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/PROTOCOL.txt",
+      "bytes": 1519,
+      "sha256": "70c2501bec5aa49708d4e784ebb9f12cc5f8f8b589ce832f0a555b9899967362"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/fault_injection.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/fault_injection.json",
+      "bytes": 20455,
+      "sha256": "6028ad294d8b3300fc611d0128b5c3164d5e4e2ee56b096203c9905e7a4fedab"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/fault_trace.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/fault_trace.npz",
+      "bytes": 94707,
+      "sha256": "e822b4b866c82b43e9dc52d12d03968e53aa020f9acf945fc78a47c4244af41d"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/inject_clock_interleaving.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/inject_clock_interleaving.py",
+      "bytes": 3412,
+      "sha256": "bc0763ead0a8801729d3ffb85988251d158f234dfe96d89a11d9226cb78fdaf3"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/client_before.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/client_before.py",
+      "bytes": 46303,
+      "sha256": "d848d266ef110ff57bfc28b6d9a09137051d2f7417728880a3ce0b29178de033"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/qp_replay_before.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/qp_replay_before.py",
+      "bytes": 29677,
+      "sha256": "9b72a782dd70c034b1aaacefb295d442649f7477621ce3f885be621391ec3ce1"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_reference_followup/RESULTS.json": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_reference_followup/RESULTS.json",
+      "bytes": 36458,
+      "sha256": "1b9edf5d97e921ad4af2285ec7879f38bdb2242906d48385af125eda066fb856"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/phase2_native_subset_inputs.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/phase2_native_subset_inputs.npz",
+      "bytes": 6200,
+      "sha256": "7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/6d_2cm_trace.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/6d_2cm_trace.npz",
+      "bytes": 1227107,
+      "sha256": "ed16ac99fa21a620be651744229750d060d3d68665cd8066c0a821b7466cfb49"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/6d_retime_0p5cm_trace.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/6d_retime_0p5cm_trace.npz",
+      "bytes": 3464555,
+      "sha256": "5c058bc5eede309e329fb8f51ff9265d39be5419cb30af6afca8e5baa19ad948"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/original_2cm_trace.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_clock_repair/original_2cm_trace.npz",
+      "bytes": 1223421,
+      "sha256": "a3dfdc71a411895e8f48872e8e8798abccd83005e97902acf997662a562ec71b"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/wbc_rt/client.py",
+      "bytes": 46788,
+      "sha256": "d831ab4ff4b277fb08310492136e444d0df74730f69c6ca6af36216742de2ad4"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py",
+      "bytes": 29849,
+      "sha256": "88b71baaa55c18a35d0bd3696b18ef9d24a54b813e766fbacbbdf2f0cffb09ec"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/configs/controller.yaml": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/configs/controller.yaml",
+      "bytes": 27446,
+      "sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt",
+      "bytes": 1303856,
+      "sha256": "cc34bf96b772ef463aa2a9468153e649da550192b8486d35ed52145ea07e7d07"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/reference.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/reference.py",
+      "bytes": 40363,
+      "sha256": "b82225257854774d99cf78396ce8c6c36042999c9d9d7ffdfc696f23c9edf6a8"
+    },
+    "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/tests/test_wbc_rt_model_clock.py": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/tests/test_wbc_rt_model_clock.py",
+      "bytes": 3198,
+      "sha256": "ae4e91717ac80881702fd975d79f35b3df2b18ab6cea59badab04613beda378f"
+    }
+  }
+}

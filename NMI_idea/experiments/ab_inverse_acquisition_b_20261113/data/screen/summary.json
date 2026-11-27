@@ -1,0 +1,2966 @@
+{
+  "daughter": {
+    "comparisons": {
+      "split_cost_screened_vs_augmented": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.2552083333333333,
+          "any_wrong": 0.09244791666666667
+        },
+        "baseline_rate": {
+          "correct_completion": 0.24609375,
+          "any_wrong": 0.09375
+        },
+        "delta": {
+          "correct_completion": 0.009114583333333334,
+          "any_wrong": -0.0013020833333333333,
+          "tcp_mm": -0.09551008662183606,
+          "turn_deg": -0.7036795822154097,
+          "motion_s": -0.001953125,
+          "rail_mm": 1.6248216372459459,
+          "captures": -0.0013020833333333333,
+          "combined_s": -0.00438970661718749
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.0026041666666666665,
+            0.0234375
+          ],
+          "any_wrong": [
+            -0.013020833333333332,
+            0.010416666666666668
+          ],
+          "tcp_mm": [
+            -0.4005118538580318,
+            0.18183792994587797
+          ],
+          "turn_deg": [
+            -1.7981032326755655,
+            0.08061281452026467
+          ],
+          "motion_s": [
+            -0.029296875,
+            0.025390625
+          ],
+          "rail_mm": [
+            -0.1624821637245946,
+            3.89957192939027
+          ],
+          "captures": [
+            -0.01953125,
+            0.016927083333333332
+          ],
+          "combined_s": [
+            -0.0319235758299153,
+            0.022342479301920595
+          ]
+        },
+        "success_wins_losses_ties": [
+          4,
+          2,
+          26
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          1,
+          2,
+          29
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": -0.09551008662183606,
+          "turn_deg": -0.7036795822154097,
+          "motion_s": -0.001953125
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -0.47277481949018857,
+            0.23642060854109753
+          ],
+          "turn_deg": [
+            -2.0813923494955646,
+            0.20304462819982075
+          ],
+          "motion_s": [
+            -0.03515625,
+            0.03125
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "split_hard_caps_vs_augmented": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.2864583333333333,
+          "any_wrong": 0.08723958333333333
+        },
+        "baseline_rate": {
+          "correct_completion": 0.24609375,
+          "any_wrong": 0.09375
+        },
+        "delta": {
+          "correct_completion": 0.040364583333333336,
+          "any_wrong": -0.006510416666666667,
+          "tcp_mm": 1.5720909959654812,
+          "turn_deg": 2.8959076889823216,
+          "motion_s": 0.046875,
+          "rail_mm": 4.874464911737841,
+          "captures": 0.03125,
+          "combined_s": 0.037799426643229134
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            0.007812500000000002,
+            0.078125
+          ],
+          "any_wrong": [
+            -0.02994791666666667,
+            0.015624999999999998
+          ],
+          "tcp_mm": [
+            0.7191144039638282,
+            2.523722209011637
+          ],
+          "turn_deg": [
+            0.790758531669287,
+            5.0625740053702515
+          ],
+          "motion_s": [
+            -0.08984375,
+            0.185546875
+          ],
+          "rail_mm": [
+            1.9497859646951354,
+            7.9616260225051345
+          ],
+          "captures": [
+            -0.05989583333333332,
+            0.12369791666666667
+          ],
+          "combined_s": [
+            -0.09974668243909532,
+            0.1778111796216145
+          ]
+        },
+        "success_wins_losses_ties": [
+          10,
+          6,
+          16
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          5,
+          6,
+          21
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 1.5720909959654812,
+          "turn_deg": 2.8959076889823216,
+          "motion_s": 0.046875
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.5589474207456115,
+            2.7624943016807486
+          ],
+          "turn_deg": [
+            0.36256992090347473,
+            5.595522409276785
+          ],
+          "motion_s": [
+            -0.119140625,
+            0.21875
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "split_cost_screened_vs_fixed": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.2552083333333333,
+          "any_wrong": 0.09244791666666667
+        },
+        "baseline_rate": {
+          "correct_completion": 0.2578125,
+          "any_wrong": 0.09244791666666667
+        },
+        "delta": {
+          "correct_completion": -0.0026041666666666665,
+          "any_wrong": 0.0,
+          "tcp_mm": 0.056618080627048074,
+          "turn_deg": 3.4182974155855166,
+          "motion_s": -0.1796875,
+          "rail_mm": -1.7873038009705404,
+          "captures": -0.11979166666666667,
+          "combined_s": -0.1701286495351563
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.031249999999999993,
+            0.02994791666666666
+          ],
+          "any_wrong": [
+            -0.024739583333333332,
+            0.02604166666666666
+          ],
+          "tcp_mm": [
+            -1.3007435356980985,
+            1.4170463646893579
+          ],
+          "turn_deg": [
+            1.1242348081793498,
+            5.94667059782996
+          ],
+          "motion_s": [
+            -0.30859375,
+            -0.05859375
+          ],
+          "rail_mm": [
+            -5.524393566636216,
+            2.1122681284197293
+          ],
+          "captures": [
+            -0.20572916666666669,
+            -0.03906249999999999
+          ],
+          "combined_s": [
+            -0.2994704689157225,
+            -0.048337262146907596
+          ]
+        },
+        "success_wins_losses_ties": [
+          8,
+          13,
+          11
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          6,
+          8,
+          18
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.056618080627048074,
+          "turn_deg": 3.4182974155855166,
+          "motion_s": -0.1796875
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -1.6095541791202657,
+            1.687910541899695
+          ],
+          "turn_deg": [
+            0.6515703684940816,
+            6.600061595721364
+          ],
+          "motion_s": [
+            -0.337890625,
+            -0.033203125
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "augmented_vs_coarse": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.24609375,
+          "any_wrong": 0.09375
+        },
+        "baseline_rate": {
+          "correct_completion": 0.2526041666666667,
+          "any_wrong": 0.09765625
+        },
+        "delta": {
+          "correct_completion": -0.006510416666666667,
+          "any_wrong": -0.00390625,
+          "tcp_mm": -0.835818214765989,
+          "turn_deg": 1.1960499041818842,
+          "motion_s": -0.060546875,
+          "rail_mm": -2.2747502921443243,
+          "captures": -0.040364583333333336,
+          "combined_s": 0.01060943499479152
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.02734375,
+            0.013020833333333332
+          ],
+          "any_wrong": [
+            -0.016927083333333332,
+            0.009114583333333332
+          ],
+          "tcp_mm": [
+            -1.9711448746728426,
+            0.17639750926929762
+          ],
+          "turn_deg": [
+            -0.6494314626201884,
+            2.901738866251639
+          ],
+          "motion_s": [
+            -0.154296875,
+            0.021484375
+          ],
+          "rail_mm": [
+            -4.549500584288649,
+            -0.16248216372459467
+          ],
+          "captures": [
+            -0.10286458333333334,
+            0.014322916666666666
+          ],
+          "combined_s": [
+            -0.08476317020377616,
+            0.09337770994088485
+          ]
+        },
+        "success_wins_losses_ties": [
+          4,
+          7,
+          21
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          5,
+          8,
+          19
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": -0.835818214765989,
+          "turn_deg": 1.1960499041818842,
+          "motion_s": -0.060546875
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -2.243644857063946,
+            0.38919098004025904
+          ],
+          "turn_deg": [
+            -1.1504043330402396,
+            3.2339524136039297
+          ],
+          "motion_s": [
+            -0.177734375,
+            0.037109375
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "coarse_vs_original": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.2526041666666667,
+          "any_wrong": 0.09765625
+        },
+        "baseline_rate": {
+          "correct_completion": 0.22786458333333334,
+          "any_wrong": 0.08854166666666667
+        },
+        "delta": {
+          "correct_completion": 0.024739583333333332,
+          "any_wrong": 0.009114583333333334,
+          "tcp_mm": 1.7734365465969344,
+          "turn_deg": 7.564928537291535,
+          "motion_s": -0.197265625,
+          "rail_mm": 2.5997146195935135,
+          "captures": -0.13151041666666666,
+          "combined_s": -0.17468364563281255
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.005208333333333334,
+            0.06380208333333333
+          ],
+          "any_wrong": [
+            -0.020833333333333332,
+            0.03645833333333333
+          ],
+          "tcp_mm": [
+            0.6073243488670055,
+            3.1894277961149067
+          ],
+          "turn_deg": [
+            4.750088704846646,
+            10.807469942182221
+          ],
+          "motion_s": [
+            -0.400390625,
+            -0.048828125
+          ],
+          "rail_mm": [
+            -2.1122681284197298,
+            7.311697367606756
+          ],
+          "captures": [
+            -0.2669270833333332,
+            -0.03255208333333334
+          ],
+          "combined_s": [
+            -0.3777240388980144,
+            -0.02645237383343111
+          ]
+        },
+        "success_wins_losses_ties": [
+          9,
+          5,
+          18
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          9,
+          3,
+          20
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 1.7734365465969344,
+          "turn_deg": 7.564928537291535,
+          "motion_s": -0.197265625
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.37232678731879965,
+            3.551487693781793
+          ],
+          "turn_deg": [
+            4.221496681432,
+            11.55195435185917
+          ],
+          "motion_s": [
+            -0.45574544270833334,
+            -0.02862955729166572
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "augmented_vs_claim_only": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.24609375,
+          "any_wrong": 0.09375
+        },
+        "baseline_rate": {
+          "correct_completion": 0.24609375,
+          "any_wrong": 0.09765625
+        },
+        "delta": {
+          "correct_completion": 0.0,
+          "any_wrong": -0.00390625,
+          "tcp_mm": 0.2433417678519426,
+          "turn_deg": -0.14603821498000402,
+          "motion_s": -0.125,
+          "rail_mm": -1.4623394735213513,
+          "captures": -0.08333333333333333,
+          "combined_s": -0.12795711560416637
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.032552083333333336,
+            0.040364583333333336
+          ],
+          "any_wrong": [
+            -0.029947916666666675,
+            0.018229166666666664
+          ],
+          "tcp_mm": [
+            -1.0304199854672442,
+            1.4867770477087365
+          ],
+          "turn_deg": [
+            -1.8420000856688392,
+            1.5324550239783339
+          ],
+          "motion_s": [
+            -0.21484375,
+            -0.04296875
+          ],
+          "rail_mm": [
+            -5.199429239187027,
+            2.924678947042702
+          ],
+          "captures": [
+            -0.14322916666666666,
+            -0.028645833333333332
+          ],
+          "combined_s": [
+            -0.2183486052255204,
+            -0.044667925712825546
+          ]
+        },
+        "success_wins_losses_ties": [
+          9,
+          12,
+          11
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          9,
+          6,
+          17
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.2433417678519426,
+          "turn_deg": -0.14603821498000402,
+          "motion_s": -0.125
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -1.323945020715506,
+            1.777503844826973
+          ],
+          "turn_deg": [
+            -2.194031197721679,
+            1.8951931192199167
+          ],
+          "motion_s": [
+            -0.236328125,
+            -0.025390625
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "augmented_vs_fixed_angles": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.24609375,
+          "any_wrong": 0.09375
+        },
+        "baseline_rate": {
+          "correct_completion": 0.24479166666666666,
+          "any_wrong": 0.10677083333333333
+        },
+        "delta": {
+          "correct_completion": 0.0013020833333333333,
+          "any_wrong": -0.013020833333333334,
+          "tcp_mm": -0.709262003019482,
+          "turn_deg": -1.8776160437359024,
+          "motion_s": -0.123046875,
+          "rail_mm": -3.0871611107672976,
+          "captures": -0.08203125,
+          "combined_s": -0.12389209758072921
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.02734375,
+            0.032552083333333336
+          ],
+          "any_wrong": [
+            -0.0390625,
+            0.009114583333333332
+          ],
+          "tcp_mm": [
+            -1.821680734926214,
+            0.30993131832451387
+          ],
+          "turn_deg": [
+            -3.606142846558879,
+            -0.25873848772508246
+          ],
+          "motion_s": [
+            -0.197265625,
+            -0.0546875
+          ],
+          "rail_mm": [
+            -6.4992865489837826,
+            -0.1624821637245942
+          ],
+          "captures": [
+            -0.13151041666666669,
+            -0.03645833333333332
+          ],
+          "combined_s": [
+            -0.1991494265253905,
+            -0.054601615853580684
+          ]
+        },
+        "success_wins_losses_ties": [
+          7,
+          9,
+          16
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          7,
+          9,
+          16
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": -0.709262003019482,
+          "turn_deg": -1.8776160437359024,
+          "motion_s": -0.123046875
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -2.099123096026788,
+            0.5208986935648499
+          ],
+          "turn_deg": [
+            -4.00186360218677,
+            0.07338764183029732
+          ],
+          "motion_s": [
+            -0.21484375,
+            -0.0390625
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "fixed_vs_augmented": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.2578125,
+          "any_wrong": 0.09244791666666667
+        },
+        "baseline_rate": {
+          "correct_completion": 0.24609375,
+          "any_wrong": 0.09375
+        },
+        "delta": {
+          "correct_completion": 0.01171875,
+          "any_wrong": -0.0013020833333333333,
+          "tcp_mm": -0.15212816724888453,
+          "turn_deg": -4.121976997800926,
+          "motion_s": 0.177734375,
+          "rail_mm": 3.412125438216487,
+          "captures": 0.11848958333333333,
+          "combined_s": 0.16573894291796873
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.020833333333333332,
+            0.04166666666666667
+          ],
+          "any_wrong": [
+            -0.031249999999999997,
+            0.02734375
+          ],
+          "tcp_mm": [
+            -1.5134836544779908,
+            1.2177309728950685
+          ],
+          "turn_deg": [
+            -7.06758374551591,
+            -1.5258109780155678
+          ],
+          "motion_s": [
+            0.0546875,
+            0.30859375
+          ],
+          "rail_mm": [
+            -0.8124108186229726,
+            7.636661695055945
+          ],
+          "captures": [
+            0.03645833333333333,
+            0.20572916666666663
+          ],
+          "combined_s": [
+            0.042511543868945276,
+            0.29655678559163395
+          ]
+        },
+        "success_wins_losses_ties": [
+          11,
+          7,
+          14
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          9,
+          7,
+          16
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": -0.15212816724888453,
+          "turn_deg": -4.121976997800926,
+          "motion_s": 0.177734375
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -1.816543364148467,
+            1.5481306482482213
+          ],
+          "turn_deg": [
+            -7.714426870360226,
+            -0.9971065613411771
+          ],
+          "motion_s": [
+            0.03125,
+            0.337890625
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": true,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": false
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      }
+    },
+    "selections": [
+      {
+        "index": 0,
+        "halves": [
+          {
+            "choice": "48",
+            "unconstrained": "48",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.08333333333333333
+          },
+          {
+            "choice": "6",
+            "unconstrained": "6",
+            "rank_gain": 0.25,
+            "test_gain": -0.08333333333333333
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "halves": [
+          {
+            "choice": "6",
+            "unconstrained": "6",
+            "rank_gain": 0.3333333333333333,
+            "test_gain": 0.16666666666666666
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "10",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "10",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "10",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "halves": [
+          {
+            "choice": "10",
+            "unconstrained": "10",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": -0.08333333333333333
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "42",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "10",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "halves": [
+          {
+            "choice": "6",
+            "unconstrained": "6",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 8,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "10",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 9,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 10,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 11,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "10",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "6",
+            "unconstrained": "8",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.16666666666666666
+          }
+        ]
+      },
+      {
+        "index": 12,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "6",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 13,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "48",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "6",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 14,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 15,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 16,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 17,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "6",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 18,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "6",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "48",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 19,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 20,
+        "halves": [
+          {
+            "choice": "42",
+            "unconstrained": "10",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.3333333333333333
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "42",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 21,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "48",
+            "unconstrained": "10",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": -0.08333333333333333
+          }
+        ]
+      },
+      {
+        "index": 22,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 23,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "42",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 24,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 25,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 26,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "10",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 27,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "6",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "6",
+            "unconstrained": "6",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": 0.08333333333333333
+          }
+        ]
+      },
+      {
+        "index": 28,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 29,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "8",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 30,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 31,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "46",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "46",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      }
+    ],
+    "screen_pass": false,
+    "independent_cases": 32,
+    "tapes_per_case": 24,
+    "opportunity_interpretation": "Attained label-assisted split-repeat selection; neither a public policy nor a population upper bound."
+  },
+  "trunk": {
+    "comparisons": {
+      "split_cost_screened_vs_augmented": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8645833333333334,
+          "any_wrong": 0.053385416666666664
+        },
+        "baseline_rate": {
+          "correct_completion": 0.8606770833333334,
+          "any_wrong": 0.0546875
+        },
+        "delta": {
+          "correct_completion": 0.00390625,
+          "any_wrong": -0.0013020833333333333,
+          "tcp_mm": 0.12280532718669117,
+          "turn_deg": 0.0800436490622291,
+          "motion_s": -0.029296875,
+          "rail_mm": 0.0,
+          "captures": -0.01953125,
+          "combined_s": -0.033201344052083255
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.00390625,
+            0.013020833333333332
+          ],
+          "any_wrong": [
+            -0.009114583333333334,
+            0.006510416666666666
+          ],
+          "tcp_mm": [
+            -0.2801121121569086,
+            0.5232275109730185
+          ],
+          "turn_deg": [
+            -0.50818716990303,
+            0.6764973401308109
+          ],
+          "motion_s": [
+            -0.072265625,
+            0.009765625
+          ],
+          "rail_mm": [
+            -0.40133107707083493,
+            0.40133107707083493
+          ],
+          "captures": [
+            -0.04817708333333334,
+            0.006510416666666666
+          ],
+          "combined_s": [
+            -0.07799175502246088,
+            0.0057678402682617095
+          ]
+        },
+        "success_wins_losses_ties": [
+          3,
+          2,
+          27
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          3,
+          3,
+          26
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.12280532718669117,
+          "turn_deg": 0.0800436490622291,
+          "motion_s": -0.029296875
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -0.375602868909085,
+            0.6145045862711348
+          ],
+          "turn_deg": [
+            -0.6401890730589169,
+            0.8044160936818529
+          ],
+          "motion_s": [
+            -0.083984375,
+            0.017578125
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "split_hard_caps_vs_augmented": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8645833333333334,
+          "any_wrong": 0.055989583333333336
+        },
+        "baseline_rate": {
+          "correct_completion": 0.8606770833333334,
+          "any_wrong": 0.0546875
+        },
+        "delta": {
+          "correct_completion": 0.00390625,
+          "any_wrong": 0.0013020833333333333,
+          "tcp_mm": 0.466568801833464,
+          "turn_deg": 0.5589473522301183,
+          "motion_s": -0.0625,
+          "rail_mm": 0.0,
+          "captures": -0.041666666666666664,
+          "combined_s": -0.06911030008333328
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.010416666666666668,
+            0.018229166666666668
+          ],
+          "any_wrong": [
+            -0.01171875,
+            0.013020833333333336
+          ],
+          "tcp_mm": [
+            -0.18790172892085613,
+            1.257415984761952
+          ],
+          "turn_deg": [
+            -0.27199643622604475,
+            1.4121315591322032
+          ],
+          "motion_s": [
+            -0.12114257812499996,
+            -0.0078125
+          ],
+          "rail_mm": [
+            -0.40133107707083493,
+            0.40133107707083493
+          ],
+          "captures": [
+            -0.08076171874999999,
+            -0.005208333333333333
+          ],
+          "combined_s": [
+            -0.1295331268401368,
+            -0.013832645907519705
+          ]
+        },
+        "success_wins_losses_ties": [
+          4,
+          4,
+          24
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          7,
+          4,
+          21
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.466568801833464,
+          "turn_deg": 0.5589473522301183,
+          "motion_s": -0.0625
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -0.31858866914985373,
+            1.4493875356424946
+          ],
+          "turn_deg": [
+            -0.45436241248274595,
+            1.6076203351299552
+          ],
+          "motion_s": [
+            -0.13671875,
+            0.005859375
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "split_cost_screened_vs_fixed": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8645833333333334,
+          "any_wrong": 0.053385416666666664
+        },
+        "baseline_rate": {
+          "correct_completion": 0.8776041666666666,
+          "any_wrong": 0.07161458333333333
+        },
+        "delta": {
+          "correct_completion": -0.013020833333333334,
+          "any_wrong": -0.018229166666666668,
+          "tcp_mm": 0.03688632643414003,
+          "turn_deg": 0.0198001105981153,
+          "motion_s": 0.162109375,
+          "rail_mm": -1.8728783596638963,
+          "captures": 0.10807291666666667,
+          "combined_s": 0.17685763007031227
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.032552083333333336,
+            0.0078125
+          ],
+          "any_wrong": [
+            -0.03776041666666667,
+            -4.336808689942018e-19
+          ],
+          "tcp_mm": [
+            -0.6112450998074644,
+            0.6048310989788588
+          ],
+          "turn_deg": [
+            -1.2718509870443724,
+            1.2108759623384067
+          ],
+          "motion_s": [
+            0.111328125,
+            0.21484375
+          ],
+          "rail_mm": [
+            -2.8093175394958445,
+            -1.0702162055222264
+          ],
+          "captures": [
+            0.07421875,
+            0.14322916666666669
+          ],
+          "combined_s": [
+            0.12569021949537726,
+            0.23058308540520814
+          ]
+        },
+        "success_wins_losses_ties": [
+          8,
+          17,
+          7
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          5,
+          11,
+          16
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.03688632643414003,
+          "turn_deg": 0.0198001105981153,
+          "motion_s": 0.162109375
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -0.8014448228741307,
+            0.7166749594063901
+          ],
+          "turn_deg": [
+            -1.5757999393483357,
+            1.448735783014056
+          ],
+          "motion_s": [
+            0.099609375,
+            0.2265625
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": false
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "augmented_vs_coarse": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8606770833333334,
+          "any_wrong": 0.0546875
+        },
+        "baseline_rate": {
+          "correct_completion": 0.8645833333333334,
+          "any_wrong": 0.053385416666666664
+        },
+        "delta": {
+          "correct_completion": -0.00390625,
+          "any_wrong": 0.0013020833333333333,
+          "tcp_mm": -0.4377944549443118,
+          "turn_deg": 0.5346992158352056,
+          "motion_s": -0.025390625,
+          "rail_mm": 0.0,
+          "captures": -0.016927083333333332,
+          "combined_s": 0.01969875277083331
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.009114583333333332,
+            0.0013020833333333333
+          ],
+          "any_wrong": [
+            -0.0026041666666666665,
+            0.006510416666666666
+          ],
+          "tcp_mm": [
+            -0.9740507805809074,
+            0.07111088389877393
+          ],
+          "turn_deg": [
+            -0.288209751300838,
+            1.3676411998436233
+          ],
+          "motion_s": [
+            -0.060546875,
+            0.00390625
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            -0.040364583333333336,
+            0.002604166666666667
+          ],
+          "combined_s": [
+            -0.015922196577669676,
+            0.04868824167304792
+          ]
+        },
+        "success_wins_losses_ties": [
+          1,
+          4,
+          27
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          2,
+          1,
+          29
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": -0.4377944549443118,
+          "turn_deg": 0.5346992158352056,
+          "motion_s": -0.025390625
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -1.0910350125238586,
+            0.17839553924619883
+          ],
+          "turn_deg": [
+            -0.48097860644068924,
+            1.5339593131928257
+          ],
+          "motion_s": [
+            -0.0703125,
+            0.0078125
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "coarse_vs_original": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8645833333333334,
+          "any_wrong": 0.053385416666666664
+        },
+        "baseline_rate": {
+          "correct_completion": 0.8606770833333334,
+          "any_wrong": 0.053385416666666664
+        },
+        "delta": {
+          "correct_completion": 0.00390625,
+          "any_wrong": 0.0,
+          "tcp_mm": 1.8712852343998876,
+          "turn_deg": 8.428904612819537,
+          "motion_s": -0.09375,
+          "rail_mm": 0.1337770256902783,
+          "captures": -0.0625,
+          "combined_s": -0.0769790863502602
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.006510416666666666,
+            0.014322916666666666
+          ],
+          "any_wrong": [
+            -0.006510416666666666,
+            0.006510416666666666
+          ],
+          "tcp_mm": [
+            1.3347752900558028,
+            2.394096642319139
+          ],
+          "turn_deg": [
+            7.7395202535236445,
+            9.114502062481215
+          ],
+          "motion_s": [
+            -0.150390625,
+            -0.041015625
+          ],
+          "rail_mm": [
+            -0.2675540513805566,
+            0.5351081027611132
+          ],
+          "captures": [
+            -0.10026041666666667,
+            -0.02734375
+          ],
+          "combined_s": [
+            -0.13348435026588515,
+            -0.02415019542848302
+          ]
+        },
+        "success_wins_losses_ties": [
+          7,
+          4,
+          21
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          3,
+          3,
+          26
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 1.8712852343998876,
+          "turn_deg": 8.428904612819537,
+          "motion_s": -0.09375
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            1.2141940556954443,
+            2.5060946886626323
+          ],
+          "turn_deg": [
+            7.591974072625862,
+            9.266786141373444
+          ],
+          "motion_s": [
+            -0.1640625,
+            -0.03058268229166572
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": false,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "augmented_vs_claim_only": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8606770833333334,
+          "any_wrong": 0.0546875
+        },
+        "baseline_rate": {
+          "correct_completion": 0.8619791666666666,
+          "any_wrong": 0.0546875
+        },
+        "delta": {
+          "correct_completion": -0.0013020833333333333,
+          "any_wrong": 0.0,
+          "tcp_mm": 0.27722183964565894,
+          "turn_deg": -0.26239825245527154,
+          "motion_s": -0.009765625,
+          "rail_mm": 0.0,
+          "captures": -0.006510416666666667,
+          "combined_s": -0.010387911381510545
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.006510416666666666,
+            0.0026041666666666665
+          ],
+          "any_wrong": [
+            -0.00390625,
+            0.00390625
+          ],
+          "tcp_mm": [
+            -0.06587957502994336,
+            0.6460321652263006
+          ],
+          "turn_deg": [
+            -0.8108713689215178,
+            0.30667272642511756
+          ],
+          "motion_s": [
+            -0.03125,
+            0.009765625
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            -0.02083333333333333,
+            0.006510416666666666
+          ],
+          "combined_s": [
+            -0.03145190837962271,
+            0.009472327032649499
+          ]
+        },
+        "success_wins_losses_ties": [
+          1,
+          2,
+          29
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          1,
+          1,
+          30
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.27722183964565894,
+          "turn_deg": -0.26239825245527154,
+          "motion_s": -0.009765625
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -0.13645375379173186,
+            0.7317974468331313
+          ],
+          "turn_deg": [
+            -0.9349984857256396,
+            0.4277478110559063
+          ],
+          "motion_s": [
+            -0.03515625,
+            0.013671875
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "augmented_vs_fixed_angles": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8606770833333334,
+          "any_wrong": 0.0546875
+        },
+        "baseline_rate": {
+          "correct_completion": 0.86328125,
+          "any_wrong": 0.053385416666666664
+        },
+        "delta": {
+          "correct_completion": -0.0026041666666666665,
+          "any_wrong": 0.0013020833333333333,
+          "tcp_mm": 0.5243251243471848,
+          "turn_deg": 0.2150540128985398,
+          "motion_s": -0.021484375,
+          "rail_mm": 0.0,
+          "captures": -0.014322916666666666,
+          "combined_s": -0.022290807848958417
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.007812499999999999,
+            0.0026041666666666665
+          ],
+          "any_wrong": [
+            -0.0026041666666666665,
+            0.005208333333333333
+          ],
+          "tcp_mm": [
+            0.10986610702763787,
+            0.9572441033220488
+          ],
+          "turn_deg": [
+            -0.7749933973194842,
+            1.204700278294554
+          ],
+          "motion_s": [
+            -0.056640625,
+            0.009765625
+          ],
+          "rail_mm": [
+            0.0,
+            0.0
+          ],
+          "captures": [
+            -0.037760416666666664,
+            0.006510416666666667
+          ],
+          "combined_s": [
+            -0.05725142382128923,
+            0.009159668060644485
+          ]
+        },
+        "success_wins_losses_ties": [
+          1,
+          3,
+          28
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          2,
+          1,
+          29
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.5243251243471848,
+          "turn_deg": 0.2150540128985398,
+          "motion_s": -0.021484375
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            0.022881327829702782,
+            1.0630533434273846
+          ],
+          "turn_deg": [
+            -1.005918030095633,
+            1.416132063371286
+          ],
+          "motion_s": [
+            -0.064453125,
+            0.015625
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": false
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": true,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      },
+      "fixed_vs_augmented": {
+        "n_cases": 32,
+        "n_repeats": 24,
+        "repeated_case_clustered": true,
+        "candidate_rate": {
+          "correct_completion": 0.8776041666666666,
+          "any_wrong": 0.07161458333333333
+        },
+        "baseline_rate": {
+          "correct_completion": 0.8606770833333334,
+          "any_wrong": 0.0546875
+        },
+        "delta": {
+          "correct_completion": 0.016927083333333332,
+          "any_wrong": 0.016927083333333332,
+          "tcp_mm": 0.08591900075255117,
+          "turn_deg": 0.06024353846411382,
+          "motion_s": -0.19140625,
+          "rail_mm": 1.8728783596638963,
+          "captures": -0.12760416666666666,
+          "combined_s": -0.21005897412239558
+        },
+        "delta_ci95_case_clustered": {
+          "correct_completion": [
+            -0.005208333333333334,
+            0.03776041666666667
+          ],
+          "any_wrong": [
+            -0.0039062499999999996,
+            0.03906249999999999
+          ],
+          "tcp_mm": [
+            -0.6157455645267891,
+            0.8460056593287921
+          ],
+          "turn_deg": [
+            -1.28064450805913,
+            1.4421068544602935
+          ],
+          "motion_s": [
+            -0.251953125,
+            -0.130859375
+          ],
+          "rail_mm": [
+            1.0702162055222264,
+            2.6755405138055663
+          ],
+          "captures": [
+            -0.16796875,
+            -0.08723958333333334
+          ],
+          "combined_s": [
+            -0.27095333053457044,
+            -0.1498793474131181
+          ]
+        },
+        "success_wins_losses_ties": [
+          17,
+          8,
+          7
+        ],
+        "wrong_harm_benefit_ties_cases": [
+          13,
+          6,
+          13
+        ],
+        "wrong_harm_975_upper": null,
+        "success_sign_p_greater": null,
+        "wrong_harm_sign_p_greater": null,
+        "cost_delta": {
+          "tcp_mm": 0.08591900075255117,
+          "turn_deg": 0.06024353846411382,
+          "motion_s": -0.19140625
+        },
+        "cost_bonferroni_ci95": {
+          "tcp_mm": [
+            -0.7672686439036787,
+            1.0339366421829648
+          ],
+          "turn_deg": [
+            -1.5717617303782712,
+            1.7498803365717632
+          ],
+          "motion_s": [
+            -0.265625,
+            -0.1171875
+          ]
+        },
+        "cost_margins": {
+          "tcp_mm": 2.0,
+          "turn_deg": 2.0,
+          "motion_s": 0.1
+        },
+        "cost_equivalent": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": false
+        },
+        "cost_nonincrease": {
+          "tcp_mm": false,
+          "turn_deg": false,
+          "motion_s": true
+        },
+        "cost_noninferior_with_margin": {
+          "tcp_mm": true,
+          "turn_deg": true,
+          "motion_s": true
+        },
+        "all_costs_equivalent": false,
+        "all_costs_nonincrease": false,
+        "all_costs_noninferior_with_margin": true,
+        "strong_gate_single_repeat": false,
+        "inference_note": "Repeated tapes are clustered by latent case. Case-level bootstrap intervals are descriptive and no binomial discordance inference is reported.",
+        "bootstrap_samples": 20000,
+        "bootstrap_seed": 57216
+      }
+    },
+    "selections": [
+      {
+        "index": 0,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "18",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "22",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "18",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 8,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 9,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 10,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 11,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 12,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "18",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 13,
+        "halves": [
+          {
+            "choice": "20",
+            "unconstrained": "20",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 14,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": -0.08333333333333333
+          }
+        ]
+      },
+      {
+        "index": 15,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "76",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 16,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 17,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 18,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "22",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 19,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "18",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 20,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "18",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 21,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 22,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": -0.08333333333333333
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 23,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "22",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 24,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.08333333333333333
+          },
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.08333333333333333
+          }
+        ]
+      },
+      {
+        "index": 25,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 26,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": 0.08333333333333333
+          },
+          {
+            "choice": "74",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.08333333333333333
+          }
+        ]
+      },
+      {
+        "index": 27,
+        "halves": [
+          {
+            "choice": "18",
+            "unconstrained": "18",
+            "rank_gain": 0.08333333333333333,
+            "test_gain": 0.08333333333333333
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "20",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 28,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 29,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 30,
+        "halves": [
+          {
+            "choice": "66",
+            "unconstrained": "18",
+            "rank_gain": 0.16666666666666666,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      },
+      {
+        "index": 31,
+        "halves": [
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          },
+          {
+            "choice": "MPC",
+            "unconstrained": "MPC",
+            "rank_gain": 0.0,
+            "test_gain": 0.0
+          }
+        ]
+      }
+    ],
+    "screen_pass": false,
+    "independent_cases": 32,
+    "tapes_per_case": 24,
+    "opportunity_interpretation": "Attained label-assisted split-repeat selection; neither a public policy nor a population upper bound."
+  }
+}

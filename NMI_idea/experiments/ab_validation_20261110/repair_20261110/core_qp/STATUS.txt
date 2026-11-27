@@ -1,0 +1,10 @@
+2026-11-10: PAUSED BY PARENT while harmonic asset repair is prioritized.
+The192-edge QP graph has NOT run; no repaired B mechanical conclusion exists.
+The retained21 native/URDF root results used the earlier clock-mixed offline
+harness. Native rail observer used actual SHM wall-clock while ideal plant
+integrated fixed5ms. dIRD owner subsequently corrected this offline model clock
+and passed strict prefix-state replay. Therefore these21 outputs are diagnostic
+pre-fix evidence only, not final QP capability labels. Their11/21 engineering
+passes and all failures must not be promoted to a final graph or system result.
+No path/speed/seed/gate was retuned. Root replay under the corrected model clock
+and any continuous-state graph await the parent's explicit task scheduling.

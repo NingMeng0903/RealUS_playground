@@ -1,0 +1,27 @@
+{
+  "test": {
+    "episode_arm_scores": 3564,
+    "acquired_programs": 5460,
+    "paired_endpoints": 120
+  },
+  "femoral": {
+    "episode_arm_scores": 1188,
+    "paired_endpoints": 120
+  },
+  "v12_exact_replays": 6,
+  "teacher_exact_replayed_case": "v13_teach_cal_00000",
+  "label_swap": true,
+  "distinct_layouts": 1508,
+  "cuda_cpu_max_abs": 2.9802322387695312e-08,
+  "residual_logit_cap": 3.8,
+  "supplemental": {
+    "matched_geometry": {
+      "layouts": 108,
+      "verified_sha256": "7b973ca8f022dfd6898ca5deb1d02f1cf664acc7f248d9729a4c59134500a0b9"
+    },
+    "scale_confirmation": {
+      "layouts": 108,
+      "verified_sha256": "6bf9041a852e2b7b8a36737894c0aa8ce398c6cb9ccc15dc140d05fa6fcbebd7"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+Independent bounded audit of harmonic_mechanism — 2026-11-11
+
+Outcome
+The frozen experiment's local formulas and stated narrow interpretation pass
+the independent checks below. It demonstrates correct material-coordinate,
+vector/covector and metric handling on real saved production assets. It does
+not establish a unique harmonic-coordinate advantage, trained response skill,
+patient anatomical accuracy, ultrasound acquisition or physical contact result.
+
+Inputs and scope
+Read only harmonic_mechanism/PROTOCOL.txt, run_transport.py, RESULTS.json,
+RAW_RESULTS.npz, the actual shaft_roi_v2 atlases and cached SMPL-X/LBS volume
+vertices. All16 input hashes and the experiment source/protocol hashes match
+RESULTS.json. Atlas right SHA f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c;
+left SHA 8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191.
+Scope remains h=.14–.94 annular volume, not full-leg depth or the core line.
+No asset reconstruction, SMPL-X regeneration or native controller replay ran.
+
+Independent method and numerical results
+geometry_addendum_check.py selects the first five already frozen native cells
+per leg, without filtering, and checks the canonical/0deg/90deg embeddings.
+Ten cells yield20 cell-pose pairs; the remaining all256×7 summaries are only
+recounted from the saved raw arrays, not described as a new geometry rerun.
+
+For independent coordinates b=(b1,b2,b3), b0=1-sum(b), define
+S=sum_i bi sin(theta_i), C=sum_i bi cos(theta_i). The local circular derivative
+is dtheta/dbj=[C(sin(theta_j)-sin(theta_0))
+             -S(cos(theta_j)-cos(theta_0))]/(S²+C²).
+Rows for h,d are vertex differences from vertex0. This is exactly the code's
+Kb, in the API's (theta,h,d) order. Central differences of direct double
+atan2/barycentric label interpolation agree: max absolute error1.64e-11.
+Local angular differences are wrapped; this does not make a scalar modulo
+theta globally differentiable at its seam.
+
+Let X0/Xp contain the three physical cell edge columns. Then F=Xp X0^-1 and
+J=Xp Kb^-1 are correct where both inverses exist. Finite-difference J relative
+error is4.08e-10. For a Cartesian quadratic test energy, the independently
+differenced label gradient agrees with J^T e to relative1.79e-8.
+
+The physical metric is J^T J. The code's physical natural-gradient direction
+-J (J^T J)^-1 J^T e equals -e in this full-rank three-dimensional local chart.
+Maximum Cartesian difference and difference after diag(.1,10,2) relabeling
+are2.45e-15. This is a verified pullback identity, not a new optimization or
+learning theorem; the strong Cartesian baseline is necessarily equal.
+
+Independently constructed two tangent vectors give
+cross(Fv,Fu)/det(F)=F^-T cross(v,u) to3.34e-16. The ordinary tetrahedral
+barycentric position baseline agrees to2.23e-16m. Public query_atlas_coordinates
+locates transported points without receiving the originating cell; its outputs
+match across poses at saved float32 precision. Their maximum difference from
+direct double label interpolation is2.20e-7. Therefore “all label errors zero”
+means stored/public numerical equality, not infinite accuracy or patient truth.
+
+Saved-array summaries independently recounted
+Both legs contain256 cells at7 saved poses. Their stored address differences
+are all zero. At90deg, wrong Fn versus correct F^-Tn normal angle p95 is
+right19.24136105deg / left23.49565379deg, matching RESULTS.json exactly.
+No sample or pose was removed.
+
+Attribution limits that must remain in synthesis
+1. The label-preservation result is expected from a fixed material mesh,
+   unchanged scalar fields and shared barycentric correspondence. It checks
+   the production query interface; ordinary tet correspondence also passes.
+   It is not evidence that harmonic coordinates uniquely recover anatomy.
+2. These assets have graph-harmonic d and transported h/theta labels. Pose
+   transport does not re-solve harmonicity in the new metric. Complete surface
+   contact_multichart is a different d=0 construction, not this deep volume.
+3. The normal/tangent pair is a random local plane, not an observed skin or
+   ultrasound plane. Fn is a deliberately incorrect type transformation.
+   Its angular error is a mechanism counterexample, not an estimated patient,
+   probe or controller error. Frozen-tangent angles use oriented random
+   vectors; an unoriented vessel-axis metric would require sign invariance.
+4. Frozen world positions ignore known leg motion. Their large displacement
+   is a useful sanity contrast, not the error of a capable registered baseline.
+5. The raw-coordinate-gradient contrast deliberately changes label scales;
+   it establishes why a physical metric is needed. Cartesian and ordinary
+   properly scaled local-coordinate methods remain strong equal controls.
+6. F is exact inside the declared piecewise-affine tet interpolation of cached
+   LBS vertices. It is not a measured human deformation gradient. Seven finite
+   poses do not prove arbitrary shape/pose injectivity, tissue mechanics or
+   a global continuous motion guarantee. Prior asset validation retains its
+   own scope; this small formula audit does not replace it.
+
+No blocking formula or hash error was found. The correct failure-to-success
+statement is “incorrect coordinate/type handling fails; the verified physical
+transport/metric interface works on these assets.” It must not be rewritten as
+“ordinary correspondence fails; harmonic/e3nn uniquely succeeds.”

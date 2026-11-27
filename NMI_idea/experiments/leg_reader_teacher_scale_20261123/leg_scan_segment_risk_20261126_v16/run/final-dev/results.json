@@ -1,0 +1,2017 @@
+{
+  "development": {
+    "records": 18,
+    "unexecuted": {},
+    "verification": {
+      "layouts": 18,
+      "paired_records": 18,
+      "checks_passed": true,
+      "executed_unique_actions": 40,
+      "unshared_menus": 0,
+      "axial_max_error_mm": 0.0,
+      "shared_actual_contact_and_acoustic_clock": true
+    },
+    "arms": {
+      "masked_mean": {
+        "joint": 3,
+        "pass": 15,
+        "seen_and_geometry": 14,
+        "target_seen": 17,
+        "target_delivered": 5,
+        "wrong_branch": 3,
+        "certified": 8,
+        "rejected_echo": 0,
+        "artifact": 10,
+        "certified_incorrect_geometry": 3,
+        "certified_joint": 2,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 17,
+        "true_peak_median": 0.7833062964207226,
+        "mean_program_ticks_without_sync": 28.27777777777778
+      },
+      "masked_full": {
+        "joint": 2,
+        "pass": 15,
+        "seen_and_geometry": 12,
+        "target_seen": 15,
+        "target_delivered": 4,
+        "wrong_branch": 4,
+        "certified": 8,
+        "rejected_echo": 0,
+        "artifact": 10,
+        "certified_incorrect_geometry": 3,
+        "certified_joint": 1,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 17,
+        "true_peak_median": 0.8090494270261006,
+        "mean_program_ticks_without_sync": 27.11111111111111
+      },
+      "read_mean": {
+        "joint": 3,
+        "pass": 14,
+        "seen_and_geometry": 13,
+        "target_seen": 17,
+        "target_delivered": 6,
+        "wrong_branch": 4,
+        "certified": 8,
+        "rejected_echo": 0,
+        "artifact": 8,
+        "certified_incorrect_geometry": 3,
+        "certified_joint": 2,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 17,
+        "true_peak_median": 0.7430304941674184,
+        "mean_program_ticks_without_sync": 26.055555555555557
+      },
+      "read_full": {
+        "joint": 3,
+        "pass": 14,
+        "seen_and_geometry": 12,
+        "target_seen": 16,
+        "target_delivered": 4,
+        "wrong_branch": 5,
+        "certified": 8,
+        "rejected_echo": 0,
+        "artifact": 9,
+        "certified_incorrect_geometry": 3,
+        "certified_joint": 2,
+        "moment_only_certified": 0,
+        "true_geometry_opportunity": 17,
+        "true_peak_median": 0.8381637988986405,
+        "mean_program_ticks_without_sync": 29.22222222222222
+      }
+    },
+    "evidence": {
+      "records": 18,
+      "executed": 18,
+      "probe_pulses": 572,
+      "probe_echo_candidates": 1477,
+      "belief_tv_ge_0p02": 11,
+      "belief_tv_median": 0.05528296776174102,
+      "A_B_argmax_changed": 2,
+      "exclusive_real_branch_records": 10,
+      "target_mass_mean_delta": 0.004049298208624918,
+      "target_mass_increased_ge_0p02": 3,
+      "target_mass_decreased_ge_0p02": 1
+    },
+    "pooled_pairs": {
+      "read_mean_vs_masked_mean": {
+        "joint": {
+          "gained": 1,
+          "lost": 1,
+          "net": 0
+        },
+        "pass": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "seen_and_geometry": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "target_seen": {
+          "gained": 0,
+          "lost": 0,
+          "net": 0
+        },
+        "target_delivered": {
+          "gained": 1,
+          "lost": 0,
+          "net": 1
+        },
+        "wrong_branch": {
+          "gained": 1,
+          "lost": 0,
+          "net": 1
+        },
+        "certified": {
+          "gained": 2,
+          "lost": 2,
+          "net": 0
+        },
+        "decisions": {
+          "raw_changes": 10,
+          "sector_changes": 7,
+          "orientation_changes_ge_1_degree": 7,
+          "physical_changes": 7
+        }
+      },
+      "read_full_vs_masked_full": {
+        "joint": {
+          "gained": 1,
+          "lost": 0,
+          "net": 1
+        },
+        "pass": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "seen_and_geometry": {
+          "gained": 1,
+          "lost": 1,
+          "net": 0
+        },
+        "target_seen": {
+          "gained": 1,
+          "lost": 0,
+          "net": 1
+        },
+        "target_delivered": {
+          "gained": 1,
+          "lost": 1,
+          "net": 0
+        },
+        "wrong_branch": {
+          "gained": 2,
+          "lost": 1,
+          "net": 1
+        },
+        "certified": {
+          "gained": 2,
+          "lost": 2,
+          "net": 0
+        },
+        "decisions": {
+          "raw_changes": 10,
+          "sector_changes": 7,
+          "orientation_changes_ge_1_degree": 7,
+          "physical_changes": 7
+        }
+      },
+      "masked_full_vs_masked_mean": {
+        "joint": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "pass": {
+          "gained": 0,
+          "lost": 0,
+          "net": 0
+        },
+        "seen_and_geometry": {
+          "gained": 0,
+          "lost": 2,
+          "net": -2
+        },
+        "target_seen": {
+          "gained": 0,
+          "lost": 2,
+          "net": -2
+        },
+        "target_delivered": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "wrong_branch": {
+          "gained": 2,
+          "lost": 1,
+          "net": 1
+        },
+        "certified": {
+          "gained": 0,
+          "lost": 0,
+          "net": 0
+        },
+        "decisions": {
+          "raw_changes": 9,
+          "sector_changes": 8,
+          "orientation_changes_ge_1_degree": 9,
+          "physical_changes": 9
+        }
+      },
+      "read_full_vs_read_mean": {
+        "joint": {
+          "gained": 0,
+          "lost": 0,
+          "net": 0
+        },
+        "pass": {
+          "gained": 0,
+          "lost": 0,
+          "net": 0
+        },
+        "seen_and_geometry": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "target_seen": {
+          "gained": 0,
+          "lost": 1,
+          "net": -1
+        },
+        "target_delivered": {
+          "gained": 0,
+          "lost": 2,
+          "net": -2
+        },
+        "wrong_branch": {
+          "gained": 2,
+          "lost": 1,
+          "net": 1
+        },
+        "certified": {
+          "gained": 0,
+          "lost": 0,
+          "net": 0
+        },
+        "decisions": {
+          "raw_changes": 7,
+          "sector_changes": 6,
+          "orientation_changes_ge_1_degree": 7,
+          "physical_changes": 7
+        }
+      }
+    },
+    "clustered_intervals": {
+      "read_mean_vs_masked_mean": {
+        "joint": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -16.666666666666668,
+            16.666666666666668
+          ]
+        },
+        "pass": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            0.0,
+            16.666666666666668
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            0.0,
+            16.666666666666668
+          ]
+        },
+        "certified": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -22.22222222222222,
+            22.22222222222222
+          ]
+        }
+      },
+      "read_full_vs_masked_full": {
+        "joint": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            0.0,
+            16.666666666666668
+          ]
+        },
+        "pass": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -16.666666666666668,
+            16.666666666666668
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            0.0,
+            16.666666666666668
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -16.666666666666668,
+            16.666666666666668
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            -11.11111111111111,
+            22.22222222222222
+          ]
+        },
+        "certified": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -22.22222222222222,
+            22.22222222222222
+          ]
+        }
+      },
+      "masked_full_vs_masked_mean": {
+        "joint": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "pass": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -11.11111111111111,
+          "ci95_pp": [
+            -27.77777777777778,
+            0.0
+          ]
+        },
+        "target_seen": {
+          "mean_pp": -11.11111111111111,
+          "ci95_pp": [
+            -27.77777777777778,
+            0.0
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            -11.11111111111111,
+            22.22222222222222
+          ]
+        },
+        "certified": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "read_full_vs_read_mean": {
+        "joint": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "pass": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "target_seen": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": -11.11111111111111,
+          "ci95_pp": [
+            -27.77777777777778,
+            0.0
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            -11.11111111111111,
+            22.22222222222222
+          ]
+        },
+        "certified": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "information_by_full_posterior_interaction": {
+        "joint": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            0.0,
+            16.666666666666668
+          ]
+        },
+        "pass": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        },
+        "seen_and_geometry": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            0.0,
+            16.666666666666668
+          ]
+        },
+        "target_seen": {
+          "mean_pp": 5.555555555555555,
+          "ci95_pp": [
+            0.0,
+            16.666666666666668
+          ]
+        },
+        "target_delivered": {
+          "mean_pp": -5.555555555555555,
+          "ci95_pp": [
+            -16.666666666666668,
+            0.0
+          ]
+        },
+        "wrong_branch": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            -27.77777777777778,
+            22.22222222222222
+          ]
+        },
+        "certified": {
+          "mean_pp": 0.0,
+          "ci95_pp": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "band": {
+      "0": {
+        "records": 18,
+        "arms": {
+          "masked_mean": {
+            "joint": 3,
+            "pass": 15,
+            "seen_and_geometry": 14,
+            "target_seen": 17,
+            "target_delivered": 5,
+            "wrong_branch": 3,
+            "certified": 8,
+            "rejected_echo": 0,
+            "artifact": 10,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 2,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 17,
+            "true_peak_median": 0.7833062964207226,
+            "mean_program_ticks_without_sync": 28.27777777777778
+          },
+          "masked_full": {
+            "joint": 2,
+            "pass": 15,
+            "seen_and_geometry": 12,
+            "target_seen": 15,
+            "target_delivered": 4,
+            "wrong_branch": 4,
+            "certified": 8,
+            "rejected_echo": 0,
+            "artifact": 10,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 17,
+            "true_peak_median": 0.8090494270261006,
+            "mean_program_ticks_without_sync": 27.11111111111111
+          },
+          "read_mean": {
+            "joint": 3,
+            "pass": 14,
+            "seen_and_geometry": 13,
+            "target_seen": 17,
+            "target_delivered": 6,
+            "wrong_branch": 4,
+            "certified": 8,
+            "rejected_echo": 0,
+            "artifact": 8,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 2,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 17,
+            "true_peak_median": 0.7430304941674184,
+            "mean_program_ticks_without_sync": 26.055555555555557
+          },
+          "read_full": {
+            "joint": 3,
+            "pass": 14,
+            "seen_and_geometry": 12,
+            "target_seen": 16,
+            "target_delivered": 4,
+            "wrong_branch": 5,
+            "certified": 8,
+            "rejected_echo": 0,
+            "artifact": 9,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 2,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 17,
+            "true_peak_median": 0.8381637988986405,
+            "mean_program_ticks_without_sync": 29.22222222222222
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 10,
+              "sector_changes": 7,
+              "orientation_changes_ge_1_degree": 7,
+              "physical_changes": 7
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 2,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 10,
+              "sector_changes": 7,
+              "orientation_changes_ge_1_degree": 7,
+              "physical_changes": 7
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 9,
+              "sector_changes": 8,
+              "orientation_changes_ge_1_degree": 9,
+              "physical_changes": 9
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 7,
+              "sector_changes": 6,
+              "orientation_changes_ge_1_degree": 7,
+              "physical_changes": 7
+            }
+          }
+        }
+      }
+    },
+    "region": {
+      "4": {
+        "records": 6,
+        "arms": {
+          "masked_mean": {
+            "joint": 2,
+            "pass": 4,
+            "seen_and_geometry": 4,
+            "target_seen": 6,
+            "target_delivered": 3,
+            "wrong_branch": 1,
+            "certified": 4,
+            "rejected_echo": 0,
+            "artifact": 2,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 5,
+            "true_peak_median": 0.8832748497840263,
+            "mean_program_ticks_without_sync": 33.166666666666664
+          },
+          "masked_full": {
+            "joint": 1,
+            "pass": 4,
+            "seen_and_geometry": 4,
+            "target_seen": 6,
+            "target_delivered": 2,
+            "wrong_branch": 2,
+            "certified": 4,
+            "rejected_echo": 0,
+            "artifact": 2,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 5,
+            "true_peak_median": 0.8577309672158561,
+            "mean_program_ticks_without_sync": 34.166666666666664
+          },
+          "read_mean": {
+            "joint": 1,
+            "pass": 3,
+            "seen_and_geometry": 3,
+            "target_seen": 6,
+            "target_delivered": 3,
+            "wrong_branch": 1,
+            "certified": 4,
+            "rejected_echo": 0,
+            "artifact": 2,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 5,
+            "true_peak_median": 0.9542641692511774,
+            "mean_program_ticks_without_sync": 32.666666666666664
+          },
+          "read_full": {
+            "joint": 1,
+            "pass": 3,
+            "seen_and_geometry": 3,
+            "target_seen": 6,
+            "target_delivered": 2,
+            "wrong_branch": 2,
+            "certified": 4,
+            "rejected_echo": 0,
+            "artifact": 2,
+            "certified_incorrect_geometry": 2,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 5,
+            "true_peak_median": 0.9610678359286995,
+            "mean_program_ticks_without_sync": 35.333333333333336
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 3,
+              "sector_changes": 1,
+              "orientation_changes_ge_1_degree": 1,
+              "physical_changes": 1
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 3,
+              "sector_changes": 1,
+              "orientation_changes_ge_1_degree": 1,
+              "physical_changes": 1
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 2,
+              "sector_changes": 1,
+              "orientation_changes_ge_1_degree": 2,
+              "physical_changes": 2
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 2,
+              "sector_changes": 1,
+              "orientation_changes_ge_1_degree": 2,
+              "physical_changes": 2
+            }
+          }
+        }
+      },
+      "5": {
+        "records": 6,
+        "arms": {
+          "masked_mean": {
+            "joint": 0,
+            "pass": 5,
+            "seen_and_geometry": 5,
+            "target_seen": 6,
+            "target_delivered": 1,
+            "wrong_branch": 1,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 1,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.8024598468752466,
+            "mean_program_ticks_without_sync": 28.5
+          },
+          "masked_full": {
+            "joint": 0,
+            "pass": 5,
+            "seen_and_geometry": 3,
+            "target_seen": 4,
+            "target_delivered": 1,
+            "wrong_branch": 2,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 3,
+            "certified_incorrect_geometry": 1,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.8350592277762527,
+            "mean_program_ticks_without_sync": 24.166666666666668
+          },
+          "read_mean": {
+            "joint": 1,
+            "pass": 5,
+            "seen_and_geometry": 5,
+            "target_seen": 6,
+            "target_delivered": 2,
+            "wrong_branch": 2,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 2,
+            "certified_incorrect_geometry": 1,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.7430304941674184,
+            "mean_program_ticks_without_sync": 21.333333333333332
+          },
+          "read_full": {
+            "joint": 1,
+            "pass": 5,
+            "seen_and_geometry": 4,
+            "target_seen": 5,
+            "target_delivered": 1,
+            "wrong_branch": 2,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 3,
+            "certified_incorrect_geometry": 1,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.8662478635835023,
+            "mean_program_ticks_without_sync": 28.166666666666668
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 4,
+              "sector_changes": 4,
+              "orientation_changes_ge_1_degree": 4,
+              "physical_changes": 4
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 4,
+              "sector_changes": 4,
+              "orientation_changes_ge_1_degree": 4,
+              "physical_changes": 4
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 2,
+              "net": -2
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 5,
+              "sector_changes": 5,
+              "orientation_changes_ge_1_degree": 5,
+              "physical_changes": 5
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 5,
+              "sector_changes": 5,
+              "orientation_changes_ge_1_degree": 5,
+              "physical_changes": 5
+            }
+          }
+        }
+      },
+      "6": {
+        "records": 6,
+        "arms": {
+          "masked_mean": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 5,
+            "target_seen": 5,
+            "target_delivered": 1,
+            "wrong_branch": 1,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.5714666359813618,
+            "mean_program_ticks_without_sync": 23.166666666666668
+          },
+          "masked_full": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 5,
+            "target_seen": 5,
+            "target_delivered": 1,
+            "wrong_branch": 0,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 5,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.5714666359813618,
+            "mean_program_ticks_without_sync": 23.0
+          },
+          "read_mean": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 5,
+            "target_seen": 5,
+            "target_delivered": 1,
+            "wrong_branch": 1,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.5816144563303465,
+            "mean_program_ticks_without_sync": 24.166666666666668
+          },
+          "read_full": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 5,
+            "target_seen": 5,
+            "target_delivered": 1,
+            "wrong_branch": 1,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 6,
+            "true_peak_median": 0.5816144563303465,
+            "mean_program_ticks_without_sync": 24.166666666666668
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 3,
+              "sector_changes": 2,
+              "orientation_changes_ge_1_degree": 2,
+              "physical_changes": 2
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "certified": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 3,
+              "sector_changes": 2,
+              "orientation_changes_ge_1_degree": 2,
+              "physical_changes": 2
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 2,
+              "sector_changes": 2,
+              "orientation_changes_ge_1_degree": 2,
+              "physical_changes": 2
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 0,
+              "sector_changes": 0,
+              "orientation_changes_ge_1_degree": 0,
+              "physical_changes": 0
+            }
+          }
+        }
+      }
+    },
+    "profile": {
+      "ordinary": {
+        "records": 9,
+        "arms": {
+          "masked_mean": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 6,
+            "target_seen": 9,
+            "target_delivered": 3,
+            "wrong_branch": 2,
+            "certified": 6,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 8,
+            "true_peak_median": 0.7232454254225389,
+            "mean_program_ticks_without_sync": 26.333333333333332
+          },
+          "masked_full": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 5,
+            "target_seen": 8,
+            "target_delivered": 3,
+            "wrong_branch": 2,
+            "certified": 6,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 8,
+            "true_peak_median": 0.8329604303783746,
+            "mean_program_ticks_without_sync": 27.555555555555557
+          },
+          "read_mean": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 6,
+            "target_seen": 9,
+            "target_delivered": 3,
+            "wrong_branch": 2,
+            "certified": 5,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 8,
+            "true_peak_median": 0.7232454254225389,
+            "mean_program_ticks_without_sync": 26.77777777777778
+          },
+          "read_full": {
+            "joint": 1,
+            "pass": 6,
+            "seen_and_geometry": 5,
+            "target_seen": 8,
+            "target_delivered": 2,
+            "wrong_branch": 2,
+            "certified": 5,
+            "rejected_echo": 0,
+            "artifact": 5,
+            "certified_incorrect_geometry": 3,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 8,
+            "true_peak_median": 0.8329604303783746,
+            "mean_program_ticks_without_sync": 29.88888888888889
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 4,
+              "sector_changes": 1,
+              "orientation_changes_ge_1_degree": 1,
+              "physical_changes": 1
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "decisions": {
+              "raw_changes": 4,
+              "sector_changes": 1,
+              "orientation_changes_ge_1_degree": 1,
+              "physical_changes": 1
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 3,
+              "sector_changes": 3,
+              "orientation_changes_ge_1_degree": 3,
+              "physical_changes": 3
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 3,
+              "sector_changes": 3,
+              "orientation_changes_ge_1_degree": 3,
+              "physical_changes": 3
+            }
+          }
+        }
+      },
+      "stress": {
+        "records": 9,
+        "arms": {
+          "masked_mean": {
+            "joint": 2,
+            "pass": 9,
+            "seen_and_geometry": 8,
+            "target_seen": 8,
+            "target_delivered": 2,
+            "wrong_branch": 1,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 6,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 9,
+            "true_peak_median": 0.8433671674189063,
+            "mean_program_ticks_without_sync": 30.22222222222222
+          },
+          "masked_full": {
+            "joint": 1,
+            "pass": 9,
+            "seen_and_geometry": 7,
+            "target_seen": 7,
+            "target_delivered": 1,
+            "wrong_branch": 2,
+            "certified": 2,
+            "rejected_echo": 0,
+            "artifact": 6,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 0,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 9,
+            "true_peak_median": 0.7851384236738267,
+            "mean_program_ticks_without_sync": 26.666666666666668
+          },
+          "read_mean": {
+            "joint": 2,
+            "pass": 8,
+            "seen_and_geometry": 7,
+            "target_seen": 8,
+            "target_delivered": 3,
+            "wrong_branch": 2,
+            "certified": 3,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 9,
+            "true_peak_median": 0.762815562912298,
+            "mean_program_ticks_without_sync": 25.333333333333332
+          },
+          "read_full": {
+            "joint": 2,
+            "pass": 8,
+            "seen_and_geometry": 7,
+            "target_seen": 8,
+            "target_delivered": 2,
+            "wrong_branch": 3,
+            "certified": 3,
+            "rejected_echo": 0,
+            "artifact": 4,
+            "certified_incorrect_geometry": 0,
+            "certified_joint": 1,
+            "moment_only_certified": 0,
+            "true_geometry_opportunity": 9,
+            "true_peak_median": 0.8433671674189063,
+            "mean_program_ticks_without_sync": 28.555555555555557
+          }
+        },
+        "pairs": {
+          "read_mean_vs_masked_mean": {
+            "joint": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "decisions": {
+              "raw_changes": 6,
+              "sector_changes": 6,
+              "orientation_changes_ge_1_degree": 6,
+              "physical_changes": 6
+            }
+          },
+          "read_full_vs_masked_full": {
+            "joint": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "seen_and_geometry": {
+              "gained": 1,
+              "lost": 1,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "target_delivered": {
+              "gained": 1,
+              "lost": 0,
+              "net": 1
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "decisions": {
+              "raw_changes": 6,
+              "sector_changes": 6,
+              "orientation_changes_ge_1_degree": 6,
+              "physical_changes": 6
+            }
+          },
+          "masked_full_vs_masked_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 6,
+              "sector_changes": 5,
+              "orientation_changes_ge_1_degree": 6,
+              "physical_changes": 6
+            }
+          },
+          "read_full_vs_read_mean": {
+            "joint": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "pass": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "seen_and_geometry": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_seen": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "target_delivered": {
+              "gained": 0,
+              "lost": 1,
+              "net": -1
+            },
+            "wrong_branch": {
+              "gained": 2,
+              "lost": 1,
+              "net": 1
+            },
+            "certified": {
+              "gained": 0,
+              "lost": 0,
+              "net": 0
+            },
+            "decisions": {
+              "raw_changes": 4,
+              "sector_changes": 3,
+              "orientation_changes_ge_1_degree": 4,
+              "physical_changes": 4
+            }
+          }
+        }
+      }
+    }
+  }
+}

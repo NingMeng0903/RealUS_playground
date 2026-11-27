@@ -1,0 +1,51 @@
+当前dIRD checkpoint的范围：全局、偏好与连续性
+2026-11-10，独立代码探索与实际数据文件核对
+
+实际加载模型：rm4d_signed_current_robot_20261108/selected.pt
+SHA256 08698c273bd1f0f4f2a86d956df95448ba502ee9d7fc17445f06258a13286e51
+实际canonical.npz SHA256与checkpoint.meta.dataset_sha256一致：
+246f9b5f65337525c3dae77409e2749e7c399f2e6bb7b7caca83c2ea82282f73
+
+它不是每个位姿对全8分支求存在解的全局可达场。
+标签合同为selected witness，metadata明确写not an existential IK oracle。
+500000条uniform标签固定branch0、psi_home=0；1171872条stencil标签
+继承各自seed的branch/psi_home，实际包含branch0..7。
+单次labeler只检查给定branch，明确禁止静默OR全部8branch；psi网格
+[-pi,pi)、5deg步长，再筛到相对psi_home环绕角差<=150deg。
+标签遵守真实URDF范围与所声明碰撞检查，没有native的140deg overfold规则。
+
+输入只有法兰位姿9维canonical嵌入（adapter先按TCP/rail变换）：
+[pz,r,ux.z,pxy.ux,pxy×ux,uz.z,pxy.uz,pxy×uz,uy.z]。
+这是消去声明base-yaw后的冗余表示，roll没有消去；没有当前q、qdot、
+branch、psi_home或nullspace策略输入，q1_aux_head=false。
+canonical_gt拼接时也没有把混合branch/psi条件加入网络输入。
+
+所以最窄正确用法是：在该训练支持/混合witness条件下的平滑排序代理。
+数据中出现过8个分支，不等于每个样本都做8分支存在性查询；外接
+CapabilityEvaluator检查8branch×15deg psi，也不改变NN原始训练合同。
+本轮保留它作布局排序，并以实际IK/FK/限位/碰撞及完整native执行验证。
+
+软偏好与可达性
+在一级任务可行解中作QP2偏好，不额外缩小该时刻的物理可行集合；但它
+选择了之后的q/qdot，因而会影响后续余量/动态可行性。固定psi、锁branch
+或140deg硬墙则确实改了允许的解集合，不能拿未包含这些规则的模型背书。
+本次去除额外branch硬墙，臂角/肘型/rail与ordinary nullspace偏好保留。
+
+全局位姿有见证，与当前状态能连续执行，是不同合同。每点分别找到IK
+也不能把独立branch最优点拼成连续执行证书。应保留实际q、qdot及控制
+历史，整段从同一初始状态继续执行；同一primitive的实际输出要再核验。
+
+后续若要更强的dIRD主张，应选清楚训练目标：
+1 全局物理pose候选场：对声明branch/psi域作统一聚合，清楚区分找到见证
+  与有限搜索没找到；不能把后者写成不存在。仍不能直接保证路径连续性。
+2 分支/psi条件场：将条件显式输入/分头建模，控制规划中连续选择psi并
+  保留当前实际状态；允许软姿态代价影响选择，不用硬裁剪假装物理限位。
+两者都需独立标注、校准与验证；本轮未重训，不提前声称已解决。
+
+核对入口与源码
+/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/dird/adapter.py:65,83
+/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/ird_playground/ird/canonical.py:70
+/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/ird_playground/ird/srs_label.py:124,152,173
+/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/ird_playground/ird/canonical_gt.py:366
+/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/current_robot_20261108/revalidated_uniform.yaml:185
+/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/ird/current_robot_20261108/revalidated_stencils.yaml:43,200

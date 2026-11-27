@@ -1,0 +1,19 @@
+POST-MAIN / PRE-FACTORIAL DESIGN, 2026-11-10
+Requested to complete PLAN E3 prior x response rather than infer it from the
+single-prior response proof. No factorial outcomes exist when written.
+No new kinematics: reuse the corrected final actual mechanical graph.
+Synthetic source population P=(.4,.3,.2,.1) over four finite target identities.
+Independent seed41108 draws 256 source labels; source-fitted prior is smoothed
+counts (count+1)/(256+4). Broad manual prior is uniform, retaining all modes.
+Evaluate two fixed synthetic populations: source P and shifted roll(P,1).
+Use 72 independent public contexts/persistent response perturbations already
+created by extension seed41107; each scenario truth is integrated exactly over
+its declared population, not sampled or selected from an observed label.
+For each greedy/B controller, cross broad/source-fitted initial prior with
+analytic/learned response Khat. Evaluate policies using independent Ktrue and
+true population weights, not their controller prior. All costs, finite graph,
+observation budgets and terminal losses are unchanged. Source counts are used
+only for prior estimation; sensor response coefficients remain original A fit.
+Report all cell means, paired scenario effects and adverse/no-gain cases.
+This is an artificial finite-population prior-shift check; no fitted clinical
+anatomical prior, patient generalization or automatic prior quality claim.

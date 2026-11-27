@@ -1,0 +1,29 @@
+{
+  "created_utc": "2026-11-10T17:05:30.127500+00:00",
+  "scope": "Independent finite SMC contracts and preserved boundary failure/correction; no locked cohort release.",
+  "files": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/B701_TEN_CHECKS_BEFORE_EXTRA_BOUNDARY_REVIEW.json": "5ee46c05d17788a8cce0fa4f324f81f4aaf0aaeb8fa7f1b0fdbf49ee143ab379",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/BEFORE_BATCH_API_ADAPTATION_INDEPENDENT_CHECKS.json": "097629bd9a2fa18f845a4aadd8a7e64ceeeed48e2c960f576812c6c25686df90",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/BEFORE_BATCH_API_ADAPTATION_check_smc_independent.py": "251bb609f850c8830a003156131c31b8366edb0c9407a99b0b3f3056d0dc6c5b",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/BETA_ZERO_JOINT_COUNTEREXAMPLE.json": "09a295aaae5f8f375b7d7de8cf57e1d60c2545420428a49d1ab8f3d2581deee0",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/BETA_ZERO_JOINT_a65c01d2828f.json": "27cb7e505c1be09b884aced7d7739c67c1d29664986273197e8319c43cb43843",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/BETA_ZERO_JOINT_b7016ed8fb0c.json": "5953e0d96a11c29a4a56c3d3ebdeba6b92350cd94f809a6d160f6a289fc8ca76",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/INDEPENDENT_CHECKS.json": "2d1a56445a220c664b8ecfd0adeb83b51b1579d57d6765f4e87d4a3761d0600e",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/PRETEST_AUDIT.txt": "b19c82d8cc5bf5c1021c3a3c2e05bab1af63b72191242e6026b495704c54cba1",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/check_beta_zero_joint.py": "bcb8513704c82603ec76df5d9749f9eb7d97afc540bc24393c0557daf875bceb",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/review/smc_pretest_20261111/check_smc_independent.py": "442c64c7f7bcd22c3a108460fc442a608c3680e6678cf515301e438cedbbe719"
+  },
+  "read_only_inputs": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/continuous_smc.py": "a65c01d2828f2b03e065ddb7920c153468f3ce9185ae9a4d991c6e96ecb8e7eb",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/gpu_predictor.py": "0a5761c0b4b47e81b242a708db938584f0f8b7321b3bfdea98f3f505d34fc653",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/tempered_belief.py": "0b799b4fd26bbb4a5e653b111993d1ce0e08c62bc18280b21ddb56eec596f3ab",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/inference/before_beta_zero_fix/continuous_smc.py": "b7016ed8fb0c3b9580814aca0af0ccd7543180564e89b91f917c82ff6b4394d4",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/shared_history_experiment.py": "d7e0a00b0a6e824edaaea9176e3e8e41cee3afd7e4c2d22d2b3ca6b222ebe9d7",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/STUDY_PROTOCOL.txt": "f170634949c1ad3d511135d703ed1eb9ace5a1feb9ad34339ba2b5782b0bdd18",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/dev_shared_history_cpu/RESULTS.json": "15d40b2d933d8ab6d8190c046c6c497870e1742637c901ed3b3a5bfb0efc6d2e",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_theory_recheck_20261110/dev_shared_history_cuda/RESULTS.json": "daee9b78f2bb9c051a54bcb77be816760f8aaaf547b96b0c6437378e921df244",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/observation/environment.py": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/observation/servo.py": "ae506a793d419118cf32e7ce466b8591721a7cc9fefe45c9b7cb16e8606b2697",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_module_ladder_20261110/planning/system.py": "c9983d1fd606223612d7f6b3dffac132bf4f8bd176c8d1ac46a88ae5be7c29c7"
+  }
+}

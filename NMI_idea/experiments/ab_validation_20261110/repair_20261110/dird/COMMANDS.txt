@@ -1,0 +1,75 @@
+固定目录：.../ab_validation_20261110/repair_20261110/dird
+固定Python：/media/camp/EXT_DRIVE/envs/genesis/bin/python
+环境：OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+PYTHONPATH包含RealUS_playground、其ird_playground和rm75_control子仓库。
+完整argv/哈希在配置、SUMMARY.json和日志中。无网络下载或硬件调用。
+
+1. 先读repair/PLAN.txt，冻结TRAIN_PLAN.json；复制原脏train_signed.py和git diff。
+   source_before/git_status.txt、hashes.txt；旧权重SHA始终08698c...86e51。
+2. 实际训练：
+   python -u -m ird_playground.cli.train_signed --config ABS/candidate/train.yaml
+   logs/train_candidate.txt；退出0，62epoch，103.711274643s。
+   初始化seed20261110，原split seed20261128；架构/损失/原组未换。
+3. 实际校准：
+   python -u -m ird_playground.cli.calibrate_conformal --config ABS/candidate/train.yaml --output ABS/candidate/conformal.json
+   logs/calibrate_candidate.txt；退出0。
+4. 实际新模型评估：
+   python -u -m ird_playground.cli.eval_signed --config ABS/candidate/train.yaml
+   logs/eval_candidate.txt；退出1，指标正常写出，但角严格跨界率未过现有门槛。
+   旧模型同当前CLI重评：--config IRD/configs/rm4d_signed_current_robot_20261108.yaml
+   --output ABS/old_current_eval.json；logs/eval_old.txt，退出0。
+   不覆盖旧评估/权重，不以调整门槛把候选改成pass。
+5. python -u independent_audit.py
+   logs/independent_model_audit.txt；实际生成512global+256local独立物理查询，
+   种子20261130/20261131；未参与任何训练/调参，退出0。
+6. python -u diagnose_paths.py
+   logs/path_attribution.txt；真实生产SRS候选/mesh/有限转移图，完成9/12。
+   收到用户架构纠正后Ctrl-C退出130，保留9条，不继续以此当系统执行判据。
+7. 读AMENDMENT_ULTRAPOC.txt；真实QP导入/10tick零twist探针：
+   logs/qp_import_hold_probe.txt。所有solved，设计族警告完整保留。
+8. python -u qp_replay.py --backend python --tcp-mode cached
+   首次只因owned harness漏导入Path而退出1；日志qp_python_cached_attempt01_pathimport。
+   修好后12条完整运行，qp_python_cached/保存，未更改生产QP。
+9. python -u qp_replay.py --backend native --tcp-mode cached --limit 1
+   logs/qp_native_cached_probe.txt；native实际worker可运行，非模拟QP替身。
+10. python -u qp_replay.py --backend native --tcp-mode urdf
+    与 --seed-json initialization_sensitivity_seed.json --label branch4_sensitivity
+    旧clock-mixed主/敏感结果和trace全部保留 *_clock_mixed/。
+    branch4 seed按生产branch4/psi_attr=68°一次性在原首pose求得，未择误差。
+11. 原native prefix严格重放两次失败（q差约1.3–1.4e-5），未放宽1e-7门。
+    logs/qp_state_validation_native_attempt01_failure.txt、attempt02_clock_mixed_failure。
+    查出native observer读真实t_mono而理想积分5ms，修owned SHM通知钩子仅写
+    确定模型时间1000+tick*.005；IPC timeout仍真实wall clock。
+12. 确定时钟重跑上述12主+12敏感，不变pose/q/speed/门：
+    logs/qp_native_urdf_deterministic.txt、qp_native_urdf_branch4_deterministic.txt。
+    python -u layered_qp_diagnostics.py：logs/layered_qp_deterministic.txt。
+    python -u angular_ff_diagnostic.py：只在独立参考wrapper加SO(3)角FF；
+    不改生产外层，不用于主12/B。logs/angular_ff_diagnostic.txt。
+13. 校准阈值按schema修raw>=m_safe；旧adapter及哈希保存在source_before。
+    calibration_threshold_patch.diff；192旧cache扫描proxy标签变化0。
+    实际神经场边界回归、旧/新分组fingerprint、源训练/分组/路径回归共54passed。
+14. python -u isolate_native_anomaly.py --backend native
+    首坏tick684完整input/output/boxes，非法proposal不进入虚拟测量；
+    同 --backend python 的三个冻结输入未越界。两种完整trace/日志保留。
+15. 独立instrumented native：仅复制src/include/CMake/gen到native_rail_diagnostic，
+    third_party/protocol只读引用现有本地文件；未下载/改生产源码。
+    cmake -S native_rail_diagnostic/source/native/wbc_rt -B native_rail_diagnostic/build
+      -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+      -DCMAKE_PREFIX_PATH=/media/camp/EXT_DRIVE/envs/rm75/lib/python3.10/site-packages/cmeel.prefix
+    cmake --build native_rail_diagnostic/build --target wbc_rt -j2
+    instrumented树有自己的嵌入hash，harness仅接受该hash，未把它冒充生产二进制。
+    初次stderr被原client丢弃，记录未收集；改自有logger并干净重编译后得到
+    logs/native_rail_debug_telemetry.txt；同源只读仪表版本未复现原二进制坏值。
+    python -u run_instrumented_native.py；instrumented_native_result.json。
+    未据此猜测具体生产赋值或修生产C++，原异常仍为阻断项。
+16. bash run_checks.sh > logs/final_checks.txt
+    退出0：54passed，Python/native motion→80tick hold→motion完整prefix回归
+    整条q/出口q/qdot全0差，hash不匹配拒绝。新增逐tick非法命令拒绝并禁止
+    exit_state.valid=false继续。未跑/改core 192图。
+17. python summarize_repair.py 生成SUMMARY.json；REPORT.txt/QP_API.txt给出范围。
+
+复现实验：bash run_checks.sh（默认有界验证，不重训/不重跑24条）；
+FULL_QP=1 bash run_checks.sh另写gated_repeat结果，不覆盖封存主结果。
+实际独立重训：python retrain.py --output 一个本目录内尚不存在的新目录。
+该脚本拒绝任何已有目录/旧checkpoint，逐命令记录argv/退出码/耗时；
+eval退出1作为未过发布门槛保留，不当训练失败或偷偷改阈值。

@@ -1,0 +1,51 @@
+DEV-only continuous SMC smoke evidence (corrected CESS)
+========================================================
+
+This is a local geometric smoke bench, not a closed-loop result and not a
+held-out performance claim.  It uses only sample_prior(720901, 128) and
+sample_worlds(720902, 1), with eight MH sweeps per tempering stage.
+
+The previous version used ordinary post-update ESS in the CESS denominator;
+that snapshot is preserved in ``before_cess_fix/``.  The current implementation
+uses N*(sum(w exp(delta*l)))^2 / sum(w exp(2*delta*l)).
+
+Five fixed probe poses [0, y, 0], y=-.02,-.01,0,.01,.02
+--------------------------------------------------------
+The first DEV world was rendered once and assimilated sequentially.  A row is
+committed only when beta reaches one; an unfinished row leaves the prior
+history and particles untouched.
+
+  y       public visibility       beta/stages  pre ESS  post ESS  accepted  unique  history  sec
+ -0.02    11111                   1.000 / 16  128.000     89.201    0.700     128        5  4.315
+ -0.01    11111                   1.000 /  8   89.201    102.910    0.572     128       10  2.718
+  0.00    00000                   1.000 /  1  102.910    102.910    0.536     128       15  0.407
+ +0.01    11110                   1.000 / 19  102.910     85.838    0.444     128       20  8.912
+ +0.02    11011                   1.000 / 10   85.838    120.226    0.400     127       25  5.626
+
+All five rows now reach beta=1 without changing the configured max-20 limit.
+The same public frame keys and DEV seeds were used for the corrected rerun;
+the final row has 127 unique geometries after a legitimate resample.  These
+are only local geometric smoke results, not closed-loop or held-out claims.
+
+The local contract suite reports 12 passed tests, including the nonuniform-
+weight CESS formula, two consecutive synthetic continuous blocks, hard-zero
+support handling, duplicate-frame rollback, and the near-one-beta completion
+guard.
+
+Performance/parity update
+-------------------------
+The full-history and new-block callbacks now form one union of unique poses
+and call ``predict_batch`` once per current/proposal population.  The two LL
+vectors remain separate, so beta still applies only to the new block.  On the
+same five-probe DEV run, NumPy took 22.424 s total and CUDA float64 took
+12.651 s, about 1.77x faster.  Stages, beta endpoints, ESS and acceptance
+values matched to the displayed precision; MH particle trajectories are not
+claimed bitwise identical.
+
+The CUDA predictor was compared against the unchanged NumPy environment on
+720901 particles and public frames rendered from 720902.  Position/depth/
+length differences were below 1e-10 m, source/visibility/detection and
+identity fields were below 1e-10, the largest angle difference was
+1.56e-7 rad, and the largest finite public-frame LL difference was
+2.16e-10 (within the registered 1e-6 LL gate).  CUDA is opt-in through
+``prediction_backend='cuda'``; NumPy remains the default.

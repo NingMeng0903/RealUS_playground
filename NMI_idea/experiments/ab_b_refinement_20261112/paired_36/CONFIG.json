@@ -1,0 +1,34 @@
+{
+  "out": "paired_36",
+  "n": 6,
+  "start": 36,
+  "seed": 324281221,
+  "cap": 80,
+  "path_cap": null,
+  "travel_weight": 1.4,
+  "predictive_z": 2.0,
+  "n_predictive": 8,
+  "n_first": 3,
+  "switch_margin": 0.006,
+  "arms": [
+    "old_A_fisher",
+    "old_fixed",
+    "gate_only",
+    "A",
+    "locked",
+    "B",
+    "B_once",
+    "B_no_fisher",
+    "B_endpoint",
+    "B_low_travel_cost"
+  ],
+  "geometry_sha256": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "source_sha256": {
+    "refine_rechecks.py": "c6d70ac44bf855b6c1b0e90f4f526f03520939cc87501935d1635a61faf5bcbe",
+    "evidence.py": "5598937775c752d528b1f7dfb4992c4add0585f3a01afacc03389a7b2802ac33",
+    "certification.py": "fc1a6698f5f600030c5bdd2444cfee3a145a37bc6d63220b250b3e45336264e5",
+    "dynamic_scan.py": "4fa62deb34c48b3b21ca3b2a2f6d920cbb44865cfbd4b7007a66ab6887c686db",
+    "stress_observation.py": "5588e1670b724032265719c7767d579f385bcade6afd6fc744c39e12e241fa61",
+    "predictive.py": "072913442f6f7598faddd325e89403eb26af07b805edaed62cf8ab4be83b0dbf"
+  }
+}

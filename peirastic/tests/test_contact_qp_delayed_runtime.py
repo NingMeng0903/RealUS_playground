@@ -872,3 +872,65 @@ def test_retry_unsent_forgives_expired_solver_deadline_lease(monkeypatch):
         assert active._command_lease.active is not None
     finally:
         active.close()
+
+
+def test_angle_stop_keeps_path_alpha(monkeypatch):
+    from peirastic.realman8dof.force.torque_tilt import TorqueTilt
+    active,pose,clock,sink=fixture(monkeypatch)
+    def hold(self):
+        self.tilt_capped=True
+        self.tilt_frozen=False
+        self.tilt_stalled=False
+        self.on_tube=False
+        self.tilt_stop_reason='angle_limit'
+    real_update,real_prepare=TorqueTilt.update,TorqueTilt.prepare
+    def update(self,*args,**kwargs):
+        omega=real_update(self,*args,**kwargs)
+        hold(self)
+        return omega
+    def prepare(self,*args,**kwargs):
+        omega=real_prepare(self,*args,**kwargs)
+        hold(self)
+        return omega
+    monkeypatch.setattr(TorqueTilt,'update',update)
+    monkeypatch.setattr(TorqueTilt,'prepare',prepare)
+    try:
+        command=sample(active,pose,clock)
+        assert active.nominal.tilt.needs_normal_retract
+        assert active._recovery_started_s is None
+        assert active._pending_alpha_preferred>=.25
+        assert not any(r['event']=='mechanical_recovery' for r in sink.records)
+        commit(active,command,clock)
+    finally:
+        active.close()
+
+
+def test_even_tissue_keeps_full_path_alpha(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        quality=np.full(active.feature_config.region_count,0.90)
+        opened=frame(active,clock[0],0,quality)
+        active._quality_intervals.observe(opened,clock[0],())
+        assert active._quality_intervals.active
+        active.features.observation=opened
+        sample(active,pose,clock)
+        assert active._pending_fusion['region_task']['reason']=='all_regions_sufficient'
+        assert active._pending_alpha_preferred==pytest.approx(1.)
+        assert active._pending_fusion['visual_request_rad_s']==pytest.approx(0.)
+        active.publication_abort('not sent',definitely_not_sent=True)
+    finally:
+        active.close()
+
+
+def test_recovery_zero_alpha_still_publishes(monkeypatch):
+    active,pose,clock,sink=fixture(monkeypatch)
+    try:
+        command=sample(active,pose,clock)
+        held=active._quality_progress.alpha
+        active._recovery_started_s=clock[0]
+        active._pending_alpha_preferred=0.
+        active._pending_alpha_target=0.
+        commit(active,command,clock)
+        assert active._quality_progress.alpha==held
+    finally:
+        active.close()

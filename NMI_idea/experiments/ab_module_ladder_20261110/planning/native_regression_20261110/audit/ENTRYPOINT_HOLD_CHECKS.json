@@ -1,0 +1,84 @@
+{
+  "passed": true,
+  "hold": {
+    "trace_sha256": "74567c73d83b07d9e20b8bf6d202711129bff523222733b9ef9407b640aa1d03",
+    "samples": 2101,
+    "max_position_m": 4.762434787307093e-06,
+    "max_rotation_rad": 1.579325215895083e-06,
+    "position_peak_tick": 124,
+    "rotation_peak_tick": 257,
+    "pass_2mm_2deg": true,
+    "prefix_tracking_only": false,
+    "complete_execution_tracking_pass": true,
+    "rejected_command_count": 0,
+    "minimum_proposed_urdf_margin": 0.3971184210910905,
+    "max_post_vs_pre_time_misalignment_m": 1.5218088118014256e-06,
+    "velocity_margin_min": 0.3914279461522587,
+    "acceleration_margin_min": 1.5425191510887006,
+    "jerk_margin_min_record_only": 229.93148729629434,
+    "joint_position_margin_min": 0.38000143636557915,
+    "minimum_saved_collision_m": 0.0395835502095482,
+    "collision_fresh_subset": [
+      {
+        "tick": 0,
+        "minimum_m": 0.0395835502095482,
+        "saved_error_m": 0.0
+      },
+      {
+        "tick": 1,
+        "minimum_m": 0.03958358535919559,
+        "saved_error_m": 0.0
+      },
+      {
+        "tick": 124,
+        "minimum_m": 0.03964510240036869,
+        "saved_error_m": 0.0
+      },
+      {
+        "tick": 1050,
+        "minimum_m": 0.03964773153183691,
+        "saved_error_m": 0.0
+      },
+      {
+        "tick": 2100,
+        "minimum_m": 0.03964649422878263,
+        "saved_error_m": 0.0
+      }
+    ],
+    "qsend_measured_chain_exact": true,
+    "all_qp_solved": true,
+    "pause_count": 0,
+    "model_dt_min": 0.0049999999999954525,
+    "model_dt_max": 0.005000000000109139,
+    "qsend_fd_velocity_margin_min": 0.39144856242229153,
+    "qsend_fd_vs_published_qdot_max_abs": 0.000287404244559357,
+    "q1_range_rad": [
+      -1.5780550297885594,
+      -1.562030400552801
+    ],
+    "q1_velocity_min": -0.01249239841131586,
+    "q1_box_lower_min": -0.019993392074342323,
+    "q1_box_lower_max": -0.006983812274576676
+  },
+  "hold_sample_times_s": [
+    0.0,
+    10.5
+  ],
+  "hold_integrated_duration_s": 10.505,
+  "default_entrypoint": {
+    "new_binary_hash_confirmed": "a212b43c4df2cbbbbcb5671d1973484e5fd587f18984ad9c1ead8668f5171e04",
+    "current_profile_hash_confirmed": "f9e07c984347e83f7768adf812565bfec119475fc4a0a627043b8c87d4617033",
+    "effective_native_config_exactly_matches_old_path_final_regression": true,
+    "root_recorded_identical_nonwall_arrays": 33,
+    "independent_array_recomparison": false,
+    "reason": "default smoke records comparison booleans; no separate default trace was stored; no unnecessary native replay repeated"
+  },
+  "input_sha256": {
+    "planning/native_regression_20261110/LAYOUT_HOLD10.json": "a2c27c6e22a3bfb2244f2cd051b252ad89365ed50fc97b7bab73cc15d7bd0b7f",
+    "planning/native_regression_20261110/LAYOUT_HOLD10_trace.npz": "74567c73d83b07d9e20b8bf6d202711129bff523222733b9ef9407b640aa1d03",
+    "planning/native_regression_20261110/DEFAULT_PROFILE_SMOKE.json": "76ef904f388e5dfe9aa63a37c27fc6e36a8a107aa8b564745e15af58de7b7962",
+    "planning/native_regression_20261110/DEFAULT_PROFILE_NATIVE_CONFIG.txt": "61f2fc04aa98bed828779a7ff09ffb0f61fed243845674452c72be401fd0a3e6",
+    "planning/native_regression_20261110/FOLLOWUP_REPORT.txt": "495560ceec19931b4b65a29d7cfa29c4bcf7933ef91e05553a5d392f54015503",
+    "planning/native_regression_20261110/DIRD_CONTRACT_FINDING.txt": "faee6c23d284bead3fb539bb46123562868c7ada9d334e6726d697ba0bd34353"
+  }
+}

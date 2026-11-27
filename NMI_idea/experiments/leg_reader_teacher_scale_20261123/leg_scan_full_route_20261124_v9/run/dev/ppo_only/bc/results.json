@@ -1,0 +1,572 @@
+{
+  "scores": {
+    "femoral": {
+      "mpc_old": {
+        "layouts": 16,
+        "strict": 10,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 14,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 16,
+            "correct": 14,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 2
+          },
+          {
+            "region": 6,
+            "acquired": 14,
+            "correct": 11,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 3
+          }
+        ],
+        "correct_regions": 89,
+        "wrong_regions": 0,
+        "correct_mm": 122.13579177856445,
+        "longest_mm": 53.654713690280914,
+        "time_s": 8.5,
+        "travel_mm": 221.95370196941758,
+        "decisions": 192,
+        "actions": {
+          "continue": 176,
+          "finish": 16
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "mpc_new": {
+        "layouts": 16,
+        "strict": 11,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 14,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 6,
+            "acquired": 14,
+            "correct": 11,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 2
+          }
+        ],
+        "correct_regions": 91,
+        "wrong_regions": 1,
+        "correct_mm": 125.57511043548584,
+        "longest_mm": 55.26229125261307,
+        "time_s": 8.5,
+        "travel_mm": 221.95370196941758,
+        "decisions": 192,
+        "actions": {
+          "continue": 176,
+          "finish": 16
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "greedy_new": {
+        "layouts": 16,
+        "strict": 11,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 14,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 6,
+            "acquired": 14,
+            "correct": 11,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 2
+          }
+        ],
+        "correct_regions": 91,
+        "wrong_regions": 1,
+        "correct_mm": 125.57511043548584,
+        "longest_mm": 55.26229125261307,
+        "time_s": 8.5,
+        "travel_mm": 221.95370196941758,
+        "decisions": 192,
+        "actions": {
+          "continue": 176,
+          "finish": 16
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "sample_new": {
+        "layouts": 16,
+        "strict": 10,
+        "wrong_branch": 0,
+        "acquisition_ceiling": 13,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 16,
+            "correct": 15,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 16,
+            "correct": 16,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 6,
+            "acquired": 13,
+            "correct": 11,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 1
+          }
+        ],
+        "correct_regions": 90,
+        "wrong_regions": 2,
+        "correct_mm": 130.84024953842163,
+        "longest_mm": 64.14793282747269,
+        "time_s": 11.10625,
+        "travel_mm": 276.5575955746251,
+        "decisions": 194,
+        "actions": {
+          "shift_left": 5,
+          "continue": 149,
+          "revisit_left": 6,
+          "finish": 16,
+          "revisit_right": 7,
+          "shift_right": 8,
+          "hold": 3
+        },
+        "episodes_intervening": 13,
+        "episodes_multiple_interventions": 9
+      }
+    },
+    "groin_to_distal_calf": {
+      "mpc_old": {
+        "layouts": 32,
+        "strict": 17,
+        "wrong_branch": 10,
+        "acquisition_ceiling": 32,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 32,
+            "correct": 31,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 32,
+            "correct": 29,
+            "wrong_branch": 1,
+            "artifact": 2,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 32,
+            "correct": 27,
+            "wrong_branch": 2,
+            "artifact": 1,
+            "seen_but_rejected": 2
+          },
+          {
+            "region": 6,
+            "acquired": 32,
+            "correct": 19,
+            "wrong_branch": 7,
+            "artifact": 1,
+            "seen_but_rejected": 5
+          }
+        ],
+        "correct_regions": 170,
+        "wrong_regions": 15,
+        "correct_mm": 307.33501148223877,
+        "longest_mm": 53.43768090009689,
+        "time_s": 31.559375000000003,
+        "travel_mm": 842.0250894297977,
+        "decisions": 992,
+        "actions": {
+          "continue": 960,
+          "finish": 32
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "mpc_new": {
+        "layouts": 32,
+        "strict": 19,
+        "wrong_branch": 8,
+        "acquisition_ceiling": 32,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 32,
+            "correct": 31,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 32,
+            "correct": 29,
+            "wrong_branch": 1,
+            "artifact": 2,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 32,
+            "correct": 23,
+            "wrong_branch": 4,
+            "artifact": 2,
+            "seen_but_rejected": 3
+          },
+          {
+            "region": 6,
+            "acquired": 32,
+            "correct": 24,
+            "wrong_branch": 3,
+            "artifact": 2,
+            "seen_but_rejected": 3
+          }
+        ],
+        "correct_regions": 171,
+        "wrong_regions": 15,
+        "correct_mm": 318.1449146270752,
+        "longest_mm": 49.95883125066757,
+        "time_s": 31.559375000000003,
+        "travel_mm": 842.0250894297977,
+        "decisions": 992,
+        "actions": {
+          "continue": 960,
+          "finish": 32
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "greedy_new": {
+        "layouts": 32,
+        "strict": 19,
+        "wrong_branch": 8,
+        "acquisition_ceiling": 32,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 32,
+            "correct": 31,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 32,
+            "correct": 29,
+            "wrong_branch": 1,
+            "artifact": 2,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 32,
+            "correct": 23,
+            "wrong_branch": 4,
+            "artifact": 2,
+            "seen_but_rejected": 3
+          },
+          {
+            "region": 6,
+            "acquired": 32,
+            "correct": 24,
+            "wrong_branch": 3,
+            "artifact": 2,
+            "seen_but_rejected": 3
+          }
+        ],
+        "correct_regions": 171,
+        "wrong_regions": 15,
+        "correct_mm": 318.1449146270752,
+        "longest_mm": 49.95883125066757,
+        "time_s": 31.559375000000003,
+        "travel_mm": 842.0250894297977,
+        "decisions": 992,
+        "actions": {
+          "continue": 960,
+          "finish": 32
+        },
+        "episodes_intervening": 0,
+        "episodes_multiple_interventions": 0
+      },
+      "sample_new": {
+        "layouts": 32,
+        "strict": 20,
+        "wrong_branch": 3,
+        "acquisition_ceiling": 32,
+        "by_region": [
+          {
+            "region": 1,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 2,
+            "acquired": 32,
+            "correct": 32,
+            "wrong_branch": 0,
+            "artifact": 0,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 3,
+            "acquired": 32,
+            "correct": 31,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 4,
+            "acquired": 32,
+            "correct": 30,
+            "wrong_branch": 1,
+            "artifact": 1,
+            "seen_but_rejected": 0
+          },
+          {
+            "region": 5,
+            "acquired": 32,
+            "correct": 24,
+            "wrong_branch": 2,
+            "artifact": 2,
+            "seen_but_rejected": 4
+          },
+          {
+            "region": 6,
+            "acquired": 32,
+            "correct": 25,
+            "wrong_branch": 0,
+            "artifact": 1,
+            "seen_but_rejected": 6
+          }
+        ],
+        "correct_regions": 174,
+        "wrong_regions": 8,
+        "correct_mm": 329.08582067489624,
+        "longest_mm": 49.00215399265289,
+        "time_s": 36.178125,
+        "travel_mm": 935.7666628177451,
+        "decisions": 998,
+        "actions": {
+          "continue": 827,
+          "hold": 28,
+          "revisit_right": 27,
+          "finish": 32,
+          "shift_right": 28,
+          "revisit_left": 21,
+          "shift_left": 35
+        },
+        "episodes_intervening": 32,
+        "episodes_multiple_interventions": 31
+      }
+    }
+  },
+  "actor_sha256": "7426a401a3a7815198aca12e036d0febe225147051f209b4062ba6297e7d91f8",
+  "protocol_sha256": "7d3a086291493cc6d0cbe465fc99eb1e081174a4c95582d945dd959a314198da"
+}

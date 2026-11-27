@@ -1,0 +1,240 @@
+{
+  "status": "sealed_contact_surface_candidate_pending_independent_agent_addendum",
+  "schema": "intrinsic_vertex_star_contact_surface_v1",
+  "achieved_domain": {
+    "side": [
+      "right",
+      "left"
+    ],
+    "geometry": "entire retained ipsilateral production skin including endpoints",
+    "depth": "d=0 only",
+    "coordinate_components": [
+      "chart_id",
+      "u_m",
+      "v_m"
+    ],
+    "medial_depth_volume_extension": false,
+    "global_theta_h_extension": false
+  },
+  "provenance_roles": {
+    "template_assets": "authorized coarse/old template prior and coverage input; not classified as oracle by filename",
+    "chart_construction_inputs": "skin triangles and fixed LBS weights only; vessel/path labels not provided to builder",
+    "held_out_patient_hidden_truth": "not used",
+    "original_deep_vessel_points": "preserved separately; not reclassified as surface truth or claimed covered in depth"
+  },
+  "assets": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_right.npz",
+      "sha256": "1f98c55cd623adc6e060680f5aec60b9f11366e9b6b03cd770726c8e8b532da8"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_left.npz",
+      "sha256": "49c1532996606407144e915b189d4f81643a71a94c934472af8e0e1f580f8990"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/right_template_prior_chart_addresses.npz",
+      "sha256": "5589b4565c772915a946d96b31c71bb29094b7ad8171e2ca2c9f943fa87ac7c6"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/left_template_prior_chart_addresses.npz",
+      "sha256": "49b560696863ca666bdb3be30dca103e5a2cb72d703e337b86494fe65a23c236"
+    }
+  ],
+  "source": {
+    "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/shaft_rebuild.py",
+    "sha256": "bd90c87ef7fb479196a0cd9a57132eea73cc3aac24d571ebde3807b6a2126f0d"
+  },
+  "scripts": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/probe_star_prisms.py",
+      "sha256": "533b32c9a6584e1653108c446e5e0bbe0c207966c9b3b78b50c3e027bcf2fa1b"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/build_contact_multichart.py",
+      "sha256": "a1702ca64306ed025a8e0d2dad855eb00afd5b83ec7b67ee6f74d72006e16e47"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/probe_filtered_surface_chart.py",
+      "sha256": "4ba02acbe1c71e443b7cb34cc0a75e6e72514093116f60398aaf6a2939a6a1fd"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/probe_endpoint_axes.py",
+      "sha256": "f37f75148b750267442d43ec0f2bf197f64981c69aab8a8f98d6ad08a1d3725f"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/probe_surface_layers.py",
+      "sha256": "6e624ea18aac0e24fbe4589adf98d08ab455a21f8236a045471f1f0b8ef01776"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/probe_contact_collar.py",
+      "sha256": "3627d7510a98ddfe851b8cecc5b3c9787b5dbd2ef259e6a43aefc8e35e931ad2"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/inventory_coverage.py",
+      "sha256": "c299eb3f264f695da01449044e760ed429e1d421ac539c41946e05a34a5c3477"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/validate_contact_multichart.py",
+      "sha256": "2ac072bb27a088c184f00fb62c1252d82dc255789f6d1b98611b4afc3552b200"
+    }
+  ],
+  "tests": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/tests/test_surface_material_atlas.py",
+      "sha256": "c126306cd4dc142299d78024306d65536a847041ec4184b613afb3387f419212"
+    }
+  ],
+  "input_assets": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/ownership_smooth/owned_smooth_right_skin.npz",
+      "sha256": "9d044b374ef7e2f1fefef816a9e0b5f4755eded419655ad605fa1df412ec58f7"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/ownership_smooth/owned_smooth_left_skin.npz",
+      "sha256": "263a9b2c761a41b2046b13f87046cc86e87b51c2891d158a235ce4982962acdb"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/ownership_smooth/right_surface_lbs_weights.npz",
+      "sha256": "5e695fd779d13e3216ee441d8c42a3e2d9b65f2925ca25cbd0c6d0db8f972b27"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/ownership_smooth/left_surface_lbs_weights.npz",
+      "sha256": "6433c375646e1b9f8583314d16d5001e01a783a7e1987e018ceebc0d40b81f7d"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/smpl_canonical_weights.npz",
+      "sha256": "492eda4d279dac9ee5833fb46a20ee7841f58e124556cb61757984e9bd27fc0d"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/source_manifest.json",
+      "sha256": "cca8bbcb85d58a2b7e405e1b39e699b251f37dc23a8234ca1cfc5ef0544c5c74"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/vessels/vessel_material_coordinates.npz",
+      "sha256": "98d332d8b2d4a3c9b3ed9c8874157d315c03d60cf20670fb3e3fd7160e0a9d1f"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/REPORT.txt",
+      "sha256": "3b25002a00b70d1e52e6e3cfa5de3ec43c2cf06d634447d503f615f2a78d7772"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/USAGE.md",
+      "sha256": "c8a5ded4ccbea5bd28ec6299d002642cfa8d8711da3888f162236c1b5b9b96ea"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_generation.json",
+      "sha256": "e268fafe64ea925d0511e7103a70085f6062a07b0cc5ab7292b0e457aaba5c65"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_multichart_validation.json",
+      "sha256": "9e0bbfd02ba441fd48d3878eb80b796a4f77a5b9707da9eeee811736eeaa79a0"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/frozen_contact_multichart_plan.json",
+      "sha256": "491ac94e85de77f3a70a3286b1619e55beabd86895a57116d1b0a34ace6cadaf"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/frozen_contact_validation.json",
+      "sha256": "725df02f7e95ed1bf8a172db28c787a8d2dbde639b53073120246f2ef180dc13"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/coverage_inventory.json",
+      "sha256": "2a90460fa621a9e0e1b051e270f8b5555a87a5a169c6a6ac1b895c82153dd962"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/relevant_tests.log",
+      "sha256": "792f96b62371aa6b89c438b2f79b1f397b699614ddf17fc8026450933b74c434"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/surface_api_tests.log",
+      "sha256": "cd9f00546c34cfb5721e29ec23a1ed6cb673c65a1f499cca23fbf0be701ed940"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/frozen_surface_layer_plan.json",
+      "sha256": "6053ef3b5c1fd71d45410bcbbb9f967438641709e9d26ecaff3838bfe8d47384"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/surface_layer_screen.json",
+      "sha256": "306983fb1f62607ed46241023ddd2b65ae95316c05ef51bbf633cd32f148da6d"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/frozen_filtered_domain_plan.json",
+      "sha256": "a4e85e5950176c840296137c684d0ab8035560d87ed93a0cb3123f8f1d7e135b"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/filtered_surface_screen.json",
+      "sha256": "d6397dc7e641e44c2a8e69adeac5a2eb38bcf512aecb1e6a590003f3a7d23b1a"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/frozen_star_prism_plan.json",
+      "sha256": "d4c08c299ddb15109b9d32e42aa5ad58ac8239f62b82766421ee21c076f92ee6"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/star_prism_screen.json",
+      "sha256": "adfa8ed0c104fabc114664d0fe6294b28b3d7473959dfe0f02617f75d870a9ce"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/frozen_contact_collar_plan.json",
+      "sha256": "42477445ac62bf7d6e08f91bcbf38880184849f9bf602ac59b1e8a8bfa60a5be"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_collar_screen.json",
+      "sha256": "8aefa0057562942a54756cee723871f0b78e07dc81ae795df2ebb712f325c6f5"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_full_domain_followup/contact_collar_selected.json",
+      "sha256": "bc64abf5cdabce96e0601d927fb13411ed856176fbf280dd59739f69815f0d6e"
+    }
+  ],
+  "verified_pose_samples_deg": [
+    0,
+    15,
+    30,
+    45,
+    60,
+    75,
+    90
+  ],
+  "validation_summary": "full same-chart material projection + full CGAL posed surface + 1024-point inverse/transition + all827 template projected footprint rebindings; 26 passed,1optional fixture skipped",
+  "rejected_3d_trials": {
+    "monolithic_radial_volume": "rejected nonpositive cells/material overlaps",
+    "filtered_or_star_radial_trials": "not accepted; incomplete coverage and missing full 3D certification",
+    "contact_collar_thickness_m": [
+      0.0001,
+      0.0005,
+      0.001,
+      0.002
+    ],
+    "contact_collar_status": "all rejected canonical nonpositive cells"
+  },
+  "fallback_v2_assets_unchanged": {
+    "atlas_right.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+      "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+      "current_sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+    },
+    "atlas_left.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_left.npz",
+      "sha256": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191",
+      "current_sha256": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191"
+    },
+    "attachments_left.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/attachments_left.npz",
+      "sha256": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5",
+      "current_sha256": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5"
+    },
+    "attachments_right.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/attachments_right.npz",
+      "sha256": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f",
+      "current_sha256": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f"
+    }
+  },
+  "fallback_source_prefix": {
+    "sealed_sha256": "e8f19e726d07badd64e22c556764a0900634d6f62bdec1a03dcc236f94a99b57",
+    "current_prefix_sha256": "e8f19e726d07badd64e22c556764a0900634d6f62bdec1a03dcc236f94a99b57",
+    "identical": true
+  },
+  "integration_scope": "source/API and data only; no DMP/QP/controller default changes, no new uncertainty posterior or real patient/ultrasound validation"
+}

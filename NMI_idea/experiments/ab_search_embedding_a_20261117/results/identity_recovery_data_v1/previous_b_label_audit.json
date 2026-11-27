@@ -1,0 +1,140 @@
+{
+  "archive_sha256": "ea9bea8dca6a727d0c2f25b8d757631303c2a86d87e3b98601e1133ab91ca438",
+  "groups": {
+    "targeted_train": {
+      "after_loss": {
+        "scenes": 36,
+        "opportunities": {
+          "mpc": [
+            65000000,
+            65000007,
+            65000011,
+            65001002,
+            65001008,
+            65001015,
+            65001021,
+            65001022,
+            65006070,
+            65008015,
+            65008064
+          ],
+          "previous_b": [
+            65001002,
+            65001008
+          ]
+        },
+        "outcome_counts": {
+          "mpc": [
+            214,
+            19,
+            47
+          ],
+          "previous_b": [
+            364,
+            22,
+            85
+          ],
+          "best_on_labels": [
+            365,
+            18,
+            75
+          ]
+        }
+      },
+      "revisit": {
+        "scenes": 36,
+        "opportunities": {
+          "mpc": [
+            65003055,
+            65003057
+          ],
+          "previous_b": [
+            65003055,
+            65003075
+          ]
+        },
+        "outcome_counts": {
+          "mpc": [
+            501,
+            10,
+            91
+          ],
+          "previous_b": [
+            478,
+            10,
+            99
+          ],
+          "best_on_labels": [
+            510,
+            12,
+            89
+          ]
+        }
+      }
+    },
+    "unconditioned_train": {
+      "after_loss": {
+        "scenes": 36,
+        "opportunities": {
+          "mpc": [
+            65100003,
+            65101004,
+            65102008,
+            65106006
+          ],
+          "previous_b": [
+            65100003,
+            65101004
+          ]
+        },
+        "outcome_counts": {
+          "mpc": [
+            347,
+            17,
+            46
+          ],
+          "previous_b": [
+            397,
+            6,
+            63
+          ],
+          "best_on_labels": [
+            410,
+            2,
+            50
+          ]
+        }
+      },
+      "revisit": {
+        "scenes": 36,
+        "opportunities": {
+          "mpc": [
+            65105005
+          ],
+          "previous_b": [
+            65103003,
+            65103005,
+            65109006
+          ]
+        },
+        "outcome_counts": {
+          "mpc": [
+            466,
+            6,
+            74
+          ],
+          "previous_b": [
+            458,
+            6,
+            86
+          ],
+          "best_on_labels": [
+            485,
+            4,
+            80
+          ]
+        }
+      }
+    }
+  }
+}

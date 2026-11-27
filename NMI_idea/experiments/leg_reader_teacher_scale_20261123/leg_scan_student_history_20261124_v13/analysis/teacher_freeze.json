@@ -1,0 +1,23 @@
+{
+  "source_sha256": "badcd42922058a137f0163878b940336a7f46bfc1e0bfa63ab862d0b306f9114",
+  "suffix_hashes": {
+    "edge": "3f986d97e2b44ad6ec36988a8bea9081988d82b5b7e19d95fddfb0d3e7d3d6b9",
+    "reader": "5cdce7f7badcc54dc20bde295d45bef18b5cab19c7b4be4a09a232924e70857b",
+    "student": "1a9babc5ed0cfc9f9ac09044e9725224361d93a89af210f90646364a5298768a",
+    "v10_reader": "5bf341e5262e37194ced028d104fbe5b227f9acb01f954fc7bf0fb8c3441f609",
+    "v10_actor": "c75ec017f36a005e3f9db4bcfdba43f8c12f99dc4f7bbd6afd9546494656581c"
+  },
+  "suffix_rule": {
+    "margin": 0.06,
+    "r5_weight": 0.035
+  },
+  "rank_mode": "new",
+  "rank_sha256": "118ddec1cc8d5bf853395a7b5d06e653d564c6f803f5cece8c075fd67ffb36f1",
+  "search_tapes": [
+    224171631,
+    224191719
+  ],
+  "proof_tape": 224311873,
+  "base": "execute one common ordinary action, then run the same frozen student suffix",
+  "label_rows": "new student-visited prefixes only"
+}

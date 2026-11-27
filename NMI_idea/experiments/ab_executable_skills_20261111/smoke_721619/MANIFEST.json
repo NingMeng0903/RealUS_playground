@@ -1,0 +1,35 @@
+{
+  "seed": 721619,
+  "replicates": 2,
+  "cases": [
+    "00-EL",
+    "00-ER",
+    "01-EL",
+    "01-ER"
+  ],
+  "arms": [
+    "A_task",
+    "A_fixed_goal",
+    "B_actual",
+    "B_nominal",
+    "B_no_lookahead",
+    "B_MAP",
+    "A_legacy"
+  ],
+  "checkpoints": [
+    8,
+    16,
+    32
+  ],
+  "oracle_contract": "both terminal goals reachable in the reversible graph; permanent no true target",
+  "planner_guard_access": false,
+  "capture_noise_pairing": "case, replicate, fresh packet index, channel",
+  "release_rule": "complete saved program, immediately stop on public acceptance",
+  "source_sha256": {
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_executable_skills_20261111/skill_value.py": "a496b23e6f842afb9df0c9d6728b2e526d506f04ce1f9327a4cf2f954dfd86ed",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_executable_skills_20261111/run_experiment.py": "ccb7373d30114a43dafbb7237294124756b3ba8dec41b23e98503fd4c13d9d9b",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_soft_exploration_20261111/toy_world.py": "312c12ca89c63d19e488b02c60208993d7f34b5279b5c46ba989402bdfd283ac",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_soft_exploration_20261111/program_value.py": "7012017de550a5f342036a62f5e6e56f57ac9834efdcea8c9174e5346daab51f",
+    "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_soft_exploration_20261111/run_soft_stress.py": "f2720054996996fa8606355b7bb85ec7e4076820b63238857fb3a40c2de2c09d"
+  }
+}

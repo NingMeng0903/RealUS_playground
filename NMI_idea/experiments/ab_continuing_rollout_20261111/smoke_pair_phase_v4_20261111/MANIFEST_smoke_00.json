@@ -1,0 +1,81 @@
+{
+  "schema": "adaptive_stopping_runner_v1",
+  "stage": "smoke",
+  "count": 1,
+  "case_start": 0,
+  "fixture_index": 0,
+  "arms": [
+    "pair_fixed"
+  ],
+  "mode": "constrained",
+  "train_seed": 721501,
+  "calibration_seed": 721502,
+  "test_seed": 721503,
+  "noise_seed": 721504,
+  "model_artifact": "models/v3/MODEL.json",
+  "freeze_file": null,
+  "freeze_sha256": null,
+  "frozen_selected_arm": null,
+  "no_deadline": true,
+  "watchdog_max_probe_frames": 8,
+  "watchdog_basis": "all_fresh_acquisitions",
+  "guard_sensitivity": {
+    "checkpoints": [
+      8,
+      16,
+      32
+    ],
+    "basis": "all_fresh_acquisitions"
+  },
+  "future_mechanical_feasibility": "unknown_until_selected_native_check",
+  "predicted_search_policy": "public_goal_geometry_only; no native certificate",
+  "pair_dwell": 0.3,
+  "backend": "native",
+  "source_manifest": {
+    "acoustics": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/acoustics.py",
+      "sha256": "c246cfe812af9fa3552efc385b1b20d767baaf59c60fa15f246d297f13e07ac9"
+    },
+    "fixture": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/fixture.py",
+      "sha256": "559353c7b2a21317337baacaa54742bffe0acb658cf577c87c064b141f7af787"
+    },
+    "robot_motion": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/robot_motion.py",
+      "sha256": "e14393104c76b4bf96512062d35c14a83c1a962458e3a402565a0bcee0fa6994"
+    },
+    "belief_model": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/belief_model.py",
+      "sha256": "4abab61038cc2187153ca27e88f00efd2cb5fd0e175501c7270298145edc07c3"
+    },
+    "native_adapter": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/native_adapter.py",
+      "sha256": "740cd538e660615e7a814aca657581ec42819940000721be2d46d1ae1f63de0b"
+    },
+    "adaptive_planning": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/adaptive_planning.py",
+      "sha256": "dba06a4912697da1dee42218c969da24c6d2fdfbae8ffa6843d7bd7b141e429d"
+    },
+    "rollout_policy": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/rollout_policy.py",
+      "sha256": "af14ebf9d62da6d73e3b7ce1f44ec525d43dde751a167f92a1393afcd958c2e5"
+    },
+    "train_calibrate": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_continuing_rollout_20261111/train_calibrate.py",
+      "sha256": "95968c25a11a95c2a2c7eca5d18d6e8a8bda39e09fdb2d178abd8b8459de20ad"
+    }
+  },
+  "fixed_pair_order": [
+    "fork_plus",
+    "fork_minus"
+  ],
+  "fixed_pair_public_costs": [],
+  "initial_decision_cache": {},
+  "initial_decision_wall_s": {
+    "pair_fixed": 0.0
+  },
+  "initial_decision_precompute_wall_s": 0.0,
+  "initial_decision_cache_file": "smoke_pair_phase_v4_20261111/INITIAL_DECISIONS_00_constrained.json",
+  "initial_decision_cache_hits": 0,
+  "initial_decision_cache_misses": 0
+}

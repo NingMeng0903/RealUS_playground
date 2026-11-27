@@ -1,0 +1,15 @@
+{
+  "proposal_sha256": "9ecc2979e1aa24d3c05e06f44694dd004b80c07fe4bcb86ced94b1aa54cbf0b8",
+  "fullhistory_target_max_error": 0.0,
+  "independent_expected_accept": [
+    true,
+    true
+  ],
+  "observed_accept": [
+    true,
+    true
+  ],
+  "logq_not_used_in_mh": true,
+  "zero_weight_keeps_negative_infinity": true,
+  "fixture": "two real-model worlds, deterministic symmetric flip; density unit test, not strategy performance"
+}

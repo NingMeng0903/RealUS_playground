@@ -1,0 +1,60 @@
+{
+  "aggregate_endpoint_only_position_rmse_mm": 23.065987187637596,
+  "aggregate_endpoint_only_position_rmse_normalized": 0.26996696016523536,
+  "aggregate_heldout_position_rmse_mm": 2.786394240084812,
+  "aggregate_heldout_position_rmse_normalized": 0.032612277840021686,
+  "analytic_derivative_max_abs": {
+    "advance": 1.4037105214818142e-05,
+    "sweep_left": 1.9835867221529996e-05,
+    "sweep_right": 2.2477119502345433e-05
+  },
+  "basis_source": "reference",
+  "endpoint_constraint_max_abs": {
+    "advance": 1.1102230246251565e-16,
+    "sweep_left": 1.4154213086122173e-16,
+    "sweep_right": 1.1600672738296433e-16
+  },
+  "endpoint_only_position_rmse_mm": {
+    "advance": 20.872346124852317,
+    "sweep_left": 23.8300769297954,
+    "sweep_right": 24.49553850826507
+  },
+  "endpoint_only_position_rmse_normalized": {
+    "advance": 0.24429233351274257,
+    "sweep_left": 0.27890995416352987,
+    "sweep_right": 0.28669859281943366
+  },
+  "heldout_position_rmse_mm": {
+    "advance": 1.3023297500429591,
+    "sweep_left": 3.4446690338077652,
+    "sweep_right": 3.6121839364037105
+  },
+  "heldout_position_rmse_normalized": {
+    "advance": 0.015242616797267792,
+    "sweep_left": 0.040316801542784754,
+    "sweep_right": 0.042277415180012504
+  },
+  "retimed_position_max_abs_mm": 0.0,
+  "retimed_velocity_ratio_max_abs_error": 0.0,
+  "test_parameter_sha256": {
+    "advance": "f834bead27f51e660ee3c73c6efc88f4ca37737acec71d232ab066444ab34f71",
+    "sweep_left": "83d1273e9981588349c1a0350c72080c722861ba8c83767de1e4ef2b0dfefe0d",
+    "sweep_right": "55a98dcbce6e9fdac6244658b8e1e889063529e84fe27d2450fe1813f975368f"
+  },
+  "train_parameter_sha256": {
+    "advance": "6c38ff4a9d7639b61ece8ed76943ccd40bb6d225e70f6984f40fc8b1038507fa",
+    "sweep_left": "a9aa6b03376638de9465926abc7338864e1725fd1d8e73616990144e5b6fadb1",
+    "sweep_right": "901b8086c971cead884fb562efad722beb07515c0f7f9a6d30f628be1807117c"
+  },
+  "train_test_parameter_hashes_disjoint": true,
+  "weight_covariance_validation_max_abs": {
+    "advance": 0.0,
+    "sweep_left": 0.0,
+    "sweep_right": 0.0
+  },
+  "weight_mean_validation_max_abs": {
+    "advance": 0.0,
+    "sweep_left": 0.0,
+    "sweep_right": 0.0
+  }
+}

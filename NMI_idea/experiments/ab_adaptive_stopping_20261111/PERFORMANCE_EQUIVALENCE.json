@@ -1,0 +1,88 @@
+{
+  "artifact_version": "merge-transition-numba-v1",
+  "scope": "Performance-only implementation of bounded 2x2 merge/transition kernels; SENSOR_V2 model, particle count, component cap, QMC/GH rules, and public contract are unchanged.",
+  "source_lineage": {
+    "baseline_snapshot": "snapshots/v3_before_merge_jit_20261111",
+    "baseline_belief_model_sha256": "6d71e17fcb8f027da4d9a8482ce3f778c6446eb579742a59ac1b39c6a56ff3ab",
+    "baseline_test_sha256": "72e081275bb888001729c6cce1b654848d382bb1126c294f19e3b093e1c17539",
+    "current_belief_model_sha256": "8a90a61b6783736a9bb69f6497e1deab540b57f53c2b3207ac36cc156ddd1396",
+    "current_test_sha256": "2c23d05b695d1fe80a4e3c5ca8da25d4c113d5d6a33e7d5b3a45c05ff55e6c22",
+    "models_v3_modified": false
+  },
+  "runtime": {
+    "python": "3.10.20",
+    "numpy": "2.2.6",
+    "scipy": "1.15.3",
+    "numba": "0.65.0",
+    "threads": 1,
+    "seed_for_calibration_replay": 721502,
+    "objects_checked": [0, 1],
+    "prefixes_checked": [0, 1, 2, 4, 6]
+  },
+  "verification": {
+    "pytest_command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 genesis/bin/python -m pytest -q test_belief_model.py",
+    "pytest_passed": 11,
+    "first_compile_smoke": "Initial Numba compilation completed and the pre-equivalence 10-test smoke passed; the current warm run passes 11 tests.",
+    "merge_cases": {
+      "random_8_to_4_max_abs": 1.1102230246251565e-16,
+      "multimodal_8_to_4_max_abs": 0.0,
+      "tiny_normal_weights_8_to_4_max_abs": 7.105427357601002e-15,
+      "equal_kl_tie": "reference row-major result exactly retained",
+      "near_singular": "NumPy reference fallback; safe predicate false",
+      "subnormal_weights": "NumPy reference fallback; wrapper output exactly matches reference",
+      "zero_division_regression": "covered by subnormal fallback and real prefix replay"
+    },
+    "real_calibration_replay": {
+      "max_particle_weight_abs": 3.663735981919e-15,
+      "max_posterior_mean_or_covariance_abs": 4.163336342344337e-16,
+      "max_public_packet_probability_abs": 1.1102230246251565e-16,
+      "max_complete_option_probability_abs": 2.220446049250313e-16,
+      "complete_option": "same-window two-terminal option, max_retries=2, gh_order=33",
+      "internal_natural_stat_note": "Some slot-aligned precision/information entries differ after roundoff in ultra-low-mass components; across checked objects/prefixes, discrepant-component total mass was at most 1.7608012592904564e-302 (object 0, prefix 6). Posterior moments and all public/complete probabilities remain within the bounds above.",
+      "followup_missing_update": {
+        "log_evidence_abs": 2.220446049250313e-16,
+        "posterior_moment_abs": 1.3877787807814457e-17,
+        "next_public_probability_abs": 2.220446049250313e-16
+      },
+      "followup_candidate_update": {
+        "log_evidence_abs": 0.0,
+        "posterior_moment_abs": 4.163336342344018e-17,
+        "next_public_probability_abs": 4.336808689942018e-19
+      }
+    }
+  },
+  "timing_prefix6_object0_seconds": {
+    "method": "20 repetitions; clone/cache reset is included in cold_* wrappers; compiled kernels were warmed before timing.",
+    "cold_clone_plus_public": {
+      "jit_mean": 0.10414551320027385,
+      "reference_mean": 0.3729017849997035,
+      "speedup": 3.580060299190184
+    },
+    "cold_clone_plus_complete": {
+      "jit_mean": 0.04741232010092063,
+      "reference_mean": 0.3157564381001066,
+      "speedup": 6.659356723381421
+    },
+    "cold_clone_plus_update_prefix4_to5": {
+      "jit_mean": 0.24643993800000316,
+      "reference_mean": 0.5985977137996088,
+      "speedup": 2.429558191774955
+    },
+    "warm_cached_public": {
+      "jit_mean": 4.360003003966995e-07,
+      "reference_mean": 4.5669967221328987e-07,
+      "speedup": 1.047934570017376
+    },
+    "warm_cached_complete": {
+      "jit_mean": 1.0751000445452519e-06,
+      "reference_mean": 1.927100311149843e-06,
+      "speedup": 1.792474539202891
+    }
+  },
+  "safe_fallbacks": [
+    "non-finite natural statistics",
+    "non-positive/ill-conditioned 2x2 precision or covariance determinant",
+    "positive subnormal merge mass"
+  ],
+  "release_status": "Equivalent at the public-prediction, complete-option, posterior-moment, and subsequent-update level on the required stress/replay cases; safe reference fallback remains active for numerical edge cases."
+}

@@ -1,0 +1,73 @@
+{
+  "scope": "audit unit contracts only; development seed; no heldout/native run",
+  "source_sha256": "e3865dbe42db217b2887f6fe9046582d1ebcf521ab754d3023f3bcd40e4024de",
+  "protocol_sha256": "deaf889f86e0c9fcfe27ea8fc3d73b5e5f0f9b65723f7522d88220bafbfd0255",
+  "environment_sha256": "d4dc27e2822e7bf04fa533e9fb47e42f2ed22ee576ad6285ced4dde32ceeacef",
+  "checks": {
+    "all_latents_five_frame_bayes": {
+      "passed": true,
+      "n": 16,
+      "max_abs_error": 0.0,
+      "evidence_log_density": 84.72874307835609,
+      "history_count": 5,
+      "duplicate_does_not_change_weights": true
+    },
+    "public_stop_target_association": {
+      "passed": true,
+      "probability_true_given_public_stop": 0.0,
+      "max_abs_error": 0.0,
+      "no_assumption_public_pass_is_true": true
+    },
+    "public_stop_target_association_ambiguous_fixture": {
+      "passed": true,
+      "probability_true_given_public_stop": 0.060058593750000826,
+      "expected": 0.06005859374999996,
+      "false_stop_loss_s": 56.39648437499995,
+      "fixture_not_robot_performance": true
+    },
+    "predictive_quadrature_scope": {
+      "indices_for_uniform_32": [
+        1,
+        5,
+        9,
+        13,
+        17,
+        21,
+        25,
+        29
+      ],
+      "selected_count": 8,
+      "latent_count": 32,
+      "exact_full_bayes_posterior_is_not_exact_predictive_integration": true
+    },
+    "missing_budget_state": {
+      "decide_signature": "(self, pose, history, weights, q)",
+      "terminal_signature": "(self, pose, history, weights, q, *, cap=True)",
+      "remaining_action_argument": false,
+      "remaining_time_argument": false,
+      "status": "REPRODUCED_SOURCE_CONTRACT_FAILURE"
+    },
+    "deadline_overrun_success": {
+      "status": "REPRODUCED_SOURCE_CONTRACT_FAILURE",
+      "correct_public_stop": true,
+      "rmt_s": 60.6,
+      "elapsed_s": 60.6,
+      "requested_deadline_s": 60.0,
+      "public_ids": [
+        "acq-0-frame-0",
+        "acq-0-frame-1",
+        "acq-0-frame-2",
+        "acq-0-frame-3",
+        "acq-0-frame-4"
+      ]
+    },
+    "no_future_cap_cost_scope": {
+      "with_cap_s": 4.5,
+      "without_cap_s": 0.6,
+      "removes_joint_time_too": true,
+      "status": "REPRODUCED_PROTOCOL_DESCRIPTION_MISMATCH",
+      "fixture_not_robot_evidence": true
+    }
+  },
+  "all_passed_contracts_and_reproduced_failures": true
+}

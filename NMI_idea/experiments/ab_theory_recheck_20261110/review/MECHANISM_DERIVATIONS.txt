@@ -1,0 +1,332 @@
+Independent mechanism derivations, 2026-11-11
+
+These are small exact models and review criteria, not empirical ultrasound
+successes. They establish standard identification/decision-theoretic facts.
+Normalized toy costs must NOT replace measured robot/observation costs.
+
+A. Task-relevant local response identification
+
+Let theta be a fixed, continuously valued patient-specific local parameter.
+After subtracting a declared shared geometric response, stack public responses
+as z=F theta+epsilon. A new action requires the response G theta. The matrices
+must be determined by public conditions/actions, not hidden anatomy supplied
+only to the proposed method. For this linear model, noiseless identification
+of G theta from z for all theta is possible iff ker(F) is contained in ker(G).
+
+Proof. If containment holds, two parameters with the same F theta differ by a
+vector in ker(F), hence also in ker(G), so give the same required response.
+Conversely, if Fv=0 but Gv!=0, theta and theta+v are observationally identical
+under the experiment and have different requested responses; no estimator can
+distinguish them. This is prediction identifiability modulo a task-irrelevant
+gauge, not necessarily reconstruction of theta.
+
+The statement is for the unconstrained linear parameter space (or an open
+local parameter domain). With a constrained domain Theta, the exact condition
+is ker(F) intersect (Theta-Theta) subset ker(G); a discrete/curved parameter
+constraint can eliminate some linear-nullspace ambiguities. The unconditional
+rank statement should not silently replace those mode/domain assumptions.
+
+Example: F=[[1,0],[2,0]], theta=(1,g2), g2 continuously in [.6,1.4]. Responses
+to G=[3,0] are identified despite rank(F)=1<2. Responses to G=[0,1] are not.
+More repeated measurements in the first direction do not resolve the second.
+For nonlinear anatomy this is a local linearized criterion, not a global
+identifiability theorem: symmetries, nonlocal aliases, missing detections and
+source ambiguity require the full public likelihood and separate checks.
+
+With a fixed exogenous design, independent N(0,sigma^2 I) noise, and the
+containment condition, G F^+ z is unbiased and has covariance
+  sigma^2 G F^+ (F^+)^T G^T.
+Full column rank F is a stronger sufficient condition, giving the familiar
+sigma^2 G(F^T F)^(-1)G^T. Small prediction uncertainty depends on the relevant
+directions, not merely the nominal parameter count. A badly conditioned design
+can be identifiable yet useless under the available action/time budget.
+For adaptive action selection, a naive fixed-design Gaussian confidence
+interval need not retain its coverage after selection/optional stopping;
+use an appropriate sequential bound or independently measured calibration.
+
+A1. An exact failure/success threshold, and the strong baseline it requires
+
+Consider e_{k+1}=e_k+g u_k, g>0 continuously varying across objects, public e_k,
+shared nominal gain g0>0, and no noise, saturation or drift. Fixed-model greedy
+servo chooses u_k=-e_k/g0. After N actions:
+  e_N=e_0(1-g/g0)^N.
+It passes |e_N|<=tau exactly when
+  |1-g/g0| <= (tau/|e_0|)^(1/N).
+Infinite-horizon contraction needs 0<g/g0<2; finite-budget accuracy is stricter.
+With e0=4 mm, tau=.5 mm and g0=1, the one-action interval is [.875,1.125];
+the three-action interval is [.5,1.5]. For continuous uniform g in [.4,1.6],
+these give exact success probabilities 5/24 and 5/6, respectively.
+
+However, the first ordinary nonzero move already identifies g exactly:
+  ghat=(e1-e0)/u0.
+An RLS/Broyden-style adaptive servo uses u1=-e1/ghat and reaches zero in the
+SECOND action. This policy has the same initial information and action budget,
+uses only its own public observations, and does not need a special sensing
+action. Any claimed B advantage against only fixed-g0 greedy on this example
+is therefore an inadequate-baseline artifact. It does not prove shared
+response learning or deliberate probing is necessary.
+
+If two symmetric calibration positions +/-h are used for z(u)=b+gu instead,
+they identify b and g noiselessly and a third command reaches u*=-b/g. But
+starting at u=0, calibration travels h+2h+|h-b/g|, not zero distance. Normal
+adaptive servo can be faster. Every such identification move and fresh frame
+must be charged; equal action counts alone do not equalize time or movement.
+
+A2. Noise and a testable excitation threshold
+
+For a known baseline and fixed design z_i-b=g u_i+epsilon_i, the least-squares
+gain error is N(0,sigma^2/S), S=sum_i u_i^2. At a fixed query u*, the response
+prediction error has standard deviation sigma|u*|/sqrt(S). Thus the exact
+Gaussian fixed-design condition for two-sided probability >=1-alpha within
+response tolerance tau is
+  S >= [sigma |u*| Phi^(-1)(1-alpha/2)/tau]^2.
+For sigma=.2 mm, u*=4 mm, tau=.5 mm, alpha=.05, S>=9.83413458098 mm^2;
+two balanced offsets need h>=2.217446 mm (rounded). If the baseline is also
+estimated, its covariance and cross terms must be included. This threshold
+is for response prediction; it is not automatically a closed-loop success or
+public-stopping guarantee, especially when the selected u* depends on noise.
+
+A shared model can reduce the required new-object data only if its residual
+class and uncertainty are valid on new objects. An overconfident shared prior
+can reduce a reported posterior variance while increasing actual error. The
+experiment must separately measure prediction bias, coverage, action ranking
+and task benefit after charging identification. A rotation copy of the same
+object tests coordinate consistency, not continuous anatomical transfer.
+
+B. Decision information and its strictness condition
+
+For a fixed public post-option state x, common feasible decisions D(x), fixed
+loss ell(d,s,x), posterior b and signal Y, define
+  R(b,x)=min_d E_b ell(d,S,x),
+  I_dec=R(b,x)-E_Y R(b_Y,x).
+Assume finite attained minima, the correct mixture E_Y b_Y=b, and permission
+to ignore Y. Then I_dec>=0. For any prior minimizer d0,
+  I_dec=E_Y [ E(ell(d0,S,x)|Y)-min_d E(ell(d,S,x)|Y) ].
+Every integrand is nonnegative. Therefore I_dec=0 iff d0 remains optimal for
+almost every Y; equivalently there is a common optimal decision across the
+positive-probability posterior branches. Strict value requires a positive-
+probability branch where a prior-optimal decision becomes strictly worse.
+
+It is NOT enough that fully known anatomical states would prefer different
+actions. The actual public channel must reach the relevant decision boundary.
+Nor is a changed argmin label alone sufficient: tied actions can have equal
+value. Abort, verify and continue must be included as legitimate decisions.
+If a public stopping contract changes legality with Y, embed that verifier
+history in the state and compare the corresponding contingent policies;
+do not silently use this fixed-action-set identity as its exact success metric.
+
+B1. Exact binary channel with equal prior information and action budget
+
+Hidden H in {+,-} has prior p=P(H=+). Both methods know p, the same likelihood,
+the same robot state and costs. Horizon permits either a direct terminal
+decision, or one probe followed by one terminal decision. Both have the same
+two-action maximum and probe permission. Terminal commitment is irreversible
+in this example; no hidden audit retry is supplied. This must be changed if a
+real short attempt provides a cheap observable failure and a second attempt.
+
+Wrong terminal decision costs L; a correct one costs zero. A symmetric binary
+probe is correct with probability r>=1/2. Its unnormalized branch masses are
+  Y=+: (p r, (1-p)(1-r)); Y=-: (p(1-r), (1-p)r).
+Aggregate each branch BEFORE taking the smaller terminal loss. The posterior
+Bayes error is
+  e(p,r)=min(pr,(1-p)(1-r))+min(p(1-r),(1-p)r)
+        =min(p,1-p,1-r).
+Hence
+  I_dec=L max(0, r-max(p,1-p)).
+With full probe cost c, probing wins iff r>max(p,1-p)+c/L. A strongly one-sided
+prior can make an informative but weak probe useless; entropy can decrease
+without any decision improvement. This is a standard Bayes-risk result.
+
+B2. Actual public robot state changes the threshold
+
+Let p=.5. Both terminal actions are feasible, but choosing + has additional
+state-dependent execution cost Delta>=0; choosing - has zero extra cost.
+The pre-signal risk is L/2. After Y=+, choose + only if
+  r > (1+Delta/L)/2.
+After Y=-, choose -. Therefore
+  I_dec=max(0, L(r-.5)-Delta/2).
+Net probe benefit is I_dec-c. For L=1,r=.8,c=.1:
+  Delta=0: direct .5, probe .3, net +.2;
+  Delta=.2: direct .5, probe .4, net +.1;
+  Delta=.4: direct .5, probe .5, tie;
+  Delta=.5: direct .5, probe .55, skip;
+  Delta>=.6: no decision benefit even before charging .1.
+If only + is executable and abort costs L, + remains weakly optimal in every
+posterior, so I_dec=0. With a cheaper abort, information can again be valuable
+by choosing between + and abort; thus 'only one motion' is not a general
+zero-information theorem.
+
+These costs illustrate a threshold, not a recipe for engineering a positive
+robot result. In the experiment Delta must follow measured movement/compute/
+execution outcomes and the same declared loss, and state changes should be
+specified independently of test success. Do not add fake feasibility walls.
+
+B3. Same information amount can have different task value
+
+Introduce an independent nuisance U with the same prior as H. Two equal-cost
+probes measure H or U through identical channels. They have exactly the same
+mutual information about the full (H,U) state, but only H changes the terminal
+task decision. Entropy therefore TIES; a favorable tie-break may match B.
+Randomizing sensor labels can expose this ambiguity without pretending a
+particular unfavorable tie-break is a universal entropy failure.
+
+In a separate pressure condition, make the U channel strictly more informative.
+Pure full-state entropy chooses U, while its task risk remains L/2. This
+tests task relevance, but is NOT an equal-mutual-information comparison.
+Task-relevant information/entropy and a cheap decision-threshold probing rule
+are stronger baselines. The latter exactly matches B in this two-state toy.
+An exact same-horizon full-belief MPC is B itself; relabeling it as a different
+weak baseline would manufacture algorithmic novelty.
+
+B4. Continuous public likelihood version (no special outcome labels)
+
+Let H be equiprobable +/-1 and Y=d H+sigma Z, Z~N(0,1), s=d/sigma>=0.
+Keep the full continuous Y. For Delta=0 the Bayes error is Phi(-s), so
+  I_dec=L[Phi(s)-.5],
+and probing wins iff s>Phi^(-1)(.5+c/L), for 0<c<L/2.
+For c/L=.1 the SNR threshold is .2533471031. The likelihoods have overlapping
+support everywhere. Accuracy .8 corresponds to SNR .8416212336.
+
+With 0<=delta=Delta/L<1, the optimal continuous measurement threshold is
+  y*/sigma=log((1+delta)/(1-delta))/(2s).
+Let A=P(Y>=y*|H=+), B=P(Y>=y*|H=-). Posterior-optimal expected cost is
+  (L/2)(1-A+B)+(Delta/2)(A+B).
+For Delta>=L, always choose - and the information value is zero. Unlike the
+bounded binary likelihood ratio, Gaussian tails can cross a finite threshold
+rarely even at low SNR; do not reuse the binary piecewise formula unchanged.
+The script independently integrates unnormalized continuous branch risks and
+checks this expression. No inference samples from a hidden state are allowed
+to choose their own favorable action before aggregation.
+
+For H and independent U measured with these continuous Gaussian channels,
+equal SNR gives equal mutual information and unequal task value. At H SNR
+.841621 and U SNR 1.644854, numerical information is .380756 and .816417 bits,
+respectively, so full-state entropy selects U. H decision accuracy is .8,
+U remains independent of the target. These are full-channel information values,
+not the smaller information of a quantized sign statistic.
+
+B5. Recovery and physical movement can erase the apparent gain
+
+If a first ordinary target attempt reveals which H is present and one further
+attempt can recover within the same budget, a strong adaptive A can reach
+success probability one. Probing may just waste time. Include this regime as
+a negative control, rather than forbidding recovery only to the baseline.
+Similarly, images acquired continuously while moving are available to every
+method, not charged observations only when B requests them.
+
+For a moving probe a, let Z include all public non-image execution outcomes,
+actual x', duration, failure and proprioception. With b^-_Z before the extra
+image Y and b^+_{Z,Y} after it,
+  R(b,x)-c_a-E R(b^+_{Z,Y},x')
+   = [R(b,x)-c_a-E_Z R(b^-_Z,x')]
+     + E_Z[R(b^-_Z,x')-E_{Y|Z}R(b^+_{Z,Y},x')].
+The first term includes movement, resources and informative Z; it is pure
+relocation only when Z conveys no additional hidden-state information. The
+second is decision information at the SAME post-option state. A sensing servo
+whose state depends on intermediate images needs a joint image/state kernel.
+This is algebra plus the standard Bayesian decision argument, not a new VOI
+theorem or automatic decomposition of the real public-stop success rate.
+
+C. What a deeper B result could legitimately add
+
+For a declared finite continuation family, unnormalized branch risk
+  W_a(y,d,x')=integral b(s) K_a(y,x'|s) ell(d,s,x') ds
+is sufficient for one backup sum/integral_y min_d W_a(y,d,x') (plus costs).
+The current Gamma generally is not. Equal mean/variance P(X=+/-1)=1/2 and
+Q(X=0)=2/3,Q(X=+/-sqrt(3))=1/6, under BINARY Y=1{X>0}, have posterior MSE
+0 versus .4; cost .8 makes observe versus skip. Ternary sign would reveal zero
+and invalidate this contrast. The script rechecks this example independently.
+
+The substantive research problem is whether ultrasound geometry/response
+structure permits a compact, identifiable and calibrated W, not whether one
+can name the ordinary Bellman integrand. If a common legal candidate family
+has uniform value error <=epsilon_Q, a true action gap >2epsilon_Q preserves
+the minimizing action; otherwise no action-preservation certificate follows.
+Show nonvacuous empirical/theoretical bounds relative to actual action gaps,
+not only a small average feature error. One-backup sufficiency does not imply
+recursive compression: current costs, next-state/observation laws, legality,
+public stopping history and resource state must remain sufficient or have
+explicit errors. Existing approximate-information-state results already give
+general bounded-regret machinery; new anatomy-specific structure must do work.
+
+D. A local body/contact action set is the right domain for G-query acceptance
+
+Let x contain the actual public robot/controller prefix, body-to-robot pose,
+contact phase and remaining resources. Let C(x) be the locally permitted
+physical probe actions in the declared body/probe frame. If it is approximated
+by a linear contact/kinematic cone, that approximation requires its own finite-
+action validity check; actual collision/finite-motion feasibility is generally
+not a cone. No arbitrary 140-degree wall is introduced by this notation.
+
+Within a declared local response chart/mode, write the action response as
+  Delta z(a)=G_a(c) theta + r(a), a in C(x),
+where c is public/local conditioning and r is an explicit approximation error.
+Define G_C as the collection (or linear span) of all currently needed G_a.
+Then ker(F) subset ker(G_C) is sufficient for all those noiseless predictions,
+without identifying components outside that task-relevant subspace. It is
+legitimate to accept A on G-query errors and intervals rather than ||theta-
+thetahat||. But the claim is limited to that chart, action domain, contact mode,
+response variables and time window, not arbitrary future anatomy/actions.
+
+Concrete example: theta=(n,gx,gy), where n is an absolute position-origin
+nuisance that cancels in relative image increments. F has rows (0,1,0) and
+(0,2,0). Theta=(-20,1,.6) and (40,1,1.4) produce identical history. For the
+public state whose permitted actions need only Gx=(0,3,0), both predict 3.
+If a different public robot/body state permits a needed Gy=(0,0,1), the same
+history predicts .6 versus 1.4; it is insufficient. Add one y probe and F has
+rank2, enough for all x/y response queries, while n remains unidentified.
+The script checks all identities. This n is a true cancelling nuisance, NOT
+a lateral anatomical registration error whose value affects centering/FOV.
+
+The finite-noise acceptance should quantify
+  sup_{a in C(x)} ||G_a(thetahat-theta)||_W + declared model-remainder error,
+or simultaneous coverage for a predeclared finite candidate set. W and physical
+units/tolerances must be frozen, not chosen to favor an estimator. In a fixed
+Gaussian design, the identifiable rank-r error ellipsoid with chi-square-r
+radius gives a simultaneous bound for all queries that annihilate ker(F):
+  ||G error||_W <= sigma sqrt(chi2_{r,1-alpha})
+                   * sqrt(lambda_max(W^(1/2) G(F^T F)^+G^T W^(1/2))).
+This follows by Cauchy-Schwarz on the identifiable subspace. It protects a
+query selected after fitting within that covered family. It is not a general
+adaptive-excitation/time-uniform result. Sequentially adaptive protocols need
+the corresponding sequential statistics or independently checked coverage.
+
+Do NOT report zero variance for an unobserved direction merely because a
+pseudoinverse sets its eigenvalue to zero. First check ker(F) subset ker(G).
+Otherwise a flat unidentified direction has no data-based finite certificate;
+a finite learned prior may bound it, but that is prior-supported prediction,
+not observational identification. A wrong narrow prior is a required stress
+case. Tempering may mitigate concentration, but does not by itself certify
+that a posterior interval covers the actual new object.
+
+With several identity/geometry modes, the preceding linear statement holds
+conditionally per mode. The marginal predictive law must retain both within-
+mode noise and between-mode differences, including missed detections and
+false-source alternatives. A mode-conditional mean/covariance is insufficient
+when another observationally compatible mode predicts a different next action.
+Mean G-query error alone is also insufficient to identify a full continuous
+likelihood or a public-stop probability; those are separate acceptance tests.
+
+B can ask whether a probe will reduce uncertainty along the G_a directions
+needed in the reachable future set C(x'), while leaving irrelevant n alone.
+For a correctly specified linear-Gaussian local update the covariance reduction
+is given by the standard Gaussian/least-squares update. That variance reduction
+is only a candidate guide: it has value only if the induced posterior branches
+change a legal task decision enough to repay cost (Section B). If the ordinary
+A servo already excites those directions, the extra B probe should disappear.
+If all relevant directions are already accurate, or future C(x') excludes the
+uncertain direction, B should not seek it merely to reduce parameter entropy.
+
+The new contribution would have to be anatomy-specific: derive G_a and its
+validity/remainder from actual finite-thickness visible-curve/image features;
+identify which body/contact freedoms leave nuisances invariant; demonstrate
+that the required predictive distribution is estimable under public ultrasound
+data; and show a calibrated, cheaper decision representation across new objects
+and different real action sets. Long-axis point-intersection Jacobians can be
+singular, so a claimed local model needs the finite visible-segment formulation
+or an explicit excluded domain. Standard functional identifiability, Gaussian
+updates, action-space projection and VOI are not the novel part.
+
+Independent checks: check_mechanism_examples.py and mechanism_checks.json.
+All checks passed with NumPy/SciPy in the genesis environment; no production
+module imports, native runs, learning runs or fabricated performance claims.

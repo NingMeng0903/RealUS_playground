@@ -1,0 +1,11 @@
+Status: reused archived successful regression; no pytest invocation in this recovery.
+Archive: history://step3_fix_and_verify_reader, final turn (#5), completed job bg_98.
+Command start: 2026-11-27 00:40:09 +0800, after the final relevant Python source/test mtimes (latest: reader/eval_reader.py, 00:39:48.747708747 +0800); see input_sha256.txt for recovery hashes. The archived log itself did not record hashes.
+Archived command:
+E=NMI_idea/experiments/anatomical_gps_unified_20261126; unset AGPS_EVAL_HOLDOUT_ALLOWED; export PYTHONDONTWRITEBYTECODE=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=$E:. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1; nice -n 5 /media/camp/EXT_DRIVE/envs/genesis/bin/pytest -q -p no:cacheprovider "$E/tests/test_reader_and_tracking.py" "$E/theory/verify_theory_math.py" "$E/tests/test_sim_and_firewall.py" "$E/tests/test_material_chart.py"
+
+Archived stdout:
+........................................                                 [100%]
+40 passed in 28.48s
+
+Focused file result: 14/14 (14 unparametrized test functions in the included reader test module, all passed in the archived run; no per-module duration emitted). The 39-pass claim in the prior final prose corresponds to an earlier snapshot; the anchored run's 40-pass log postdates the added joint-association test.

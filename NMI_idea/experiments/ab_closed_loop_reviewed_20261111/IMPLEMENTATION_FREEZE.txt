@@ -1,0 +1,75 @@
+Numerical implementation frozen before drawing the held-out acoustic cohort
+2026-11-11
+
+See PROTOCOL.txt for Astra's causal design. This file records the numeric
+implementation of that design and the chosen simulation scope.
+
+Fixture. Two mirrored variants offset the wall center by ±1.1 mm and swap
+the longitudinal window offset (±0.8 mm). The fixed-q fixture comes from the
+previous public RM75 q2_+1 layout. The atlas patch frame is taken from the
+actual zero-depth harmonic outer skin at a fixed 30-degree pose and placed
+rigidly onto that public seed; a private synthetic local surface perturbation
+is sensed by noisy 81-point measurements and fitted by the existing estimator.
+The sensed frame, not the private surface, generates the robot reference.
+Physical acceptance uses the private simulated surface and actual FK pose.
+Obstruction checks use a probe-envelope planar forbidden region and checks
+on segments between native ticks. Native self-collision is checked per tick.
+This ideal joint-feedback simulator does not model external full-arm contact,
+tissue force, or raster ultrasound.
+
+Actuation. A full SE(3) reference is driven by the existing integral-basis
+ProDMP phase, with analytic pose and six-dimensional velocity input at each
+native tick. Tilt is rotation about the contact chart's local x axis.
+Complete controller histories are restored from prefix replay, including
+q, qdot, acceleration and native configuration. The native 2 mm / 2 degree
+whole-segment tracking and zero-pause gate is retained, with a synthetic
+3 mm geometry-only contact gap. No extra jerk cut is used. Public pilot with
+stationary or ±4 mm fast rotation failed tracking, documented in the public
+engineering log. The fork moved to ±6 mm x, -3 mm y, ±.075 rad tilt;
+base motion at least .80 s, tilt reversal at least 1.10 s. Other transfers
+use a shared .55 s minimum from the geometry-only engineering pilot.
+Side probes and terminal positions are both offered. Central single and
+either paired order are offered. Crossovers via both public tip/retreat
+routes are tried in the public catalog, with dIRD batched ranking.
+All planned arms use the same checked public catalog. The physical layer
+independently reruns chosen routes at each distinct exact prefix before
+reusing identical deterministic transitions; physical motion cannot rewind
+on a failure.
+
+Observation model. Uses a continuous local vessel curve with bounded offsets
+and a common material patch response, w SD (.065,.23). Actual tilt s is
+normalized by .10 rad. The beam intercept y - depth*tan(tilt) gives the
+declared simple projected geometry. Quality score baseline .64 is chosen
+near the fixed .58 threshold for this constructed mechanism stress.
+The two terminal feature gates are center <=4.5 mm and view error <=.22 rad;
+no claim is made about visible length or a raster-image gate. Probe physical
+support is 22 mm. A true associated packet is drawn with probability .8
+when supported; otherwise a 0.1 spurious probability after a miss. Candidate
+confidence uses the same quality mapping for target and clutter. Missing
+packets carry no target scalar. The same actual terminal frame passes only
+when it contains the correct target feature and passes the geometry and
+quality gates. Correct public stopping and false stopping are separate.
+Models approximate unknown true geometry with nominal g_geo and a bounded
+prior; probability forecasts use mixture association and fixed predictive
+quadrature. Gaussian natural parameters are stored per association component.
+No learned-prior or network-generalization claim is tested. One known
+stationary patch spans all poses in this fixture. The reset control draws
+new private w at the start of the terminal stage with the planner unaware.
+
+Task clock. Native simulated travel, settle and acquired dwell are charged.
+Planning wall time is profiled at first selection and during actual branches,
+and a wall-charged success sensitivity is stored. The offline motion catalog
+construction is reported separately. The online library has at most two
+probe acquisitions in a macro and at most two fresh terminal acquisitions.
+A public rejected detection can trigger the second visit if a checked route
+fits the actual budget. Fixed pair may fall back to direct when its public
+complete schedule cannot fit. Each legal first-probe program is also forced
+for same-prefix packet masking. Time-insufficient forced branches are kept
+as failures and identified as such.
+
+Cohort. 128 independent anatomy draws, seed 721419; same objects across
+mirrors and methods; observation seed 721420. Control variants are longer
+deadlines, no informative probe packet, unannounced response reset, and an
+open baffle condition. Controls and geometric witness are separate from
+the primary deadline defined in PROTOCOL.txt. The fixture support and
+source hashes are written before any private outcomes in each job.

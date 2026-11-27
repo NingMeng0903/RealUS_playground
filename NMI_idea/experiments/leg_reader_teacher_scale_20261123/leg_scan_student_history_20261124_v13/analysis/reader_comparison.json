@@ -1,0 +1,77 @@
+{
+  "candidate": {
+    "name": "random_256",
+    "key": [
+      52,
+      -5,
+      65
+    ],
+    "score": {
+      "layouts": 72,
+      "strict": 52,
+      "wrong": 5,
+      "r6_correct": 65,
+      "r6_artery": 0,
+      "r6_reject": 1
+    }
+  },
+  "terminal_mode": "new",
+  "comparison": {
+    "v10": {
+      "layouts": 72,
+      "strict": 51,
+      "wrong": 7,
+      "r6_correct": 62,
+      "r6_artery": 4,
+      "r6_reject": 0
+    },
+    "v12": {
+      "layouts": 72,
+      "strict": 44,
+      "wrong": 15,
+      "r6_correct": 61,
+      "r6_artery": 7,
+      "r6_reject": 0
+    },
+    "random_256": {
+      "layouts": 72,
+      "strict": 52,
+      "wrong": 5,
+      "r6_correct": 65,
+      "r6_artery": 0,
+      "r6_reject": 1
+    },
+    "random_512": {
+      "layouts": 72,
+      "strict": 51,
+      "wrong": 6,
+      "r6_correct": 59,
+      "r6_artery": 3,
+      "r6_reject": 5
+    },
+    "random_1024": {
+      "layouts": 72,
+      "strict": 51,
+      "wrong": 8,
+      "r6_correct": 62,
+      "r6_artery": 4,
+      "r6_reject": 3
+    },
+    "failure_512": {
+      "layouts": 72,
+      "strict": 52,
+      "wrong": 8,
+      "r6_correct": 63,
+      "r6_artery": 3,
+      "r6_reject": 0
+    },
+    "edited_512": {
+      "layouts": 72,
+      "strict": 51,
+      "wrong": 8,
+      "r6_correct": 60,
+      "r6_artery": 4,
+      "r6_reject": 3
+    }
+  }
+}

@@ -1,0 +1,544 @@
+{
+  "schema": "ultrapoc_motion_qp_offline_v1",
+  "runtime_package": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/__init__.py",
+  "loop_source": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/loop.py",
+  "qp_source": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/control/joint_admittance_8dof/solver/qp_builder.py",
+  "loop_sha256": "2f94fb2a88aaa518f3c078c844858aa89f40e6749aac7d315fa63d5659dc2a40",
+  "qp_sha256": "1953302f0e20990c4ac762c78a22e135344ebaf0e673c948a3cee5e1b5fcc57a",
+  "config": "/media/camp/EXT_DRIVE/RealUS_playground/peirastic/configs/controller.yaml",
+  "config_sha256": "71134e9e16a952e688085a996ab192b41886b4e12094949082b748f0f186748f",
+  "effective_config": {
+    "dt": 0.005,
+    "control_frame": "tool",
+    "euler_order": "xyz",
+    "qp": {
+      "task_weight": "[100. 100. 100.  50.  50.  50.]",
+      "reg": "[0.001 0.01  0.01  0.01  0.01  0.012 0.012 0.012]",
+      "backend": "proxqp",
+      "use_cpp_kernel": true,
+      "eps_abs": 1e-06,
+      "max_iter": 150,
+      "max_iter_cap": 150,
+      "max_solve_ms": 5.0,
+      "fail_qdot_decay": 0.85,
+      "euler_order": "xyz",
+      "collision": {
+        "enabled": true,
+        "d_safe": 0.01,
+        "d_activate": 0.04,
+        "gamma": 5.0,
+        "max_pairs": 8,
+        "slack_weight": 2000.0,
+        "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+        "pair_config": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml"
+      },
+      "sr_damping": {
+        "lam0": 0.05,
+        "sigma_ref": 0.08,
+        "sigma_floor": 1e-06
+      },
+      "task_weight_min_frac": 0.05,
+      "task_weight_lpf_tau_s": 0.25,
+      "aniso_task_damping": true,
+      "use_mass_weighted_reg": true,
+      "mass_reg_floor": 0.05,
+      "mass_weight_exempt_rail": true,
+      "mass_reg_lpf_tau_s": 0.2,
+      "limit_damper_band_rad": 0.25,
+      "limit_damper_band_rail_m": 0.025,
+      "limit_damper_rail_reaction_s": 0.06,
+      "warn_on_fail": false,
+      "twist_sigma_floor": 0.02,
+      "sigma_setbased": {
+        "enabled": true,
+        "activate": 0.09,
+        "safe": 0.045,
+        "exit": 0.13,
+        "gamma": 8.0,
+        "slack_weight": 200.0,
+        "grad_eps": 0.0001,
+        "grad_period_ticks": 10
+      },
+      "branch_barrier": {
+        "enabled": true,
+        "activate_rad": 0.52,
+        "box_activate_rad": 0.87,
+        "eps_rad": 0.35,
+        "j4_limit_eps_rad": 0.08726646259971647,
+        "j4_limit_activate_rad": 0.4363323129985824,
+        "j1_overfold_abs_rad": 2.443460952792061,
+        "j1_overfold_activate_rad": 0.4363323129985824,
+        "j1_overfold_eps_rad": 0.0,
+        "gamma": 6.0,
+        "slack_weight": 80.0,
+        "target_eps_rad": 0.001,
+        "dwell_free_s": 0.3,
+        "dwell_ramp_s": 1.0,
+        "dwell_scale_max": 5.0
+      },
+      "joint_comfort": {
+        "enabled": true,
+        "m_comfort_rad": 0.2617993877991494,
+        "activate_rad": 0.4363323129985824,
+        "gamma": 6.0,
+        "slack_weight": 80.0
+      },
+      "j4_design_comfort": {
+        "enabled": true,
+        "lower_rad": 1.2217304763960306,
+        "upper_rad": 2.007128639793479,
+        "gamma": 4.0,
+        "slack_weight": 60.0
+      },
+      "near_arm_margin_rad": 0.08,
+      "smoothness_weight": "[0.   0.15 0.15 0.15 0.15 0.15 0.15 0.15]",
+      "j_max_arm_rad_s3": 300.0,
+      "j_max_rail_m_s3": 320.0
+    },
+    "cartesian_track": {
+      "k_task_lin": 12.0,
+      "k_task_rot": 2.0,
+      "max_pos_err_m": 0.05,
+      "max_rot_err_rad": 0.35,
+      "fb_lpf_tau_s": 0.0
+    },
+    "nullspace": {
+      "k_center": 1.0,
+      "k_limit": 2.0,
+      "activation": 0.75,
+      "weights": "[0. 1. 1. 1. 1. 1. 1. 1.]",
+      "q_nominal_rad": "[ 0.         -1.56206968 -1.64933614  1.13795467  1.67551608  1.55857902\n  1.06465084  1.65108147]",
+      "enter_fade_s": 0.6,
+      "homotopy_fade_s": 0.6
+    },
+    "manipulability": {
+      "k_mu": 0.8,
+      "eps_rad": 0.0005,
+      "sigma_fade_ref": 0.12,
+      "grad_period_ticks": 10,
+      "qdot_tau_s": 0.05
+    },
+    "arm_angle": {
+      "enabled": true,
+      "k_psi": 1.5,
+      "psi_ref_rad": null,
+      "fd_eps_rad": 0.0001,
+      "safe_denom_eps": 0.0001,
+      "obs_decay_gain": 400.0,
+      "obs_smooth_floor": 0.3,
+      "max_qdot_frac": 0.15,
+      "psi_home_rad": null,
+      "max_psi_swing_rad": 2.6179938779914944,
+      "psi_hard_lower_rad": null,
+      "psi_hard_upper_rad": null
+    },
+    "psi_retarget": {
+      "enabled": true,
+      "n_y": 9,
+      "n_d": 8,
+      "n_psi": 9,
+      "w_sigma": 0.5,
+      "w_wrist": 0.5,
+      "margin_floor_rad": 0.3490658503988659,
+      "psi_rate_rad_s": 0.4363323129985824,
+      "d_center_rate_m_s": 0.02,
+      "psi_accel_rad_s2": 1.0471975511965976,
+      "d_center_accel_m_s2": 0.06,
+      "homotopy_ramp_s": 0.35,
+      "psi_cmd_lead_rad": 0.3141592653589793,
+      "psi_attr_rad": 1.1868238913561442,
+      "d_attr_m": -0.185,
+      "d_objective": "comfort",
+      "d_comfort_band_weight": 300.0,
+      "comfort_q_nominal_rad": "[ 0.         -1.56206968 -1.64933614  1.13795467  1.67551608  1.55857902\n  1.06465084  1.65108147]",
+      "comfort_weights": "[0. 1. 1. 1. 1. 1. 1. 1.]",
+      "elbow_center_rad": 1.6580627893946132,
+      "elbow_lo_rad": 1.2217304763960306,
+      "elbow_hi_rad": 2.007128639793479,
+      "elbow_hi_illegal_rad": 2.2689280275926285,
+      "elbow_rescue_alpha": 0.35,
+      "psi_return_dwell_s": 1.0,
+      "require_design_family": false,
+      "psi_replan_period_s": 0.1,
+      "psi_search_half_span_rad": 0.7853981633974483,
+      "psi_search_n": 9,
+      "psi_wrist_ok_rad": 0.6981317007977318,
+      "psi_envelope_lo_rad": 0.6981317007977318,
+      "psi_envelope_hi_rad": 1.9198621771937625,
+      "rail_margin_m": 0.02,
+      "wrist_min_rad": 0.5235987755982988
+    },
+    "ird": {
+      "enabled": false,
+      "checkpoint": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/data/checkpoints/rm4d_signed/selected.pt",
+      "robot_spec": "/media/camp/EXT_DRIVE/RealUS_playground/ird_playground/configs/robot_probe45.yaml",
+      "device": "cpu",
+      "allow_stale": true
+    },
+    "collision": {
+      "enabled": true,
+      "d_safe": 0.01,
+      "d_activate": 0.04,
+      "gamma": 5.0,
+      "max_pairs": 8,
+      "slack_weight": 2000.0,
+      "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+      "pair_config": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml"
+    },
+    "rail": {
+      "mode": "coupled",
+      "locked_style": "hold",
+      "q_ref_m": null,
+      "lock_gain": 200.0,
+      "lock_reg_scale": 100.0,
+      "lock_vel_eps_m_s": 0.0,
+      "lock_hard_pin": true,
+      "v_max_m_s": 0.4,
+      "travel_m": 0.8,
+      "soft_min_m": 0.03,
+      "soft_max_m": 0.755,
+      "hard_min_m": 0.005,
+      "hard_max_m": 0.78
+    },
+    "rail_extension": {
+      "enabled": true,
+      "k_ext": 2.0,
+      "k_ff": 1.0,
+      "v_ff_thr_m_s": 0.005,
+      "v_ff_span_m_s": 0.015,
+      "e0_m": 0.02,
+      "e1_m": 0.08,
+      "w_max": 2.0,
+      "v_max_m_s": 0.08,
+      "limit_margin_m": 0.15,
+      "pin_margin_m": 0.008,
+      "escape_leave_m": 0.04,
+      "soft_min_m": 0.03,
+      "soft_max_m": 0.755,
+      "v_reach_cap_m_s": 0.05,
+      "v_reach_idle_cap_m_s": 0.01,
+      "healthy_sigma_mute": 0.08,
+      "d_band_m": 0.005,
+      "k_sigma_boost": 2.0,
+      "k_esc": 0.5,
+      "w_sigma_floor": 1.0,
+      "k_pose": 2.0,
+      "pose_e0_m": 0.005,
+      "pose_e1_m": 0.04,
+      "pose_w_max": 4.0,
+      "sigma_guard_enter": 0.45,
+      "sigma_guard_exit": 0.7,
+      "v_guard_max_m_s": 0.04,
+      "v_lpf_tau_s": 0.05,
+      "v_lpf_fc_hz": 5.0,
+      "v_lpf_tau_escape_s": 0.04,
+      "sigma_escape_enter": 0.55,
+      "sigma_escape_exit": 0.8,
+      "margin_escape_enter": 0.12,
+      "margin_escape_exit": 0.25,
+      "sigma_drop_rate": 0.0,
+      "escape_enter_dwell_s": 0.05,
+      "k_escape_boost": 1.2,
+      "escape_grad_floor": 0.0,
+      "k_margin_boost": 4.0,
+      "w_ext_cap": 24.0,
+      "d_star_err0_m": 0.01,
+      "d_star_err1_m": 0.04,
+      "d_star_w_mult": 6.0,
+      "d_star_reg_mult": 20.0,
+      "press_v_force_min_m_s": 0.02,
+      "press_dz_max_m": 0.002,
+      "press_y_err_m": 0.005,
+      "press_stall_s": 0.5,
+      "d_star_nudge_m": 0.01,
+      "open_travel_min_m": 0.01,
+      "escape_sign_policy": "auto",
+      "v_reach_total_max_m_s": null
+    },
+    "rail_allocator": {
+      "v0_m_s": 0.05,
+      "w0_rad_s": 0.3,
+      "k_margin": 4.0,
+      "kp_mid": 1.2,
+      "ki_mid": 0.8,
+      "u_mid_max_m_s": 0.03,
+      "k_err_rail": 4.0,
+      "e_ref_m": 0.08,
+      "f_c_hz": 4.0,
+      "j_max_ref_m_s3": 60.0,
+      "leave_exit_eps_m": 0.008,
+      "kaw_mid": 8.0,
+      "rho_mirror_a": 0.5,
+      "rho_mirror_j": 0.3,
+      "reaction_s": 0.06,
+      "observer_pos_gain": 0.35,
+      "observer_vel_gain": 2.0,
+      "observer_vel_lpf_hz": 8.0
+    },
+    "v_scale": 0.8,
+    "a_max_arm_rad_s2": 3.0,
+    "a_max_rail_m_s2": 1.6,
+    "position_margin_rad": 0.005235987755982988,
+    "position_margin_rail_m": 0.0,
+    "control_cpu": null,
+    "native_cpu": null,
+    "disable_cstates": false,
+    "resync_err_rad": 0.10471975511965978,
+    "resync_err_rail_m": 0.02,
+    "feedback_timeout_s": 0.08,
+    "feedback_coast_s": 0.3,
+    "rt_disable_gc": true,
+    "verbose_json": false,
+    "nullspace_d_null": 0.5,
+    "nullspace_d_null_adaptive": 1.0,
+    "nullspace_max_qdot_frac": 0.2,
+    "saturation": {
+      "slack_enter": 0.15,
+      "slack_exit": 0.03,
+      "secondary_scale": 0.15,
+      "secondary_scale_tau_s": 0.1
+    },
+    "backend": "native",
+    "native_bin": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/native/wbc_rt/build/wbc_rt",
+    "execution_model_path": null,
+    "rail_refresh_dt_s": 0.02,
+    "native_shm_prefix": "ab_repair_qp_54610_23290888516818"
+  },
+  "backend": "native",
+  "tcp_mode": "urdf",
+  "tcp_cache": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/outputs/rm75_tool_offset.json",
+  "tcp_cache_sha256": "28b71935498dba26c0d7d2c5eb336b51e7104406a0b7009c3037d3b147a36901",
+  "cached_tool_name": "gripper2",
+  "cached_T_flange_tcp": [
+    [
+      0.014680973830884292,
+      0.9998920718215831,
+      -0.0005601033110148035,
+      0.0
+    ],
+    [
+      -0.6438945526315165,
+      0.00902545997470372,
+      -0.7650610081318381,
+      -0.015229
+    ],
+    [
+      -0.7649733813008373,
+      0.011592488110286736,
+      0.6439575608070587,
+      0.12135
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "checkpoint_T_flange_tcp": [
+    [
+      0.014774022132612807,
+      0.9998908401730626,
+      -0.0001897578249923093,
+      0.0
+    ],
+    [
+      -0.6440522759647374,
+      0.009371115199288349,
+      -0.7649240799089563,
+      -0.01523
+    ],
+    [
+      -0.7648388026863352,
+      0.011423219245411842,
+      0.644120420393116,
+      0.12135
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "cache_contract_translation_difference_m": 1.000000000001e-06,
+  "cache_contract_rotation_difference_rad": 0.00043715295248413,
+  "robot_contract": {
+    "schema": "realman_robot_contract_v1",
+    "kinematics_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf",
+    "kinematics_urdf_sha256": "7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0",
+    "collision_urdf": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf",
+    "collision_urdf_sha256": "ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197",
+    "collision_pairs": "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml",
+    "collision_pairs_sha256": "8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318",
+    "collision_mesh_sha256": {
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl": "d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl": "90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl": "8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl": "a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl": "525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl": "bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl": "d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl": "a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c",
+      "/media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl": "8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5"
+    },
+    "tcp_frame": "tcp",
+    "tcp_joint": "link_7_to_tcp",
+    "flange_frame": "link_7",
+    "root_frame": "rail_base",
+    "rail_joint": "rail_y",
+    "rail_locked_at_m": 0.0,
+    "rail_limits_m": [
+      0.0,
+      0.8
+    ],
+    "j1_joint": "joint_1",
+    "T_root_j1_axis": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0,
+        -0.4
+      ],
+      [
+        0.0,
+        0.0,
+        1.0,
+        0.2405
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "T_flange_tcp": [
+      [
+        0.014774022132612807,
+        0.9998908401730626,
+        -0.0001897578249923093,
+        0.0
+      ],
+      [
+        -0.6440522759647374,
+        0.009371115199288349,
+        -0.7649240799089563,
+        -0.01523
+      ],
+      [
+        -0.7648388026863352,
+        0.011423219245411842,
+        0.644120420393116,
+        0.12135
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "tool_frame": {
+      "joint_name": "link_7_to_tcp",
+      "parent_frame": "link_7",
+      "child_frame": "tcp",
+      "T_flange_tcp": [
+        [
+          0.014774022132612807,
+          0.9998908401730626,
+          -0.0001897578249923093,
+          0.0
+        ],
+        [
+          -0.6440522759647374,
+          0.009371115199288349,
+          -0.7649240799089563,
+          -0.01523
+        ],
+        [
+          -0.7648388026863352,
+          0.011423219245411842,
+          0.644120420393116,
+          0.12135
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "T_tcp_flange": [
+        [
+          0.014774022132612865,
+          -0.6440522759647375,
+          -0.7648388026863353,
+          0.08300427254304381
+        ],
+        [
+          0.9998908401730625,
+          0.00937111519928828,
+          0.011423219245411823,
+          -0.001243485570945564
+        ],
+        [
+          -0.0001897578249922692,
+          -0.7649240799089563,
+          0.6441204203931159,
+          -0.08981380675171803
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "collision_security_margin_m": 0.01,
+    "metric": {
+      "schema": "se3_weighted_l2_v1",
+      "lambda_m_per_rad": 0.5729577951308232,
+      "cm_per_deg": 1.0,
+      "note": "chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic"
+    },
+    "collision_scope": "arm_body_self_collision_only",
+    "yaw_invariant_static_links": [
+      "base_link"
+    ]
+  },
+  "q_order": [
+    "raw rail_y (m)",
+    "joint_1 (rad)",
+    "joint_2 (rad)",
+    "joint_3 (rad)",
+    "joint_4 (rad)",
+    "joint_5 (rad)",
+    "joint_6 (rad)",
+    "joint_7 (rad)"
+  ],
+  "pose_frame": "rail_base",
+  "dt_s": 0.005,
+  "offline_changes": [
+    "backend selectable",
+    "no CPU power/affinity change",
+    "unused one-shot stroke dIRD disabled",
+    "no robot TCP sync; explicit cached or URDF tool"
+  ],
+  "plant": "ideal q_meas[k+1]=actual_controller_q_send[k], rail measured velocity=previous command, dt=.005s",
+  "not_tested": [
+    "UltraPOC image/contact/force outer loop",
+    "physical tracking",
+    "device communication",
+    "latency/jitter",
+    "external body collision"
+  ],
+  "live_active_tcp_confirmed": false
+}

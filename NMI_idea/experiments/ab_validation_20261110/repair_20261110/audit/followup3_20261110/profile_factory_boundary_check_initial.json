@@ -1,0 +1,32 @@
+{
+  "pure_rotation_returned_instead_of_rejected": true,
+  "reference_type": "WorldPolylineReference",
+  "duration": 0.5,
+  "samples": [
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "source_sha256": "ea22c50f3d9a31e8b8b355ba41d1dc01e05dbcd2cf193a10c1985532842f9b45"
+}

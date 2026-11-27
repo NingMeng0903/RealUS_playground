@@ -1,0 +1,193 @@
+V8.5.2 core-suite 结果审计
+
+输入：outputs/v852_core_suite_20261108_replicate
+schema：v852_prospective_core_suite_v1
+训练 seed：20264208
+评测行数：5760；方法：fixed_reference, full_history, identify_execute, independent, joint_n16, joint_n8, joint_nominal (robust alias; duplicate), joint_robust, shuffled_robust, time_factorized
+level：basic, variable, stress；rho：-0.8, 0.0, 0.8；arm：retain_early, release_3s, release_8s, hide_old
+执行后端：cartesian_lag; separate Genesis and finite-kernel reports；deadline/cost 的秒是执行得到的 Cartesian 模拟时钟秒，不是实机墙钟。
+
+统计口径
+- 独立统计单位是完整对象配置的 case_id；同一 case 的树、arm、重置和帧均先聚合，不当作额外样本。
+- 聚合使用 evaluation 中的 population_weight；它来自分层受控设计，而不是把 frame/call 数当作权重。
+- A 的曲线是每个预算 T 重新评价预算相关策略得到的完成率曲线；不能自动解释成一条固定策略的时间次 CDF。
+- 只有固定树/固定模式的介入才可按完成时间次分布解释；A 同时保留 predicted、measured、lower、upper 和事后树库参考的完整数字。
+- cost_curves 是这套 servo 模拟执行后统计的交互成本；不能当作物理机器人时间，也不与其他后端的时钟混合。
+- lower/upper 只作为描述性 envelope containment 报告，不能解释为 95% 置信覆盖。
+- geometry_seed 去重数=48；各 level 独立数={'basic': 16, 'stress': 16, 'variable': 16}；run×case cluster 数=48；跨 level 重合={'basic|stress': 0, 'basic|variable': 0, 'stress|variable': 0}。
+- 跨 level 合并时按 geometry_seed 聚类；同一 geometry_seed 在不同 pressure level 是配对敏感性条件，不应冒充新的独立解剖样本。
+- 已读取 model_audit 文件=9、local_bundles 行=144（这些是模型/训练审计，不作为额外独立病例）。
+- model audit 中 strict confidence-set 标记=False；本报告仍不把 envelope 称为正式置信集合。
+- 方法标签审计：{'joint_nominal': 'joint_nominal (robust alias; duplicate)'}；joint_nominal 若标为 robust alias 只作一致性重复，不作为 Bayes 点规划基线。
+
+A：完成窗口与预测误差
+level=basic：
+- fixed_reference（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001114，population_curve_max_abs_error=0.02143，case_realization_discrepancy_mean=0.00274，case_realization_discrepancy_max=0.1124，envelope containment=0.9512，case clusters=16。
+- full_history（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001116，population_curve_max_abs_error=0.02311，case_realization_discrepancy_mean=0.002494，case_realization_discrepancy_max=0.1022，envelope containment=0.9512，case clusters=16。
+- identify_execute（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001659，population_curve_max_abs_error=0.0375，case_realization_discrepancy_mean=0.001659，case_realization_discrepancy_max=0.06801，envelope containment=1，case clusters=16。
+- independent（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001281，population_curve_max_abs_error=0.02292，case_realization_discrepancy_mean=0.002131，case_realization_discrepancy_max=0.08735，envelope containment=0.9512，case clusters=16。
+- joint_n16（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001607，population_curve_max_abs_error=0.02167，case_realization_discrepancy_mean=0.002644，case_realization_discrepancy_max=0.1084，envelope containment=0.9512，case clusters=16。
+- joint_n8（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001182，population_curve_max_abs_error=0.02238，case_realization_discrepancy_mean=0.001597，case_realization_discrepancy_max=0.06547，envelope containment=0.9268，case clusters=16。
+- joint_nominal (robust alias; duplicate)（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001002，population_curve_max_abs_error=0.02212，case_realization_discrepancy_mean=0.002657，case_realization_discrepancy_max=0.1089，envelope containment=0.9512，case clusters=16。
+- joint_robust（rho=0.8, retain_early）：population_curve_mean_abs_error=0.001002，population_curve_max_abs_error=0.02212，case_realization_discrepancy_mean=0.002657，case_realization_discrepancy_max=0.1089，envelope containment=0.9512，case clusters=16。
+- shuffled_robust（rho=0.8, retain_early）：population_curve_mean_abs_error=0.0007649，population_curve_max_abs_error=0.02213，case_realization_discrepancy_mean=0.002217，case_realization_discrepancy_max=0.09089，envelope containment=0.9512，case clusters=16。
+- time_factorized（rho=0.8, retain_early）：population_curve_mean_abs_error=0.003049，population_curve_max_abs_error=0.03363，case_realization_discrepancy_mean=0.003441，case_realization_discrepancy_max=0.1396，envelope containment=0.878，case clusters=16。
+level=variable：
+- fixed_reference（rho=0.8, retain_early）：population_curve_mean_abs_error=0.009096，population_curve_max_abs_error=0.1296，case_realization_discrepancy_mean=0.01856，case_realization_discrepancy_max=0.5512，envelope containment=0.9024，case clusters=16。
+- full_history（rho=0.8, retain_early）：population_curve_mean_abs_error=0.008249，population_curve_max_abs_error=0.122，case_realization_discrepancy_mean=0.01762，case_realization_discrepancy_max=0.5512，envelope containment=0.9268，case clusters=16。
+- identify_execute（rho=0.8, retain_early）：population_curve_mean_abs_error=0.01218，population_curve_max_abs_error=0.1385，case_realization_discrepancy_mean=0.01649，case_realization_discrepancy_max=0.549，envelope containment=0.9024，case clusters=16。
+- independent（rho=0.8, retain_early）：population_curve_mean_abs_error=0.006998，population_curve_max_abs_error=0.09226，case_realization_discrepancy_mean=0.0161，case_realization_discrepancy_max=0.5359，envelope containment=0.9024，case clusters=16。
+- joint_n16（rho=0.8, retain_early）：population_curve_mean_abs_error=0.007784，population_curve_max_abs_error=0.07354，case_realization_discrepancy_mean=0.01499，case_realization_discrepancy_max=0.4763，envelope containment=0.878，case clusters=16。
+- joint_n8（rho=0.8, retain_early）：population_curve_mean_abs_error=0.007146，population_curve_max_abs_error=0.07616，case_realization_discrepancy_mean=0.0138，case_realization_discrepancy_max=0.4383，envelope containment=0.9024，case clusters=16。
+- joint_nominal (robust alias; duplicate)（rho=0.8, retain_early）：population_curve_mean_abs_error=0.005704，population_curve_max_abs_error=0.07969，case_realization_discrepancy_mean=0.01445，case_realization_discrepancy_max=0.4838，envelope containment=0.9024，case clusters=16。
+- joint_robust（rho=0.8, retain_early）：population_curve_mean_abs_error=0.005704，population_curve_max_abs_error=0.07969，case_realization_discrepancy_mean=0.01445，case_realization_discrepancy_max=0.4838，envelope containment=0.9024，case clusters=16。
+- shuffled_robust（rho=0.8, retain_early）：population_curve_mean_abs_error=0.01076，population_curve_max_abs_error=0.1111，case_realization_discrepancy_mean=0.01502，case_realization_discrepancy_max=0.3785，envelope containment=0.9024，case clusters=16。
+- time_factorized（rho=0.8, retain_early）：population_curve_mean_abs_error=0.007114，population_curve_max_abs_error=0.08304，case_realization_discrepancy_mean=0.01646，case_realization_discrepancy_max=0.526，envelope containment=0.878，case clusters=16。
+level=stress：
+- fixed_reference（rho=0.8, retain_early）：population_curve_mean_abs_error=0.0363，population_curve_max_abs_error=0.1225，case_realization_discrepancy_mean=0.07406，case_realization_discrepancy_max=0.6612，envelope containment=0.878，case clusters=16。
+- full_history（rho=0.8, retain_early）：population_curve_mean_abs_error=0.0401，population_curve_max_abs_error=0.1447，case_realization_discrepancy_mean=0.07005，case_realization_discrepancy_max=0.6609，envelope containment=0.8293，case clusters=16。
+- identify_execute（rho=0.8, retain_early）：population_curve_mean_abs_error=0.03625，population_curve_max_abs_error=0.1382，case_realization_discrepancy_mean=0.07106，case_realization_discrepancy_max=0.6003，envelope containment=0.9024，case clusters=16。
+- independent（rho=0.8, retain_early）：population_curve_mean_abs_error=0.04133，population_curve_max_abs_error=0.2144，case_realization_discrepancy_mean=0.0708，case_realization_discrepancy_max=0.7786，envelope containment=0.7317，case clusters=16。
+- joint_n16（rho=0.8, retain_early）：population_curve_mean_abs_error=0.04856，population_curve_max_abs_error=0.1824，case_realization_discrepancy_mean=0.08608，case_realization_discrepancy_max=0.625，envelope containment=0.9024，case clusters=16。
+- joint_n8（rho=0.8, retain_early）：population_curve_mean_abs_error=0.0447，population_curve_max_abs_error=0.2205，case_realization_discrepancy_mean=0.05652，case_realization_discrepancy_max=0.6408，envelope containment=0.4146，case clusters=16。
+- joint_nominal (robust alias; duplicate)（rho=0.8, retain_early）：population_curve_mean_abs_error=0.03554，population_curve_max_abs_error=0.1238，case_realization_discrepancy_mean=0.07288，case_realization_discrepancy_max=0.6574，envelope containment=0.8537，case clusters=16。
+- joint_robust（rho=0.8, retain_early）：population_curve_mean_abs_error=0.03554，population_curve_max_abs_error=0.1238，case_realization_discrepancy_mean=0.07288，case_realization_discrepancy_max=0.6574，envelope containment=0.8537，case clusters=16。
+- shuffled_robust（rho=0.8, retain_early）：population_curve_mean_abs_error=0.03588，population_curve_max_abs_error=0.2101，case_realization_discrepancy_mean=0.07736，case_realization_discrepancy_max=0.6663，envelope containment=0.8537，case clusters=16。
+- time_factorized（rho=0.8, retain_early）：population_curve_mean_abs_error=0.043，population_curve_max_abs_error=0.1726，case_realization_discrepancy_mean=0.08749，case_realization_discrepancy_max=0.7478，envelope containment=0.8293，case clusters=16。
+
+B：晚到信息的影响（release − retain）
+level=basic：
+- fixed_reference, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- fixed_reference, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- full_history, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- full_history, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- identify_execute, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- identify_execute, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- independent, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- independent, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n16, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n16, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n8, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n8, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_nominal (robust alias; duplicate), release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_nominal (robust alias; duplicate), release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_robust, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_robust, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- shuffled_robust, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- shuffled_robust, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- time_factorized, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- time_factorized, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+level=variable：
+- fixed_reference, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- fixed_reference, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- full_history, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- full_history, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- identify_execute, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- identify_execute, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- independent, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- independent, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n16, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n16, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n8, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n8, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_nominal (robust alias; duplicate), release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_nominal (robust alias; duplicate), release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_robust, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_robust, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- shuffled_robust, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- shuffled_robust, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- time_factorized, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- time_factorized, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+level=stress：
+- fixed_reference, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- fixed_reference, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- full_history, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- full_history, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- identify_execute, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- identify_execute, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- independent, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- independent, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n16, release_3s：末端 measured delta=4.375e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n16, release_8s：末端 measured delta=4.375e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n8, release_3s：末端 measured delta=-9e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_n8, release_8s：末端 measured delta=-9e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_nominal (robust alias; duplicate), release_3s：末端 measured delta=9.625e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_nominal (robust alias; duplicate), release_8s：末端 measured delta=9.625e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_robust, release_3s：末端 measured delta=9.625e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- joint_robust, release_8s：末端 measured delta=9.625e-10，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- shuffled_robust, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- shuffled_robust, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- time_factorized, release_3s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- time_factorized, release_8s：末端 measured delta=0，case pairs=16；200 次 cluster bootstrap 仅作描述性范围。
+- 60/60 个 effect 的描述性范围跨过 0；本轮不能声称差异显著。
+
+C：同一完成目标 0.8 的首次预算与交互代价（探索性）
+level=basic：
+- fixed_reference：retain population_deadline=21.0，attained_completion=0.9624999999999999，n_case_clusters=16，cost=[16.24149999999984, 2.525, 71.9375, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8625，n_case_clusters=16，cost=[16.347499999999865, 2.525, 72.8625, 0.0]，per_case_first_attainment_median=19.0。
+- full_history：retain population_deadline=21.0，attained_completion=0.9624999999999999，n_case_clusters=16，cost=[16.24149999999984, 2.525, 71.9375, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8625，n_case_clusters=16，cost=[16.347499999999865, 2.525, 72.8625, 0.0]，per_case_first_attainment_median=19.0。
+- identify_execute：retain population_deadline=24.0，attained_completion=0.975，n_case_clusters=16，cost=[19.650499999999766, 3.5250000000000004, 96.73750000000001, 0.0]，per_case_first_attainment_median=22.0；hide_old population_deadline=24.0，attained_completion=0.975，n_case_clusters=16，cost=[19.650499999999766, 3.5250000000000004, 96.73750000000001, 0.0]，per_case_first_attainment_median=22.0。
+- independent：retain population_deadline=21.0，attained_completion=0.9624999999999999，n_case_clusters=16，cost=[16.24149999999984, 2.525, 71.9375, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8625，n_case_clusters=16，cost=[16.347499999999865, 2.525, 72.8625, 0.0]，per_case_first_attainment_median=19.0。
+- joint_n16：retain population_deadline=21.0，attained_completion=0.97499999965375，n_case_clusters=16，cost=[16.230500000304538, 2.525, 71.83750000277, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8625，n_case_clusters=16，cost=[16.347499999999865, 2.525, 72.8625, 0.0]，per_case_first_attainment_median=19.0。
+- joint_n8：retain population_deadline=21.0，attained_completion=0.9582770270020271，n_case_clusters=16，cost=[16.23718918921103, 2.525, 71.9043918920919, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8625，n_case_clusters=16，cost=[16.347499999999865, 2.525, 72.8625, 0.0]，per_case_first_attainment_median=19.0。
+- joint_nominal (robust alias; duplicate)：retain population_deadline=21.0，attained_completion=0.9624999999999999，n_case_clusters=16，cost=[16.24149999999984, 2.525, 71.9375, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8749999991374999，n_case_clusters=16，cost=[16.35225000023236, 2.525, 72.89375000251249, 0.0]，per_case_first_attainment_median=19.0。
+- joint_robust：retain population_deadline=21.0，attained_completion=0.9624999999999999，n_case_clusters=16，cost=[16.24149999999984, 2.525, 71.9375, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8749999991374999，n_case_clusters=16，cost=[16.35225000023236, 2.525, 72.89375000251249, 0.0]，per_case_first_attainment_median=19.0。
+- shuffled_robust：retain population_deadline=21.0，attained_completion=0.864420109101726，n_case_clusters=16，cost=[16.3555637280651, 2.5250000000000004, 72.92841766114248, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8749999991374999，n_case_clusters=16，cost=[16.35225000023236, 2.525, 72.89375000251249, 0.0]，per_case_first_attainment_median=19.0。
+- time_factorized：retain population_deadline=21.0，attained_completion=0.9624999999999999，n_case_clusters=16，cost=[16.24149999999984, 2.525, 71.9375, 0.0]，per_case_first_attainment_median=19.0；hide_old population_deadline=21.0，attained_completion=0.8625，n_case_clusters=16，cost=[16.347499999999865, 2.525, 72.8625, 0.0]，per_case_first_attainment_median=19.0。
+level=variable：
+- fixed_reference：retain population_deadline=21.0，attained_completion=0.8374999999999999，n_case_clusters=16，cost=[17.229999999999855, 2.525, 79.725, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.85，n_case_clusters=16，cost=[17.79699999999984, 2.525, 84.2, 0.0]，per_case_first_attainment_median=20.0。
+- full_history：retain population_deadline=21.0，attained_completion=0.8374999999999999，n_case_clusters=16，cost=[17.229999999999855, 2.525, 79.725, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.85，n_case_clusters=16，cost=[17.79699999999984, 2.525, 84.2, 0.0]，per_case_first_attainment_median=20.0。
+- identify_execute：retain population_deadline=25.0，attained_completion=0.8625，n_case_clusters=16，cost=[21.01599999999978, 3.5250000000000004, 106.375, 0.0]，per_case_first_attainment_median=23.5；hide_old population_deadline=25.0，attained_completion=0.8625，n_case_clusters=16，cost=[21.01599999999978, 3.5250000000000004, 106.375, 0.0]，per_case_first_attainment_median=23.5。
+- independent：retain population_deadline=21.0，attained_completion=0.8374999999999999，n_case_clusters=16，cost=[17.229999999999855, 2.525, 79.725, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.85，n_case_clusters=16，cost=[17.79699999999984, 2.525, 84.2, 0.0]，per_case_first_attainment_median=20.0。
+- joint_n16：retain population_deadline=22.0，attained_completion=0.95，n_case_clusters=16，cost=[17.50949999792082, 2.525, 81.562499985825, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.85，n_case_clusters=16，cost=[17.79699999999984, 2.525, 84.2, 0.0]，per_case_first_attainment_median=21.5。
+- joint_n8：retain population_deadline=22.0，attained_completion=0.95，n_case_clusters=16，cost=[17.509499999999818, 2.525, 81.5625, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.9142857138357142，n_case_clusters=16，cost=[17.719857143396965, 2.525, 83.49285714780714, 0.0]，per_case_first_attainment_median=20.0。
+- joint_nominal (robust alias; duplicate)：retain population_deadline=22.0，attained_completion=0.95，n_case_clusters=16，cost=[17.36099999999982, 2.525, 80.55, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.8291666671016666，n_case_clusters=16，cost=[17.80358333317298, 2.525, 84.25624999925, 0.0]，per_case_first_attainment_median=21.0。
+- joint_robust：retain population_deadline=22.0，attained_completion=0.95，n_case_clusters=16，cost=[17.36099999999982, 2.525, 80.55, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.8291666671016666，n_case_clusters=16，cost=[17.80358333317298, 2.525, 84.25624999925, 0.0]，per_case_first_attainment_median=21.0。
+- shuffled_robust：retain population_deadline=22.0，attained_completion=0.8388327722600795，n_case_clusters=16，cost=[17.789626779343333, 2.525, 84.12130889861015, 0.0]，per_case_first_attainment_median=21.0；hide_old population_deadline=22.0，attained_completion=0.8291666671016666，n_case_clusters=16，cost=[17.80358333317298, 2.525, 84.25624999925, 0.0]，per_case_first_attainment_median=21.0。
+- time_factorized：retain population_deadline=21.0，attained_completion=0.8374999999999999，n_case_clusters=16，cost=[17.229999999999855, 2.525, 79.725, 0.0]，per_case_first_attainment_median=20.0；hide_old population_deadline=22.0，attained_completion=0.85，n_case_clusters=16，cost=[17.79699999999984, 2.525, 84.2, 0.0]，per_case_first_attainment_median=20.0。
+level=stress：
+- fixed_reference：retain population_deadline=31.0，attained_completion=0.8625，n_case_clusters=16，cost=[24.62499999999972, 2.5125, 139.25, 0.0]，per_case_first_attainment_median=29.5；hide_old population_deadline=33.0，attained_completion=0.8625，n_case_clusters=16，cost=[25.094499999999712, 2.525, 141.25, 0.0]，per_case_first_attainment_median=28.5。
+- full_history：retain population_deadline=31.0，attained_completion=0.8625，n_case_clusters=16，cost=[24.62499999999972, 2.5125, 139.25, 0.0]，per_case_first_attainment_median=29.5；hide_old population_deadline=33.0，attained_completion=0.8625，n_case_clusters=16，cost=[25.094499999999712, 2.525, 141.25, 0.0]，per_case_first_attainment_median=28.5。
+- identify_execute：retain population_deadline=37.0，attained_completion=0.85，n_case_clusters=16，cost=[30.756999999999614, 3.5250000000000004, 183.7375, 0.0]，per_case_first_attainment_median=34.0；hide_old population_deadline=37.0，attained_completion=0.85，n_case_clusters=16，cost=[30.756999999999614, 3.5250000000000004, 183.7375, 0.0]，per_case_first_attainment_median=34.5。
+- independent：retain population_deadline=31.0，attained_completion=0.8625，n_case_clusters=16，cost=[24.574499999999723, 2.525, 137.85, 0.0]，per_case_first_attainment_median=28.5；hide_old population_deadline=33.0，attained_completion=0.875，n_case_clusters=16，cost=[25.060499999999706, 2.525, 140.9375, 0.0]，per_case_first_attainment_median=28.5。
+- joint_n16：retain population_deadline=33.0，attained_completion=0.9749999999999999，n_case_clusters=16，cost=[24.801999999999662, 2.525, 139.3374999865, 0.0]，per_case_first_attainment_median=30.0；hide_old population_deadline=33.0，attained_completion=0.8625000002000001，n_case_clusters=16，cost=[25.15209999945571, 2.5196428571428573, 141.872499995, 0.0]，per_case_first_attainment_median=30.0。
+- joint_n8：retain population_deadline=32.0，attained_completion=0.8364497528830313，n_case_clusters=16，cost=[24.995902617609097, 2.5125, 141.59778555738603, 0.0]，per_case_first_attainment_median=30.0；hide_old population_deadline=32.0，attained_completion=0.8150000000000001，n_case_clusters=16，cost=[24.864333334309073, 2.5125, 140.98833333923335, 0.0]，per_case_first_attainment_median=30.0。
+- joint_nominal (robust alias; duplicate)：retain population_deadline=31.0，attained_completion=0.8625，n_case_clusters=16，cost=[24.614325564434246, 2.5125, 139.13791835915555, 0.0]，per_case_first_attainment_median=29.5；hide_old population_deadline=31.0，attained_completion=0.8187499985，n_case_clusters=16，cost=[24.580333334749074, 2.5125, 138.050000009, 0.0]，per_case_first_attainment_median=30.0。
+- joint_robust：retain population_deadline=31.0，attained_completion=0.8625，n_case_clusters=16，cost=[24.614325564434246, 2.5125, 139.13791835915555, 0.0]，per_case_first_attainment_median=29.5；hide_old population_deadline=31.0，attained_completion=0.8187499985，n_case_clusters=16，cost=[24.580333334749074, 2.5125, 138.050000009, 0.0]，per_case_first_attainment_median=30.0。
+- shuffled_robust：retain population_deadline=31.0，attained_completion=0.8386266564027467，n_case_clusters=16，cost=[24.563213573297375, 2.5125, 138.1138639374769, 0.0]，per_case_first_attainment_median=30.0；hide_old population_deadline=31.0，attained_completion=0.8187499985，n_case_clusters=16，cost=[24.580333334749074, 2.5125, 138.050000009, 0.0]，per_case_first_attainment_median=30.0。
+- time_factorized：retain population_deadline=31.0，attained_completion=0.8625，n_case_clusters=16，cost=[24.760499999999716, 2.525, 138.9875, 0.0]，per_case_first_attainment_median=29.0；hide_old population_deadline=33.0，attained_completion=0.8625，n_case_clusters=16，cost=[25.094499999999712, 2.525, 141.25, 0.0]，per_case_first_attainment_median=28.0。
+
+学习曲线与局部误差
+level=basic（completion deadline=30.0）：
+- n8：method=joint_n8，available=True，population_curve_error=0.0011818390172449868，completion=1.0。
+- n16：method=joint_n16，available=True，population_curve_error=0.0016070607240861801，completion=1.0。
+- nfull：method=joint_robust，available=True，population_curve_error=0.001002156395589419，completion=1.0。
+level=variable（completion deadline=30.0）：
+- n8：method=joint_n8，available=True，population_curve_error=0.007146206604375898，completion=1.0。
+- n16：method=joint_n16，available=True，population_curve_error=0.007783938862317309，completion=1.0。
+- nfull：method=joint_robust，available=True，population_curve_error=0.005704455346808912，completion=1.0。
+level=stress（completion deadline=30.0）：
+- n8：method=joint_n8，available=True，population_curve_error=0.04469717983607534，completion=0.5821428571428572。
+- n16：method=joint_n16，available=True，population_curve_error=0.048561469945930504，completion=0.5524621212121212。
+- nfull：method=joint_robust，available=True，population_curve_error=0.035538858859223935，completion=0.6375。
+- window_max_error 同时显示 population_curve_max_error 与 case_realization_discrepancy_max_error；二者都不是置信区间。
+
+失败、压力档与限制
+- execution records=1920，failed records=21，call statuses={'completed': 5304, 'coverage_gap': 141}，recoveries=21，retries=21。
+- 压力档 execution counts={'basic': 640, 'variable': 640, 'stress': 640}。
+- predictions_unchanged=True；real_hardware=False。
+- 本报告不把 retrospective_best_library 当作全球能力上界；它只是同一树库内的事后乐观参考。
+- full_history 是同 public interface/tree library 的强 baseline；当前 joint_nominal 按 method_label_audit 标为 robust alias/一致性重复，不是独立 Bayes 点规划基线。
+- C 主结果先按 population_weight 聚合 measured 完成率曲线，再取总体首次达到 0.8 的预算点、attained_completion 和同点成本；per_case_first_attainment 仅作为另存的描述性字段，不能替代总体目标。
+- 若总体目标未达到 0.8，population_target.deadline 为 unattainable；不做等完成率外推，也不强行单调化曲线。
+
+D：固定模式四格 Gamma(T)
+- level=basic, rho=-0.8：Gamma measured/predicted mean abs error=0.008667247386759665，max abs error=0.14464285714285718，all four cells=True。
+- level=basic, rho=0.0：Gamma measured/predicted mean abs error=0.011051829268292686，max abs error=0.25520833333333337，all four cells=True。
+- level=basic, rho=0.8：Gamma measured/predicted mean abs error=0.00595238095238097，max abs error=0.10476190476190461，all four cells=True。
+- level=variable, rho=-0.8：Gamma measured/predicted mean abs error=0.040853658536585416，max abs error=0.35625000000000007，all four cells=True。
+- level=variable, rho=0.0：Gamma measured/predicted mean abs error=0.033282520325203256，max abs error=0.375，all four cells=True。
+- level=variable, rho=0.8：Gamma measured/predicted mean abs error=0.03872677119628339，max abs error=0.5544642857142859，all four cells=True。
+- level=stress, rho=-0.8：Gamma measured/predicted mean abs error=0.09639953542392546，max abs error=0.5205357142857142，all four cells=True。
+- level=stress, rho=0.0：Gamma measured/predicted mean abs error=0.046874999999999986，max abs error=0.390625，all four cells=True。
+- level=stress, rho=0.8：Gamma measured/predicted mean abs error=0.09203687572589996，max abs error=0.4773809523809523，all four cells=True。
+- 这些结果是当前 finite-kernel/cartesian-lag 实验的执行审计，不等于真实 B-mode、接触或硬件保证；需在主运行和实测数据上复核。

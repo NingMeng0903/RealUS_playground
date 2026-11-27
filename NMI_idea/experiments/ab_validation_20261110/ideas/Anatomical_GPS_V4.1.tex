@@ -1,0 +1,1224 @@
+% !TeX program = xelatex
+\documentclass[UTF8,11pt,a4paper,fontset=fandol]{ctexart}
+
+\usepackage[margin=23mm,headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm,mathtools}
+\usepackage{booktabs,tabularx,array,longtable}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage{hyperref,xurl,fancyhdr,enumitem}
+\hypersetup{hidelinks}
+\setlength{\emergencystretch}{3em}
+\setlength{\parskip}{0.35em}
+\linespread{1.04}
+\setlist{nosep,leftmargin=2em}
+\numberwithin{equation}{section}
+
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{lemma}[theorem]{引理}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+\newtheorem{assumption}[theorem]{假设}
+\newtheorem{remark}[theorem]{说明}
+\renewcommand{\proofname}{证明}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\Id}{\mathrm I}
+\newcommand{\dd}{\mathrm d}
+\newcommand{\T}{^{\mathsf T}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\Log}{Log}
+\DeclareMathOperator{\Retr}{Retr}
+\DeclareMathOperator{\argmin}{arg\,min}
+\DeclareMathOperator{\grad}{grad}
+\DeclareMathOperator{\clip}{clip}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Anatomical GPS V4}
+\fancyhead[R]{\small 可行实现族的任务保持运输}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+\title{
+Anatomical GPS V4：\\
+形变任务实现族的路径条件运输\\[2mm]
+\large Path-Conditioned Transport of Anatomically Indexed
+Feasible Realization Families
+}
+\author{NMI研究构造稿}
+\date{2026年10月7日}
+\maketitle
+
+\begin{abstract}
+本稿在V3的解剖任务表示、有限隐式实现单元和连续扫描走廊基础上，
+将研究对象明确为：沿给定人体几何变化，连续运输一族具有相同成像
+语义的机器人实现，而非仅重放或修复一条旧轨迹。
+解剖地址定义不变任务身份，当前物理度量决定切向、平面及短轴关系，
+实际运动学、声窗和配置约束定义可行实现集合。
+本文构造物理代价一致的任务保持提升，以可微IRD选择允许的冗余运动，
+并给出局部形变方向可行集及其对偶障碍。
+在明确的正则性、速度选择和有限管域条件下，证明共同提升流能够运输
+整个初始实现族，并保持扫描截面的连续性。
+进一步说明终点相同不意味着运输结果相同，给出一个可精确计算的
+超声视角例子、一个边界导致整族运输终止的例子，以及与V3有限单元
+结合的验证流程。
+连接、流、切锥、凸优化与认证延拓均具有成熟理论基础；本文不声称
+这些数学工具首次出现。拟议研究增量在于由内部解剖任务生成并有限
+验证可行实现族的共同运输。概率目标后验和真实执行安全分别说明，
+不把模型条件结论等同于患者安全。
+\end{abstract}
+
+\noindent\textbf{关键词：}
+解剖任务表示；任务保持运输；形变；约束流形；
+连续扫描；可微可达性；路径依赖。
+
+\begin{center}
+\fbox{\begin{minipage}{0.94\linewidth}\small
+\textbf{交付与验证状态。}
+本稿包含解析推导及可以逐式检查的例子。
+本轮文件执行环境不可用，未进行LaTeX编译、数值脚本运行或机器人实验。
+文中数值仅由给出的解析式计算，不是患者或机器人结果。
+不得将V3已有的实验、单元测试或代码存在性记作V4的已完成验证。
+\end{minipage}}
+\end{center}
+
+\clearpage
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
+
+% ============================================================
+\section{V4究竟比V3增加什么？}
+
+V3已经定义了从少量自由参数到接触位置、探头姿态和机器人逆解的
+有限隐式提升。它也已经给出了有限模型差异下的根存在性与复用条件。
+因此，重新把旧可行集合称作纤维，或把旧轨迹称作截面，不能算作
+V4的实质贡献。
+
+V4增加的对象是一个\emph{共同运输规则}。
+它需要回答：从同一初始实现族出发，在同一人体变化路径下，
+每个实现如何移动，哪些实现能够一直保持任务，何时由于实际约束
+而无法继续，以及不同变化顺序为什么可能产生不同执行结果。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{p{24mm}YY}
+\toprule
+问题 & V3 & V4\\
+\midrule
+基本对象 & 一个context中的有限可行实现单元
+& 沿context路径演化的可行实现族\\
+选择规则 & 走廊搜索及单元内优化
+& 共同的任务保持提升与受约束冗余选择\\
+有限保证 & 每个参数盒中的唯一实现
+& 整个初始族在一个有限形变区间中的共同流\\
+失败含义 & 未认证、排除或无连接
+& 进一步区分任务提升障碍、速率障碍及运输域终止\\
+历史信息 & 模型版本、证书、门点
+& 还要保存运输规则、路径及当前分支\\
+\bottomrule
+\end{tabularx}
+\caption{V4不删除V3，而是把V3单元用作共同运输的坐标与验证工具。}
+\end{table}
+
+本文保持UltraPoC为独立的物理接触执行模块。
+不新增DiT、diffusion、人体生物力学规则或一般RMPflow控制架构。
+主体采用微分运动学的几何提升和凸约束速度选择；空间GP仅用于目标
+信念和相应任务容差。
+
+% ============================================================
+\section{最近理论基础及不可声称的创新}
+
+iTaSC已经通过几何闭环统一特征、不确定参数、测量和速度控制
+\cite{itasc}。冗余机器人的局部微分逆、重复性和Lie括号条件具有
+直接先例\cite{shamir,tchon}。在正则、适当的投影下，将总空间视为
+局部纤维化空间属于微分拓扑基础；Ehresmann型结论需要额外的
+适当性、无边界或边界相容条件，不能仅由Jacobian满秩推出
+全局运输\cite{lee,rabier}。
+
+可生存性和控制障碍函数研究边界上的可行速度与前向不变性
+\cite{ames}。自运动流形方法已经沿任务轨迹组织冗余解和连续路径
+\cite{smm}。参数化Krawczyk方法已经认证随参数变化的解路径
+\cite{duff}。
+
+因此，以下主张不能单独算新颖：
+\begin{quote}
+``定义一个fiber bundle''；
+``伪逆加零空间梯度''；
+``人体变化后沿约束求导''；
+``使用CBF或区间Newton''；
+``局部都满足任务但闭合路径不回到初始构型''。
+\end{quote}
+
+本稿的研究对象更具体：
+\begin{quote}
+\textbf{由不变解剖地址和真实成像关系生成的实现族，
+如何被一个共同规则沿有限人体变化运输，
+以及哪些失败能够由实际任务与能力条件明确诊断。}
+\end{quote}
+
+这是一项候选研究构造，不是已经完成的首创性证明。
+若最终实现只是逐点逆运动学加常规安全过滤，不能兑现上述区别。
+
+% ============================================================
+\section{解剖地址与物理任务}
+
+\subsection{地址不变不等于物理度量不变}
+
+设参考解剖域为$\mathcal A$，局部地址为$\xi$，
+当前形态或模型context为$c$。当前世界位置为
+\begin{equation}
+ p_c=\Psi_c(\xi),\qquad
+ J_c=D_\xi\Psi_c,\qquad
+ G_c=J_c^\top J_c.
+ \label{eq:anatomy}
+\end{equation}
+同一模型材料位置可以保留地址$\xi$，但长度、角度及正交关系由
+$G_c$决定。跨患者仅能讨论解剖语义对应，不能将其称作同一物质粒子，
+更不能把旧患者的后验当作新患者真值。
+
+给定解剖切向$v$，世界切向按$J_cv$运输；
+协向量按$J_c^{-\top}\alpha$运输。
+如果任务要求切面在当前物理空间中垂直于血管，
+应取
+\begin{equation}
+ \boxed{\alpha_c=G_cv,\qquad
+ J_c^{-\top}\alpha_c=J_cv.}
+ \label{eq:typed}
+\end{equation}
+固定材料平面和固定短轴要求一般不是同一件事。
+
+\subsection{不规定人体形变生成机制}
+
+输入为当前估计对应及有效域，而不是手写的人体形变定律。
+主理论条件于一条给定的模型路径$c(\tau)$。
+它可以来自真实观测的形态序列，或明确声明的模型插值。
+
+虚拟模型插值不等于真实患者经历的运动。
+如果患者已经处于终态$c_1$，中间context仅用于计算最终扫描族，
+不能将中间context对应的位姿当作当前患者上的有效执行参考。
+
+分片线性FEM图、角度接缝、低阶曲线和姿态对数分支必须分域处理。
+主定理只在所需导数存在且有界的规则区域使用。
+没有映射或误差界时，可以生成候选，不能宣称得到真实患者保证。
+
+% ============================================================
+\section{由内部目标生成可行实现族}
+
+\subsection{一个明确的短轴扫描任务}
+
+设当前内部中心线为$p_c(s)$，$s\in I=[s_0,s_1]$为材料进度，
+单位切向为
+\begin{equation}
+ t_c(s)=\frac{\partial_s p_c(s)}
+ {\norm{\partial_s p_c(s)}}.
+\end{equation}
+皮肤局部嵌入为$S_c(u)$，$u\in\R^2$，接触点为$o=S_c(u)$。
+
+使用声学框架：$y_P$为切片法向，$z_P$为正深度，
+$x_P$为图内横向。要求目标位于主声束且取得短轴切片时，
+接触点满足
+\begin{equation}
+ \boxed{
+ f(s,u,c)=t_c(s)^\top[S_c(u)-p_c(s)]=0.
+ }
+ \label{eq:shortaxis}
+\end{equation}
+令
+\begin{equation}
+ b=\frac{p_c(s)-S_c(u)}
+ {\norm{p_c(s)-S_c(u)}}.
+\end{equation}
+在式\eqref{eq:shortaxis}上，$b\perp t_c$，因此
+\begin{equation}
+ R_P=[t_c\times b,\ t_c,\ b]\in SO(3).
+\end{equation}
+
+为在求根盒和导数计算中使用，应采用离流形的光滑正交延拓：
+\begin{equation}
+ \widetilde b=
+ \frac{(\Id-t_ct_c^\top)[p_c-S_c]}
+ {\norm{(\Id-t_ct_c^\top)[p_c-S_c]}}.
+\end{equation}
+要求分母在所用区域有正下界。不能将不正交矩阵直接送入
+$SE(3)$对数。
+
+\subsection{把机器人实现放进同一个约束}
+
+令$q$包含机械臂关节与rail，$x=(u,q)$。
+声学框架与FK工具框架之间使用实际标定。
+联合任务方程为
+\begin{equation}
+ h(s,x,c)=
+ \begin{bmatrix}
+ f(s,u,c)\\
+ \Log(T_P(s,u,c)^{-1}T_{\rm FK}(q))^\vee
+ \end{bmatrix}=0.
+ \label{eq:task}
+\end{equation}
+关节限位、碰撞、声窗、深度及模型有效范围写为
+\begin{equation}
+ g_j(s,x,c)\geq0.
+\end{equation}
+对七轴臂加rail，$x$有十个局部坐标，式\eqref{eq:task}
+通常有七个独立等式，所以固定$s,c$时剩余三维自由度。
+这只是规则区域的局部维数，不是全局拓扑保证。
+
+\begin{definition}[解剖索引的可行实现族]
+\begin{equation}
+ \boxed{
+ \mathcal F_c(s)=
+ \{x:h(s,x,c)=0,\quad g_j(s,x,c)\geq0\}.
+ }
+ \label{eq:family}
+\end{equation}
+总空间及投影为
+\begin{equation}
+ \mathcal E=\{(s,c,x):x\in\mathcal F_c(s)\},
+ \qquad
+ \pi(s,c,x)=(s,c).
+\end{equation}
+\end{definition}
+
+如果$D_xh$满行秩，无不等式边界的等式部分在局部具有规则纤维结构。
+带边界、断开分支或维数改变的整个$\mathcal E$不自动是全局纤维丛。
+
+\begin{definition}[扫描截面]
+固定context$c$下，一条扫描是连续映射
+$\sigma_c:I\to\mathcal X$，满足$\sigma_c(s)\in\mathcal F_c(s)$。
+\end{definition}
+
+% ============================================================
+\section{运输不是由两个终点唯一决定的}
+
+指定context路径$\gamma:\tau\mapsto c(\tau)$，并选定一个速度规则
+$V(s,x,\tau)$。对固定解剖地址$s$，定义
+\begin{equation}
+ \partial_\tau x=V(s,x,\tau),\qquad x(0)=x_0.
+ \label{eq:flow}
+\end{equation}
+若全过程位于相应可行族中，则得到
+\begin{equation}
+ \boxed{
+ \Pi_{\gamma,s}^{\tau}(x_0)=x(\tau).
+ }
+ \label{eq:transport}
+\end{equation}
+
+必须在记号中保留$\gamma$及选择规则。
+仅给出$c_0,c_1$通常不能决定唯一运输。
+同一可行族也允许许多不同的零空间运动。
+某条规则的运输失败，不等于所有任务保持运输均不存在。
+
+\begin{definition}[所选规则的运输域]
+\begin{equation}
+ \mathcal D_{\gamma,s}
+ =
+ \{x_0\in\mathcal F_{c(0)}(s):
+ \Pi_{\gamma,s}^{\tau}(x_0)
+ \text{在全部 }0\leq\tau\leq1\text{ 上存在且可行}\}.
+\end{equation}
+\end{definition}
+
+本文构造其可认证内域。
+没有全域覆盖和排除证明时，不声称算出了最大运输域。
+
+\begin{figure}[htbp]\centering
+\begin{tikzpicture}[
+ >=Latex,
+ box/.style={draw,rounded corners,align=center,
+ text width=35mm,minimum height=15mm,font=\small}]
+ \node[box] (a) at (0,0) {源任务实现族\\$\mathcal F_{c_0}(s)$};
+ \node[box] (b) at (5,0) {共同任务保持提升\\$\partial_\tau x=V$};
+ \node[box] (c) at (10,0) {运输后的实现子族\\$\Pi_{\gamma,s}(\mathcal D_{\gamma,s})$};
+ \draw[->] (a)--(b);
+ \draw[->] (b)--(c);
+ \node[align=center,font=\small,text width=125mm]
+ at (5,-1.6) {解剖地址$s$固定；任务语义固定；
+ 选择规则、路径与可行边界共同决定实际运动。};
+\end{tikzpicture}
+\caption{V4运输一族实现，而非为各个$s$独立选取终态IK解。}
+\end{figure}
+
+% ============================================================
+\section{物理代价一致的几何提升}
+
+\subsection{任务微分关系}
+
+记基变量$\beta=(s,c)$、其变化方向为$w=\dot\beta$，
+并定义
+\begin{equation}
+ A=D_xh,\qquad B=D_\beta h.
+\end{equation}
+任何任务保持速度$v=\dot x$满足
+\begin{equation}
+ \boxed{Av+Bw=0.}
+ \label{eq:tangent}
+\end{equation}
+
+此式是微分运动学基础，不因加入解剖context而自动成为新理论。
+真正需要确定的是：在这一仿射速度空间中，采用哪个共同选择。
+
+\subsection{不能在随人体移动的坐标中盲目最小化坐标速度}
+
+$x=(u,q)$中的$u$可能是身体附着坐标。此时$\dot u=0$不表示接触点
+在世界中不动。为定义物理代价，使用
+\begin{equation}
+ \Xi(\beta,x)=(S_c(u),q),\qquad
+ D=D_x\Xi,\qquad e_w=D_\beta\Xi\,w.
+\end{equation}
+选择固定的物理标度矩阵$W\succ0$，最小化
+\begin{equation}
+ \frac12\norm{Dv+e_w}_W^2.
+\end{equation}
+当$D$满列秩时，令
+\begin{equation}
+ G=D^\top WD\succ0,\qquad
+ v_{\rm ref}=-G^{-1}D^\top We_w.
+\end{equation}
+上式等价于最小化$\frac12\norm{v-v_{\rm ref}}_G^2$加常数。
+
+\begin{proposition}[基准任务保持提升]
+设$A$满行秩。定义
+\begin{equation}
+ A_G^\dagger=G^{-1}A^\top(AG^{-1}A^\top)^{-1},
+ \qquad N=\Id-A_G^\dagger A.
+\end{equation}
+则最小物理代价的任务保持速度为
+\begin{equation}
+ \boxed{
+ v_h=v_{\rm ref}
+ -A_G^\dagger(Av_{\rm ref}+Bw).
+ }
+ \label{eq:horizontal}
+\end{equation}
+所有任务保持速度为$v=v_h+N\zeta$。
+\end{proposition}
+
+\begin{proof}
+用拉格朗日乘子最小化二次代价并施加式\eqref{eq:tangent}，
+消去乘子得到式\eqref{eq:horizontal}。
+$AN=0$，且$v_h-v_{\rm ref}$在$G$度量下与$\ker A$正交，
+因此该解唯一并具有最小代价。
+\end{proof}
+
+在独立于context的物理坐标中，若$v_{\rm ref}=0$，
+式\eqref{eq:horizontal}退化为$-A_G^\dagger Bw$。
+一般情况下不能省略移动坐标产生的漂移。
+
+\subsection{表示一致性}
+
+对context相关换图$x'=\varphi(x,\beta)$，速度满足
+\begin{equation}
+ v'=D_x\varphi\,v+D_\beta\varphi\,w.
+\end{equation}
+同时运输物理映射$\Xi$、任务$h$及约束后，
+上述优化描述同一个物理速度，因此结果一致。
+只对矩阵使用逆转置、却遗漏$D_\beta\varphi\,w$，不是正确的动态换图。
+
+在无约束偏好、$v_h$对$w$线性且$w=0$时$v_h=0$的规则区域，
+这给出一个Ehresmann连接的具体选择。
+加入速度限制、单向能力偏好或活动集后，所用规则通常是受约束提升，
+不再是线性的几何连接；不能混用二者的结论。
+
+% ============================================================
+\section{IRD只选择允许的运动，不定义真实可行性}
+
+设$\rho(\beta,x)$是冻结参数的IRD能力代理。
+$d_x\rho$是协向量，其度量梯度为$G^{-1}d_x\rho$。
+
+无不等式限制时，可以选
+\begin{equation}
+ v=v_h+\kappa N G^{-1}d_x\rho,\qquad \kappa\geq0.
+ \label{eq:irdlift}
+\end{equation}
+由于$N$是$G$正交投影，
+\begin{equation}
+ d_x\rho(v-v_h)
+ =
+ \kappa\norm{NG^{-1}d_x\rho}_G^2\geq0.
+\end{equation}
+
+这只表示能力引导相对于同一基准运输具有非负的瞬时增量。
+完整变化率
+\begin{equation}
+ \dot\rho=D_\beta\rho\,w+d_x\rho(v_h)
+ +\kappa\norm{NG^{-1}d_x\rho}_G^2
+\end{equation}
+仍可能为负，因为人体变化可能迫使机器人进入能力更差的区域。
+
+用户IRD代码将其明确定义为可达裕量代理，而非碰撞证书。
+真实可行族由实际运动学、关节约束与适用的安全模型定义。
+除非另有保守误差证明，$\rho$只能指导选择，不能单独证明可行。
+
+若希望在$w=0$时运输保持恒等，可将能力增益设成
+$\kappa=\kappa_0\norm{w}_{G_{\rm base}}$。
+但同号能力上升在反向context路径中不自动反向，
+因此反走人体路径一般不是原运输的逆。
+
+% ============================================================
+\section{哪些形变方向能够被当前实现跟随？}
+
+\subsection{几何切锥与带速率的可行集合}
+
+在活动边界$g_j=0$处，任务保持和不越界要求
+\begin{equation}
+ Av=-Bw,\qquad
+ D_xg_j\,v+D_\beta g_j\,w\geq0.
+ \label{eq:activecone}
+\end{equation}
+在等式和活动不等式满足适当约束资格条件时，
+这是总可行集合切锥的线性表达。
+
+\begin{definition}[局部允许的基变化方向]
+\begin{equation}
+ \mathcal D_{\rm geom}(\beta,x)
+ =
+ \{w:\exists v\text{ 满足式\eqref{eq:activecone}}\}.
+\end{equation}
+\end{definition}
+没有速度上限时它是锥。
+加入$\dot q$等有界速率后得到$\mathcal D_{\rm rate}$，
+一般不再是锥，不能继续利用任意比例放大的性质。
+
+这个对象区分：
+\emph{当前目标有解}与\emph{当前实现能沿指定变化继续移动}。
+后者是运输所需的条件。
+
+\subsection{实现用的速度QP}
+
+为在内部也控制接近边界的速率，使用
+\begin{equation}
+ D_xg_jv+D_\beta g_jw\geq-\alpha_j g_j,
+ \qquad \alpha_j>0.
+ \label{eq:barrier}
+\end{equation}
+再加入实际速度范围$Dv\leq d$，记所得凸集合为$\mathcal K(\beta,x,w)$。
+
+\begin{equation}
+ \boxed{
+ \begin{aligned}
+ v^\star=\argmin_{v\in\mathcal K}\quad&
+ \frac12\norm{v-v_h}_G^2
+ -\kappa\,d_x\rho(v-v_h).
+ \end{aligned}
+ }
+ \label{eq:qp}
+\end{equation}
+
+$G\succ0$保证非空闭凸可行集上的唯一最优解。
+但唯一不等于在参数上自动光滑。
+整族流定理还需要局部Lipschitz选择；固定活动集的LICQ及适当正则性
+是一种充分条件。活动集转换必须检查，不能因QP每一步求解成功就
+宣称运输流全局可微。
+
+也可以在有限规则覆盖上构造平滑可行速度场：
+各局部速度在同一点满足相同的仿射任务关系和凸速度约束时，
+用非负、和为一的光滑权重组合，仍满足这些关系。
+这要求局部可行选择有可用余量，不是任意混合两个机器人位姿。
+
+\subsection{IRD相对基准的受约束改进}
+
+令$v_0$为式\eqref{eq:qp}中$\kappa=0$的解。
+以$v_0$作为可行比较点，由最优性和强凸性得到
+\begin{equation}
+ \kappa\,d_x\rho(v^\star-v_0)
+ \geq \frac12\norm{v^\star-v_0}_G^2\geq0.
+\end{equation}
+它给出相对于同一约束下最小改动规则的局部能力增量；
+不证明IRD的全局最优，也不证明未来整条路径都改善。
+
+\subsection{对偶障碍，而不是仅返回求解失败}
+
+将局部条件写成
+\begin{equation}
+ Av=r(w),\qquad Qv\leq d(w).
+\end{equation}
+根据Farkas型替代关系，不可行当且仅当存在
+$\lambda$及$\mu\geq0$使
+\begin{equation}
+ \boxed{
+ A^\top\lambda+Q^\top\mu=0,\qquad
+ \lambda^\top r(w)+\mu^\top d(w)<0.
+ }
+ \label{eq:dual}
+\end{equation}
+该见证可以由线性规划求出并独立检查。
+
+\begin{proof}
+若存在可行$v$，则
+$0=\lambda^\top Av+\mu^\top Qv
+\leq\lambda^\top r+\mu^\top d<0$，矛盾。
+反向是线性可行系统的分离定理。
+\end{proof}
+
+必须区分：
+对\emph{真实活动边界切条件}和速度界的见证，否定该状态下所要求的
+可微提升；对式\eqref{eq:barrier}的见证，可能只否定这个保守控制选择。
+两者都不自动证明终态纤维为空，也不排除提前改变冗余状态后成功。
+
+% ============================================================
+\section{核心有限结果：运输整个初始实现族}
+
+\begin{assumption}[共同运输的规则管域]
+给定$c:[0,1]\to\mathcal C$及紧致初始参数域$I\times K$。
+初始族$x_0(s,\zeta)$满足
+$x_0(s,\zeta)\in\mathcal F_{c(0)}(s)$。
+在包含其演化的共同有限管域中：
+\begin{enumerate}
+\item $h$和$g_j$具有所需连续导数，$D_xh$满行秩且远离所选图的奇异；
+\item 选择场$V(s,x,\tau)$局部Lipschitz于$x$，连续依赖$(s,\tau)$；
+\item $h_xV+h_c c'=0$；
+\item $g_{j,x}V+g_{j,c}c'\geq-\alpha_jg_j$；
+\item 解不会离开已验证的紧管域；该条件由边界条件或第
+\ref{sec:validated}节的有限包含检查建立，而不是从一次数值积分猜测。
+\end{enumerate}
+\end{assumption}
+
+\begin{theorem}[有限整族运输]
+在上述条件下，每个$(s,\zeta)\in I\times K$存在唯一解
+\begin{equation}
+ X(s,\zeta,\tau),\qquad
+ \partial_\tau X=V(s,X,\tau),\quad
+ X(s,\zeta,0)=x_0(s,\zeta),
+\end{equation}
+并且对整个参数域和$0\leq\tau\leq1$，
+\begin{equation}
+ \boxed{
+ X(s,\zeta,\tau)\in\mathcal F_{c(\tau)}(s).
+ }
+ \label{eq:familytheorem}
+\end{equation}
+解共同连续依赖$(s,\zeta,\tau)$。
+固定$s$时，流对初始实现是单射；在相应光滑条件下，它是到其像的
+光滑嵌入，而不必覆盖终态全部可行实现。
+\end{theorem}
+
+\begin{proof}
+局部存在唯一性由ODE理论给出；紧管域和有界性使解延续到整个区间。
+沿解有
+$\dd h/\dd\tau=h_xV+h_cc'=0$，故等式保持。
+由比较原理，
+$g_j(\tau)\geq e^{-\alpha_j\tau}g_j(0)\geq0$。
+连续依赖定理给共同连续性。
+若两个不同初态在某时刻合并，局部反向唯一性将推出初态相同，
+矛盾。光滑情况下，初态导数满足线性变分方程，其基本解矩阵可逆，
+因此局部嵌入性保持。
+\end{proof}
+
+\begin{remark}
+这不是一个新的Ehresmann定理。
+它是把流、约束保持和有限验证条件作用于解剖任务实现族的构造。
+约束边界可能只允许单向运输，终态也可能产生新的分支，
+因此不能声称$\mathcal F_{c_0}(s)$与$\mathcal F_{c_1}(s)$全局微分同胚。
+\end{remark}
+
+\subsection{整条扫描的连续性不靠逐点重新选解}
+
+若取初始扫描$\sigma_0(s)=x_0(s,\zeta(s))$，
+共同运输得到
+\begin{equation}
+ \sigma_\tau(s)=X(s,\zeta(s),\tau).
+\end{equation}
+初始$\zeta(s)$连续则新扫描连续。
+
+在一个共同光滑坐标中，令$M=\partial_s\sigma_\tau$。
+则
+\begin{equation}
+ \partial_\tau M
+ =
+ V_xM+V_s.
+\end{equation}
+若$\norm{V_x}\leq L_x$、$\norm{V_s}\leq L_s$，有
+\begin{equation}
+ \boxed{
+ \norm{M(\tau)}
+ \leq e^{L_x\tau}\norm{M(0)}
+ +\frac{L_s}{L_x}(e^{L_x\tau}-1).
+ }
+ \label{eq:sectionbound}
+\end{equation}
+$L_x=0$时使用极限$L_s\tau$。
+这给出扫描形状连续变化的定量界；
+没有这些正则性条件，独立逐点QP可能产生不可接受的分支或导数变化。
+
+% ============================================================
+\section{为什么不能只保存两个context终点？}
+
+\subsection{连接曲率与路径依赖}
+
+在无活动不等式、无独立垂直漂移的规则区域，
+设基方向$\beta^i$对应提升系数$L_i(x,\beta)$。
+总空间水平向量场为
+\begin{equation}
+ X_i=\partial_{\beta^i}+L_i.
+\end{equation}
+其括号的垂直分量为
+\begin{equation}
+ \boxed{
+ \Omega_{ij}
+ =
+ \partial_iL_j-\partial_jL_i
+ +D_xL_j\,L_i-D_xL_i\,L_j.
+ }
+ \label{eq:curvature}
+\end{equation}
+它描述小闭合基路径可能留下的冗余位移。
+
+若希望存在一个局部、与路径无关的解码器，
+并且它同时遵守这些水平选择，则混合偏导必须相容，
+因此需要$\Omega_{ij}=0$。
+在适当常秩和可积条件下可局部构造这种解码；
+即便局部曲率为零，全局单值性仍可能受到拓扑影响。
+
+上述理论与冗余机器人重复性研究直接相关
+\cite{shamir,tchon}，不是本文发现。
+V4使用它来约束GPS应该记录的内容：若选择最小运动或能力优化的
+运输规则，不应再默认结果只依赖人体终态。
+
+\subsection{一个完全解析的成像几何例子}
+
+取皮肤平面$S(a,b)=(a,b,0)$，源血管为$(s,0,-d)$。
+考虑解析映射
+\begin{equation}
+ \Phi_{c,\ell}(x,y,z)
+ =
+ \left(
+ \frac{x+\ell}{1+c^2},
+ \frac{c(x+\ell)}{1+c^2}+y,
+ z
+ \right).
+ \label{eq:analyticmap}
+\end{equation}
+其行列式为$1/(1+c^2)>0$。
+这是用于检验推导的模型，不是人体生物力学规则。
+
+当前中心线和切向为
+\begin{equation}
+ p_{c,\ell}(s)=
+ \left(
+ \frac{s+\ell}{1+c^2},
+ \frac{c(s+\ell)}{1+c^2},-d
+ \right),\qquad
+ t=\frac{(1,c,0)}{\sqrt{1+c^2}}.
+\end{equation}
+式\eqref{eq:shortaxis}等价于
+\begin{equation}
+ \boxed{h=a+cb-s-\ell=0.}
+ \label{eq:toy}
+\end{equation}
+
+在物理接触坐标$(a,b)$采用欧氏最小速度。
+令$D=1+c^2$，则$\ell$和$c$方向的水平提升分别为
+\begin{equation}
+ L_\ell=\frac{(1,c)^\top}{D},
+ \qquad
+ L_c=-\frac{b(1,c)^\top}{D}.
+\end{equation}
+计算得到
+\begin{equation}
+ \boxed{
+ \Omega_{\ell c}=\frac{(c,-1)^\top}{(1+c^2)^2},
+ \qquad [1,c]\Omega_{\ell c}=0.
+ }
+\end{equation}
+所以剩余变化确实在任务零空间中。
+
+从$c=\ell=0$出发，执行context矩形：
+$\ell$增加$\Delta\ell$，$c$增加$C$，
+再依次将$\ell$和$c$恢复到零。
+直接积分得到
+\begin{equation}
+ \boxed{
+ \Delta b=-\frac{\Delta\ell\,C}{\sqrt{1+C^2}},
+ \qquad \Delta a=0.
+ }
+ \label{eq:holonomyexact}
+\end{equation}
+人体模型最终完全相同，成像任务始终满足，但最小速度运输留下了
+不同接触实现。
+
+例如$\Delta\ell=0.04\,\mathrm m$、$C=0.5$时，
+$\Delta b\approx-17.89\,\mathrm{mm}$。
+这是解析几何数值，不是机器人测量。
+
+\subsection{路径独立与局部最小运动不能无条件兼得}
+
+在式\eqref{eq:toy}中保持$b$不变，并令
+$a=s+\ell-cb$，确实定义了一个局部路径独立的任务实现。
+但它一般不是欧氏最小速度提升。
+
+因此，不是``不存在可迁移表示''，
+而是不同选择具有不同性质：
+固定自由标签可以获得局部重复性；
+最小物理运动或IRD偏好可以降低当前代价，
+却可能产生路径依赖。
+GPS必须明确保存采用哪种规则，不能同时无条件声称所有优点。
+
+% ============================================================
+\section{一个有限可行运输及其真实终止边界}
+
+继续使用$\ell=0$的式\eqref{eq:toy}，附加局部允许接触域
+\begin{equation}
+ a\geq a_{\min},\qquad b\geq b_{\min},\qquad c\geq0.
+\end{equation}
+对固定$s$，可行实现存在的必要且充分条件为
+\begin{equation}
+ \boxed{
+ c\leq c_\star(s):=\frac{s-a_{\min}}{b_{\min}},
+ }
+ \label{eq:critical}
+\end{equation}
+假设$s\geq a_{\min}$且$b_{\min}>0$。
+它由$a+cb=s$直接得到，并可取$b=b_{\min}$达到。
+
+在边界$a=a_{\min},b=b_{\min}$处，
+\begin{equation}
+ \dot a\geq0,\qquad \dot b\geq0,\qquad
+ \dot a+c\dot b=\dot s-b_{\min}\dot c.
+\end{equation}
+故允许基方向必须满足
+\begin{equation}
+ \boxed{\dot s-b_{\min}\dot c\geq0.}
+ \label{eq:toycone}
+\end{equation}
+固定地址运输时$\dot s=0$，不能继续沿$\dot c>0$前进。
+这是一项真正的局部边界障碍，不是QP数值失败。
+
+\subsection{无约束最小运动会提前失败}
+
+取
+\begin{equation}
+ s=0.18\,\mathrm m,\quad
+ a_{\min}=0.10\,\mathrm m,\quad
+ b_{\min}=0.04\,\mathrm m,\quad
+ b_0=0.10\,\mathrm m.
+\end{equation}
+无约束水平运输满足
+\begin{equation}
+ b(c)=\frac{b_0}{\sqrt{1+c^2}},\qquad
+ a(c)=s-cb(c).
+\end{equation}
+它在$c=4/3$到达$a_{\min}$；
+但可行族一直存在到$c_\star=2$。
+
+所以，\emph{选定的无约束连接失效}不等于
+\emph{任务已经不可实现}。
+
+\subsection{一个运输整个初始区间的构造}
+
+令
+\begin{equation}
+ s\in[0.18,0.42]\,\mathrm m,\qquad
+ b_0\in[0.08,0.12]\,\mathrm m.
+\end{equation}
+定义共同运输
+\begin{equation}
+ \boxed{
+ \begin{aligned}
+ b(c;b_0)&=0.04+(b_0-0.04)(1-c/2)^2,\\
+ a(s,c;b_0)&=s-cb(c;b_0).
+ \end{aligned}
+ }
+ \label{eq:construct}
+\end{equation}
+对$0\leq c<2$，任务等式精确成立。
+又因为
+\begin{equation}
+ a-0.10
+ \geq
+ (1-c/2)
+ \left[
+ 0.08-(b_0-0.04)c(1-c/2)
+ \right]
+\end{equation}
+且$c(1-c/2)\leq1/2$，
+对$c\leq1.8$有统一下界
+\begin{equation}
+ a-0.10\geq0.004\,\mathrm m,\qquad
+ b-0.04\geq0.0004\,\mathrm m.
+\end{equation}
+因此，整个$s$区间和整个初始$b_0$区间都被共同运输，
+不是只检查一个初态或若干采样点。
+
+它由同一个场生成：
+\begin{equation}
+ \frac{\dd b}{\dd c}
+ =-\frac{b-b_{\min}}{1-c/2},\qquad
+ \frac{\dd a}{\dd c}
+ =-b-c\frac{\dd b}{\dd c}.
+\end{equation}
+在$c\leq1.8$时该场规则且有界。
+
+\subsection{为什么不能把保证延伸到临界点？}
+
+由式\eqref{eq:construct}，
+\begin{equation}
+ \frac{\partial b(c;b_0)}{\partial b_0}
+ =(1-c/2)^2.
+\end{equation}
+在$c=2$时整个初始$b_0$区间合并到$b_{\min}$，
+因此不再是单射的正则运输。
+相应速度场的状态导数也在$c\to2$时失去统一有界性。
+
+注意任务Jacobian$[1,c]$一直满行秩。
+失效来自\emph{不等式边界使可行族塌缩}，
+不是等式Jacobian必须先变奇异。
+对于最小$s$，$c>2$时该局部允许域内的实现确实为空。
+
+本例没有建模真实机械臂、实际IRD网络或组织声学。
+它是V4主张可被解析检验的有限实例。
+
+% ============================================================
+\section{怎样与V3有限单元结合实现}
+\label{sec:validated}
+
+\subsection{V3是运输坐标，而不是被删除的旧方案}
+
+V3提供局部自由变量$z$、从属变量$y$和认证提升
+$y=Y(z,c)$。
+V4在这些单元中表达共同运输场，再沿context方向推进整个初始族。
+
+不能在每个$s$独立重新选一个终态根，然后宣称得到了共同运输。
+单元之间必须保留V3的物理门点和分支一致性。
+
+\subsection{有限步的共同包含检查}
+
+设某一步起点族位于$X_0$，时间区间为$[0,\Delta]$，
+候选管盒为$X$。
+对所有相关$s$及context参数，用包含函数得到
+$V(X,[0,\Delta])$和Lipschitz上界$L$。
+若
+\begin{equation}
+ \boxed{
+ X_0+[0,\Delta]\,V(X,[0,\Delta])
+ \subseteq X,\qquad
+ \Delta L<1,
+ }
+ \label{eq:picard}
+\end{equation}
+则Picard算子在相应函数管域内为收缩，
+为每个起点和参数提供唯一的有限步解及共同包含范围。
+
+同时检查该管域上的任务提升关系、约束导数和模型有效性。
+其中任务等式可通过V3的精确隐式解码保持；
+数值ODE残差必须独立计入误差预算。
+用网格最大值替代真正包含界不构成认证。
+
+验证式积分和参数化根追踪有成熟基础\cite{duff}。
+本稿不声称一般高维问题具有多项式复杂度。
+
+\subsection{具有数值残差时}
+
+若近似路径满足
+\begin{equation}
+ \norm{\dot{\widehat x}-V(s,\widehat x,\tau)}
+ \leq\delta_V,
+ \qquad \norm{\widehat x(0)-x(0)}\leq e_0,
+\end{equation}
+且$\norm{V_x}\leq L$，则
+\begin{equation}
+ \norm{\widehat x(\tau)-x(\tau)}
+ \leq e^{L\tau}e_0+
+ \frac{\delta_V}{L}(e^{L\tau}-1).
+\end{equation}
+实际配置不等式需按其Lipschitz界收紧相应余量。
+该误差是计算误差，不是患者模型误差或真实跟踪误差；
+三者必须分别处理。
+
+\subsection{算法}
+
+\begin{enumerate}
+\item 读取Anatomical GPS中的目标、任务类型、源实现族及分支；
+      用当前材料映射生成$h,g$，不重放固定世界位姿。
+\item 指定context路径及其物理或虚拟含义；仅有两个终点时，
+      明确采用的插值，不能假装它是真实人体运动。
+\item 在V3单元中构造$A,B,G,v_{\rm ref}$及IRD梯度，
+      求可行提升或可验证的平滑近似。
+\item 通过式\eqref{eq:picard}运输整个起点族；
+      收紧后仍满足约束则存储新单元和运输映射。
+\item 若图或约束资格条件失效，换图或缩短步长；
+      若存在真实活动切条件的对偶障碍，记录局部障碍。
+\item 只有存在经过验证的连接器，才能转移到另一实现分支；
+      终态另有IK解不意味着可以无缝跳过去。
+\item 输出运输成功域、剩余未判定域、局部障碍及适用模型版本。
+      全局不可行仅由独立完整排除证据发布。
+\end{enumerate}
+
+% ============================================================
+\section{从模型运输到实际扫描}
+
+\subsection{扫描时间和运输参数不能混同}
+
+构造好的截面为$\sigma(s,\tau)$。
+若实际机器人沿$s(t)$执行，同时context确实沿$\tau(t)$变化，
+则
+\begin{equation}
+ \dot x
+ =
+ \sigma_s\dot s+\sigma_\tau\dot\tau.
+\end{equation}
+在相应二阶正则条件下，
+\begin{align}
+ \ddot x={}&
+ \sigma_{ss}\dot s^2+
+ 2\sigma_{s\tau}\dot s\dot\tau+
+ \sigma_{\tau\tau}\dot\tau^2\\
+ &+\sigma_s\ddot s+\sigma_\tau\ddot\tau.
+\end{align}
+这些导数和界用于选择可实现的扫描时序。
+
+虚拟重规划时，先计算终态$\sigma(s,1)$，再在当前人体模型上执行；
+不能在终态患者上执行$\tau<1$的虚拟中间位姿。
+人体真实运动是外生的，降低扫描$\dot s$不等于降低人体$\dot c$。
+
+\subsection{恢复反馈与DMP的关系}
+
+实际执行误差可通过相同任务函数加入
+\begin{equation}
+ Av=-Bw-Kh.
+\end{equation}
+在理想模型和可执行条件下，
+$\dot h=-Kh$，提供反应式恢复。
+存在建模或执行扰动时，应分析$\dot h=-Kh+d$的有界误差，
+不以DMP名称代替稳定性条件。
+
+因此，本稿的主体属于\emph{任务函数微分运动学＋受约束几何提升}，
+不是新的DMP或RMPflow。
+DMP、G-DMP或ProDMP可以提供偏好或比较执行器，但不负责定义
+可行实现族、运输域或跨分支连续性。
+UltraPoC继续负责其独立的接触执行职责。
+
+% ============================================================
+\section{目标概率与未来管道：保留，但不篡改解剖}
+
+\subsection{目标信念}
+
+沿参考血管保持法丛残差过程，例如
+\begin{equation}
+ (\mathcal D_s+\lambda)^3e=L_w\,w_s,
+\end{equation}
+对应Matérn-$5/2$核
+\begin{equation}
+ K(s,s')=
+ S_e\left(1+\lambda r+\frac{\lambda^2r^2}{3}\right)e^{-\lambda r},
+ \qquad r=|s-s'|.
+\end{equation}
+其状态空间等价属于成熟GP理论\cite{hartikainen}。
+分割观测必须来自实际切片交点、实际采集位姿与时间戳。
+没有新观测时，重新满足几何闭环不等于增加解剖证据。
+
+若需要更高阶名义几何导数，Matérn-$5/2$样本本身不自动满足所有
+高阶运输条件。可以使用足够光滑的名义几何及独立误差包络；
+不能偷偷把随机样本视为任意光滑。
+
+\subsection{名义等式与概率容差}
+
+名义任务可以采用后验均值构造$h=0$。
+真实目标误差通过任务容差或独立的可信集合处理，例如
+\begin{equation}
+ \mathcal F_c^\delta(s)=
+ \left\{
+ x:
+ \mathbb P\bigl(
+ \norm{h(s,x,c;\theta)}_W\leq\varepsilon
+ \mid\mathcal D
+ \bigr)\geq1-\delta,\quad
+ g_{\rm robot}\geq0
+ \right\}.
+\end{equation}
+这不是要求同一个动作对全部随机目标都满足精确等式。
+
+只在\emph{固定任务模型且不确定集合真正嵌套}时，
+可以由集合包含推出鲁棒可行实现族变大。
+一般Bayesian更新改变均值，可信集未必嵌套；
+不能宣称“方差变小必然释放更多自由度”。
+
+\subsection{目标分布与执行分布}
+
+正确关系为
+\begin{equation}
+ p_\pi(\theta,X\mid\mathcal D)
+ =
+ p(\theta\mid\mathcal D)\,
+ p_\pi(X\mid\theta,\mathcal D).
+\end{equation}
+第二项对每个$\theta$归一化，IRD不反向删除难以实现的目标假设。
+
+分别为每条真实目标样本求一条最优轨迹，只得到条件候选族。
+要称为未来可执行分布，必须使用同一因果策略，
+在每个时刻仅接收该时刻能够获得的模拟观测。
+有限节点的置信椭球也不自动成为整个连续时域的概率保证。
+
+% ============================================================
+\section{理论审查、验证设计和贡献边界}
+
+\subsection{本轮可以明确支持什么？}
+
+本文给出了：
+\begin{enumerate}
+\item 以解剖地址和成像关系索引的可行实现族；
+\item 处理移动坐标漂移的物理代价一致提升；
+\item 受任务、边界和速度限制的允许context方向及对偶障碍；
+\item 在声明的规则有限管域上的整族运输定理；
+\item 路径依赖的解析例子，以及不等式使整族运输终止的有限例子；
+\item 使用V3有限单元验证共同运输的实施路线。
+\end{enumerate}
+
+\subsection{本轮没有完成什么？}
+
+没有实现完整七关节机器人上的验证式运输器，
+没有运行新代码或真实扫描，没有证明任意人体变化下安全，
+也没有证明一般问题全局最优或多项式复杂度。
+没有确认“可行实现运输”这一抽象本身首次出现。
+
+\subsection{哪些对照最有决定性？}
+
+保持相同目标、分割、机器人和任务要求，比较：
+\begin{enumerate}
+\item 固定局部姿态运输；
+\item 新旧context独立逐点IK；
+\item V3静态走廊重建／证书复用；
+\item V4无不等式的最小代价提升；
+\item V4受约束共同提升，分别有无IRD偏好。
+\end{enumerate}
+主要指标为整段任务残差、约束最小余量、分支连续性、
+运输成功域、UNKNOWN覆盖和计算成本。
+同一context终点的不同路径还应检验式\eqref{eq:holonomyexact}所描述的
+路径依赖；不能要求一个本来非可积的最小代价规则无条件重复。
+
+长血管主实验可固定患者形态、建立源扫描族，再改变到另一静态形态
+并重建终态实现；动态人体跟随另设实验，避免混淆虚拟运输和物理运动。
+
+\subsection{最强审稿意见}
+
+审稿人可能指出：
+``这是微分逆、CBF和认证延拓在一个新的任务约束上的应用。''
+
+这项批评不能靠名称消除。
+V4必须证明整族表示和运输，相比独立重规划与通用参数化追踪，
+确实具有不可替代的计算或保证收益。
+例如：共同运输域的有效计算、可靠的局部障碍分类、
+较少重建代价下保持整段任务关系，以及人体路径依赖的正确处理。
+
+若只实现了$\dot x=-h_x^\dagger h_c\dot c+N\nabla\rho$，
+则尚未兑现V4；这条公式本身具有非常直接的成熟先例。
+
+% ============================================================
+\section{结论}
+
+Anatomical GPS不应被理解成一张固定姿态表。
+它定义的是不变解剖身份与任务关系，而当前人体、声窗和机器人状态
+共同决定一族实现。
+
+V4的构造是：
+\begin{equation}
+ \boxed{
+ \mathcal F_{c_0}(s)
+ \supseteq\mathcal D_{\gamma,s}
+ \xrightarrow{\ \Pi_{\gamma,s}\ }
+ \mathcal F_{c_1}(s),
+ }
+\end{equation}
+其中运输只承诺在已认证初始域、指定context路径和选定规则上成立。
+它可以运输一条扫描，也可以运输一整族扫描实现。
+
+最重要的边界是：
+\begin{quote}
+\textbf{同一解剖地址不意味着唯一实现；
+终态可达不意味着沿当前变化可跟随；
+终点相同不意味着运输结果相同；
+局部提升存在不意味着整族可以无限延拓。}
+\end{quote}
+
+这些边界使GPS保存的对象、IRD的作用和V3有限验证工具具有一致含义。
+本稿提供的是可继续实现和审查的条件性构造，而不是以新术语替代已有
+微分几何，也不是对真实患者安全的无条件声明。
+
+% ============================================================
+\begin{thebibliography}{99}
+
+\bibitem{itasc}
+J. De Schutter, T. De Laet, J. Rutgeerts, W. Decré, R. Smits,
+E. Aertbeliën, K. Claes, and H. Bruyninckx.
+Constraint-Based Task Specification and Estimation for Sensor-Based
+Robot Systems in the Presence of Geometric Uncertainty.
+\emph{The International Journal of Robotics Research},
+26(5):433--455, 2007.
+\url{https://doi.org/10.1177/0278364907078091}.
+
+\bibitem{shamir}
+T. Shamir and Y. Yomdin.
+Repeatability of Redundant Manipulators: Mathematical Solution of the Problem.
+\emph{IEEE Transactions on Automatic Control},
+33(11):1004--1009, 1988.
+\url{https://doi.org/10.1109/9.14412}.
+
+\bibitem{tchon}
+K. Tchoń.
+Repeatable, extended Jacobian inverse kinematics algorithm for mobile manipulators.
+\emph{Systems \& Control Letters}, 55(2):87--93, 2006.
+\url{https://doi.org/10.1016/j.sysconle.2005.05.004}.
+
+\bibitem{lee}
+J. M. Lee.
+\emph{Introduction to Smooth Manifolds}.
+Second edition, Springer.
+\url{https://doi.org/10.1007/978-1-4419-9982-5}.
+
+\bibitem{rabier}
+P. J. Rabier.
+Ehresmann fibrations and Palais--Smale conditions for morphisms of Finsler manifolds.
+\emph{Annals of Mathematics}, 146(3):647--691, 1997.
+\url{https://doi.org/10.2307/2952457}.
+
+\bibitem{ames}
+A. D. Ames, S. Coogan, M. Egerstedt, G. Notomista,
+K. Sreenath, and P. Tabuada.
+Control Barrier Functions: Theory and Applications.
+2019.
+\url{https://arxiv.org/abs/1903.11199}.
+
+\bibitem{smm}
+M. Fabregat-Jaén, A. Peidró, M. Colombo, P. Rocco, and Ó. Reinoso.
+Topological and spatial analysis of self-motion manifolds for global
+redundancy resolution in kinematically redundant robots.
+\emph{Mechanism and Machine Theory}, 210:106020, 2025.
+\url{https://doi.org/10.1016/j.mechmachtheory.2025.106020}.
+
+\bibitem{duff}
+T. Duff and K. Lee.
+Certified homotopy tracking using the Krawczyk method.
+ISSAC 2024.
+\url{https://arxiv.org/abs/2402.07053}.
+
+\bibitem{hartikainen}
+J. Hartikainen and S. Särkkä.
+Kalman filtering and smoothing solutions to temporal Gaussian process regression models.
+\emph{IEEE International Workshop on Machine Learning for Signal Processing}, 2010.
+\url{https://doi.org/10.1109/MLSP.2010.5589113}.
+
+\bibitem{v3}
+NMI.
+Anatomical GPS V3: 从不变解剖地址到任务保持的有限可行扫描.
+用户项目研究稿，2026年10月7日。
+本文引用其任务关系、有限隐式单元与分支门点作为V4输入，
+不将V3未实现的完整验证器视为已存在。
+
+\bibitem{ird}
+NingMeng0903.
+RealUS\_playground, ird\_playground/README.md.
+核查版本：
+\texttt{cd6b0cea1ae1983e55c1c732d0429b1bfd32218a}.
+\url{https://github.com/NingMeng0903/RealUS_playground/blob/cd6b0cea1ae1983e55c1c732d0429b1bfd32218a/ird_playground/README.md}.
+
+\end{thebibliography}
+\end{document}

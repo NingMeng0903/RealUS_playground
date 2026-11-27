@@ -1,0 +1,247 @@
+{
+  "A": {
+    "analytic_exact_negative_control": {
+      "methods": {
+        "analytic_geometry": {
+          "error": 0.04133134632557814,
+          "charged": 0.042649806738190216
+        },
+        "canonical_learned_residual": {
+          "error": 0.04133134632557814,
+          "charged": 0.042649806738190216
+        },
+        "online_local_jacobian_calibration": {
+          "error": 0.042464187498889985,
+          "charged": 0.08779978964814455
+        },
+        "oracle_response_reference": {
+          "error": 0.04133134632557814,
+          "charged": 0.042649806738190216
+        }
+      },
+      "learned_minus_analytic": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ]
+    },
+    "context_dependent_response_shift": {
+      "methods": {
+        "analytic_geometry": {
+          "error": 0.08888472524902882,
+          "charged": 0.0902031856616409
+        },
+        "canonical_learned_residual": {
+          "error": 0.04839566095230903,
+          "charged": 0.049797043349538134
+        },
+        "online_local_jacobian_calibration": {
+          "error": 0.047730146946623135,
+          "charged": 0.09314856762766945
+        },
+        "oracle_response_reference": {
+          "error": 0.04647483530755711,
+          "charged": 0.04790438567461284
+        }
+      },
+      "learned_minus_analytic": -0.0404890642967198,
+      "ci95": [
+        -0.056378367568082385,
+        -0.026709149843249326
+      ]
+    }
+  },
+  "B": {
+    "n_scenarios": 72,
+    "independent_optimal_value_max_error": 7.105427357601002e-15,
+    "independent_outcome_accounting": {
+      "A_full_belief_greedy": {
+        "total_loss": 8.64067820378939,
+        "success": 0.7482114078761116,
+        "wrong_identity": 0.21012192545722175,
+        "explicit_failure": 0.041666666666666664,
+        "invalid_failure": 0.0,
+        "movement_m": 0.05713713804360284,
+        "observations": 1.8340285738461537,
+        "movement_time": 2.8568569021801427,
+        "observation_cost": 0.7336114295384617,
+        "proxy_cost": 0.014438029593019756,
+        "outcome_mass": 1.0
+      },
+      "A_same_horizon_open_loop": {
+        "total_loss": 8.937462723650933,
+        "success": 0.7417004664069812,
+        "wrong_identity": 0.21466453062135896,
+        "explicit_failure": 0.04363500297165985,
+        "invalid_failure": 0.0,
+        "movement_m": 0.05789674975626391,
+        "observations": 2.1508094414727847,
+        "movement_time": 2.8948374878131955,
+        "observation_cost": 0.8603237765891136,
+        "proxy_cost": 0.016310787388248784,
+        "outcome_mass": 1.0
+      },
+      "entropy_information": {
+        "total_loss": 10.064796183992392,
+        "success": 0.7348211117861823,
+        "wrong_identity": 0.14007923838167904,
+        "explicit_failure": 0.12509964983213873,
+        "invalid_failure": 0.0,
+        "movement_m": 0.07424507296094573,
+        "observations": 2.584684725760185,
+        "movement_time": 3.7122536480472865,
+        "observation_cost": 1.033873890304074,
+        "proxy_cost": 0.015090881364675271,
+        "outcome_mass": 1.0
+      },
+      "B_observation_contingent": {
+        "total_loss": 8.534428680684316,
+        "success": 0.7665010844129821,
+        "wrong_identity": 0.1745460009361481,
+        "explicit_failure": 0.0589529146508697,
+        "invalid_failure": 0.0,
+        "movement_m": 0.06028630483797694,
+        "observations": 2.0885956280176696,
+        "movement_time": 3.014315241898847,
+        "observation_cost": 0.8354382512070678,
+        "proxy_cost": 0.014696875838045714,
+        "outcome_mass": 1.0
+      },
+      "B_without_capability": {
+        "total_loss": 9.137739887002056,
+        "success": 0.7551523543564854,
+        "wrong_identity": 0.13848836430743516,
+        "explicit_failure": 0.0,
+        "invalid_failure": 0.10635928133607947,
+        "movement_m": 0.06681784240444524,
+        "observations": 2.1979338414558054,
+        "movement_time": 3.3408921202222617,
+        "observation_cost": 0.8791735365823224,
+        "proxy_cost": 0.020721317327178645,
+        "outcome_mass": 1.0
+      },
+      "B_without_dird_proxy": {
+        "total_loss": 8.534428680684316,
+        "success": 0.7665010844129821,
+        "wrong_identity": 0.1745460009361481,
+        "explicit_failure": 0.0589529146508697,
+        "invalid_failure": 0.0,
+        "movement_m": 0.06028630483797694,
+        "observations": 2.0885956280176696,
+        "movement_time": 3.014315241898847,
+        "observation_cost": 0.8354382512070678,
+        "proxy_cost": 0.014696875838045714,
+        "outcome_mass": 1.0
+      },
+      "B_collapsed_belief": {
+        "total_loss": 10.543903589848231,
+        "success": 0.6035002434359249,
+        "wrong_identity": 0.2992775343418528,
+        "explicit_failure": 0.09722222222222222,
+        "invalid_failure": 0.0,
+        "movement_m": 0.04490368031729816,
+        "observations": 0.9027777777777778,
+        "movement_time": 2.2451840158649086,
+        "observation_cost": 0.3611111111111111,
+        "proxy_cost": 0.007613331590709988,
+        "outcome_mass": 1.0
+      },
+      "full_history_exact_enumeration": {
+        "total_loss": 8.534428680684316,
+        "success": 0.7665010844129821,
+        "wrong_identity": 0.1745460009361481,
+        "explicit_failure": 0.0589529146508697,
+        "invalid_failure": 0.0,
+        "movement_m": 0.06028630483797694,
+        "observations": 2.0885956280176696,
+        "movement_time": 3.014315241898847,
+        "observation_cost": 0.8354382512070678,
+        "proxy_cost": 0.014696875838045714,
+        "outcome_mass": 1.0
+      }
+    },
+    "full_vs_no_proxy_changed_policy_count": 0,
+    "departure_above_12deg": [],
+    "reachable_departure_max_deg": 0.00181597654557714,
+    "important_scope": "Total loss is accumulated motion/sensing/proxy costs plus20 for failure, not deadline-truncated first acquisition time."
+  },
+  "motion": {
+    "kmp": {
+      "gain0": {
+        "common_missing_prefix": 147,
+        "world_detection_totals": [
+          0,
+          0
+        ],
+        "path_max_difference_mm": 0.0
+      },
+      "gain1": {
+        "common_missing_prefix": 147,
+        "world_detection_totals": [
+          0,
+          0
+        ],
+        "path_max_difference_mm": 84.39205432035443
+      },
+      "nominal_gain0": {
+        "mean_abs_u_mm": 16.992326428636865,
+        "visible_fraction": 0.9047619047619048
+      },
+      "nominal_gain1": {
+        "mean_abs_u_mm": 1.5151199743251553,
+        "visible_fraction": 1.0
+      },
+      "nominal_ruckig": {
+        "mean_abs_u_mm": 29.7109279446436,
+        "visible_fraction": 0.027210884353741496
+      }
+    },
+    "dmp": {
+      "gain0": {
+        "common_missing_prefix": 147,
+        "world_detection_totals": [
+          0,
+          0
+        ],
+        "path_max_difference_mm": 0.0
+      },
+      "gain1": {
+        "common_missing_prefix": 90,
+        "world_detection_totals": [
+          29,
+          0
+        ],
+        "path_max_difference_mm": 162.35731073971888
+      },
+      "nominal_gain0": {
+        "mean_abs_u_mm": 16.69725546728661,
+        "visible_fraction": 0.9047619047619048
+      },
+      "nominal_gain1": {
+        "mean_abs_u_mm": 1.677213209368841,
+        "visible_fraction": 1.0
+      },
+      "nominal_ruckig": {
+        "mean_abs_u_mm": 31.613839430240237,
+        "visible_fraction": 0.027210884353741496
+      }
+    },
+    "depth_saved_sample_recompute": {
+      "stock_skin_d_max": 0.9543755054473877,
+      "stock_skin_d_mean": 0.4756170629989356,
+      "corrected_skin_d_max": 0.0,
+      "h_theta_change_max": 0.0
+    }
+  },
+  "inputs_sha256": {
+    "core/a_response.py": "69a36a5c064b4f9d6c7ab0cd1c71d44d7bb45209915e92b7d9702efff953de8f",
+    "core/a_results.json": "40ecba41c876f5a0ced71d99b0720e1090eb10ff338e0ffe96eb55efdc9a9277",
+    "core/a_raw.npz": "98d38c8aba8eddd1046eee89a3e269c6300d7fd1ee42b3a83d2cbdbe44b11a76",
+    "core/b_planner.py": "07f78b95f3be7b1c044c8f824c1150e3df8d02c7c3582c4a0e753c4e7015fdfa",
+    "core/b_results.json": "15a28164ee8b4d02258b1b4a993482f329af7d8dc070b4cde4e86ece70db32ce",
+    "core/b_policies.json": "fe3b16add679ec5312a44b4edd3cb0bc8b63b40ac61961fd976064c4e73fe3f3",
+    "core/graph.json": "bb9d5c394a6a7bc0d374430f8de6a71ed91312155e0dc7ea783861d7ec7d0734",
+    "motion/metrics.json": "e61e7549f9dd6f5717b8a7e053fcd65871ed081547c677bfe3bc29337f9019ef",
+    "motion/depth_contract.json": "ec14fd587775ac8d5b5d1edca6d4c5dd63c8f8cbd2614709cf4f2364091f70fd"
+  }
+}

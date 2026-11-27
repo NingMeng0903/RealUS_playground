@@ -1,0 +1,47 @@
+{
+  "base_commit": "101325037dcb9c899dd4553245f5aa505a9caab9",
+  "scope": "source audit and asset-free synthetic software validation",
+  "original_source_files_checked_against_git_blob_sha": 49,
+  "original_source_files_changed": 0,
+  "new_anatomy_rollouts": 0,
+  "new_medical_success_rate": null,
+  "tests": {
+    "archive_counts_and_pair_grid": "passed",
+    "public_interface_contracts": "7 passed",
+    "recurrent_ppo_and_training_cli": "passed"
+  },
+  "assets": {
+    "REALUS_GB_ANATOMY": {
+      "path": "/workspace/scratch/f86d83a785dc/RealUS_playground/NMI_idea/experiments/ab_gallbladder_feedback_20261120/local_assets/registered_torso.npz",
+      "available": false,
+      "sha256": null,
+      "archived_sha256": "7987efe1bc8f57fc6aef35abf6132e254aaa003a990f3020e420918c86caeeac",
+      "matches_archive": null
+    },
+    "REALUS_GB_SMPLX": {
+      "path": "/workspace/scratch/f86d83a785dc/RealUS_playground/NMI_idea/experiments/ab_gallbladder_feedback_20261120/local_assets/SMPLX_MALE.npz",
+      "available": false,
+      "sha256": null,
+      "archived_sha256": "3613a4c7733be35a9bebf6d72c75f3cd3d2252419782ab7cb32fd2c51a446e72",
+      "matches_archive": null
+    },
+    "REALUS_GB_ATLAS": {
+      "path": "/workspace/scratch/f86d83a785dc/RealUS_playground/NMI_idea/experiments/ab_gallbladder_feedback_20261120/local_assets/thorax_atlas.npz",
+      "available": false,
+      "sha256": null,
+      "archived_sha256": "4f5a3828ff9bd073a5a6c43bd9a98bae5d9ba5d5006bdf972450cd8738202361",
+      "matches_archive": null
+    }
+  },
+  "source_sha256": {
+    "__init__.py": "d2bb557ec3340f276d6b66acf16c757b1426349a0a6b48ea00443c2b47b8ddf0",
+    "audit_archive.py": "2a591c519cb52f819630bb5bceee747c51faf95b6e1385f931d975230ff99c02",
+    "env.py": "cf3a740e59fd703d2af22213e9a8bb65edfb77bcc31c5e11527488864e9736ec",
+    "evaluate_rl.py": "50d772858ae477d1a5391c235b96cb5cfdb4d87b464ab57539caf0989bded3aa",
+    "recurrent_ppo.py": "e3901b2cc8467c7322c2b690365c01fb3dcba269516e4d4c3781d9982214ee56",
+    "test_contracts.py": "3933e32e7acb0e32761363853d9f0cea50be71027e5d5267da22e1a3f3cd2e08",
+    "test_ppo.py": "d5af63303b1db81e9dd4dda034e7632ca8e7ed59c2a20280feaadb52e898828c",
+    "train_rl.py": "09d14588d66eb19fd5098de814d31cab5370b63b5fb1301dc926ff76b7cbe9df"
+  },
+  "full_training_blocked_by": "missing original anatomy, SMPL-X, and thorax atlas NPZ files"
+}

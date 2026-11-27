@@ -1,0 +1,105 @@
+{
+  "arm": "teacher_ppo",
+  "seed": 276382173,
+  "summary": {
+    "episodes": 30720,
+    "complete": 30720,
+    "totals": {
+      "pass": 7259,
+      "wrong_delivery": 9496,
+      "correct_regions": 101107,
+      "wrong_regions": 14063,
+      "no_result_regions": 69150,
+      "correct_mm": 2593595.0863678046,
+      "capture_mm": 4154764.3176504443,
+      "captured_regions": 169430,
+      "time_s": 439386.00000000856,
+      "travel_mm": 10819007.501654439,
+      "frames": 4393860,
+      "probes": 140592,
+      "proposed": 187914,
+      "early_probes": 98279,
+      "early_stops": 116271,
+      "stop_opportunities": 167045,
+      "probe_ticks": 1547714,
+      "probe_mm": 3285534.7379182577,
+      "feedback_updates": 955325,
+      "dird_probes": 16846,
+      "reward": 139318.66767296073
+    },
+    "means": {
+      "pass": 0.23629557291666667,
+      "wrong_delivery": 0.30911458333333336,
+      "correct_regions": 3.291243489583333,
+      "wrong_regions": 0.45777994791666665,
+      "no_result_regions": 2.2509765625,
+      "correct_mm": 84.42692338436864,
+      "capture_mm": 135.24623429851707,
+      "captured_regions": 5.515299479166667,
+      "time_s": 14.302929687500278,
+      "travel_mm": 352.18123377781376,
+      "frames": 143.029296875,
+      "probes": 4.5765625,
+      "proposed": 6.1169921875,
+      "early_probes": 3.1991861979166667,
+      "early_stops": 3.78486328125,
+      "stop_opportunities": 5.437662760416667,
+      "probe_ticks": 50.38131510416667,
+      "probe_mm": 106.95100058327662,
+      "feedback_updates": 31.097819010416668,
+      "dird_probes": 0.5483723958333333,
+      "reward": 4.535112879979191
+    },
+    "attempted_by_skill": [
+      0,
+      77870,
+      110044
+    ],
+    "executed_by_skill": [
+      0,
+      58835,
+      81757
+    ],
+    "executable_fraction_by_skill": [
+      0.0,
+      0.7555541286759985,
+      0.7429482752353604
+    ],
+    "before_region_end_fraction": 0.6990369295550245,
+    "active_scan_count": 27407,
+    "teacher": {
+      "prefixes": 1905,
+      "positive_both_tapes": 2180,
+      "negative_both_tapes": 1425,
+      "feasible_probe_branches": 7441,
+      "mixed_or_zero": 3836,
+      "branch_mean_gain": 0.10500164583503048,
+      "observed_student_branch_mean_gain": 0.025186604290173553,
+      "full_tail_comparisons": 460,
+      "full_tail_sign_conflicts": 170
+    },
+    "source_counts": {
+      "0": 7680,
+      "2": 7680,
+      "1": 7680,
+      "3": 7680
+    },
+    "anatomy": {
+      "distinct_layouts": 25903,
+      "verified_recoverable_windows": 1248,
+      "ambiguous_window_traversed_at_least_once": 1
+    }
+  },
+  "recount": {
+    "complete_unique": 30720,
+    "excluded": 0,
+    "frames": 4393860,
+    "steps": 1523333,
+    "distinct_generated_layouts": 25903
+  },
+  "policy": "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_closed_loop_20261122_v1/training/seed_276382173/teacher_ppo/rollout_weights/0030720.npz",
+  "last_checkpoint": "/home/camp/Documents/Codex/2026-11-22/new-chat-3/outputs/leg_scan_cli_handoff/leg_closed_loop_20261122_v1/training/seed_276382173/teacher_ppo/batches/00119/checkpoint.pt",
+  "protocol_sha256": "0fa051e0a26f1aa48855beb8d7f98772a8f790ef1b072dc179b0f1d5b59f1e21",
+  "policy_sha256": "8218ecb7d71dd102cb4076ae850fadcd507cbda022a9450c1230688fdf9d19cc",
+  "checkpoint_sha256": "f9b1ced6b3612fb95b92557a8624f77c56a10387cb83a451ddf8901b0097fefe"
+}

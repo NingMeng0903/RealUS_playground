@@ -1,0 +1,41 @@
+{
+  "entries": 9,
+  "checks": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/scan_replay.py",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/run_scan_profile.py",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/test_scan_replay_profile.py",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/scan_tracking_profile.yaml",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/SCAN_PROFILE_USAGE.txt",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/profile_integration_check/results.json",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/profile_integration_check/trace.npz",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/qp_cross_track_fix/qp_replay_before_reference_factory.py",
+      "matches": true
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/dird/qp_replay.py",
+      "matches": true
+    }
+  ]
+}

@@ -1,0 +1,3051 @@
+{
+  "schema": "offline_current_rm75_joint_execution_v1",
+  "backend": "genesis_pd",
+  "physical_execution": false,
+  "trials": [
+    {
+      "case_id": "pose_0_width_1_length_1_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.3,
+      "entry_id": 0,
+      "dird_min_score": 4.719969272613525,
+      "nominal_scan_retiming_s": 5.223414213902928,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03756966216183436,
+      "preflight_collision_samples": 106,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.019999999999767,
+      "transition_duration_s": 2.6499999999999875,
+      "scan_duration_s": 10.369999999999779,
+      "wall_seconds": 13.169234885999686,
+      "exit_q": [
+        0.29982975125312805,
+        -1.3809046745300293,
+        -2.0074892044067383,
+        1.1280039548873901,
+        1.770154595375061,
+        1.5230696201324463,
+        0.9412453770637512,
+        2.060899496078491
+      ],
+      "exit_qdot": [
+        0.00045065631275065243,
+        0.0048393551260232925,
+        -0.007255392149090767,
+        0.002936234464868903,
+        0.009757719933986664,
+        0.00363556039519608,
+        -0.004732708912342787,
+        -0.0002398316573817283
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2559846616978534,
+          -0.08869378811669443,
+          -0.9626033788248131,
+          -0.06616625549252533
+        ],
+        [
+          0.10711363432861493,
+          0.9922525403352462,
+          -0.06294096868626753,
+          -1.0333361872502895
+        ],
+        [
+          0.9607281209147318,
+          -0.08699602374684075,
+          0.2635017448441048,
+          -0.0678804689140644
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00017026066780090332,
+        0.0004911422729492188,
+        -0.0007317066192626953,
+        0.0002942085266113281,
+        0.0009834766387939453,
+        0.0003758668899536133,
+        -0.0004792213439941406,
+        -2.4318695068359375e-05
+      ],
+      "recorded_ticks": 1302,
+      "reset_count": 1,
+      "trajectory_file": "trial_000.npz"
+    },
+    {
+      "case_id": "pose_0_width_1_length_1_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.3,
+      "entry_id": 1,
+      "dird_min_score": 4.719969272613525,
+      "nominal_scan_retiming_s": 5.223414213902928,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03756966216183436,
+      "preflight_collision_samples": 114,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.389999999999759,
+      "transition_duration_s": 3.00999999999998,
+      "scan_duration_s": 10.379999999999779,
+      "wall_seconds": 13.5563468069995,
+      "exit_q": [
+        0.29982975125312805,
+        -1.3809046745300293,
+        -2.0074892044067383,
+        1.1280039548873901,
+        1.770154595375061,
+        1.5230696201324463,
+        0.9412453770637512,
+        2.060899496078491
+      ],
+      "exit_qdot": [
+        0.00045065631275065243,
+        0.0048393551260232925,
+        -0.007255392149090767,
+        0.002936234464868903,
+        0.009757719933986664,
+        0.00363556039519608,
+        -0.004732708912342787,
+        -0.0002398316573817283
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2559846616978534,
+          -0.08869378811669443,
+          -0.9626033788248131,
+          -0.06616625549252533
+        ],
+        [
+          0.10711363432861493,
+          0.9922525403352462,
+          -0.06294096868626753,
+          -1.0333361872502895
+        ],
+        [
+          0.9607281209147318,
+          -0.08699602374684075,
+          0.2635017448441048,
+          -0.0678804689140644
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00017026066780090332,
+        0.0004911422729492188,
+        -0.0007317066192626953,
+        0.0002942085266113281,
+        0.0009834766387939453,
+        0.0003758668899536133,
+        -0.0004792213439941406,
+        -2.4318695068359375e-05
+      ],
+      "recorded_ticks": 1339,
+      "reset_count": 2,
+      "trajectory_file": "trial_001.npz"
+    },
+    {
+      "case_id": "pose_0_width_1_length_1_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 3.0413496494293213,
+      "nominal_scan_retiming_s": 5.223400155940427,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.031192521121823236,
+      "preflight_collision_samples": 58,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.169999999999806,
+      "transition_duration_s": 0.9000000000000006,
+      "scan_duration_s": 10.269999999999806,
+      "wall_seconds": 11.21087873400029,
+      "exit_q": [
+        0.39984092116355896,
+        -1.4216827154159546,
+        -2.009756326675415,
+        1.2718638181686401,
+        2.206108570098877,
+        1.9905587434768677,
+        0.8859638571739197,
+        1.442431926727295
+      ],
+      "exit_qdot": [
+        0.0004684621235355735,
+        0.0029909841250628233,
+        -0.006869351025670767,
+        0.004820256028324366,
+        0.007819214835762978,
+        0.009823935106396675,
+        -0.003229056717827916,
+        -0.0027643870562314987
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2559698159288513,
+          -0.08870878137005145,
+          -0.9626059450477079,
+          -0.06617004555352693
+        ],
+        [
+          0.10711579014382663,
+          0.9922512767355015,
+          -0.06295721816146897,
+          -1.0333423024043409
+        ],
+        [
+          0.9607318360683246,
+          -0.08699514885674658,
+          0.263488487870303,
+          -0.06787383096422916
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00015908479690551758,
+        0.0003044605255126953,
+        -0.0006933212280273438,
+        0.0004849433898925781,
+        0.0007870197296142578,
+        0.0010120868682861328,
+        -0.0003249645233154297,
+        -0.00027823448181152344
+      ],
+      "recorded_ticks": 1117,
+      "reset_count": 3,
+      "trajectory_file": "trial_002.npz"
+    },
+    {
+      "case_id": "pose_0_width_1_length_1_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 3.0413496494293213,
+      "nominal_scan_retiming_s": 5.223400155940427,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.031192521121823236,
+      "preflight_collision_samples": 58,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.249999999999805,
+      "transition_duration_s": 0.9800000000000006,
+      "scan_duration_s": 10.269999999999804,
+      "wall_seconds": 11.360713078000117,
+      "exit_q": [
+        0.39984092116355896,
+        -1.4216827154159546,
+        -2.009756326675415,
+        1.2718638181686401,
+        2.206108570098877,
+        1.9905587434768677,
+        0.8859638571739197,
+        1.442431926727295
+      ],
+      "exit_qdot": [
+        0.0004684621235355735,
+        0.0029909841250628233,
+        -0.006869351025670767,
+        0.004820256028324366,
+        0.007819214835762978,
+        0.009823935106396675,
+        -0.003229056717827916,
+        -0.0027643870562314987
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2559698159288513,
+          -0.08870878137005145,
+          -0.9626059450477079,
+          -0.06617004555352693
+        ],
+        [
+          0.10711579014382663,
+          0.9922512767355015,
+          -0.06295721816146897,
+          -1.0333423024043409
+        ],
+        [
+          0.9607318360683246,
+          -0.08699514885674658,
+          0.263488487870303,
+          -0.06787383096422916
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00015908479690551758,
+        0.0003044605255126953,
+        -0.0006933212280273438,
+        0.0004849433898925781,
+        0.0007870197296142578,
+        0.0010120868682861328,
+        -0.0003249645233154297,
+        -0.00027823448181152344
+      ],
+      "recorded_ticks": 1125,
+      "reset_count": 4,
+      "trajectory_file": "trial_003.npz"
+    },
+    {
+      "case_id": "pose_0_width_1_length_1_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.3,
+      "entry_id": 0,
+      "dird_min_score": 4.932652473449707,
+      "nominal_scan_retiming_s": 5.330068482528934,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.013497104527743387,
+      "preflight_collision_samples": 105,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.37999999999976,
+      "transition_duration_s": 2.6399999999999877,
+      "scan_duration_s": 10.739999999999771,
+      "wall_seconds": 14.263532352000766,
+      "exit_q": [
+        0.2998080849647522,
+        -1.0917903184890747,
+        -2.2601778507232666,
+        1.4591537714004517,
+        1.7404066324234009,
+        0.9600508809089661,
+        0.6042127013206482,
+        2.8976504802703857
+      ],
+      "exit_qdot": [
+        0.0009425781900063157,
+        0.004142408259212971,
+        -0.0032027517445385456,
+        0.005490569397807121,
+        0.005374886095523834,
+        0.00031012340332381427,
+        -0.005085962824523449,
+        0.0013913807924836874
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11780645761599341,
+          -0.02299811904558996,
+          -0.99277022772862,
+          -0.06383463761245484
+        ],
+        [
+          0.052899728530502704,
+          0.9981669360627343,
+          -0.02940045020966047,
+          -1.0347469238545357
+        ],
+        [
+          0.9916265714800961,
+          -0.05598083843152491,
+          -0.11637391659273665,
+          -0.052432009896189236
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.0001919269561767578,
+        0.0004208087921142578,
+        -0.00032210350036621094,
+        0.0005526542663574219,
+        0.0005414485931396484,
+        3.1948089599609375e-05,
+        -0.0005150437355041504,
+        0.0001399517059326172
+      ],
+      "recorded_ticks": 1338,
+      "reset_count": 5,
+      "trajectory_file": "trial_004.npz"
+    },
+    {
+      "case_id": "pose_0_width_1_length_1_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.3,
+      "entry_id": 1,
+      "dird_min_score": 4.932652473449707,
+      "nominal_scan_retiming_s": 5.330068482528934,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.013497104527743387,
+      "preflight_collision_samples": 113,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.739999999999752,
+      "transition_duration_s": 2.99999999999998,
+      "scan_duration_s": 10.739999999999771,
+      "wall_seconds": 14.802962073999879,
+      "exit_q": [
+        0.2998080849647522,
+        -1.0917903184890747,
+        -2.2601778507232666,
+        1.4591537714004517,
+        1.7404066324234009,
+        0.9600508809089661,
+        0.6042127013206482,
+        2.8976504802703857
+      ],
+      "exit_qdot": [
+        0.0009425781900063157,
+        0.004142408259212971,
+        -0.0032027517445385456,
+        0.005490569397807121,
+        0.005374886095523834,
+        0.00031012340332381427,
+        -0.005085962824523449,
+        0.0013913807924836874
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11780645761599341,
+          -0.02299811904558996,
+          -0.99277022772862,
+          -0.06383463761245484
+        ],
+        [
+          0.052899728530502704,
+          0.9981669360627343,
+          -0.02940045020966047,
+          -1.0347469238545357
+        ],
+        [
+          0.9916265714800961,
+          -0.05598083843152491,
+          -0.11637391659273665,
+          -0.052432009896189236
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.0001919269561767578,
+        0.0004208087921142578,
+        -0.00032210350036621094,
+        0.0005526542663574219,
+        0.0005414485931396484,
+        3.1948089599609375e-05,
+        -0.0005150437355041504,
+        0.0001399517059326172
+      ],
+      "recorded_ticks": 1374,
+      "reset_count": 6,
+      "trajectory_file": "trial_005.npz"
+    },
+    {
+      "case_id": "pose_0_width_1_length_1_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 3.3498482704162598,
+      "nominal_scan_retiming_s": 5.330020604398761,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.012894032257783399,
+      "preflight_collision_samples": 79,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.759999999999794,
+      "transition_duration_s": 0.9800000000000006,
+      "scan_duration_s": 10.779999999999793,
+      "wall_seconds": 12.752505239999664,
+      "exit_q": [
+        0.39984336495399475,
+        -0.9870737195014954,
+        -2.264155864715576,
+        1.8246748447418213,
+        2.161947727203369,
+        1.6802972555160522,
+        0.2364010512828827,
+        2.2567386627197266
+      ],
+      "exit_qdot": [
+        0.000829059281386435,
+        0.002580675994977355,
+        -0.00135857705026865,
+        0.0077543193474411964,
+        0.0030234649311751127,
+        0.00990988314151764,
+        -0.006497092545032501,
+        -0.005727007519453764
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11779094273113411,
+          -0.023033012063717717,
+          -0.9927712597400185,
+          -0.06384409344066994
+        ],
+        [
+          0.05281724435310366,
+          0.9981705814294215,
+          -0.02942497353939785,
+          -1.034712707807214
+        ],
+        [
+          0.9916328113316216,
+          -0.05590143758547149,
+          -0.11635891356669886,
+          -0.05242536462999603
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00015664100646972656,
+        0.0002625584602355957,
+        -0.0001361370086669922,
+        0.000782012939453125,
+        0.0003037452697753906,
+        0.001018524169921875,
+        -0.0006556659936904907,
+        -0.0005762577056884766
+      ],
+      "recorded_ticks": 1176,
+      "reset_count": 7,
+      "trajectory_file": "trial_006.npz"
+    },
+    {
+      "case_id": "pose_0_width_1_length_1_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 3.3498482704162598,
+      "nominal_scan_retiming_s": 5.330020604398761,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.012894032257783399,
+      "preflight_collision_samples": 80,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.859999999999792,
+      "transition_duration_s": 1.0900000000000007,
+      "scan_duration_s": 10.76999999999979,
+      "wall_seconds": 12.734009785001035,
+      "exit_q": [
+        0.39984333515167236,
+        -0.9870737195014954,
+        -2.264155864715576,
+        1.8246748447418213,
+        2.161947727203369,
+        1.6802972555160522,
+        0.2364010512828827,
+        2.2567386627197266
+      ],
+      "exit_qdot": [
+        0.000829219410661608,
+        0.002580675296485424,
+        -0.0013585783308371902,
+        0.007754320278763771,
+        0.0030234665609896183,
+        0.009909882210195065,
+        -0.006497092079371214,
+        -0.005727007519453764
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11779094273113411,
+          -0.023033012063717717,
+          -0.9927712597400185,
+          -0.06384409286787054
+        ],
+        [
+          0.05281724435310366,
+          0.9981705814294215,
+          -0.02942497353939785,
+          -1.0347127372865392
+        ],
+        [
+          0.9916328113316216,
+          -0.05590143758547149,
+          -0.11635891356669886,
+          -0.05242536896816541
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00015667080879211426,
+        0.0002625584602355957,
+        -0.0001361370086669922,
+        0.000782012939453125,
+        0.0003037452697753906,
+        0.001018524169921875,
+        -0.0006556659936904907,
+        -0.0005762577056884766
+      ],
+      "recorded_ticks": 1186,
+      "reset_count": 8,
+      "trajectory_file": "trial_007.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 5.134819030761719,
+      "nominal_scan_retiming_s": 4.988572757164783,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03958355020955428,
+      "preflight_collision_samples": 65,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.109999999999808,
+      "transition_duration_s": 1.1300000000000008,
+      "scan_duration_s": 9.979999999999807,
+      "wall_seconds": 11.340528800999891,
+      "exit_q": [
+        0.3998313248157501,
+        -1.3976848125457764,
+        -1.9730302095413208,
+        1.2260355949401855,
+        2.0503692626953125,
+        1.7945091724395752,
+        0.862220048904419,
+        1.6608400344848633
+      ],
+      "exit_qdot": [
+        0.00037439033621922135,
+        0.004712265450507402,
+        -0.008292408660054207,
+        0.004635840654373169,
+        0.009199962019920349,
+        0.0071470350958406925,
+        -0.005510011687874794,
+        -0.0013855744618922472
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2603615221823188,
+          -0.07954376810332262,
+          -0.9622290094997297,
+          -0.06477199289619903
+        ],
+        [
+          0.1087165608710461,
+          0.9926778445233364,
+          -0.05264414862901971,
+          -0.9947915410476293
+        ],
+        [
+          0.9593709330385607,
+          -0.09090371801211974,
+          0.2671028395436762,
+          -0.06875046486792546
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00016868114471435547,
+        0.0004786252975463867,
+        -0.0008367300033569336,
+        0.00046575069427490234,
+        0.0009262561798095703,
+        0.0007371902465820312,
+        -0.0005558133125305176,
+        -0.00013959407806396484
+      ],
+      "recorded_ticks": 1111,
+      "reset_count": 9,
+      "trajectory_file": "trial_008.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 5.134819030761719,
+      "nominal_scan_retiming_s": 4.988572757164783,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03951954782113693,
+      "preflight_collision_samples": 64,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.089999999999808,
+      "transition_duration_s": 1.1300000000000008,
+      "scan_duration_s": 9.959999999999807,
+      "wall_seconds": 11.367629244001364,
+      "exit_q": [
+        0.3998313248157501,
+        -1.3976848125457764,
+        -1.9730302095413208,
+        1.2260355949401855,
+        2.0503692626953125,
+        1.7945091724395752,
+        0.862220048904419,
+        1.6608400344848633
+      ],
+      "exit_qdot": [
+        0.00037439033621922135,
+        0.004712265450507402,
+        -0.008292408660054207,
+        0.004635840654373169,
+        0.009199962019920349,
+        0.0071470350958406925,
+        -0.005510011687874794,
+        -0.0013855744618922472
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2603615221823188,
+          -0.07954376810332262,
+          -0.9622290094997297,
+          -0.06477199289619903
+        ],
+        [
+          0.1087165608710461,
+          0.9926778445233364,
+          -0.05264414862901971,
+          -0.9947915410476293
+        ],
+        [
+          0.9593709330385607,
+          -0.09090371801211974,
+          0.2671028395436762,
+          -0.06875046486792546
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00016868114471435547,
+        0.0004786252975463867,
+        -0.0008367300033569336,
+        0.00046575069427490234,
+        0.0009262561798095703,
+        0.0007371902465820312,
+        -0.0005558133125305176,
+        -0.00013959407806396484
+      ],
+      "recorded_ticks": 1109,
+      "reset_count": 10,
+      "trajectory_file": "trial_009.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.3,
+      "entry_id": 0,
+      "dird_min_score": 2.9652137756347656,
+      "nominal_scan_retiming_s": 4.988584025380984,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03958355020955428,
+      "preflight_collision_samples": 115,
+      "success": true,
+      "status": "completed",
+      "duration_s": 12.779999999999772,
+      "transition_duration_s": 2.6499999999999875,
+      "scan_duration_s": 10.129999999999784,
+      "wall_seconds": 13.2293927289993,
+      "exit_q": [
+        0.29984742403030396,
+        -1.3981410264968872,
+        -1.9040000438690186,
+        1.1588969230651855,
+        1.5696748495101929,
+        1.3373396396636963,
+        0.9165372848510742,
+        2.248884439468384
+      ],
+      "exit_qdot": [
+        0.00039032739005051553,
+        0.00582386227324605,
+        -0.005776297301054001,
+        0.004147782456129789,
+        0.009836981073021889,
+        -0.000786293821875006,
+        -0.006870835088193417,
+        0.0009650611318647861
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2602956175034975,
+          -0.07950334114447302,
+          -0.9622501806990419,
+          -0.0647682646579921
+        ],
+        [
+          0.10872299354074182,
+          0.9926791043552399,
+          -0.05260709507298178,
+          -0.9947849728974145
+        ],
+        [
+          0.9593880873682001,
+          -0.09092532388363246,
+          0.2670338616966841,
+          -0.06874936760405786
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.000152587890625,
+        0.000590205192565918,
+        -0.0005817413330078125,
+        0.00041687488555908203,
+        0.0009920597076416016,
+        -7.903575897216797e-05,
+        -0.0006949901580810547,
+        9.703636169433594e-05
+      ],
+      "recorded_ticks": 1278,
+      "reset_count": 11,
+      "trajectory_file": "trial_010.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.3,
+      "entry_id": 1,
+      "dird_min_score": 2.9652137756347656,
+      "nominal_scan_retiming_s": 4.988584025380984,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03951954782113693,
+      "preflight_collision_samples": 119,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.139999999999764,
+      "transition_duration_s": 3.00999999999998,
+      "scan_duration_s": 10.129999999999784,
+      "wall_seconds": 13.412469279001016,
+      "exit_q": [
+        0.29984742403030396,
+        -1.3981410264968872,
+        -1.9040000438690186,
+        1.158896803855896,
+        1.5696748495101929,
+        1.3373396396636963,
+        0.9165372848510742,
+        2.248884439468384
+      ],
+      "exit_qdot": [
+        0.0003903184551745653,
+        0.00582386227324605,
+        -0.005776297301054001,
+        0.004148851148784161,
+        0.009836981073021889,
+        -0.0007862938800826669,
+        -0.006870835088193417,
+        0.0009650611318647861
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.26029552369351006,
+          -0.07950327852255726,
+          -0.9622502112492809,
+          -0.06476822693173259
+        ],
+        [
+          0.10872295698003175,
+          0.9926791107577843,
+          -0.05260704981893982,
+          -0.9947849500805463
+        ],
+        [
+          0.9593881169634317,
+          -0.09092530873909054,
+          0.2670337605248846,
+          -0.06874939523508733
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.000152587890625,
+        0.000590205192565918,
+        -0.0005817413330078125,
+        0.0004169940948486328,
+        0.0009920597076416016,
+        -7.903575897216797e-05,
+        -0.0006949901580810547,
+        9.703636169433594e-05
+      ],
+      "recorded_ticks": 1314,
+      "reset_count": 12,
+      "trajectory_file": "trial_011.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 5.276303291320801,
+      "nominal_scan_retiming_s": 5.08133668325734,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.012655270493370901,
+      "preflight_collision_samples": 82,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.679999999999795,
+      "transition_duration_s": 1.260000000000001,
+      "scan_duration_s": 10.419999999999794,
+      "wall_seconds": 12.58764125000016,
+      "exit_q": [
+        0.3998141586780548,
+        -1.0330395698547363,
+        -2.2652642726898193,
+        1.6546008586883545,
+        2.032759428024292,
+        1.3443678617477417,
+        0.3596758544445038,
+        2.544235944747925
+      ],
+      "exit_qdot": [
+        0.0007633931818418205,
+        0.00427094753831625,
+        -0.0021382824052125216,
+        0.009357765316963196,
+        0.0040551964193582535,
+        -0.0001286433107452467,
+        -0.007955738343298435,
+        0.0025168335996568203
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11427648910188536,
+          -0.008620604680728368,
+          -0.9934115809741123,
+          -0.06265206759186381
+        ],
+        [
+          0.05664172579059495,
+          0.9982791820352112,
+          -0.015178590664869825,
+          -0.9963670370669531
+        ],
+        [
+          0.9918329491088759,
+          -0.05800310241743281,
+          -0.11359155414001068,
+          -0.05425037926582965
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00018584728240966797,
+        0.00043404102325439453,
+        -0.0002143383026123047,
+        0.000943303108215332,
+        0.0004076957702636719,
+        -1.2874603271484375e-05,
+        -0.0008038580417633057,
+        0.0002529621124267578
+      ],
+      "recorded_ticks": 1168,
+      "reset_count": 13,
+      "trajectory_file": "trial_012.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 5.276303291320801,
+      "nominal_scan_retiming_s": 5.08133668325734,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.012655270493370901,
+      "preflight_collision_samples": 83,
+      "success": true,
+      "status": "completed",
+      "duration_s": 11.689999999999795,
+      "transition_duration_s": 1.280000000000001,
+      "scan_duration_s": 10.409999999999794,
+      "wall_seconds": 12.46081195500119,
+      "exit_q": [
+        0.3998141586780548,
+        -1.0330395698547363,
+        -2.2652642726898193,
+        1.6546008586883545,
+        2.032759428024292,
+        1.3443678617477417,
+        0.3596758544445038,
+        2.544235944747925
+      ],
+      "exit_qdot": [
+        0.0007633931818418205,
+        0.00427094753831625,
+        -0.0021382824052125216,
+        0.009357765316963196,
+        0.0040551964193582535,
+        -0.0001286433107452467,
+        -0.007955738343298435,
+        0.0025168335996568203
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11427648910188536,
+          -0.008620604680728368,
+          -0.9934115809741123,
+          -0.06265206759186381
+        ],
+        [
+          0.05664172579059495,
+          0.9982791820352112,
+          -0.015178590664869825,
+          -0.9963670370669531
+        ],
+        [
+          0.9918329491088759,
+          -0.05800310241743281,
+          -0.11359155414001068,
+          -0.05425037926582965
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00018584728240966797,
+        0.00043404102325439453,
+        -0.0002143383026123047,
+        0.000943303108215332,
+        0.0004076957702636719,
+        -1.2874603271484375e-05,
+        -0.0008038580417633057,
+        0.0002529621124267578
+      ],
+      "recorded_ticks": 1169,
+      "reset_count": 14,
+      "trajectory_file": "trial_013.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.3,
+      "entry_id": 0,
+      "dird_min_score": 3.626011610031128,
+      "nominal_scan_retiming_s": 5.081375934303762,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.01345054049607367,
+      "preflight_collision_samples": 109,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.059999999999766,
+      "transition_duration_s": 2.6399999999999877,
+      "scan_duration_s": 10.419999999999778,
+      "wall_seconds": 14.05523347000053,
+      "exit_q": [
+        0.29980501532554626,
+        -1.2048664093017578,
+        -2.2586565017700195,
+        1.2725259065628052,
+        1.5618577003479004,
+        0.9625532627105713,
+        0.7465984225273132,
+        2.9203450679779053
+      ],
+      "exit_qdot": [
+        0.0009607658721506596,
+        0.003908053506165743,
+        -0.0036516510881483555,
+        0.004602699540555477,
+        0.0052641695365309715,
+        -0.001035258173942566,
+        -0.004240437410771847,
+        0.000809253950137645
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11431670700399865,
+          -0.008640830823087767,
+          -0.9934067779829412,
+          -0.06265508804155454
+        ],
+        [
+          0.05658429192794581,
+          0.998282194078445,
+          -0.01519469950138356,
+          -0.9963964906507429
+        ],
+        [
+          0.9918315927650091,
+          -0.05794822713950051,
+          -0.11363139779398103,
+          -0.05424466662611899
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00019499659538269043,
+        0.00039696693420410156,
+        -0.00036716461181640625,
+        0.0004630088806152344,
+        0.0005306005477905273,
+        -0.00010627508163452148,
+        -0.00042998790740966797,
+        8.130073547363281e-05
+      ],
+      "recorded_ticks": 1306,
+      "reset_count": 15,
+      "trajectory_file": "trial_014.npz"
+    },
+    {
+      "case_id": "pose_0_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 0.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.3,
+      "entry_id": 1,
+      "dird_min_score": 3.626011610031128,
+      "nominal_scan_retiming_s": 5.081375934303762,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.01345054049607367,
+      "preflight_collision_samples": 117,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.419999999999758,
+      "transition_duration_s": 2.99999999999998,
+      "scan_duration_s": 10.419999999999778,
+      "wall_seconds": 14.46650199800024,
+      "exit_q": [
+        0.29980501532554626,
+        -1.2048664093017578,
+        -2.2586565017700195,
+        1.2725259065628052,
+        1.5618577003479004,
+        0.9625532627105713,
+        0.7465984225273132,
+        2.9203450679779053
+      ],
+      "exit_qdot": [
+        0.0009607658721506596,
+        0.003908053506165743,
+        -0.0036516510881483555,
+        0.004602699540555477,
+        0.0052641695365309715,
+        -0.001035258173942566,
+        -0.004240437410771847,
+        0.000809253950137645
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.11431670700399865,
+          -0.008640830823087767,
+          -0.9934067779829412,
+          -0.06265508804155454
+        ],
+        [
+          0.05658429192794581,
+          0.998282194078445,
+          -0.01519469950138356,
+          -0.9963964906507429
+        ],
+        [
+          0.9918315927650091,
+          -0.05794822713950051,
+          -0.11363139779398103,
+          -0.05424466662611899
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00019499659538269043,
+        0.00039696693420410156,
+        -0.00036716461181640625,
+        0.0004630088806152344,
+        0.0005306005477905273,
+        -0.00010627508163452148,
+        -0.00042998790740966797,
+        8.130073547363281e-05
+      ],
+      "recorded_ticks": 1342,
+      "reset_count": 16,
+      "trajectory_file": "trial_015.npz"
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.5,
+      "entry_id": 0,
+      "dird_min_score": 5.774022102355957,
+      "nominal_scan_retiming_s": 5.1145606075263865,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.039090821783992154,
+      "preflight_collision_samples": 136,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.749999999999751,
+      "transition_duration_s": 3.509999999999969,
+      "scan_duration_s": 10.239999999999782,
+      "wall_seconds": 12.81303104699873,
+      "exit_q": [
+        0.49981924891471863,
+        -2.331780195236206,
+        -1.222760796546936,
+        1.4729799032211304,
+        1.5903403759002686,
+        2.308961868286133,
+        1.3802279233932495,
+        -0.3508819341659546
+      ],
+      "exit_qdot": [
+        0.00027777685318142176,
+        -0.009199594147503376,
+        0.0015524595510214567,
+        0.0041231573559343815,
+        -0.005259001161903143,
+        0.004508222918957472,
+        0.0010469428962096572,
+        -0.002140251686796546
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.24575397102818555,
+          -0.058667258505009146,
+          -0.9675552379597684,
+          -0.06387619998345292
+        ],
+        [
+          -0.8105026627510874,
+          0.5350656577726624,
+          -0.23830689361767174,
+          -0.8891376464728602
+        ],
+        [
+          0.5316863919617223,
+          0.842770962155089,
+          0.08394454092382321,
+          -0.22142198799606594
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00018075108528137207,
+        -0.0009241104125976562,
+        0.0001556873321533203,
+        0.0004190206527709961,
+        -0.0005345344543457031,
+        0.0004630088806152344,
+        0.00011146068572998047,
+        -0.0002155303955078125
+      ],
+      "recorded_ticks": 1375,
+      "reset_count": 17,
+      "trajectory_file": "trial_016.npz"
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.5,
+      "entry_id": 1,
+      "dird_min_score": 5.774022102355957,
+      "nominal_scan_retiming_s": 5.1145606075263865,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909068886336616,
+      "preflight_collision_samples": 135,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.699999999999752,
+      "transition_duration_s": 3.46999999999997,
+      "scan_duration_s": 10.229999999999782,
+      "wall_seconds": 12.908619608999288,
+      "exit_q": [
+        0.499819278717041,
+        -2.331780195236206,
+        -1.2227606773376465,
+        1.4729799032211304,
+        1.5903403759002686,
+        2.308961868286133,
+        1.3802279233932495,
+        -0.3508819341659546
+      ],
+      "exit_qdot": [
+        0.00027747085550799966,
+        -0.009199594147503376,
+        0.0015513929538428783,
+        0.004123156890273094,
+        -0.005259001161903143,
+        0.004508222918957472,
+        0.0010469427797943354,
+        -0.002140251686796546
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2457538656983034,
+          -0.05866727471934599,
+          -0.9675552637298529,
+          -0.0638761561636518
+        ],
+        [
+          -0.8105026582297189,
+          0.5350657020671352,
+          -0.2383068095417386,
+          -0.8891376087744944
+        ],
+        [
+          0.5316864475392424,
+          0.8427709329043142,
+          0.08394448257445183,
+          -0.2214220158612875
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00018072128295898438,
+        -0.0009241104125976562,
+        0.00015556812286376953,
+        0.0004190206527709961,
+        -0.0005345344543457031,
+        0.0004630088806152344,
+        0.00011146068572998047,
+        -0.0002155303955078125
+      ],
+      "recorded_ticks": 1370,
+      "reset_count": 18,
+      "trajectory_file": "trial_017.npz"
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 4.1613030433654785,
+      "nominal_scan_retiming_s": 5.114572363146371,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909080759182997,
+      "preflight_collision_samples": 118,
+      "success": true,
+      "status": "completed",
+      "duration_s": 12.759999999999772,
+      "transition_duration_s": 2.4599999999999915,
+      "scan_duration_s": 10.29999999999978,
+      "wall_seconds": 12.112335223000628,
+      "exit_q": [
+        0.39984801411628723,
+        -2.109140634536743,
+        -1.3576717376708984,
+        1.3435593843460083,
+        1.4556024074554443,
+        2.31600284576416,
+        1.1761776208877563,
+        -0.024321366101503372
+      ],
+      "exit_qdot": [
+        0.0001788910012692213,
+        -0.008010906167328358,
+        0.001984799513593316,
+        0.0034009229857474566,
+        -0.0016308572376146913,
+        0.007012315094470978,
+        0.0009241385268978775,
+        -0.005939418449997902
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.24580572685003693,
+          -0.05866979893653934,
+          -0.967541936734771,
+          -0.06387690072727126
+        ],
+        [
+          -0.8105092829964454,
+          0.5350343291004724,
+          -0.23835471226849048,
+          -0.8890955740350264
+        ],
+        [
+          0.5316523740418292,
+          0.8427906747091789,
+          0.08396208548466319,
+          -0.22139379056046282
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.0001519918441772461,
+        -0.0008027553558349609,
+        0.00019919872283935547,
+        0.00034546852111816406,
+        -0.00016927719116210938,
+        0.0007216930389404297,
+        9.930133819580078e-05,
+        -0.0005977451801300049
+      ],
+      "recorded_ticks": 1276,
+      "reset_count": 19,
+      "trajectory_file": "trial_018.npz"
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 4.1613030433654785,
+      "nominal_scan_retiming_s": 5.114572363146371,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909068847699422,
+      "preflight_collision_samples": 117,
+      "success": true,
+      "status": "completed",
+      "duration_s": 12.719999999999773,
+      "transition_duration_s": 2.429999999999992,
+      "scan_duration_s": 10.28999999999978,
+      "wall_seconds": 11.924950642998738,
+      "exit_q": [
+        0.39984801411628723,
+        -2.109140634536743,
+        -1.3576717376708984,
+        1.3435593843460083,
+        1.4556024074554443,
+        2.31600284576416,
+        1.1761776208877563,
+        -0.024321366101503372
+      ],
+      "exit_qdot": [
+        0.0001788910012692213,
+        -0.008010906167328358,
+        0.001984799513593316,
+        0.0034009229857474566,
+        -0.0016308572376146913,
+        0.007012315094470978,
+        0.0009241385268978775,
+        -0.005939418449997902
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.24580572685003693,
+          -0.05866979893653934,
+          -0.967541936734771,
+          -0.06387690072727126
+        ],
+        [
+          -0.8105092829964454,
+          0.5350343291004724,
+          -0.23835471226849048,
+          -0.8890955740350264
+        ],
+        [
+          0.5316523740418292,
+          0.8427906747091789,
+          0.08396208548466319,
+          -0.22139379056046282
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.0001519918441772461,
+        -0.0008027553558349609,
+        0.00019919872283935547,
+        0.00034546852111816406,
+        -0.00016927719116210938,
+        0.0007216930389404297,
+        9.930133819580078e-05,
+        -0.0005977451801300049
+      ],
+      "recorded_ticks": 1272,
+      "reset_count": 20,
+      "trajectory_file": "trial_019.npz"
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 5.9267683029174805,
+      "nominal_scan_retiming_s": null,
+      "success": false,
+      "status": "candidate_kinematic_rejection",
+      "duration_s": 0.0,
+      "failure": "SRS path exceeds joint-step bound: 12.659 deg",
+      "recorded_ticks": 0
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 5.9267683029174805,
+      "nominal_scan_retiming_s": null,
+      "success": false,
+      "status": "candidate_kinematic_rejection",
+      "duration_s": 0.0,
+      "failure": "SRS path exceeds joint-step bound: 12.659 deg",
+      "recorded_ticks": 0
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.5,
+      "entry_id": 0,
+      "dird_min_score": 5.785706520080566,
+      "nominal_scan_retiming_s": 5.231198736574818,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909081408929652,
+      "preflight_collision_samples": 172,
+      "success": true,
+      "status": "completed",
+      "duration_s": 15.17999999999972,
+      "transition_duration_s": 4.249999999999954,
+      "scan_duration_s": 10.929999999999767,
+      "wall_seconds": 15.0948916010002,
+      "exit_q": [
+        0.4998075067996979,
+        -2.6280274391174316,
+        -1.3560268878936768,
+        1.7322511672973633,
+        1.6438896656036377,
+        2.751337766647339,
+        1.8065141439437866,
+        -0.6954375505447388
+      ],
+      "exit_qdot": [
+        0.0007680204580537975,
+        -0.0061245085671544075,
+        0.00019542891823220998,
+        7.704454037593678e-05,
+        -0.008416468277573586,
+        -0.0011655902490019798,
+        -0.00013756756379734725,
+        0.0009609084809198976
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.13578775866981202,
+          -0.028813499433270016,
+          -0.9903188712964314,
+          -0.061321192688263776
+        ],
+        [
+          -0.8592965167558656,
+          0.5009485671191297,
+          0.10324741833346851,
+          -0.9035977893900274
+        ],
+        [
+          0.4931239001373435,
+          0.8649972921065705,
+          -0.09278202283651625,
+          -0.2141386260427952
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00019249320030212402,
+        -0.0006153583526611328,
+        1.895427703857422e-05,
+        9.179115295410156e-06,
+        -0.0008518695831298828,
+        -0.00012087821960449219,
+        -1.0371208190917969e-05,
+        9.655952453613281e-05
+      ],
+      "recorded_ticks": 1518,
+      "reset_count": 21,
+      "trajectory_file": "trial_022.npz"
+    },
+    {
+      "case_id": "pose_60_width_1_length_1_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.0,
+        1.0
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.5,
+      "entry_id": 1,
+      "dird_min_score": 5.785706520080566,
+      "nominal_scan_retiming_s": 5.231198736574818,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909068377568434,
+      "preflight_collision_samples": 171,
+      "success": true,
+      "status": "completed",
+      "duration_s": 15.149999999999721,
+      "transition_duration_s": 4.2199999999999545,
+      "scan_duration_s": 10.929999999999767,
+      "wall_seconds": 15.21655871800067,
+      "exit_q": [
+        0.4998075067996979,
+        -2.6280274391174316,
+        -1.3560268878936768,
+        1.7322511672973633,
+        1.6438896656036377,
+        2.751337766647339,
+        1.8065141439437866,
+        -0.6954375505447388
+      ],
+      "exit_qdot": [
+        0.0007680204580537975,
+        -0.0061245085671544075,
+        0.00019542891823220998,
+        7.704454037593678e-05,
+        -0.008416468277573586,
+        -0.0011655902490019798,
+        -0.00013756756379734725,
+        0.0009609084809198976
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.13578775866981202,
+          -0.028813499433270016,
+          -0.9903188712964314,
+          -0.061321192688263776
+        ],
+        [
+          -0.8592965167558656,
+          0.5009485671191297,
+          0.10324741833346851,
+          -0.9035977893900274
+        ],
+        [
+          0.4931239001373435,
+          0.8649972921065705,
+          -0.09278202283651625,
+          -0.2141386260427952
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00019249320030212402,
+        -0.0006153583526611328,
+        1.895427703857422e-05,
+        9.179115295410156e-06,
+        -0.0008518695831298828,
+        -0.00012087821960449219,
+        -1.0371208190917969e-05,
+        9.655952453613281e-05
+      ],
+      "recorded_ticks": 1515,
+      "reset_count": 22,
+      "trajectory_file": "trial_023.npz"
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.5,
+      "entry_id": 0,
+      "dird_min_score": 5.530350685119629,
+      "nominal_scan_retiming_s": 4.886173910051892,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909073714365037,
+      "preflight_collision_samples": 130,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.119999999999765,
+      "transition_duration_s": 3.2599999999999745,
+      "scan_duration_s": 9.85999999999979,
+      "wall_seconds": 12.087520218001373,
+      "exit_q": [
+        0.4998292624950409,
+        -2.2455945014953613,
+        -1.2740967273712158,
+        1.4076390266418457,
+        1.5725806951522827,
+        2.32145094871521,
+        1.3412328958511353,
+        -0.23498091101646423
+      ],
+      "exit_qdot": [
+        0.00013694496010430157,
+        -0.009202079847455025,
+        0.0016498879995197058,
+        0.0048205978237092495,
+        -0.002802005037665367,
+        0.007700037211179733,
+        0.00019880438048858196,
+        -0.006640437990427017
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.24939722508348058,
+          -0.049051327778710276,
+          -0.9671582038962425,
+          -0.0624806309822353
+        ],
+        [
+          -0.8088086779612091,
+          0.5386898906723673,
+          -0.23588498074704534,
+          -0.8579595935598952
+        ],
+        [
+          0.5325688186284482,
+          0.8410750079098408,
+          0.09467462434127104,
+          -0.21493075225797076
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00017073750495910645,
+        -0.0009233951568603516,
+        0.00016558170318603516,
+        0.000489354133605957,
+        -0.00028705596923828125,
+        0.0007915496826171875,
+        2.6941299438476562e-05,
+        -0.0006682872772216797
+      ],
+      "recorded_ticks": 1312,
+      "reset_count": 23,
+      "trajectory_file": "trial_024.npz"
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 1,
+      "rail_m": 0.5,
+      "entry_id": 1,
+      "dird_min_score": 5.530350685119629,
+      "nominal_scan_retiming_s": 4.886173910051892,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909066123407031,
+      "preflight_collision_samples": 129,
+      "success": true,
+      "status": "completed",
+      "duration_s": 13.079999999999766,
+      "transition_duration_s": 3.229999999999975,
+      "scan_duration_s": 9.84999999999979,
+      "wall_seconds": 12.048418262000268,
+      "exit_q": [
+        0.4998292624950409,
+        -2.2455945014953613,
+        -1.2740967273712158,
+        1.4076390266418457,
+        1.5725806951522827,
+        2.32145094871521,
+        1.3412328958511353,
+        -0.23498094081878662
+      ],
+      "exit_qdot": [
+        0.00013699558621738106,
+        -0.00920207891613245,
+        0.0016498877666890621,
+        0.0048205978237092495,
+        -0.0028020055033266544,
+        0.007700037211179733,
+        0.00019880494801327586,
+        -0.0066401720978319645
+      ],
+      "exit_T_tcp_world": [
+        [
+          0.2493972256958261,
+          -0.049051345036587764,
+          -0.9671582028630722,
+          -0.062480630961729594
+        ],
+        [
+          -0.8088086883823574,
+          0.5386898697694897,
+          -0.23588499275057806,
+          -0.8579595937989707
+        ],
+        [
+          0.5325688025151638,
+          0.8410750202911936,
+          0.09467460498852337,
+          -0.21493075264324724
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.00017073750495910645,
+        -0.0009233951568603516,
+        0.00016558170318603516,
+        0.000489354133605957,
+        -0.00028705596923828125,
+        0.0007915496826171875,
+        2.6941299438476562e-05,
+        -0.000668257474899292
+      ],
+      "recorded_ticks": 1308,
+      "reset_count": 24,
+      "trajectory_file": "trial_025.npz"
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 3.0548810958862305,
+      "nominal_scan_retiming_s": null,
+      "success": false,
+      "status": "candidate_kinematic_rejection",
+      "duration_s": 0.0,
+      "failure": "SRS path exceeds joint-step bound: 12.807 deg",
+      "recorded_ticks": 0
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_-1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": -1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 3.0548810958862305,
+      "nominal_scan_retiming_s": null,
+      "success": false,
+      "status": "candidate_kinematic_rejection",
+      "duration_s": 0.0,
+      "failure": "SRS path exceeds joint-step bound: 12.807 deg",
+      "recorded_ticks": 0
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.5,
+      "entry_id": 0,
+      "dird_min_score": 5.842021942138672,
+      "nominal_scan_retiming_s": 4.988220099172995,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.4,
+        -1.562069680534925,
+        -1.6493361431346414,
+        1.137954672300303,
+        1.6755160819145565,
+        1.5585790220309363,
+        1.064650843716541,
+        1.6510814723866356
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909096770155122,
+      "preflight_collision_samples": 164,
+      "success": true,
+      "status": "completed",
+      "duration_s": 14.539999999999734,
+      "transition_duration_s": 3.9999999999999587,
+      "scan_duration_s": 10.539999999999775,
+      "wall_seconds": 14.792474288999074,
+      "exit_q": [
+        0.4998009502887726,
+        -2.5113558769226074,
+        -1.3934781551361084,
+        1.6703698635101318,
+        1.6729612350463867,
+        2.8076012134552,
+        1.751707911491394,
+        -0.6141711473464966
+      ],
+      "exit_qdot": [
+        0.0007198409293778241,
+        -0.006502946838736534,
+        0.00012927097850479186,
+        0.00016964494716376066,
+        -0.007751556113362312,
+        -0.00024707106058485806,
+        0.0006416381802409887,
+        -0.0008795286994427443
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.13302995553301597,
+          -0.014545176022786946,
+          -0.9910052819159694,
+          -0.06014150083153062
+        ],
+        [
+          -0.8584217996007592,
+          0.5014734587590294,
+          0.10787207298671014,
+          -0.871736802633045
+        ],
+        [
+          0.4953938280813335,
+          0.8650507545888404,
+          -0.07919688809669215,
+          -0.20833095365950272
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.000199049711227417,
+        -0.0006530284881591797,
+        1.2278556823730469e-05,
+        1.8358230590820312e-05,
+        -0.0007851123809814453,
+        -2.6464462280273438e-05,
+        6.830692291259766e-05,
+        -8.857250213623047e-05
+      ],
+      "recorded_ticks": 1454,
+      "reset_count": 25,
+      "trajectory_file": "trial_028.npz"
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 1,
+      "rail_m": 0.5,
+      "entry_id": 1,
+      "dird_min_score": 5.842021942138672,
+      "nominal_scan_retiming_s": 4.988220099172995,
+      "backend": "genesis_pd",
+      "physical_execution": false,
+      "simulated_joint_execution": true,
+      "contact_checked": false,
+      "environment_collision_checked": false,
+      "self_collision_scope": "configured_arm_body_pairs",
+      "actual_entry_q": [
+        0.41558667653043646,
+        -1.5797620729202606,
+        -1.6533930815758835,
+        1.1330221019718925,
+        1.6571964548101124,
+        1.5745389822756388,
+        1.0462242999792917,
+        1.6355586124623642
+      ],
+      "retiming_is_measured_duration": false,
+      "config": {
+        "backend": "genesis_pd",
+        "dt": 0.01,
+        "velocity_fraction": 0.25,
+        "acceleration_rail_m_s2": 0.5,
+        "acceleration_arm_rad_s2": 2.0,
+        "lag_time_s": 0.08,
+        "collision_margin_m": 0.01,
+        "rail_tolerance_m": 0.0002,
+        "arm_tolerance_rad": 0.002,
+        "velocity_tolerance": 0.01,
+        "maximum_duration_s": 120.0,
+        "scan_speed_m_s": 0.02
+      },
+      "preflight_min_clearance_m": 0.03909075575570543,
+      "preflight_collision_samples": 163,
+      "success": true,
+      "status": "completed",
+      "duration_s": 14.499999999999735,
+      "transition_duration_s": 3.9599999999999596,
+      "scan_duration_s": 10.539999999999775,
+      "wall_seconds": 14.657506079000086,
+      "exit_q": [
+        0.4998009502887726,
+        -2.5113558769226074,
+        -1.3934781551361084,
+        1.6703698635101318,
+        1.6729612350463867,
+        2.8076012134552,
+        1.751707911491394,
+        -0.6141711473464966
+      ],
+      "exit_qdot": [
+        0.0007198409293778241,
+        -0.006502946838736534,
+        0.00012927097850479186,
+        0.00016964494716376066,
+        -0.007751556113362312,
+        -0.00024707106058485806,
+        0.0006416381802409887,
+        -0.0008795286994427443
+      ],
+      "exit_T_tcp_world": [
+        [
+          -0.13302995553301597,
+          -0.014545176022786946,
+          -0.9910052819159694,
+          -0.06014150083153062
+        ],
+        [
+          -0.8584217996007592,
+          0.5014734587590294,
+          0.10787207298671014,
+          -0.871736802633045
+        ],
+        [
+          0.4953938280813335,
+          0.8650507545888404,
+          -0.07919688809669215,
+          -0.20833095365950272
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "final_joint_error": [
+        0.000199049711227417,
+        -0.0006530284881591797,
+        1.2278556823730469e-05,
+        1.8358230590820312e-05,
+        -0.0007851123809814453,
+        -2.6464462280273438e-05,
+        6.830692291259766e-05,
+        -8.857250213623047e-05
+      ],
+      "recorded_ticks": 1450,
+      "reset_count": 26,
+      "trajectory_file": "trial_029.npz"
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 0,
+      "dird_min_score": 5.839417457580566,
+      "nominal_scan_retiming_s": null,
+      "success": false,
+      "status": "candidate_kinematic_rejection",
+      "duration_s": 0.0,
+      "failure": "SRS path exceeds joint-step bound: 12.810 deg",
+      "recorded_ticks": 0
+    },
+    {
+      "case_id": "pose_60_width_1.18_length_0.88_reference_+1",
+      "knee_deg": 60.0,
+      "shape_controls": [
+        1.18,
+        0.88
+      ],
+      "reference_mode": 1,
+      "candidate_rank": 2,
+      "rail_m": 0.4,
+      "entry_id": 1,
+      "dird_min_score": 5.839417457580566,
+      "nominal_scan_retiming_s": null,
+      "success": false,
+      "status": "candidate_kinematic_rejection",
+      "duration_s": 0.0,
+      "failure": "SRS path exceeds joint-step bound: 12.810 deg",
+      "recorded_ticks": 0
+    }
+  ],
+  "n_trials": 32,
+  "n_success": 26,
+  "n_entry_collision_rejection": 0,
+  "n_candidate_kinematic_rejection": 6,
+  "n_dynamic_stops": 0,
+  "wall_seconds": 350.27035498799887,
+  "case_with_success": [
+    "pose_0_width_1.18_length_0.88_reference_+1",
+    "pose_0_width_1.18_length_0.88_reference_-1",
+    "pose_0_width_1_length_1_reference_+1",
+    "pose_0_width_1_length_1_reference_-1",
+    "pose_60_width_1.18_length_0.88_reference_+1",
+    "pose_60_width_1.18_length_0.88_reference_-1",
+    "pose_60_width_1_length_1_reference_+1",
+    "pose_60_width_1_length_1_reference_-1"
+  ],
+  "duration_kind": "actual simulated execution clock incl. entry transition and settling",
+  "hardware_or_contact_validated": false
+}

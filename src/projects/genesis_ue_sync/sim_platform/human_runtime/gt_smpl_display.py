@@ -9,6 +9,7 @@ import numpy as np
 from projects.genesis_ue_sync.sim_platform.datasets import HumanMotionSequence
 from projects.genesis_ue_sync.sim_platform.datasets.human_sequence import (
     _create_smpl_model,
+    _smpl_kwargs_for_pose_batch,
     resolve_torch_device,
 )
 from projects.genesis_ue_sync.sim_platform.simulation.runtime import GenesisPlatformRuntime
@@ -31,35 +32,12 @@ class GtSmplFrameRenderer:
         self._local_pose_rows: dict[int, np.ndarray] = {}
 
     def _kwargs_for_pose(self, pose_row: np.ndarray, *, transl_m: np.ndarray | None = None) -> dict[str, Any]:
-        import torch
-
         pose = np.asarray(pose_row, dtype=np.float32).reshape(1, -1)
         if transl_m is not None:
             transl = np.asarray(transl_m, dtype=np.float32).reshape(1, 3)
         else:
             transl = np.zeros((1, 3), dtype=np.float32)
-        betas = np.asarray(self.sequence.betas, dtype=np.float32)
-        model_type = self.sequence.model_type.lower()
-        if model_type == "smpl":
-            return {
-                "betas": torch.from_numpy(betas[None, :10]).float().to(self.device),
-                "global_orient": torch.from_numpy(pose[:, :3]).float().to(self.device),
-                "body_pose": torch.from_numpy(pose[:, 3:72]).float().to(self.device),
-                "transl": torch.from_numpy(transl).float().to(self.device),
-            }
-        if model_type == "smplx":
-            kwargs: dict[str, Any] = {
-                "betas": torch.from_numpy(betas[None, : min(len(betas), 16)]).float().to(self.device),
-                "global_orient": torch.from_numpy(pose[:, :3]).float().to(self.device),
-                "body_pose": torch.from_numpy(pose[:, 3:66]).float().to(self.device),
-                "transl": torch.from_numpy(transl).float().to(self.device),
-            }
-            if pose.shape[1] >= 111:
-                kwargs["left_hand_pose"] = torch.from_numpy(pose[:, 66:111]).float().to(self.device)
-            if pose.shape[1] >= 156:
-                kwargs["right_hand_pose"] = torch.from_numpy(pose[:, 111:156]).float().to(self.device)
-            return kwargs
-        raise ValueError(f"Unsupported model_type: {self.sequence.model_type}")
+        return _smpl_kwargs_for_pose_batch(self.sequence, pose, transl, torch_device=self.device)
 
     def _forward_local_body(
         self,
@@ -102,14 +80,18 @@ class GtSmplFrameRenderer:
         ref_pose = self._local_pose_rows.get(idx)
         pelvis = np.asarray(pelvis_world_target, dtype=np.float32).reshape(3)
         if cached is None or ref_pose is None or pose.shape != ref_pose.shape or not np.allclose(pose, ref_pose, rtol=0.0, atol=1.0e-5):
-            vertices0, joints0 = self._forward_local_body(pose, transl_m=pelvis)
+            # Evaluate in the same zero-translation local frame used by the
+            # cache.  Passing ``pelvis`` as SMPL-X ``transl`` here is not
+            # equivalent to anchoring the output pelvis: the model's native
+            # root joint can have a non-zero local offset.  Align both paths
+            # below from the actual returned root joint so cache misses and
+            # hits produce the same Genesis world-space body.
+            vertices0, joints0 = self._forward_local_body(pose)
         else:
             vertices0, joints0 = cached
-            root_delta = pelvis - joints0[0, :3]
-            vertices0 = vertices0 + root_delta.reshape(1, 3)
-            joints0 = joints0 + root_delta.reshape(1, 3)
-        vertices_world = vertices0
-        joints_world = joints0
+        root_delta = pelvis - joints0[0, :3]
+        vertices_world = vertices0 + root_delta.reshape(1, 3)
+        joints_world = joints0 + root_delta.reshape(1, 3)
         mesh = None
         if want_mesh:
             mesh = trimesh.Trimesh(vertices=vertices_world, faces=self.faces, process=False)

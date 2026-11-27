@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from collections.abc import Sequence
 
@@ -10,6 +11,7 @@ from bridge.core.camera import opencv_camera_matrices_from_lookat
 from bridge.core.rotation import (
     quaternion_xyzw_to_matrix,
     rotation_matrix_to_quaternion_xyzw,
+    lookat_frame,
     ue_rotator_deg_from_lookat,
     ue_rotator_deg_from_matrix,
 )
@@ -95,13 +97,18 @@ def ue_camera_world_pose_from_location_quaternion_m(
 
 
 def ue_rotator_deg_from_camera_spec(camera_spec) -> tuple[float, float, float]:
-    roll_deg_extra = float(getattr(camera_spec, "roll_deg", 0.0) or 0.0)
-    pos = tuple(float(v) for v in ue_world_point_from_genesis_m(camera_spec.pos).tolist())
-    lookat = tuple(float(v) for v in ue_world_point_from_genesis_m(camera_spec.lookat).tolist())
-    up = tuple(float(v) for v in ue_world_point_from_genesis_m(camera_spec.up).tolist())
-    roll, pitch, yaw = ue_rotator_deg_from_lookat(pos, lookat, up)
-    roll += roll_deg_extra
-    return roll, pitch, yaw
+    # UE's local camera axes are forward/right/up, while calibrated OpenCV
+    # axes are right/down/forward.  Construct the complete basis before
+    # converting to a Rotator; deriving roll after the handedness conversion
+    # used the opposite sign and displaced tilted views by twice their roll.
+    right, up, forward = lookat_frame(
+        camera_spec.pos, camera_spec.lookat, camera_spec.up,
+        roll_deg=float(getattr(camera_spec, "roll_deg", 0.0) or 0.0),
+    )
+    basis = np.column_stack(tuple(
+        ue_world_point_from_genesis_m(axis) for axis in (forward, right, up)
+    ))
+    return ue_rotator_deg_from_matrix(basis)
 
 
 def ue_camera_payload_from_spec(camera_spec) -> dict:
@@ -138,6 +145,16 @@ def ue_camera_payload_from_spec(camera_spec) -> dict:
     # #endregion
     pos = tuple(float(v) * 100.0 for v in ue_world_point_from_genesis_m(camera_spec.pos).tolist())
     lookat_cm = tuple(float(v) * 100.0 for v in ue_world_point_from_genesis_m(camera_spec.lookat).tolist())
+    metadata = dict(getattr(camera_spec, "metadata", {}) or {})
+    fov_h = float(camera_spec.fov)
+    intrinsics = metadata.get("intrinsics")
+    if intrinsics is not None:
+        if isinstance(intrinsics, dict):
+            intrinsics = intrinsics.get("K")
+        K = np.asarray(intrinsics, dtype=np.float64).reshape(3, 3)
+        fov_h = math.degrees(2 * math.atan(0.5 * camera_spec.res[0] / K[0, 0]))
+    elif metadata.get("fov_axis", "vertical") == "vertical":
+        fov_h = math.degrees(2 * math.atan(math.tan(math.radians(fov_h) / 2) * camera_spec.res[0] / camera_spec.res[1]))
     return {
         'name': str(camera_spec.name),
         'x': pos[0],
@@ -146,7 +163,8 @@ def ue_camera_payload_from_spec(camera_spec) -> dict:
         'roll': roll,
         'pitch': pitch,
         'yaw': yaw,
-        'fov': float(camera_spec.fov),
+        'fov': fov_h,
+        'fov_axis': 'horizontal',
         'lookat_cm': lookat_cm,
         'res': tuple(int(v) for v in camera_spec.res),
     }

@@ -1,0 +1,113 @@
+{
+  "layout_counts": {
+    "reader_test": 96,
+    "evidence_dev": 60,
+    "evidence_test": 64,
+    "phase2_fit": 40,
+    "phase1_fit": 40,
+    "student_test": 48
+  },
+  "all_distinct_v8_layouts": 348,
+  "excluded_prior_layouts": 688,
+  "separate_balanced_public_diagnostic_layouts": 48,
+  "balanced_public_diagnostic_found": {
+    "femoral": 8,
+    "groin_to_distal_calf": 19
+  },
+  "student_training_episodes": 80,
+  "teaching_development": {
+    "phase1": {
+      "search_executions": 2360,
+      "strict_sign_0": 1555,
+      "strict_sign_-1": 116,
+      "strict_sign_1": 81,
+      "search_programs": {
+        "continue": 608,
+        "hold": 496,
+        "prefer_a": 432,
+        "prefer_b": 416,
+        "both": 408
+      }
+    },
+    "phase2": {
+      "search_executions": 2528,
+      "strict_sign_-1": 194,
+      "strict_sign_0": 1465,
+      "strict_sign_1": 157,
+      "search_programs": {
+        "continue": 712,
+        "hold": 568,
+        "prefer_a": 480,
+        "prefer_b": 408,
+        "both": 360
+      }
+    }
+  },
+  "teacher_heldout_search_executions": 3024,
+  "fresh_evidence_legal_executions": 897,
+  "policy_scoring_legal_executions": 432,
+  "all_frozen_hashes_checked": true,
+  "bootstrap_recalculated_from_shards": true,
+  "protocols": {
+    "capture": "57ade9c23f147e8c1f27fce27edef2f8658a4d72e64a0e86a27d4a901a684d4a",
+    "reader": "323a87f0ea7de63bfa512af915bd72a174c05d52fdc56b614fd6afbe471b58c2",
+    "evidence": "6b731a23ca6a4765e71a0f562e01cd5d563194040ffe4e0a1c40f4beaef29561",
+    "cycles": "da8de2fa00c3661322ae8ddd32e0ec78faa9213b063291a842d8d317655cd4c2"
+  },
+  "paired_sha256": "52c0b3a7bee393b5687c897a31f3b8c462a381f3eefc2ee0f37dd86d91250a71",
+  "student_test_predictions_sha256": "6ea2339123ad9b2644c5663f2fbc90ebfd15596b443869db7d1d7e4641ed34f4",
+  "contracts": {
+    "permuted_label_contracts": [
+      {
+        "route": "femoral",
+        "altered_truth_labels": 76,
+        "same_public_scores_and_plan": true
+      },
+      {
+        "route": "groin_to_distal_calf",
+        "altered_truth_labels": 296,
+        "same_public_scores_and_plan": true
+      },
+      {
+        "route": "femoral",
+        "altered_truth_labels": 76,
+        "same_public_scores_and_plan": true
+      },
+      {
+        "route": "groin_to_distal_calf",
+        "altered_truth_labels": 188,
+        "same_public_scores_and_plan": true
+      }
+    ],
+    "teacher_six_perfect_bands": {
+      "n": 6,
+      "min_replicates": 4,
+      "enough_replicates": true,
+      "strict_lower": 0.42321554209345097,
+      "wrong_upper": 0.1003639728662563,
+      "wrong_budget": 0.1,
+      "strict_lower_gt_zero": true,
+      "wrong_upper_leq_budget": false,
+      "eligible": false,
+      "uncertain": true,
+      "structurally_impossible": false,
+      "reasons": [
+        "expected_wrong_upper_exceeds_budget"
+      ]
+    },
+    "teacher_six_rescues_of_thirty_two": {
+      "n": 32,
+      "min_replicates": 4,
+      "enough_replicates": true,
+      "strict_lower": 0.07436334022165886,
+      "wrong_upper": 0.009918871038328182,
+      "wrong_budget": 0.1,
+      "strict_lower_gt_zero": true,
+      "wrong_upper_leq_budget": true,
+      "eligible": true,
+      "uncertain": false,
+      "structurally_impossible": false,
+      "reasons": []
+    }
+  }
+}

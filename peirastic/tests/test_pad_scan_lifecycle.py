@@ -276,7 +276,8 @@ def test_force_gate_applies_once_and_visual_cap_is_soft_request():
     gate = pad_visual_force_gate(4.25, 4., 5.5)
     visual_cap = load_pad_scan_config()['pad']['max_visual_omega_rad_s']
     assert diag['visual_request_rad_s'] == pytest.approx(visual_cap)
-    assert diag['visual_request_gated_rad_s'] == pytest.approx(visual_cap * gate)
+    assert diag['visual_gamma'] == pytest.approx(gate)
+    assert diag['visual_request_gated_rad_s'] == pytest.approx(visual_cap)
     assert diag['visual_shortfall_rad_s'] > 0.
     owner.abort('test', definitely_not_sent=True)
 

@@ -1,0 +1,14 @@
+{
+  "cases": 128,
+  "rows": 768,
+  "seeds": [
+    7,
+    29
+  ],
+  "steps": 120,
+  "feature_builder": "frozen proposal_features (candidate hit/separation)",
+  "models": {
+    "cql_firstscan_matched_7.pt": "aea03be38bde68e145be2218f89cdd0bcfd16b0db1f19e95d5847d1c23e98805",
+    "cql_firstscan_matched_29.pt": "875147d869612715e7cbe73dfc50d4e697b065fd48c607110eb73ea87a5ce026"
+  }
+}

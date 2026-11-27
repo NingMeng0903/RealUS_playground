@@ -1,0 +1,27 @@
+{
+  "base_git": "2f2c704eb0085f78e638d41cd2467c436713b695",
+  "sources": {
+    "study_v8.py": "2173c1546209b1fb551cc331591776f191304110ca64a78075bb147cc96a58a5",
+    "reader_v8.py": "a511645b0d725ba2eb6436938fc5de899db41e00e551f9d2b356d46c147773f5",
+    "reader_panel_v8.py": "12d5e94a5a2d0cb381f3c0c338947c532afdab927418c1aa74c83a27b20a1cfa",
+    "edge_v8.py": "dbf0bcc70acf73abb7703f205aeb02e473620a47cde267dd6810674d424732d4"
+  },
+  "atlas_sha256": "aad4100d6e594de6279a2297fae3c5cb6e84a68077bfde56435113d5b0c352d5",
+  "edge_bundle_sha256": "be5c0a9dd30fa960378c57edb94037d10c62d27a8094e5c3c090535e1875c851",
+  "development_shards": [
+    "1bfc25cef0135f6057040fcb86fb484f6a4e0ab98abd57d1a4ae586d07ea57c9",
+    "2cb7a75abb2da500b0217063641cb0636e2d0cdf9a48879809c9f288c427abde",
+    "04e29e6c2fd1909dfa60c614e25c741143366c22648a32d1ad061e23836ae290",
+    "09983c9ed63eff52f6da888f6e530953e946c0e530aa461049fb0a00bce51aae",
+    "00237fa4a3dbb718939daa48ba1032569b72e66055862041c202c63af27cea43",
+    "be25080ca1b968678f305cd4ce2af0de8d9ab70302cca1be3a2592964bff71ca"
+  ],
+  "capture_protocol_sha256": "57ade9c23f147e8c1f27fce27edef2f8658a4d72e64a0e86a27d4a901a684d4a",
+  "development_folds": [
+    "object identity",
+    "candidate delivery",
+    "winner reliability",
+    "threshold and route selection"
+  ],
+  "oracle_used_in_deployed_fit": false
+}

@@ -1,0 +1,356 @@
+{
+  "original": {
+    "layouts": 80,
+    "source_panel_sha256": "cae2ca4320f4ed7ec5dc419e005961a80e25e19426c68a570b8f28fbe92ce1dd",
+    "outcomes_sha256": "bf54b674c3ec44498857ed3b5d911e1686f2a9c1b6e6afdb83f37f266e846ce8",
+    "arms": {
+      "base_v10": {
+        "strict": [
+          43,
+          40,
+          51
+        ],
+        "wrong_branch": [
+          19,
+          22,
+          18
+        ]
+      },
+      "base_mixed": {
+        "strict": [
+          41,
+          41,
+          50
+        ],
+        "wrong_branch": [
+          22,
+          19,
+          19
+        ]
+      },
+      "geometry_v10": {
+        "strict": [
+          51,
+          45,
+          53
+        ],
+        "wrong_branch": [
+          15,
+          17,
+          18
+        ]
+      },
+      "geometry_mixed": {
+        "strict": [
+          53,
+          47,
+          53
+        ],
+        "wrong_branch": [
+          19,
+          16,
+          19
+        ]
+      }
+    },
+    "paired": {
+      "base_mixed_minus_base_v10": {
+        "strict": {
+          "actual": [
+            -0.025,
+            -0.0875,
+            0.0375
+          ],
+          "rescued": 2,
+          "lost": 4,
+          "independent": [
+            0.0,
+            -0.05,
+            0.05
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            0.0375,
+            -0.025,
+            0.1
+          ],
+          "rescued": 5,
+          "lost": 2,
+          "independent": [
+            -0.0125,
+            -0.0625,
+            0.0375
+          ]
+        }
+      },
+      "geometry_v10_minus_base_v10": {
+        "strict": {
+          "actual": [
+            0.1,
+            0.0125,
+            0.19406250000000114
+          ],
+          "rescued": 11,
+          "lost": 3,
+          "independent": [
+            0.04375,
+            0.0,
+            0.0875
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            -0.05,
+            -0.1125,
+            0.0
+          ],
+          "rescued": 1,
+          "lost": 5,
+          "independent": [
+            -0.03125,
+            -0.08125,
+            0.0125
+          ]
+        }
+      },
+      "geometry_mixed_minus_base_mixed": {
+        "strict": {
+          "actual": [
+            0.15,
+            0.075,
+            0.2375
+          ],
+          "rescued": 12,
+          "lost": 0,
+          "independent": [
+            0.05625,
+            0.0125,
+            0.1
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            -0.0375,
+            -0.1,
+            0.0125
+          ],
+          "rescued": 1,
+          "lost": 4,
+          "independent": [
+            -0.01875,
+            -0.06875,
+            0.03453125000000057
+          ]
+        }
+      },
+      "geometry_mixed_minus_geometry_v10": {
+        "strict": {
+          "actual": [
+            0.025,
+            -0.0625,
+            0.1125
+          ],
+          "rescued": 7,
+          "lost": 5,
+          "independent": [
+            0.0125,
+            -0.0375,
+            0.0625
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            0.05,
+            -0.0125,
+            0.125
+          ],
+          "rescued": 6,
+          "lost": 2,
+          "independent": [
+            0.0,
+            -0.05,
+            0.05
+          ]
+        }
+      }
+    }
+  },
+  "confirmation": {
+    "layouts": 96,
+    "source_panel_sha256": "e06d6ba58b0960ab3d4395a1a52cd8e5a7e022cc2a45120670225a8bec29dd98",
+    "outcomes_sha256": "8647a350d72932d5db3761188173b5ef91cb7a3af849c55c5cbb26324489f3ba",
+    "arms": {
+      "base_v10": {
+        "strict": [
+          57,
+          55,
+          58
+        ],
+        "wrong_branch": [
+          22,
+          26,
+          20
+        ]
+      },
+      "base_mixed": {
+        "strict": [
+          53,
+          52,
+          56
+        ],
+        "wrong_branch": [
+          23,
+          23,
+          22
+        ]
+      },
+      "geometry_v10": {
+        "strict": [
+          60,
+          59,
+          57
+        ],
+        "wrong_branch": [
+          20,
+          25,
+          22
+        ]
+      },
+      "geometry_mixed": {
+        "strict": [
+          58,
+          58,
+          63
+        ],
+        "wrong_branch": [
+          20,
+          21,
+          21
+        ]
+      }
+    },
+    "paired": {
+      "base_mixed_minus_base_v10": {
+        "strict": {
+          "actual": [
+            -0.041666666666666664,
+            -0.10963541666666665,
+            0.03125
+          ],
+          "rescued": 4,
+          "lost": 8,
+          "independent": [
+            -0.026041666666666668,
+            -0.078125,
+            0.020833333333333332
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            0.010416666666666666,
+            -0.041666666666666664,
+            0.0625
+          ],
+          "rescued": 4,
+          "lost": 3,
+          "independent": [
+            -0.005208333333333333,
+            -0.041666666666666664,
+            0.03125
+          ]
+        }
+      },
+      "geometry_v10_minus_base_v10": {
+        "strict": {
+          "actual": [
+            0.03125,
+            -0.052083333333333336,
+            0.11458333333333333
+          ],
+          "rescued": 9,
+          "lost": 6,
+          "independent": [
+            0.015625,
+            -0.036458333333333336,
+            0.06770833333333333
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            -0.020833333333333332,
+            -0.08333333333333333,
+            0.036718750000000945
+          ],
+          "rescued": 3,
+          "lost": 5,
+          "independent": [
+            0.005208333333333333,
+            -0.041666666666666664,
+            0.046875
+          ]
+        }
+      },
+      "geometry_mixed_minus_base_mixed": {
+        "strict": {
+          "actual": [
+            0.052083333333333336,
+            -0.010416666666666666,
+            0.11458333333333333
+          ],
+          "rescued": 7,
+          "lost": 2,
+          "independent": [
+            0.06770833333333333,
+            0.005208333333333333,
+            0.12773437500000048
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            -0.03125,
+            -0.07291666666666667,
+            0.0
+          ],
+          "rescued": 0,
+          "lost": 3,
+          "independent": [
+            -0.015625,
+            -0.06770833333333333,
+            0.036458333333333336
+          ]
+        }
+      },
+      "geometry_mixed_minus_geometry_v10": {
+        "strict": {
+          "actual": [
+            -0.020833333333333332,
+            -0.09375,
+            0.052083333333333336
+          ],
+          "rescued": 5,
+          "lost": 7,
+          "independent": [
+            0.026041666666666668,
+            -0.03125,
+            0.08333333333333333
+          ]
+        },
+        "wrong_branch": {
+          "actual": [
+            0.0,
+            -0.0625,
+            0.052083333333333336
+          ],
+          "rescued": 4,
+          "lost": 4,
+          "independent": [
+            -0.026041666666666668,
+            -0.07291666666666667,
+            0.020833333333333332
+          ]
+        }
+      }
+    }
+  }
+}

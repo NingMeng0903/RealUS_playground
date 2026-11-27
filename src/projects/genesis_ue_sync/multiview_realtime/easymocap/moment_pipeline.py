@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import inspect
 import logging
 import shutil
 import time
@@ -33,6 +34,8 @@ from projects.genesis_ue_sync.multiview_realtime.easymocap.delayed_smplx import 
     easymocap_export_options_from_pose_backend,
     easymocap_fit_runtime_from_pose_backend,
     easymocap_joints_world,
+    easymocap_pelvis_world_m,
+    easymocap_smplx_joints_world,
     easymocap_vertices_world,
     ensure_smplx_assets,
     mask_keypoints2d_to_triangulation_inliers,
@@ -56,6 +59,29 @@ from projects.genesis_ue_sync.tracking.tracking_mesh_overlay import (
 logger = logging.getLogger(__name__)
 
 
+def _smplx_result_provenance(
+    *,
+    gender: str,
+    fit_model: str,
+    model_type: str | None = None,
+) -> dict[str, np.ndarray]:
+    """Return explicit body-model provenance for a fitted result NPZ.
+
+    ``fit_model`` records the body-model choice supplied to the fitter, while
+    ``model_type`` records the body-model family.  The tracking backend remains
+    a separate summary field for HybrIK rows; keeping these fields explicit
+    prevents a downstream publisher from guessing the body model.
+    """
+
+    fit_name = str(fit_model).strip().lower()
+    body_name = str(model_type if model_type is not None else fit_name).strip().lower()
+    return {
+        "gender": np.asarray(str(gender).strip().lower()),
+        "fit_model": np.asarray(fit_name),
+        "model_type": np.asarray(body_name),
+    }
+
+
 def _jsonable(value: Any) -> Any:
     if isinstance(value, np.ndarray):
         return value.tolist()
@@ -68,6 +94,232 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return [_jsonable(v) for v in value]
     return value
+
+
+def _compact_dwpose_detection_meta(meta: Any) -> Any:
+    """Strip raw SimCC tensors from no-debug JSON while retaining audit scalars."""
+
+    if not isinstance(meta, dict):
+        return meta
+    compact: dict[str, Any] = {}
+    camera_scalar_keys = (
+        "person_count", "selected_person", "valid_handl", "valid_handr",
+        "valid_face", "valid_body25", "timing_ms", "easymocap",
+        "detector_boxes", "pose_boxes", "detector_box_count", "detector_miss", "bbox_source",
+        "association_miss", "association_iou",
+    )
+    for camera_id, payload in meta.items():
+        if not isinstance(payload, dict):
+            compact[str(camera_id)] = payload
+            continue
+        row: dict[str, Any] = {}
+        for key in camera_scalar_keys:
+            if key in payload:
+                row[key] = payload[key]
+        compact[str(camera_id)] = row
+    return compact
+
+
+def _compact_dwpose_batch_meta(meta: Any) -> Any:
+    """Keep detector timing/provider fields and omit raw batch SimCC arrays."""
+
+    if not isinstance(meta, dict):
+        return meta
+    return {
+        str(key): value
+        for key, value in meta.items()
+        if str(key) not in {"_raw_simcc", "raw_simcc", "simcc", "simcc_easymocap"}
+    }
+
+
+def _compact_triangulation_diagnostics(diag: Any) -> Any:
+    """Retain selected hypotheses and quality summaries, dropping rejected modes."""
+
+    if not isinstance(diag, dict):
+        return diag
+    compact = dict(diag)
+    details = compact.get("joint_details")
+    if isinstance(details, list):
+        compact_details: list[Any] = []
+        for raw_detail in details:
+            if not isinstance(raw_detail, dict):
+                compact_details.append(raw_detail)
+                continue
+            detail = dict(raw_detail)
+            candidates = detail.get("candidate_hypotheses")
+            if isinstance(candidates, list):
+                selected = [candidate for candidate in candidates
+                            if isinstance(candidate, dict) and candidate.get("selected")]
+                if selected:
+                    detail["candidate_hypotheses"] = selected
+                else:
+                    detail.pop("candidate_hypotheses", None)
+            compact_details.append(detail)
+        compact["joint_details"] = compact_details
+    return compact
+
+
+def _compact_diagnostics(
+    *,
+    detection_meta: Any,
+    batch_meta: Any,
+    triangulation: Any,
+) -> tuple[Any, Any, Any]:
+    """Compact persisted no-debug diagnostics without changing geometry decisions."""
+
+    return (
+        _compact_dwpose_detection_meta(detection_meta),
+        _compact_dwpose_batch_meta(batch_meta),
+        {
+            str(part): _compact_triangulation_diagnostics(value)
+            for part, value in triangulation.items()
+        }
+        if isinstance(triangulation, dict) else triangulation,
+    )
+
+
+def _compact_summary_for_no_debug(summary: dict[str, Any], *, write_debug_images: bool) -> dict[str, Any]:
+    """Compact a per-frame summary before it is returned/indexed in fast mode."""
+
+    if write_debug_images:
+        return summary
+    detection, batch, triangulation = _compact_diagnostics(
+        detection_meta=summary.get("detection_meta"),
+        batch_meta=summary.get("batch_meta"),
+        triangulation=summary.get("triangulation"),
+    )
+    summary["detection_meta"] = detection
+    summary["batch_meta"] = batch
+    summary["triangulation"] = triangulation
+    summary["diagnostics_compacted"] = True
+    return summary
+
+
+def _backend_observation_audit(result: dict[str, Any]) -> dict[str, Any]:
+    """Normalize optional HybrIK observation-policy diagnostics for storage.
+
+    The backend returns the geometry report as a JSON string so the same value
+    can be written into an ``npz`` without object arrays. Keep a parsed copy
+    for the human-readable moment summary, and always expose a fixed four-leg
+    weight vector even when an older backend does not provide the optional
+    fields.
+    """
+
+    raw_metadata = result.get("observation_geometry_metadata", "null")
+    if raw_metadata is None:
+        metadata_json = "null"
+    elif isinstance(raw_metadata, str):
+        metadata_json = raw_metadata
+    else:
+        metadata_json = json.dumps(_jsonable(raw_metadata), ensure_ascii=True, sort_keys=True)
+    try:
+        parsed_metadata = json.loads(metadata_json)
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        parsed_metadata = {"parse_error": str(exc)}
+
+    raw_weights = np.asarray(
+        result.get("leg_occlusion_weights", np.zeros(4, dtype=np.float32)),
+        dtype=np.float32,
+    ).reshape(-1)
+    leg_weights = np.zeros(4, dtype=np.float32)
+    copy_count = min(4, raw_weights.size)
+    if copy_count:
+        leg_weights[:copy_count] = raw_weights[:copy_count]
+    leg_weights[~np.isfinite(leg_weights)] = 0.0
+    return {
+        "observation_geometry_filter": bool(
+            result.get("observation_geometry_filter", False)
+        ),
+        "observation_geometry_metadata": metadata_json,
+        "observation_geometry_metadata_parsed": parsed_metadata,
+        "occlusion_rotation_weight": float(
+            result.get("occlusion_rotation_weight", 0.0) or 0.0
+        ),
+        "leg_occlusion_weights": leg_weights,
+        "leg_occlusion_mask": [bool(value > 0.0) for value in leg_weights],
+    }
+
+
+def _rgb_root_quality_fallback_eligible(quality: Any) -> bool:
+    """Allow the RGB pelvis fallback only for the one measured partial-body case."""
+
+    if not isinstance(quality, dict):
+        return False
+    reasons = quality.get("reasons")
+    if set(str(reason) for reason in (reasons or [])) != {"min_core_body25"}:
+        return False
+    body_report = quality.get("body3d")
+    if not isinstance(body_report, dict):
+        return False
+    try:
+        valid_body25 = int(body_report.get("valid_body25", 0))
+    except (TypeError, ValueError):
+        return False
+    return valid_body25 >= 12
+
+
+def write_triangulation_npz(
+    output_path: Path,
+    parts_by_frame: list[dict[str, np.ndarray]],
+    *,
+    timestamps_ns: list[int] | None = None,
+    frame_indices: list[int] | None = None,
+    squeeze_single: bool = False,
+) -> Path:
+    """Persist the fused Body25 + two-hand 3D contract for later comparison.
+
+    A single moment uses ``(J, 4)`` arrays when ``squeeze_single`` is true;
+    burst initialization uses ``(F, J, 4)`` arrays.  The first three keys are
+    the stable protocol names.  ``handl``/``handr`` are retained as compact
+    aliases matching the EasyMocap annotation vocabulary used by this module.
+    The fourth column is the triangulation confidence.
+    """
+
+    if not parts_by_frame:
+        raise ValueError("write_triangulation_npz requires at least one frame")
+
+    def _stack(key: str, joints: int) -> np.ndarray:
+        rows: list[np.ndarray] = []
+        for parts in parts_by_frame:
+            raw = parts.get(key)
+            if raw is None:
+                arr = np.zeros((joints, 4), dtype=np.float32)
+            else:
+                arr = np.asarray(raw, dtype=np.float32).reshape(-1, 4)
+                if arr.shape[0] < joints:
+                    arr = np.vstack([arr, np.zeros((joints - arr.shape[0], 4), dtype=np.float32)])
+                elif arr.shape[0] > joints:
+                    arr = arr[:joints]
+            rows.append(arr.astype(np.float32, copy=False))
+        stacked = np.stack(rows, axis=0)
+        return stacked[0] if squeeze_single and stacked.shape[0] == 1 else stacked
+
+    body25 = _stack("keypoints3d", 25)
+    hand_left = _stack("handl3d", 21)
+    hand_right = _stack("handr3d", 21)
+    bodyhand3d = np.concatenate([body25, hand_left, hand_right], axis=-2)
+    payload: dict[str, Any] = {
+        "schema_version": np.asarray(1, dtype=np.int32),
+        "body25": body25,
+        "keypoints3d": body25,
+        "hand_left": hand_left,
+        "hand_right": hand_right,
+        # EasyMocap-compatible aliases; both contain the same Nx4 data.
+        "handl": hand_left,
+        "handr": hand_right,
+        "handl3d": hand_left,
+        "handr3d": hand_right,
+        "bodyhand3d": bodyhand3d,
+        "points67": bodyhand3d,
+    }
+    if timestamps_ns is not None:
+        payload["timestamps_ns"] = np.asarray(timestamps_ns, dtype=np.int64)
+    if frame_indices is not None:
+        payload["frame_indices"] = np.asarray(frame_indices, dtype=np.int64)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(output_path, **payload)
+    return output_path
 
 
 def _passes_reprojection_gate(errors_px: list[float], max_px: float) -> bool:
@@ -325,11 +577,14 @@ def process_one_moment(
     pose2d_quality_config: Pose2dFrameQualityConfig | None = None,
     fit_model_fallback: str = "",
     keep_rejected: bool = False,
+    disable_face_iteration: bool = False,
     write_debug_images: bool = True,
     write_easymocap_smpl_json: bool | None = None,
 ) -> dict[str, Any]:
     moment_dir = Path(moment_dir)
     moment_dir.mkdir(parents=True, exist_ok=True)
+    gender = str(gender).strip().lower()
+    fit_model = str(fit_model).strip().lower()
     compare_dir = moment_dir / "compare"
     compare_dir.mkdir(parents=True, exist_ok=True)
 
@@ -368,6 +623,9 @@ def process_one_moment(
         "detection_meta": det_meta,
         "batch_meta": batch_meta,
         "fit_ok": False,
+        "gender": gender,
+        "fit_model": fit_model,
+        "model_type": fit_model,
         "bed_sdf": bool(bed_sdf),
         "bed_sdf_weight": float(bed_sdf_weight),
         "bed_sdf_max_iter": int(bed_sdf_max_iter),
@@ -408,7 +666,7 @@ def process_one_moment(
 
     if skip_fit:
         summary["skip_fit"] = True
-        return summary
+        return _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
 
     tri_cfg, fit_opts, zero_hand_keypoints, fit_2d_source = easymocap_fit_runtime_from_pose_backend(cfg.pose_backend)
     quality_cfg = pose2d_quality_config or Pose2dFrameQualityConfig.from_dict(
@@ -422,6 +680,7 @@ def process_one_moment(
         config=quality_cfg,
     )
     triangulation_diagnostics: dict[str, Any] = {}
+    t_tri = time.perf_counter()
     parts3d_for_quality = triangulate_bodyhand_keypoints3d(
         annots_by_cam,
         camera_ids,
@@ -431,6 +690,20 @@ def process_one_moment(
         diagnostics=triangulation_diagnostics,
         observation_meta_by_cam=_simcc_observation_meta(det_meta, camera_ids),
     )
+    tri_s = time.perf_counter() - t_tri
+    tri_path = write_triangulation_npz(
+        moment_dir / "triangulation.npz",
+        [parts3d_for_quality],
+        timestamps_ns=[int(synced.timestamp_ns)],
+        frame_indices=[int(synced.frame_index)],
+        squeeze_single=True,
+    )
+    summary["triangulation_npz"] = str(tri_path.name)
+    summary["triangulation_elapsed_s"] = float(tri_s)
+    # This wall value deliberately covers detector and DLT only; image packing,
+    # EasyMocap fitting, and overlay rendering have separate timings below.
+    summary["frontend_wall_s"] = float(detect_s + tri_s)
+    summary["frontend_elapsed_s"] = float(detect_s + tri_s)
     ok3d, qual3d_report = evaluate_bodyhand3d_quality(parts3d_for_quality, config=quality_cfg)
     summary["pose2d_quality"] = qual_report
     summary["bodyhand3d_quality"] = qual3d_report
@@ -439,12 +712,22 @@ def process_one_moment(
         summary["fit_ok"] = False
         summary["skip_reason"] = "bodyhand3d_quality" if not ok3d else "pose2d_quality"
         summary["latency_s"] = float(time.perf_counter() - t0)
+        _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
         if keep_rejected:
             (moment_dir / "moment.json").write_text(
                 json.dumps(_jsonable(summary), ensure_ascii=True, indent=2),
                 encoding="utf-8",
             )
         else:
+            # Keep a compact 3D artifact even when the strict quality gate
+            # rejects the fit.  The caller moves this sibling next to its
+            # sequence index before removing the large debug folder.
+            preserved = moment_dir.parent / f"{moment_dir.name}.triangulation.npz"
+            try:
+                shutil.copy2(tri_path, preserved)
+                summary["triangulation_npz_preserved"] = str(preserved.name)
+            except OSError:
+                logger.warning("could not preserve rejected triangulation %s", tri_path)
             shutil.rmtree(moment_dir, ignore_errors=True)
         return summary
 
@@ -465,7 +748,6 @@ def process_one_moment(
         annot_records_by_camera={cid: easymocap_person_record(annots_for_fit[cid], person_id=0) for cid in camera_ids},
     )
 
-    fit_model = str(fit_model).lower()
     fallback = str(fit_model_fallback).lower()
     models_to_try = [fit_model]
     if fallback and fallback != fit_model:
@@ -498,11 +780,13 @@ def process_one_moment(
                 fit_opts=fit_opts,
                 zero_hand_keypoints=zero_hand_keypoints,
                 fit_2d_source=str(fit_2d_source),
+                disable_face_iteration=bool(disable_face_iteration),
                 write_easymocap_smpl_json=bool(write_easymocap_smpl_json),
             )
             summary["fit_diagnostics"] = fit_diagnostics
             summary["smplx_fit_2d_source"] = fit_diagnostics.get("smplx_fit_2d_source")
             summary["fit_model_used"] = attempt_model
+            summary["model_type"] = attempt_model
             last_err = None
             break
         except Exception as exc:
@@ -526,6 +810,15 @@ def process_one_moment(
             keypoints3d=kp3d,
         )
         verts, faces = easymocap_vertices_world(body_model, params)
+        native_joints_world_m = easymocap_smplx_joints_world(body_model, params, frame_index=0)
+        native55_joints_world_m = np.asarray(native_joints_world_m[:55], dtype=np.float32)
+        if native55_joints_world_m.shape[0] < 55:
+            raise ValueError(
+                f"EasyMocap native SMPL-X joints contain {native55_joints_world_m.shape[0]} joints; expected 55"
+            )
+        pelvis_world_m = native55_joints_world_m[0]
+        summary["pelvis_world_m"] = [float(v) for v in pelvis_world_m.tolist()]
+        summary["native55_joints_world_m"] = native55_joints_world_m.tolist()
         # Root translation is part of the SMPL-X optimization.  Do not shift a
         # finished mesh afterwards: that would invalidate both reprojection and
         # the subsequent anti-penetration check.
@@ -538,6 +831,7 @@ def process_one_moment(
     except Exception as exc:
         summary["fit_ok"] = False
         summary["fit_error"] = str(exc)
+        _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
         logger.warning("SMPL fit failed for %s: %s", moment_dir.name, exc)
         if write_debug_images:
             for camera_id in camera_ids:
@@ -612,12 +906,467 @@ def process_one_moment(
             root_align.get("offset_m") if root_align.get("applied") else (0.0, 0.0, 0.0),
             dtype=np.float32,
         ),
+        pelvis_world_m=pelvis_world_m.astype(np.float32),
+        native55_joints_world_m=native55_joints_world_m.astype(np.float32),
+        joints_world_m55=native55_joints_world_m.astype(np.float32),
         vertices=verts.astype(np.float32),
         faces=np.asarray(faces, dtype=np.int32),
+        **_smplx_result_provenance(
+            gender=gender,
+            fit_model=attempt_model,
+            model_type=attempt_model,
+        ),
     )
     summary["overlay_stats"] = overlay_stats
     summary["total_elapsed_s"] = float(time.perf_counter() - t0)
     summary["latency_s"] = float(summary["total_elapsed_s"])
+    _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
+    (moment_dir / "moment.json").write_text(
+        json.dumps(_jsonable(summary), ensure_ascii=True, indent=2),
+        encoding="utf-8",
+    )
+    return summary
+
+
+def process_one_hybrik_moment(
+    *,
+    moment_dir: Path,
+    synced: SyncedMultiviewFrame,
+    cfg: MultiviewRealtimeConfig,
+    calibration: CalibrationBundle,
+    detector: DwposeOnnxDetector,
+    camera_ids: list[str],
+    hybrik_backend: Any,
+    thres2d: float,
+    max_repro_error: float,
+    triangulator: Any | None = None,
+    motion_frame_index: int | None = None,
+    pose2d_quality_config: Pose2dFrameQualityConfig | None = None,
+    keep_rejected: bool = False,
+    write_debug_images: bool = True,
+    rgb_pose_prior: Any | None = None,
+    overlap_rgb: bool = True,
+) -> dict[str, Any]:
+    """Run DWPose/triangulation and initialized HybrIK-X pose tracking.
+
+    The static EasyMocap burst supplies shape and initial twist; this function
+    intentionally never calls EasyMocap fitting for a motion frame.  The
+    initialized HybrIK-X backend owns the 165-axis pose, native-55 joints,
+    pelvis, vertices, and faces written to ``smplx_result.npz``.
+    """
+
+    moment_dir = Path(moment_dir)
+    moment_dir.mkdir(parents=True, exist_ok=True)
+    hybrik_gender = str(getattr(hybrik_backend, "gender", "male")).strip().lower()
+    started = time.perf_counter()
+    annots_by_cam, det_meta, batch_meta = detector.infer_easymocap_annot_multiview(
+        synced.views_rgb,
+        camera_ids,
+    )
+    annots_by_cam = _sanitize_annots_by_cam(annots_by_cam)
+    detect_s = time.perf_counter() - started
+    arrays, _ = camera_arrays(calibration, camera_ids, synced.views_rgb, scale_to_ingress=True)
+
+    tri_cfg, _fit_opts, zero_hand_keypoints, _fit_2d_source = easymocap_fit_runtime_from_pose_backend(
+        cfg.pose_backend
+    )
+    quality_cfg = pose2d_quality_config or Pose2dFrameQualityConfig.from_dict(
+        dict(cfg.pose_backend.get("frame_quality") or {})
+    )
+    ok2d, qual2d = evaluate_easymocap_annot_quality(
+        annots_by_cam,
+        synced.views_rgb,
+        keypoints3d_world=None,
+        config=quality_cfg,
+    )
+    rgb_root_fallback_enabled = bool(
+        getattr(hybrik_backend, "rgb_root_fallback", False)
+    )
+    provider_kwargs: dict[str, Any] = {}
+    if rgb_root_fallback_enabled:
+        provider_kwargs["projection_matrices"] = arrays["P"]
+    # The CPU workers and RGB network only read this frame's detections and
+    # images. Run CUDA on its existing main thread while the independent CPU
+    # futures are pending; the stateful fit still waits for both quality gates.
+    rgb_prefetched: Any = None
+    rgb_prefetch_error: Exception | None = None
+    rgb_overlapped = bool(
+        overlap_rgb and ok2d and rgb_pose_prior is not None
+        and callable(getattr(triangulator, "submit", None))
+    )
+    tri_diag: dict[str, Any] = {}
+    t_tri = time.perf_counter()
+    triangulate = triangulator.triangulate if triangulator is not None else triangulate_bodyhand_keypoints3d
+    tri_kwargs = dict(
+        tri_cfg=tri_cfg,
+        include_hands=not bool(zero_hand_keypoints),
+        diagnostics=tri_diag,
+        observation_meta_by_cam=_simcc_observation_meta(det_meta, camera_ids),
+    )
+    if rgb_overlapped:
+        pending = triangulator.submit(
+            annots_by_cam, camera_ids, arrays["P"],
+            compact_diagnostics=not write_debug_images, **tri_kwargs,
+        )
+        try:
+            rgb_prefetched = rgb_pose_prior.infer(
+                synced.views_rgb, det_meta, camera_ids, **provider_kwargs,
+            )
+        except Exception as exc:
+            # Preserve gate precedence: a bad 3D frame is rejected even if its
+            # speculative RGB computation failed. A usable frame re-raises
+            # below through the existing provider error handling.
+            rgb_prefetch_error = exc
+        parts3d = pending.result()
+        tri_s = pending.elapsed_s
+    else:
+        parts3d = triangulate(annots_by_cam, camera_ids, arrays["P"], **tri_kwargs)
+        tri_s = time.perf_counter() - t_tri
+    tri_path = write_triangulation_npz(
+        moment_dir / "triangulation.npz",
+        [parts3d],
+        timestamps_ns=[int(synced.timestamp_ns)],
+        frame_indices=[int(synced.frame_index)],
+        squeeze_single=True,
+    )
+    frontend_elapsed_s = float(time.perf_counter() - started)
+    ok3d, qual3d = evaluate_bodyhand3d_quality(parts3d, config=quality_cfg)
+    defer_3d_quality = bool(
+        ok2d
+        and not ok3d
+        and rgb_pose_prior is not None
+        and rgb_root_fallback_enabled
+        and _rgb_root_quality_fallback_eligible(qual3d)
+    )
+    summary: dict[str, Any] = {
+        "moment_dir": str(moment_dir.resolve()),
+        "frame_index": int(synced.frame_index),
+        "timestamp_ns": int(synced.timestamp_ns),
+        "camera_frame_indices": {
+            cid: int((synced.metadata_by_camera.get(cid) or {}).get("frame_index", synced.frame_index))
+            for cid in camera_ids
+        },
+        "camera_sim_time_ns": {
+            cid: int((synced.metadata_by_camera.get(cid) or {}).get("sim_time_ns", 0) or 0)
+            for cid in camera_ids
+        },
+        "detect_elapsed_s": float(detect_s),
+        "triangulation_elapsed_s": float(tri_s),
+        "frontend_wall_s": frontend_elapsed_s,
+        "frontend_elapsed_s": frontend_elapsed_s,
+        "rgb_overlapped_with_triangulation": rgb_overlapped,
+        "frontend_includes_rgb": rgb_overlapped,
+        "detection_meta": det_meta,
+        "batch_meta": batch_meta,
+        "triangulation": tri_diag,
+        "triangulation_npz": str(tri_path.name),
+        "pose2d_quality": qual2d,
+        "bodyhand3d_quality": qual3d,
+        "motion_frame_index": int(motion_frame_index) if motion_frame_index is not None else None,
+        "fit_ok": False,
+        "tracking_backend": "hybrik",
+        "gender": hybrik_gender,
+        "fit_model": "smplx",
+        "model_type": "smplx",
+        "write_debug_images": bool(write_debug_images),
+        "rgb_root_fallback": rgb_root_fallback_enabled,
+        "observation_geometry_filter": bool(
+            getattr(hybrik_backend, "observation_geometry_filter", False)
+        ),
+        "observation_geometry_metadata": None,
+        "observation_geometry_metadata_parsed": None,
+        "observation_geometry_rejected_mask": None,
+        "observation_geometry_rejected_count": None,
+        "observation_geometry_hand_metadata": None,
+        "occlusion_rotation_weight": float(
+            getattr(hybrik_backend, "occlusion_rotation_weight", 0.0) or 0.0
+        ),
+        "leg_occlusion_weights": [0.0, 0.0, 0.0, 0.0],
+        "leg_occlusion_mask": [False, False, False, False],
+    }
+    frame_values = list(summary["camera_frame_indices"].values())
+    summary["camera_frame_span"] = int(max(frame_values) - min(frame_values)) if frame_values else 0
+
+    if write_debug_images:
+        images_raw = moment_dir / "images_raw"
+        skeleton_2d = moment_dir / "skeleton_2d"
+        images_raw.mkdir(parents=True, exist_ok=True)
+        skeleton_2d.mkdir(parents=True, exist_ok=True)
+        for cid in camera_ids:
+            raw = np.asarray(synced.views_rgb[cid], dtype=np.uint8)
+            Image.fromarray(raw).save(images_raw / f"{cid}.png")
+            Image.fromarray(draw_bodyhandface_2d(raw, annots_by_cam[cid])).save(
+                skeleton_2d / f"{cid}_bodyhandface.png"
+            )
+
+    if not ok2d or (not ok3d and not defer_3d_quality):
+        summary["skip_reason"] = "bodyhand3d_quality" if not ok3d else "pose2d_quality"
+        summary["latency_s"] = float(time.perf_counter() - started)
+        _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
+        if keep_rejected:
+            (moment_dir / "moment.json").write_text(
+                json.dumps(_jsonable(summary), ensure_ascii=True, indent=2),
+                encoding="utf-8",
+            )
+        return summary
+
+    points67 = stack_bodyhand_keypoints3d(parts3d, pad_face_for_smplx=False)
+    if points67.shape != (67, 4):
+        raise ValueError(f"HybrIK frontend produced {points67.shape}, expected (67,4)")
+    step_parameters = inspect.signature(hybrik_backend.step).parameters
+    step_kwargs = (
+        {"timestamp_ns": int(synced.timestamp_ns)}
+        if "timestamp_ns" in step_parameters
+        else {}
+    )
+    rgb_meta: Any = None
+    if rgb_pose_prior is not None:
+        try:
+            if rgb_overlapped:
+                if rgb_prefetch_error is not None:
+                    raise rgb_prefetch_error
+                hints, rgb_meta = rgb_prefetched
+            else:
+                hints, rgb_meta = rgb_pose_prior.infer(
+                    synced.views_rgb, det_meta, camera_ids, **provider_kwargs,
+                )
+            if not isinstance(hints, dict):
+                raise ValueError("RGB pose prior returned non-mapping hints")
+            missing_hints = {"rgb_rotations", "rgb_agreement"}.difference(hints)
+            if missing_hints:
+                raise ValueError(
+                    "RGB pose prior omitted required hints: "
+                    + ", ".join(sorted(missing_hints))
+                )
+            if defer_3d_quality and hints.get("rgb_pelvis_world_m") is None:
+                summary.update(
+                    {
+                        "skip_reason": "bodyhand3d_quality",
+                        "rgb_root_rejection": "missing_rgb_pelvis_world_m",
+                        "hybrik_rgb": rgb_meta,
+                        "latency_s": float(time.perf_counter() - started),
+                    }
+                )
+                _compact_summary_for_no_debug(
+                    summary, write_debug_images=write_debug_images
+                )
+                if keep_rejected:
+                    (moment_dir / "moment.json").write_text(
+                        json.dumps(_jsonable(summary), ensure_ascii=True, indent=2),
+                        encoding="utf-8",
+                    )
+                return summary
+            if defer_3d_quality:
+                summary[
+                    "tracking_quality_mode"
+                ] = "partial_body_with_triangulated_rgb_pelvis"
+            step_kwargs.update(hints)
+            # The timestamp belongs to the synchronized source frame.  Keep it
+            # intact even if a provider accidentally returns an overlapping key.
+            if "timestamp_ns" in step_parameters:
+                step_kwargs["timestamp_ns"] = int(synced.timestamp_ns)
+            else:
+                step_kwargs.pop("timestamp_ns", None)
+            summary["hybrik_rgb"] = rgb_meta
+        except ValueError as exc:
+            rejection_reason = "hybrik_rgb_pose"
+            if defer_3d_quality:
+                rejection_reason = "bodyhand3d_quality"
+            summary.update(
+                {
+                    "fit_ok": False,
+                    "skip_reason": rejection_reason,
+                    "rgb_rejection": str(exc),
+                    "hybrik_rgb": {
+                        "accepted": False,
+                        "rejection": str(exc),
+                    },
+                    "latency_s": float(time.perf_counter() - started),
+                }
+            )
+            _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
+            if keep_rejected:
+                (moment_dir / "moment.json").write_text(
+                    json.dumps(_jsonable(summary), ensure_ascii=True, indent=2),
+                    encoding="utf-8",
+                )
+            return summary
+    t_backend = time.perf_counter()
+    try:
+        result = hybrik_backend.step(points67, **step_kwargs)
+    except ValueError as exc:
+        # A missing pelvis or invalid solved geometry is a measured rejection,
+        # with the original source frame retained, rather than an untimed row.
+        summary.update(skip_reason="hybrik_geometry", backend_error=str(exc),
+                       latency_s=float(time.perf_counter() - started),
+                       backend_elapsed_measured_s=float(time.perf_counter() - t_backend))
+        _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
+        if keep_rejected:
+            (moment_dir / "moment.json").write_text(
+                json.dumps(_jsonable(summary), ensure_ascii=True, indent=2), encoding="utf-8",
+            )
+        return summary
+    measured_backend_s = float(time.perf_counter() - t_backend)
+    backend_elapsed_s = float(result.get("backend_elapsed_s", measured_backend_s))
+    observation_audit = _backend_observation_audit(result)
+    native55 = np.asarray(result["joints_world_m"], dtype=np.float32).reshape(-1, 3)
+    if native55.shape[0] < 55:
+        raise ValueError(f"HybrIK-X returned {native55.shape[0]} native joints, expected 55")
+    native55 = native55[:55]
+    vertices = np.asarray(result["vertices"], dtype=np.float32).reshape(-1, 3)
+    faces = np.asarray(result["faces"], dtype=np.int32).reshape(-1, 3)
+    pelvis = np.asarray(result["pelvis_world_m"], dtype=np.float32).reshape(3)
+    np.savez(
+        moment_dir / "smplx_result.npz",
+        Rh=np.asarray(result["Rh"], dtype=np.float32),
+        Th=np.asarray(result["Th"], dtype=np.float32),
+        poses=np.asarray(result["poses"], dtype=np.float32),
+        shapes=np.asarray(result["shapes"], dtype=np.float32),
+        expression=np.asarray(result.get("expression", np.zeros((1, 10), np.float32)), dtype=np.float32),
+        root_align_offset=np.zeros((3,), dtype=np.float32),
+        pelvis_world_m=pelvis,
+        native55_joints_world_m=native55,
+        joints_world_m55=native55,
+        vertices=vertices,
+        faces=faces,
+        root_source=np.asarray(str(result.get("root_source") or "")),
+        rgb_root_used=np.asarray(
+            bool(result.get("rgb_root_used", False)), dtype=np.bool_
+        ),
+        stationary_held=np.asarray(bool(result.get("stationary_held", False)), dtype=np.bool_),
+        landmark_convention=np.asarray(str(result.get("landmark_convention", "easymocap"))),
+        body_landmark_weight=np.asarray(float(result.get("body_landmark_weight", 2.)), dtype=np.float32),
+        hand_landmark_weight=np.asarray(float(result.get("hand_landmark_weight", 2.)), dtype=np.float32),
+        stationary_tolerance_m=np.asarray(result.get("stationary_tolerance_m", 0.0), dtype=np.float32),
+        observation_min_cutoff_hz=np.asarray(result.get("observation_min_cutoff_hz", 0.0), dtype=np.float32),
+        observation_speed_beta=np.asarray(result.get("observation_speed_beta", 0.0), dtype=np.float32),
+        observation_filter_residual_m=np.asarray(result.get("observation_filter_residual_m", 0.0), dtype=np.float32),
+        observation_geometry_filter=np.asarray(
+            observation_audit["observation_geometry_filter"], dtype=np.bool_
+        ),
+        observation_geometry_metadata=np.asarray(
+            observation_audit["observation_geometry_metadata"]
+        ),
+        occlusion_rotation_weight=np.asarray(
+            observation_audit["occlusion_rotation_weight"], dtype=np.float32
+        ),
+        leg_occlusion_weights=np.asarray(
+            observation_audit["leg_occlusion_weights"], dtype=np.float32
+        ),
+        **_smplx_result_provenance(
+            gender=hybrik_gender,
+            fit_model="smplx",
+            model_type="smplx",
+        ),
+    )
+    summary.update(
+        {
+            "fit_ok": True,
+            "backend_elapsed_s": backend_elapsed_s,
+            "backend_elapsed_measured_s": measured_backend_s,
+            "backend_observed_points": int(result.get("observed_points", 0)),
+            "backend_root_source": result.get("root_source"),
+            "backend_pose_initialization": result.get("pose_initialization", "hybrik"),
+            "landmark_convention": result.get("landmark_convention", "easymocap"),
+            "body_landmark_weight": float(result.get("body_landmark_weight", 2.)),
+            "hand_landmark_weight": float(result.get("hand_landmark_weight", 2.)),
+            "backend_temporal_weight": result.get("temporal_weight", 0.0),
+            "root_source": result.get("root_source"),
+            "rgb_root_used": bool(result.get("rgb_root_used", False)),
+            "stationary_held": bool(result.get("stationary_held", False)),
+            "stationary_tolerance_m": float(result.get("stationary_tolerance_m", 0.0)),
+            "observation_min_cutoff_hz": float(result.get("observation_min_cutoff_hz", 0.0)),
+            "observation_speed_beta": float(result.get("observation_speed_beta", 0.0)),
+            "observation_filter_residual_m": float(result.get("observation_filter_residual_m", 0.0)),
+            "observation_filter_elapsed_s": float(result.get("observation_filter_elapsed_s", 0.0)),
+            "observation_geometry_filter": observation_audit[
+                "observation_geometry_filter"
+            ],
+            "observation_geometry_metadata": observation_audit[
+                "observation_geometry_metadata"
+            ],
+            "observation_geometry_metadata_parsed": observation_audit[
+                "observation_geometry_metadata_parsed"
+            ],
+            "observation_geometry_rejected_mask": (
+                observation_audit["observation_geometry_metadata_parsed"].get(
+                    "rejected_mask"
+                )
+                if isinstance(
+                    observation_audit["observation_geometry_metadata_parsed"],
+                    dict,
+                )
+                else None
+            ),
+            "observation_geometry_rejected_count": (
+                observation_audit["observation_geometry_metadata_parsed"].get(
+                    "rejected_count"
+                )
+                if isinstance(
+                    observation_audit["observation_geometry_metadata_parsed"],
+                    dict,
+                )
+                else None
+            ),
+            "observation_geometry_hand_metadata": (
+                observation_audit["observation_geometry_metadata_parsed"].get(
+                    "hands"
+                )
+                if isinstance(
+                    observation_audit["observation_geometry_metadata_parsed"],
+                    dict,
+                )
+                else None
+            ),
+            "occlusion_rotation_weight": observation_audit[
+                "occlusion_rotation_weight"
+            ],
+            "leg_occlusion_weights": observation_audit[
+                "leg_occlusion_weights"
+            ].tolist(),
+            "leg_occlusion_mask": observation_audit["leg_occlusion_mask"],
+            "pelvis_world_m": pelvis.tolist(),
+            "native55_joints_world_m": native55.tolist(),
+            "total_elapsed_s": float(time.perf_counter() - started),
+            "latency_s": float(time.perf_counter() - started),
+        }
+    )
+    if rgb_pose_prior is not None:
+        summary["hybrik_rgb"] = rgb_meta
+    _compact_summary_for_no_debug(summary, write_debug_images=write_debug_images)
+    if write_debug_images:
+        overlays = moment_dir / "overlays"
+        skeleton_3d = moment_dir / "skeleton_3d_repro"
+        panels = moment_dir / "panels"
+        overlays.mkdir(parents=True, exist_ok=True)
+        skeleton_3d.mkdir(parents=True, exist_ok=True)
+        panels.mkdir(parents=True, exist_ok=True)
+        for view_index, cid in enumerate(camera_ids):
+            raw = np.asarray(synced.views_rgb[cid], dtype=np.uint8)
+            cam = calibration.camera(cid)
+            K = _scaled_intrinsics_for_view(calibration, cid, raw)
+            xyz_cam = _world_points_camera_xyz(vertices, cam.camera_from_world)
+            uv, valid = _project_camera_points_to_pixels(xyz_cam, K)
+            visible = valid & np.all(np.isfinite(uv), axis=1) & (xyz_cam[:, 2] > 1.0e-4)
+            overlay = _blend_mesh_on_rgb(
+                raw,
+                faces=faces,
+                uv=uv,
+                valid=visible,
+                xyz_cam=xyz_cam,
+                z_cam=xyz_cam[:, 2],
+                mesh_alpha=0.82,
+                mesh_rgb=(255, 128, 32),
+                face_stride=1,
+                max_triangle_px=520.0,
+            )
+            sk2d = draw_bodyhandface_2d(raw, annots_by_cam[cid])
+            sk3d = draw_keypoints3d_repro(raw, points67, arrays["P"][view_index])
+            Image.fromarray(overlay).save(overlays / f"{cid}_hybrik_overlay.png")
+            Image.fromarray(sk3d).save(skeleton_3d / f"{cid}_tri3d_repro.png")
+            Image.fromarray(compose_triptych(raw, sk2d, overlay)).save(
+                panels / f"{cid}_raw_skeleton_hybrik.png"
+            )
     (moment_dir / "moment.json").write_text(
         json.dumps(_jsonable(summary), ensure_ascii=True, indent=2),
         encoding="utf-8",
@@ -1046,6 +1795,7 @@ def process_burst(
     scene_spec_path: str | Path | None = None,
     motion_frame_indices: list[int | None] | None = None,
     write_debug_images: bool = True,
+    disable_face_iteration: bool = False,
     on_fitted: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
     """Shared-beta from the burst; pose/mesh extract from one synced frame."""
@@ -1053,6 +1803,8 @@ def process_burst(
         raise ValueError("process_burst requires at least one synced frame")
     moment_dir = Path(moment_dir)
     moment_dir.mkdir(parents=True, exist_ok=True)
+    gender = str(gender).strip().lower()
+    fit_model = str(fit_model).strip().lower()
     tri_cfg, fit_opts, zero_hand_keypoints, fit_2d_source = easymocap_fit_runtime_from_pose_backend(cfg.pose_backend)
     annots_by_frame: list[dict[str, dict[str, np.ndarray]]] = []
     raw_annots_by_frame: list[dict[str, dict[str, np.ndarray]]] = []
@@ -1064,6 +1816,7 @@ def process_burst(
     arrays, _ = camera_arrays(calibration, camera_ids, synced_frames[0].views_rgb, scale_to_ingress=True)
     t_dwpose = 0.0
     t_dlt = 0.0
+    t_frontend = time.perf_counter()
     for frame in synced_frames:
         t0 = time.perf_counter()
         annots, det_meta, batch_meta = detector.infer_easymocap_annot_multiview(
@@ -1082,7 +1835,7 @@ def process_burst(
         t0 = time.perf_counter()
         parts = triangulate_bodyhand_keypoints3d(
             annots, camera_ids, arrays["P"], tri_cfg=tri_cfg,
-            include_hands=False, diagnostics=tri_diag,
+            include_hands=not bool(zero_hand_keypoints), diagnostics=tri_diag,
         )
         t_dlt += time.perf_counter() - t0
         logger.info(
@@ -1140,6 +1893,14 @@ def process_burst(
         tri_by_frame[reference_index],
         dict(detection_by_frame[reference_index].get("per_camera") or {}),
     )
+    triangulation_path = write_triangulation_npz(
+        moment_dir / "triangulation.npz",
+        parts_by_frame,
+        timestamps_ns=timestamps,
+        frame_indices=[int(frame.frame_index) for frame in synced_frames],
+        squeeze_single=False,
+    )
+    frontend_wall_s = time.perf_counter() - t_frontend
     logger.info(
         "burst shape uses %d frames; pose/publish is 1 synced frame index=%d",
         len(synced_frames),
@@ -1165,6 +1926,7 @@ def process_burst(
         bed_sdf_max_iter=bed_sdf_max_iter, scene_spec_path=scene_spec_path or cfg.scene_spec_path,
         fit_diagnostics=fit_diagnostics, tri_cfg=tri_cfg, fit_opts=fit_opts,
         zero_hand_keypoints=zero_hand_keypoints, fit_2d_source=fit_2d_source,
+        disable_face_iteration=bool(disable_face_iteration),
         pose_frame_index=int(reference_index),
     )
     t_easymocap = time.perf_counter() - t_fit0
@@ -1178,6 +1940,13 @@ def process_burst(
     reference = synced_frames[reference_index]
     verts, faces = easymocap_vertices_world(body_model, params, frame_index=0)
     pred_joints = easymocap_joints_world(body_model, params, frame_index=0)
+    native_joints_world_m = easymocap_smplx_joints_world(body_model, params, frame_index=0)
+    native55_joints_world_m = np.asarray(native_joints_world_m[:55], dtype=np.float32)
+    if native55_joints_world_m.shape[0] < 55:
+        raise ValueError(
+            f"EasyMocap native SMPL-X joints contain {native55_joints_world_m.shape[0]} joints; expected 55"
+        )
+    pelvis_world_m = native55_joints_world_m[0]
     final_reprojection_errors: list[float] = []
     for view_index, cid in enumerate(camera_ids):
         target = np.asarray(annots_by_frame[reference_index][cid]["keypoints"], dtype=np.float32)
@@ -1228,7 +1997,15 @@ def process_burst(
         Rh=_frame_param("Rh", 3), Th=_frame_param("Th", 3),
         poses=poses_row,
         shapes=np.asarray(params["shapes"], dtype=np.float32),
+        pelvis_world_m=pelvis_world_m.astype(np.float32),
+        native55_joints_world_m=native55_joints_world_m.astype(np.float32),
+        joints_world_m55=native55_joints_world_m.astype(np.float32),
         root_align_offset=np.zeros((3,), dtype=np.float32), vertices=verts.astype(np.float32), faces=np.asarray(faces, dtype=np.int32),
+        **_smplx_result_provenance(
+            gender=gender,
+            fit_model=fit_model,
+            model_type=fit_model,
+        ),
     )
     logger.info("smplx_result written -> %s fit_ok=%s", moment_dir / "smplx_result.npz", fit_ok)
     if fit_ok and on_fitted is not None:
@@ -1293,12 +2070,18 @@ def process_burst(
             debug_overlay_dirs.append(str(debug_dirs["overlays"].relative_to(moment_dir)))
     summary = {
         "moment_dir": str(moment_dir.resolve()), "fit_ok": fit_ok,
+        "gender": gender, "fit_model": fit_model, "model_type": fit_model,
         "publish_mode": "high_precision_mesh" if fit_ok else "degraded_skeleton_or_resample",
         "burst": {"duration_s": (timestamps[-1] - timestamps[0]) * 1e-9, "n_frames": len(synced_frames),
                   "reference_index": reference_index, "temporal_completed_joints": completed,
                   "temporal_selection": temporal_selection,
                   "timestamps_ns": timestamps, "raw_simcc_path": "raw_simcc.npz" if raw_simcc_arrays else None},
         "frame_index": int(reference.frame_index), "timestamp_ns": int(reference.timestamp_ns),
+        "triangulation_npz": str(triangulation_path.name),
+        "frontend_wall_s": float(frontend_wall_s),
+        "frontend_elapsed_s": float(frontend_wall_s),
+        "pelvis_world_m": [float(v) for v in pelvis_world_m.tolist()],
+        "native55_joints_world_m": native55_joints_world_m.tolist(),
         "motion_frame_index": (motion_frame_indices or [None] * len(synced_frames))[reference_index],
         "triangulation_by_frame": tri_by_frame, "detection_by_frame": detection_by_frame,
         "fit_diagnostics": fit_diagnostics, "smplx_fit_2d_source": fit_diagnostics.get("smplx_fit_2d_source"),
@@ -1317,10 +2100,31 @@ def process_burst(
         "timing_s": {
             "dwpose_infer": float(t_dwpose),
             "dlt": float(t_dlt),
+            "frontend_wall": float(frontend_wall_s),
+            "frontend_elapsed": float(frontend_wall_s),
             "easymocap_fit": float(t_easymocap),
             "dwpose_plus_easymocap": float(t_dwpose + t_easymocap),
         },
     }
+    if not write_debug_images:
+        compact_tri: list[Any] = []
+        compact_detection: list[Any] = []
+        for frame_diag, frame_detection in zip(tri_by_frame, detection_by_frame):
+            compact_tri.append({
+                str(part): _compact_triangulation_diagnostics(value)
+                for part, value in frame_diag.items()
+            })
+            compact_detection.append({
+                "per_camera": _compact_dwpose_detection_meta(
+                    frame_detection.get("per_camera") if isinstance(frame_detection, dict) else None
+                ),
+                "batch": _compact_dwpose_batch_meta(
+                    frame_detection.get("batch") if isinstance(frame_detection, dict) else None
+                ),
+            })
+        summary["triangulation_by_frame"] = compact_tri
+        summary["detection_by_frame"] = compact_detection
+        summary["diagnostics_compacted"] = True
     disk = {k: v for k, v in summary.items() if k not in ("triangulation_by_frame", "detection_by_frame")}
     (moment_dir / "moment.json").write_text(json.dumps(_jsonable(disk), ensure_ascii=True, indent=2), encoding="utf-8")
     return summary
@@ -1376,6 +2180,8 @@ def refit_saved_moment(
 ) -> dict[str, Any]:
     """SMPL-X fit + overlays from an existing moment_* folder (no ZMQ capture)."""
     moment_dir = Path(moment_dir)
+    gender = str(gender).strip().lower()
+    fit_model = str(fit_model).strip().lower()
     views_rgb, annots_by_cam = _load_saved_moment(moment_dir, camera_ids)
     annots_by_cam = _sanitize_annots_by_cam(annots_by_cam)
     dataset_root = moment_dir / "easymocap_dataset"
@@ -1404,6 +2210,9 @@ def refit_saved_moment(
         "moment_dir": str(moment_dir.resolve()),
         "refit": True,
         "fit_ok": False,
+        "gender": gender,
+        "fit_model": fit_model,
+        "model_type": fit_model,
         "bed_sdf": bool(bed_sdf),
         "bed_sdf_weight": float(bed_sdf_weight),
         "bed_sdf_max_iter": int(bed_sdf_max_iter),
@@ -1430,7 +2239,6 @@ def refit_saved_moment(
     arrays, _ = camera_arrays(calibration, camera_ids, views_rgb, scale_to_ingress=True)
     P_by_cam = {cid: arrays["P"][i] for i, cid in enumerate(camera_ids)}
 
-    fit_model = str(fit_model).lower()
     ensure_smplx_assets(gender=gender, model_type=fit_model)
     tri_cfg, fit_opts, zero_hand_keypoints, fit_2d_source = easymocap_fit_runtime_from_pose_backend(pose_backend)
     t_fit = time.perf_counter()
@@ -1469,6 +2277,8 @@ def refit_saved_moment(
             keypoints3d=kp3d,
         )
         verts, faces = easymocap_vertices_world(body_model, params)
+        pelvis_world_m = easymocap_pelvis_world_m(body_model, params)
+        summary["pelvis_world_m"] = [float(v) for v in pelvis_world_m.tolist()]
         root_align = {"applied": False, "reason": "root_optimized_in_fit_no_posthoc_shift"}
         summary["smpl_root_alignment"] = root_align
         if scene_spec_path is not None:
@@ -1546,8 +2356,14 @@ def refit_saved_moment(
             root_align.get("offset_m") if root_align.get("applied") else (0.0, 0.0, 0.0),
             dtype=np.float32,
         ),
+        pelvis_world_m=pelvis_world_m.astype(np.float32),
         vertices=verts.astype(np.float32),
         faces=np.asarray(faces, dtype=np.int32),
+        **_smplx_result_provenance(
+            gender=gender,
+            fit_model=fit_model,
+            model_type=fit_model,
+        ),
     )
     summary["overlay_stats"] = overlay_stats
     summary["total_elapsed_s"] = float(time.perf_counter() - t_fit)

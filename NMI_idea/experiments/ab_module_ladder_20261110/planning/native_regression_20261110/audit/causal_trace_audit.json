@@ -1,0 +1,928 @@
+{
+  "passed": true,
+  "scope": "Offline immutable diagnostic traces; no native rerun",
+  "source_results_sha256": {
+    "baseline_v2/RESULTS.json": "97e747c150f533da92d37357bac441a523f3868cfe24154e3937144cb155aa3c",
+    "j1_guard_only/RESULTS.json": "8c0aad52e74a3be617847b56ec2e24378eeb79425217ecc711fcec9a6956deea",
+    "causal_2x2/RESULTS.json": "2d9968da7ba08a392220169a87f86c373b3899e8fb7b6666499520679426270a"
+  },
+  "effective_one_factor_config_diff": {
+    "qp.branch_barrier.j1_overfold_abs_rad": [
+      "2.4434609527920612",
+      "3.1059999999999999"
+    ]
+  },
+  "same_initial_q_reference_and_model_time": true,
+  "j1_wall": {
+    "q0_rad": -2.603473221088791,
+    "q0_deg": -149.1680276437176,
+    "old_wall_rad": 2.443460952792061,
+    "physical_lower_rad": -3.106,
+    "physical_upper_rad": 3.106,
+    "old_overfold_d": 0.0
+  },
+  "archived_source_hashes_verified": true,
+  "reproductions": {
+    "baseline_v2": [
+      {
+        "name": "old_path0",
+        "trace_sha256": "39ee791c2062dd610735f9780f19610bc61cfac6dbb85dac883268116925ec64",
+        "samples": 1301,
+        "max_position_m": 0.0010348773909791974,
+        "max_rotation_rad": 0.0013364297303628168,
+        "position_peak_tick": 825,
+        "rotation_peak_tick": 839,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 0.00010017826764866558,
+        "velocity_margin_min": 0.3767896989559729,
+        "acceleration_margin_min": 4.903033310021954e-06,
+        "jerk_margin_min_record_only": -0.02401595296657888,
+        "joint_position_margin_min": 0.27937258887668087,
+        "minimum_saved_collision_m": 0.04082271835886471,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266912110247744,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 650,
+            "minimum_m": 0.041204394839735224,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 725,
+            "minimum_m": 0.04082271835886471,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 825,
+            "minimum_m": 0.04116463608600011,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 858,
+            "minimum_m": 0.04115503982501716,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1300,
+            "minimum_m": 0.04094102903369712,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3768657047208853,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0009989819382309542,
+        "q1_range_rad": [
+          -2.6034718766354086,
+          -2.2295168425252645
+        ],
+        "q1_velocity_min": -0.30887333761026026,
+        "q1_box_lower_min": -0.31646080863706333,
+        "q1_box_lower_max": 0.34282473541390657
+      },
+      {
+        "name": "old_path1",
+        "trace_sha256": "70778a3de01b786a7ece7c1c3acdec84201266f5c5e6fa0e094d54d034c27215",
+        "samples": 1319,
+        "max_position_m": 0.0010224443445031811,
+        "max_rotation_rad": 0.001259152984897634,
+        "position_peak_tick": 843,
+        "rotation_peak_tick": 852,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 0.00010009778014015955,
+        "velocity_margin_min": 0.3768635550916378,
+        "acceleration_margin_min": -1.112887559884257e-12,
+        "jerk_margin_min_record_only": -0.006936181457831481,
+        "joint_position_margin_min": 0.27937258887668087,
+        "minimum_saved_collision_m": 0.0408227220465247,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266912110247744,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 659,
+            "minimum_m": 0.041407361449275155,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 749,
+            "minimum_m": 0.0408227220465247,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 843,
+            "minimum_m": 0.04118153829238354,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 847,
+            "minimum_m": 0.041186098431823276,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1318,
+            "minimum_m": 0.040952015319939424,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3769321737000616,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0010156111102914145,
+        "q1_range_rad": [
+          -2.6034718766354086,
+          -2.2057277202582823
+        ],
+        "q1_velocity_min": -0.32511576463495573,
+        "q1_box_lower_min": -0.3327050136195798,
+        "q1_box_lower_max": 0.3427410496012816
+      },
+      {
+        "name": "new_first_nominal",
+        "trace_sha256": "57d103ded68ff7c76c579043116770a6fb7ff25ba19811c3f6db21a3afcde374",
+        "samples": 405,
+        "max_position_m": 0.0170588916368504,
+        "max_rotation_rad": 0.03997805252302889,
+        "position_peak_tick": 268,
+        "rotation_peak_tick": 330,
+        "pass_2mm_2deg": false,
+        "max_post_vs_pre_time_misalignment_m": 0.00024012604710277856,
+        "velocity_margin_min": 0.38117055746162326,
+        "acceleration_margin_min": -5.575984118877386e-12,
+        "jerk_margin_min_record_only": -0.027431016667264885,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.04082276851960642,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266905927689355,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 126,
+            "minimum_m": 0.04082276851960642,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 167,
+            "minimum_m": 0.041225681037194005,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 202,
+            "minimum_m": 0.04160432331054005,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 268,
+            "minimum_m": 0.04172355490252009,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 404,
+            "minimum_m": 0.04158016186994043,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3812511779702096,
+        "qsend_fd_vs_published_qdot_max_abs": 0.00046464694102422467,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.6034341341623337
+        ],
+        "q1_velocity_min": -9.697927872132247e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": -0.0
+      },
+      {
+        "name": "hold_nominal_10s",
+        "trace_sha256": "0d3fa94388fc7752547a5ad5f09177a71b28be3f3f268d8e4647add7e396c988",
+        "samples": 2101,
+        "max_position_m": 0.007702790178580687,
+        "max_rotation_rad": 0.02217813285479998,
+        "position_peak_tick": 2100,
+        "rotation_peak_tick": 2100,
+        "pass_2mm_2deg": false,
+        "max_post_vs_pre_time_misalignment_m": 2.2882016509601766e-05,
+        "velocity_margin_min": 0.3876047712702669,
+        "acceleration_margin_min": -3.413092031223641e-11,
+        "jerk_margin_min_record_only": -0.00035637658851328524,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.04082271808444408,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266905927689355,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1050,
+            "minimum_m": 0.040928807040669535,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1420,
+            "minimum_m": 0.04082271808444408,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1613,
+            "minimum_m": 0.04085830749712934,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 2100,
+            "minimum_m": 0.040976793665324716,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.38762013520655636,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0006335088034952977,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.5879425795577746
+        ],
+        "q1_velocity_min": -9.898148614058472e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": 0.00397229607225855
+      },
+      {
+        "name": "hold_stress_10s",
+        "trace_sha256": "b824ae66a7cd5d45adfbac25af5f90603c8bff88cf4fab7c7f94d7d8d4f1b977",
+        "samples": 2101,
+        "max_position_m": 0.0024412553152699215,
+        "max_rotation_rad": 0.00777229086510215,
+        "position_peak_tick": 1585,
+        "rotation_peak_tick": 1665,
+        "pass_2mm_2deg": false,
+        "max_post_vs_pre_time_misalignment_m": 5.272004606356058e-06,
+        "velocity_margin_min": 0.3917145433928428,
+        "acceleration_margin_min": 1.3139660464967313,
+        "jerk_margin_min_record_only": -0.0002015464484088625,
+        "joint_position_margin_min": 0.23151261261823386,
+        "minimum_saved_collision_m": 0.039090656389174555,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.03915624071579125,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 728,
+            "minimum_m": 0.039090656389174555,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1050,
+            "minimum_m": 0.03911679121003723,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1585,
+            "minimum_m": 0.03914332384752074,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 2017,
+            "minimum_m": 0.03911567975069224,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 2100,
+            "minimum_m": 0.03910094550411356,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.39173346716154767,
+        "qsend_fd_vs_published_qdot_max_abs": 4.736631136681435e-05,
+        "q1_range_rad": [
+          -2.869356885177173,
+          -2.856631874504639
+        ],
+        "q1_velocity_min": -5.524466162431506e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": 0.0006899622691840558
+      }
+    ],
+    "j1_guard_only": [
+      {
+        "name": "motion",
+        "trace_sha256": "c2c847abc303fca870d377fd7c04ecabc81b68a1ccfeed96ef247593f5cddd6f",
+        "samples": 405,
+        "max_position_m": 1.274743055668901e-05,
+        "max_rotation_rad": 0.0004851999267804842,
+        "position_peak_tick": 188,
+        "rotation_peak_tick": 123,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 0.00010012305915650614,
+        "velocity_margin_min": 0.3801331715716829,
+        "acceleration_margin_min": 1.2015810972367593,
+        "jerk_margin_min_record_only": 0.00031341932441364406,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.04082272208058167,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.04126690592768933,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 166,
+            "minimum_m": 0.04082272208058167,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 188,
+            "minimum_m": 0.04084870251621859,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 202,
+            "minimum_m": 0.04088379453460296,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 284,
+            "minimum_m": 0.041042584068419326,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 404,
+            "minimum_m": 0.04103869825033181,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.38013572746484725,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0005701347572078224,
+        "q1_range_rad": [
+          -2.7633331872617624,
+          -2.6034484978124746
+        ],
+        "q1_velocity_min": -0.2210895231843355,
+        "q1_box_lower_min": -0.22864578027780186,
+        "q1_box_lower_max": 0.012053286550552354
+      },
+      {
+        "name": "hold10s",
+        "trace_sha256": "212b03317fe09c989e2e4a4e9a01d3c31bcc0568b34c8c5549ee027ba8936c09",
+        "samples": 2101,
+        "max_position_m": 5.105061867962398e-06,
+        "max_rotation_rad": 4.694978199017392e-06,
+        "position_peak_tick": 1166,
+        "rotation_peak_tick": 420,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 2.490897884465429e-06,
+        "velocity_margin_min": 0.3889441172791764,
+        "acceleration_margin_min": 1.431284524252504,
+        "jerk_margin_min_record_only": 1.8774249497255369e-06,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.0408271323958824,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.04126690592768933,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 442,
+            "minimum_m": 0.041131108367425805,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1050,
+            "minimum_m": 0.04101195781268022,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1166,
+            "minimum_m": 0.04098448599202003,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 2100,
+            "minimum_m": 0.0408271323958824,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3889441641234167,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0007203894933703993,
+        "q1_range_rad": [
+          -2.704743402852255,
+          -2.5900798826028666
+        ],
+        "q1_velocity_min": -0.02242295111860186,
+        "q1_box_lower_min": -0.029923083264981828,
+        "q1_box_lower_max": 0.00616964252087294
+      }
+    ],
+    "causal_2x2": [
+      {
+        "name": "raw_jerk_original_motion",
+        "trace_sha256": "9f96053608fe48641b2e46af730dfb5e8dd24a4c8bc57f068415bc2807c44602",
+        "samples": 405,
+        "max_position_m": 0.0170588916368504,
+        "max_rotation_rad": 0.03997805252302889,
+        "position_peak_tick": 268,
+        "rotation_peak_tick": 330,
+        "pass_2mm_2deg": false,
+        "max_post_vs_pre_time_misalignment_m": 0.00024012604710277856,
+        "velocity_margin_min": 0.38117055746162326,
+        "acceleration_margin_min": -5.575984118877386e-12,
+        "jerk_margin_min_record_only": -0.027431016667264885,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.04082276851960642,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266905927689355,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 126,
+            "minimum_m": 0.04082276851960642,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 167,
+            "minimum_m": 0.041225681037194005,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 202,
+            "minimum_m": 0.04160432331054005,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 268,
+            "minimum_m": 0.04172355490252009,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 404,
+            "minimum_m": 0.04158016186994043,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3812511779702096,
+        "qsend_fd_vs_published_qdot_max_abs": 0.00046464694102422467,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.6034341341623337
+        ],
+        "q1_velocity_min": -9.697927872132247e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": -0.0
+      },
+      {
+        "name": "raw_jerk_original_hold6s",
+        "trace_sha256": "9a48a7054abcbd65c99599375f6bef6a90471d9eae6327c93d8fb4be595006e8",
+        "samples": 1301,
+        "max_position_m": 0.0006704455730392284,
+        "max_rotation_rad": 0.0008498887787926498,
+        "position_peak_tick": 1300,
+        "rotation_peak_tick": 1300,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 1.3815415514438141e-05,
+        "velocity_margin_min": 0.3914893455455922,
+        "acceleration_margin_min": -1.0796696869874722e-11,
+        "jerk_margin_min_record_only": -2.3277093873730337e-05,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.040828821299464586,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266905927689355,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 650,
+            "minimum_m": 0.04108283235088514,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1287,
+            "minimum_m": 0.04082955166779292,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1300,
+            "minimum_m": 0.040828821299464586,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3915163804243612,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0006335088034952977,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.5879539035924455
+        ],
+        "q1_velocity_min": -8.915173964780206e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": 0.00397229607225855
+      },
+      {
+        "name": "unit_jerk_original_motion",
+        "trace_sha256": "cd611db9361e8d775137be79d43c378902069519d44ad731d745045b3cdc57bd",
+        "samples": 405,
+        "max_position_m": 0.0003568215329715836,
+        "max_rotation_rad": 0.10005120947596846,
+        "position_peak_tick": 210,
+        "rotation_peak_tick": 265,
+        "pass_2mm_2deg": false,
+        "max_post_vs_pre_time_misalignment_m": 0.0001032027641518854,
+        "velocity_margin_min": 0.38355238419908305,
+        "acceleration_margin_min": -6.197709012667474e-12,
+        "jerk_margin_min_record_only": -0.025503651601979982,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.04082271963166834,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266905927689355,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 127,
+            "minimum_m": 0.04082271963166834,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 180,
+            "minimum_m": 0.04144207885935856,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 202,
+            "minimum_m": 0.04164887681127518,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 210,
+            "minimum_m": 0.04168682280999329,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 404,
+            "minimum_m": 0.04144455392543702,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.38355295255414446,
+        "qsend_fd_vs_published_qdot_max_abs": 0.00021602482757711143,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.603402646538936
+        ],
+        "q1_velocity_min": -7.021589132194048e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": -0.0
+      },
+      {
+        "name": "unit_jerk_original_hold6s",
+        "trace_sha256": "73e84dbce36c35291aa75099fbdf34d9e5befea86947e18ce2f0b540a5b1c615",
+        "samples": 1301,
+        "max_position_m": 2.660211838196106e-05,
+        "max_rotation_rad": 0.004951579608093042,
+        "position_peak_tick": 1284,
+        "rotation_peak_tick": 1300,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 2.257301273335993e-06,
+        "velocity_margin_min": 0.39087362393228636,
+        "acceleration_margin_min": 4.180142454401903e-09,
+        "jerk_margin_min_record_only": -3.581082734172014e-05,
+        "joint_position_margin_min": 0.2793726051733475,
+        "minimum_saved_collision_m": 0.040824890239076844,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.041266905927689355,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 650,
+            "minimum_m": 0.041081751304348414,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1254,
+            "minimum_m": 0.040835892519509545,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1284,
+            "minimum_m": 0.04082735730505938,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1300,
+            "minimum_m": 0.040824890239076844,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3908853571025991,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0006498912219936558,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.5877178042487423
+        ],
+        "q1_velocity_min": -8.896291003729488e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": 0.0041466592336932406
+      },
+      {
+        "name": "raw_jerk_loose_motion",
+        "trace_sha256": "a97461054d8e0cc771e442c80b825288baf80f6766adc3b17d21000416093fe1",
+        "samples": 405,
+        "max_position_m": 0.014860172622495641,
+        "max_rotation_rad": 0.036256479444591205,
+        "position_peak_tick": 242,
+        "rotation_peak_tick": 404,
+        "pass_2mm_2deg": false,
+        "max_post_vs_pre_time_misalignment_m": 0.00024000479215078227,
+        "velocity_margin_min": 0.37920377136739997,
+        "acceleration_margin_min": -5.931255486757436e-12,
+        "jerk_margin_min_record_only": 999998805.7426318,
+        "joint_position_margin_min": 0.27937260511436496,
+        "minimum_saved_collision_m": 0.040822754654017974,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.04126690588481558,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 111,
+            "minimum_m": 0.04086683381181648,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 126,
+            "minimum_m": 0.040822754654017974,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 202,
+            "minimum_m": 0.04158951988311235,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 242,
+            "minimum_m": 0.04168948524515515,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 404,
+            "minimum_m": 0.04127213593494418,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3792171046921641,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0004633419583233156,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.6034476317042228
+        ],
+        "q1_velocity_min": -9.905247838794492e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": -0.0
+      },
+      {
+        "name": "raw_jerk_loose_hold6s",
+        "trace_sha256": "5dd231af5f9646d0ee8c621f5dc8bbe4bc1a1ea4bd4b53346cfcb664f10ab01d",
+        "samples": 1301,
+        "max_position_m": 0.0006422516763036563,
+        "max_rotation_rad": 0.0008662846549489426,
+        "position_peak_tick": 1300,
+        "rotation_peak_tick": 1300,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 1.227039876588886e-05,
+        "velocity_margin_min": 0.39146542656656147,
+        "acceleration_margin_min": -5.087485988042317e-12,
+        "jerk_margin_min_record_only": 999998800.0000526,
+        "joint_position_margin_min": 0.27937260511436496,
+        "minimum_saved_collision_m": 0.04083568941597173,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.04126690588481558,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 650,
+            "minimum_m": 0.04107836136175479,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1270,
+            "minimum_m": 0.04083568941597173,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1291,
+            "minimum_m": 0.040837550462529994,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1300,
+            "minimum_m": 0.04083858680409293,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3914949680375198,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0007013708040227752,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.5870837326517577
+        ],
+        "q1_velocity_min": -9.282780720070408e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": -0.0
+      },
+      {
+        "name": "unit_jerk_loose_motion",
+        "trace_sha256": "60fd493a105b90c83a1f2cd991d53e5d5b6d272f2c8a005d457778f204966c12",
+        "samples": 405,
+        "max_position_m": 0.0003435930338258412,
+        "max_rotation_rad": 0.09637822351776196,
+        "position_peak_tick": 206,
+        "rotation_peak_tick": 261,
+        "pass_2mm_2deg": false,
+        "max_post_vs_pre_time_misalignment_m": 0.0001028921375675272,
+        "velocity_margin_min": 0.38342955111550986,
+        "acceleration_margin_min": -5.664801960847399e-12,
+        "jerk_margin_min_record_only": 999998809.7539028,
+        "joint_position_margin_min": 0.27937260511436496,
+        "minimum_saved_collision_m": 0.04082275697730156,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.04126690588481558,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 126,
+            "minimum_m": 0.04082275697730156,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 148,
+            "minimum_m": 0.04094911911902718,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 202,
+            "minimum_m": 0.04165127688264911,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 206,
+            "minimum_m": 0.041670896215306515,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 404,
+            "minimum_m": 0.0413583884949745,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3834382887092921,
+        "qsend_fd_vs_published_qdot_max_abs": 0.00021601303107225377,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.6034476535891637
+        ],
+        "q1_velocity_min": -9.85017250759901e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": -0.0
+      },
+      {
+        "name": "unit_jerk_loose_hold6s",
+        "trace_sha256": "c762d429d2813559541565e2b27c687f743e00b2689f124127c5deaa786666f9",
+        "samples": 1301,
+        "max_position_m": 2.1977156498431906e-05,
+        "max_rotation_rad": 0.003540390620599207,
+        "position_peak_tick": 1300,
+        "rotation_peak_tick": 1300,
+        "pass_2mm_2deg": true,
+        "max_post_vs_pre_time_misalignment_m": 2.2254622819581234e-06,
+        "velocity_margin_min": 0.3906158359652575,
+        "acceleration_margin_min": -5.154099369519827e-12,
+        "jerk_margin_min_record_only": 999998800.0003928,
+        "joint_position_margin_min": 0.27937260511436496,
+        "minimum_saved_collision_m": 0.04083623178737476,
+        "collision_fresh_subset": [
+          {
+            "tick": 0,
+            "minimum_m": 0.04126690588481558,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 650,
+            "minimum_m": 0.04107719770771453,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1263,
+            "minimum_m": 0.04083623178737476,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1285,
+            "minimum_m": 0.04083826182183624,
+            "saved_error_m": 0.0
+          },
+          {
+            "tick": 1300,
+            "minimum_m": 0.040839390564369894,
+            "saved_error_m": 0.0
+          }
+        ],
+        "qsend_measured_chain_exact": true,
+        "all_qp_solved": true,
+        "pause_count": 0,
+        "model_dt_min": 0.0049999999999954525,
+        "model_dt_max": 0.005000000000109139,
+        "qsend_fd_velocity_margin_min": 0.3907407126511383,
+        "qsend_fd_vs_published_qdot_max_abs": 0.0006923571712767005,
+        "q1_range_rad": [
+          -2.603473221088791,
+          -2.586904138667198
+        ],
+        "q1_velocity_min": -9.19799610127547e-07,
+        "q1_box_lower_min": -0.0,
+        "q1_box_lower_max": -0.0
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "driver": "426a5b5532612164fee31509d9e7b57e955cf9526b2296c896f77a7dfd8034ca",
+  "frozen_root": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_knee_latent_rl_20261112",
+  "frozen_sources": {
+    "belief.py": "f7a8e36bdacea26be3cc2d47b1f0fd1f84351f36295618edd3ec04ddfb12fdc0",
+    "knee_world.py": "fcc615fc0bef50f206b51532f52e1832882de81e88cf0ebef20e719f1e396a58",
+    "policy.py": "2cc8a7d06696f76f3f939edc71b87e3446c74ed32c3058ce7da5a8be131ea89f",
+    "experiment.py": "c144fed1e4abf54c37d60a36600d7b0c5b46d531b8fc955274bc315464404ce0",
+    "learners.py": "71c36165c6aaf4b581e02e74bfc11cb4147cb1f4e4438f72e49db7d19144484d"
+  },
+  "geometry": "e61ff1a05ca957674d3b146dc225b96cce61286094f0e1da052b5874c8219180",
+  "models": {
+    "cql_firstscan_29.pt": "f2cf81c75308b4e05a49b6933084d25f5412d053d8258a433ad31b95d69c1479",
+    "cql_firstscan_7.pt": "e6861ec571c967cab8520bcabbf6b05875649d0230d9e4c8172c50835b7d8102"
+  },
+  "config": {
+    "train_count": 128,
+    "test_start": 512,
+    "test_count": 128,
+    "steps": 120,
+    "train_seeds": [
+      7,
+      29
+    ],
+    "fork_sites": [
+      4,
+      3,
+      2
+    ],
+    "window_views": [
+      3,
+      7,
+      8,
+      2,
+      4,
+      1,
+      5,
+      0,
+      6
+    ]
+  },
+  "constraints": {
+    "first_scan_only": true,
+    "station_order_fixed": true,
+    "one_frame_per_station": true,
+    "fisher_used": false,
+    "recheck_checkpoint_reused": false,
+    "fork_timestamps_common": true,
+    "travel_reported_separately": true
+  }
+}

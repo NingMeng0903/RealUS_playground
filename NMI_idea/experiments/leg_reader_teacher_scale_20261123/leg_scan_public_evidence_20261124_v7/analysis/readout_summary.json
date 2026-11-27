@@ -1,0 +1,636 @@
+{
+  "femoral": {
+    "layouts": 64,
+    "matched": {
+      "unary": {
+        "strict": 31,
+        "acquired_ceiling": 45,
+        "wrong_delivery": 3,
+        "wrong_branch": 0,
+        "wrong_region_count": 3,
+        "wrong_branch_regions": 0,
+        "artifact_regions": 3,
+        "correct_regions": 342,
+        "submitted": 345,
+        "cases": 64,
+        "captured_regions": 365,
+        "reader_misses_on_seen": 23,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "handwritten_objects": {
+        "strict": 31,
+        "acquired_ceiling": 45,
+        "wrong_delivery": 3,
+        "wrong_branch": 0,
+        "wrong_region_count": 3,
+        "wrong_branch_regions": 0,
+        "artifact_regions": 3,
+        "correct_regions": 342,
+        "submitted": 345,
+        "cases": 64,
+        "captured_regions": 365,
+        "reader_misses_on_seen": 23,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 1,
+            "lost_or_removed": 1,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              -0.046875,
+              0.046875
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 1,
+            "lost_or_removed": 1,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              -0.046875,
+              0.046875
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 1,
+            "lost_or_removed": 1,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              -0.046875,
+              0.046875
+            ]
+          }
+        }
+      },
+      "direct_public": {
+        "strict": 31,
+        "acquired_ceiling": 45,
+        "wrong_delivery": 4,
+        "wrong_branch": 0,
+        "wrong_region_count": 4,
+        "wrong_branch_regions": 0,
+        "artifact_regions": 4,
+        "correct_regions": 341,
+        "submitted": 345,
+        "cases": 64,
+        "captured_regions": 365,
+        "reader_misses_on_seen": 24,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 1,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.015625,
+            "clustered95": [
+              0.0,
+              0.046875
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 1,
+            "delta_per_scan": -0.015625,
+            "clustered95": [
+              -0.046875,
+              0.0
+            ]
+          }
+        }
+      },
+      "learned_object_public": {
+        "strict": 31,
+        "acquired_ceiling": 45,
+        "wrong_delivery": 4,
+        "wrong_branch": 0,
+        "wrong_region_count": 4,
+        "wrong_branch_regions": 0,
+        "artifact_regions": 4,
+        "correct_regions": 341,
+        "submitted": 345,
+        "cases": 64,
+        "captured_regions": 365,
+        "reader_misses_on_seen": 24,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 1,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.015625,
+            "clustered95": [
+              0.0,
+              0.046875
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 1,
+            "delta_per_scan": -0.015625,
+            "clustered95": [
+              -0.046875,
+              0.0
+            ]
+          }
+        }
+      },
+      "direct_oracle_frozen": {
+        "strict": 33,
+        "acquired_ceiling": 45,
+        "wrong_delivery": 1,
+        "wrong_branch": 0,
+        "wrong_region_count": 1,
+        "wrong_branch_regions": 0,
+        "artifact_regions": 1,
+        "correct_regions": 344,
+        "submitted": 345,
+        "cases": 64,
+        "captured_regions": 365,
+        "reader_misses_on_seen": 21,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.03125,
+            "clustered95": [
+              0.0,
+              0.078125
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 2,
+            "delta_per_scan": -0.03125,
+            "clustered95": [
+              -0.078125,
+              0.0
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.03125,
+            "clustered95": [
+              0.0,
+              0.078125
+            ]
+          }
+        }
+      },
+      "direct_oracle_refit": {
+        "strict": 33,
+        "acquired_ceiling": 45,
+        "wrong_delivery": 1,
+        "wrong_branch": 0,
+        "wrong_region_count": 1,
+        "wrong_branch_regions": 0,
+        "artifact_regions": 1,
+        "correct_regions": 344,
+        "submitted": 345,
+        "cases": 64,
+        "captured_regions": 365,
+        "reader_misses_on_seen": 21,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.03125,
+            "clustered95": [
+              0.0,
+              0.078125
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 2,
+            "delta_per_scan": -0.03125,
+            "clustered95": [
+              -0.078125,
+              0.0
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.03125,
+            "clustered95": [
+              0.0,
+              0.078125
+            ]
+          }
+        }
+      }
+    }
+  },
+  "groin_to_distal_calf": {
+    "layouts": 96,
+    "matched": {
+      "unary": {
+        "strict": 38,
+        "acquired_ceiling": 96,
+        "wrong_delivery": 47,
+        "wrong_branch": 34,
+        "wrong_region_count": 64,
+        "wrong_branch_regions": 41,
+        "artifact_regions": 23,
+        "correct_regions": 478,
+        "submitted": 542,
+        "cases": 96,
+        "captured_regions": 576,
+        "reader_misses_on_seen": 98,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.0,
+            "clustered95": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "handwritten_objects": {
+        "strict": 41,
+        "acquired_ceiling": 96,
+        "wrong_delivery": 45,
+        "wrong_branch": 26,
+        "wrong_region_count": 65,
+        "wrong_branch_regions": 32,
+        "artifact_regions": 33,
+        "correct_regions": 477,
+        "submitted": 542,
+        "cases": 96,
+        "captured_regions": 576,
+        "reader_misses_on_seen": 99,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 7,
+            "lost_or_removed": 4,
+            "delta_per_scan": 0.03125,
+            "clustered95": [
+              -0.03125,
+              0.09375
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 7,
+            "lost_or_removed": 9,
+            "delta_per_scan": -0.020833333333333332,
+            "clustered95": [
+              -0.10416666666666667,
+              0.0625
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 10,
+            "delta_per_scan": -0.08333333333333333,
+            "clustered95": [
+              -0.15625,
+              -0.010416666666666666
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 13,
+            "lost_or_removed": 12,
+            "delta_per_scan": -0.010416666666666666,
+            "clustered95": [
+              -0.125,
+              0.09375
+            ]
+          }
+        }
+      },
+      "direct_public": {
+        "strict": 35,
+        "acquired_ceiling": 96,
+        "wrong_delivery": 48,
+        "wrong_branch": 36,
+        "wrong_region_count": 65,
+        "wrong_branch_regions": 41,
+        "artifact_regions": 24,
+        "correct_regions": 477,
+        "submitted": 542,
+        "cases": 96,
+        "captured_regions": 576,
+        "reader_misses_on_seen": 99,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 3,
+            "delta_per_scan": -0.03125,
+            "clustered95": [
+              -0.07291666666666667,
+              0.0
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 4,
+            "lost_or_removed": 3,
+            "delta_per_scan": 0.010416666666666666,
+            "clustered95": [
+              -0.041666666666666664,
+              0.0625
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 0,
+            "delta_per_scan": 0.020833333333333332,
+            "clustered95": [
+              0.0,
+              0.052083333333333336
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 6,
+            "lost_or_removed": 7,
+            "delta_per_scan": -0.010416666666666666,
+            "clustered95": [
+              -0.09375,
+              0.08333333333333333
+            ]
+          }
+        }
+      },
+      "learned_object_public": {
+        "strict": 35,
+        "acquired_ceiling": 96,
+        "wrong_delivery": 48,
+        "wrong_branch": 32,
+        "wrong_region_count": 65,
+        "wrong_branch_regions": 37,
+        "artifact_regions": 28,
+        "correct_regions": 477,
+        "submitted": 542,
+        "cases": 96,
+        "captured_regions": 576,
+        "reader_misses_on_seen": 99,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 5,
+            "delta_per_scan": -0.03125,
+            "clustered95": [
+              -0.08333333333333333,
+              0.020833333333333332
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 7,
+            "lost_or_removed": 6,
+            "delta_per_scan": 0.010416666666666666,
+            "clustered95": [
+              -0.0625,
+              0.08333333333333333
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 2,
+            "lost_or_removed": 4,
+            "delta_per_scan": -0.020833333333333332,
+            "clustered95": [
+              -0.07291666666666667,
+              0.03125
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 8,
+            "lost_or_removed": 9,
+            "delta_per_scan": -0.010416666666666666,
+            "clustered95": [
+              -0.10963541666666658,
+              0.08333333333333333
+            ]
+          }
+        }
+      },
+      "direct_oracle_frozen": {
+        "strict": 6,
+        "acquired_ceiling": 96,
+        "wrong_delivery": 84,
+        "wrong_branch": 28,
+        "wrong_region_count": 168,
+        "wrong_branch_regions": 32,
+        "artifact_regions": 136,
+        "correct_regions": 374,
+        "submitted": 542,
+        "cases": 96,
+        "captured_regions": 576,
+        "reader_misses_on_seen": 202,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 0,
+            "lost_or_removed": 32,
+            "delta_per_scan": -0.3333333333333333,
+            "clustered95": [
+              -0.4270833333333333,
+              -0.24453124999999906
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 39,
+            "lost_or_removed": 2,
+            "delta_per_scan": 0.3854166666666667,
+            "clustered95": [
+              0.28125,
+              0.4895833333333333
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 8,
+            "lost_or_removed": 14,
+            "delta_per_scan": -0.0625,
+            "clustered95": [
+              -0.15625,
+              0.03125
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 5,
+            "lost_or_removed": 64,
+            "delta_per_scan": -1.0833333333333333,
+            "clustered95": [
+              -1.31796875,
+              -0.8541666666666666
+            ]
+          }
+        }
+      },
+      "direct_oracle_refit": {
+        "strict": 62,
+        "acquired_ceiling": 96,
+        "wrong_delivery": 8,
+        "wrong_branch": 7,
+        "wrong_region_count": 9,
+        "wrong_branch_regions": 8,
+        "artifact_regions": 1,
+        "correct_regions": 533,
+        "submitted": 542,
+        "cases": 96,
+        "captured_regions": 576,
+        "reader_misses_on_seen": 43,
+        "vs_unary": {
+          "strict": {
+            "rescued_or_added": 25,
+            "lost_or_removed": 1,
+            "delta_per_scan": 0.25,
+            "clustered95": [
+              0.16666666666666666,
+              0.34375
+            ]
+          },
+          "wrong_delivery": {
+            "rescued_or_added": 1,
+            "lost_or_removed": 40,
+            "delta_per_scan": -0.40625,
+            "clustered95": [
+              -0.5104166666666666,
+              -0.3020833333333333
+            ]
+          },
+          "wrong_branch": {
+            "rescued_or_added": 3,
+            "lost_or_removed": 30,
+            "delta_per_scan": -0.28125,
+            "clustered95": [
+              -0.3854166666666667,
+              -0.17708333333333334
+            ]
+          },
+          "correct_regions": {
+            "rescued_or_added": 43,
+            "lost_or_removed": 2,
+            "delta_per_scan": 0.5729166666666666,
+            "clustered95": [
+              0.4166666666666667,
+              0.7291666666666666
+            ]
+          }
+        }
+      }
+    }
+  }
+}

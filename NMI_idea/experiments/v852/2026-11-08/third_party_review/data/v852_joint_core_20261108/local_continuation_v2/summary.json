@@ -1,0 +1,56 @@
+{
+  "schema": "v852_joint_core_development_v1",
+  "backend": "genesis_pd",
+  "controller": "srs",
+  "task": "local_continuation",
+  "spans": {
+    "near": [
+      0.56,
+      0.6
+    ],
+    "probe": [
+      0.56,
+      0.6
+    ],
+    "a": [
+      0.62,
+      0.76
+    ],
+    "b": [
+      0.78,
+      0.91
+    ],
+    "f": [
+      0.56,
+      0.6
+    ]
+  },
+  "n_train_objects": 2,
+  "n_test_objects": 2,
+  "n_full_chains": 12,
+  "n_completed": 6,
+  "mean_curve_absolute_error": 0.5625,
+  "all_failures_retained": true,
+  "formal_guarantee": false,
+  "prediction_transfer_model_is_approximate": true,
+  "physical_execution": false,
+  "contact_or_Bmode_validation": false,
+  "by_condition": {
+    "early": {
+      "attempted": 4,
+      "completed": 2,
+      "mean_duration": 20.789999999999647
+    },
+    "late": {
+      "attempted": 4,
+      "completed": 2,
+      "mean_duration": 20.244999999999656
+    },
+    "hide": {
+      "attempted": 4,
+      "completed": 2,
+      "mean_duration": 20.244999999999656
+    }
+  },
+  "wall_seconds": 209.33170284000153
+}

@@ -47,7 +47,7 @@ git push -u origin main
 cd /media/camp/EXT_DRIVE/RealUS_playground
 git status
 git add .
-git commit -m "出图代码,icra2027投稿，phathom已经录制，ultrapoc和ac2d可嫩弹跳，内环qpik修好，还没理解算法"
+git commit -m "包含NMI的IDEAMD，更新4.4"
 git push origin main
 
 

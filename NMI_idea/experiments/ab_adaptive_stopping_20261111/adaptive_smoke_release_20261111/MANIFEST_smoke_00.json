@@ -1,0 +1,92 @@
+{
+  "schema": "adaptive_stopping_runner_v1",
+  "stage": "smoke",
+  "count": 1,
+  "case_start": 0,
+  "fixture_index": 0,
+  "arms": [
+    "B_H1"
+  ],
+  "mode": "constrained",
+  "train_seed": 721501,
+  "calibration_seed": 721502,
+  "test_seed": 721503,
+  "noise_seed": 721504,
+  "model_artifact": null,
+  "freeze_file": null,
+  "freeze_sha256": null,
+  "frozen_selected_arm": null,
+  "no_deadline": true,
+  "watchdog_max_probe_frames": 1,
+  "guard_sensitivity": {
+    "primary": 8,
+    "continuation": 12
+  },
+  "future_mechanical_feasibility": "unknown_until_selected_native_check",
+  "predicted_search_policy": "public_goal_geometry_only; no native certificate",
+  "pair_dwell": 0.3,
+  "backend": "native",
+  "source_manifest": {
+    "acoustics": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/acoustics.py",
+      "sha256": "c246cfe812af9fa3552efc385b1b20d767baaf59c60fa15f246d297f13e07ac9"
+    },
+    "fixture": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/fixture.py",
+      "sha256": "51b599678149201e48dda65e669c2b1de6aefd9bd749f4718f1e614e98036d32"
+    },
+    "robot_motion": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/robot_motion.py",
+      "sha256": "e14393104c76b4bf96512062d35c14a83c1a962458e3a402565a0bcee0fa6994"
+    },
+    "belief_model": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/belief_model.py",
+      "sha256": "e95d63e8a9d5a4214f2be94479cf29c4222e875049e76603ff162e66a018e5ae"
+    },
+    "native_adapter": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/native_adapter.py",
+      "sha256": "1f8b580b782f76ec3c6f3a5f4f1688d72d7f66a4c8d7764ef2abacfd7b62d406"
+    },
+    "adaptive_planning": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/adaptive_planning.py",
+      "sha256": "0241a19f8dc41ba05214a3fa8ce439e87a48b8a31dd3161c5f399aefa6fca472"
+    },
+    "train_calibrate": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_adaptive_stopping_20261111/train_calibrate.py",
+      "sha256": "95968c25a11a95c2a2c7eca5d18d6e8a8bda39e09fdb2d178abd8b8459de20ad"
+    }
+  },
+  "fixed_pair_order": [
+    "fork_plus",
+    "fork_minus"
+  ],
+  "fixed_pair_public_costs": [
+    {
+      "order": [
+        "fork_plus",
+        "fork_minus"
+      ],
+      "worstcase_total_s": 7.415,
+      "terminal_option_worstcase_s": 4.665
+    },
+    {
+      "order": [
+        "fork_minus",
+        "fork_plus"
+      ],
+      "worstcase_total_s": 7.489999999999999,
+      "terminal_option_worstcase_s": 4.739999999999999
+    }
+  ],
+  "initial_decision_cache": {
+    "B_H1": {
+      "kind": "probe",
+      "action_id": "side_right__single_dwell_0.6",
+      "reason": "B_expected_future_option",
+      "score": 0.4353737411822731
+    }
+  },
+  "initial_decision_wall_s": {
+    "B_H1": 15.562597291998827
+  }
+}

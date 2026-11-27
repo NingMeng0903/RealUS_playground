@@ -1,0 +1,54 @@
+{
+  "scope": "M8 development optional module, not B task result",
+  "test_worlds_opened": false,
+  "fixed_cases": 16,
+  "summary": {
+    "initial": {
+      "endpoint_found": 16,
+      "mean_image_energy": 7.975355373956334,
+      "mean_min_path_margin": 1.573588622011382,
+      "mean_optimization_seconds": 0.0030557777508875006,
+      "mean_actual_query_seconds": 0.029152426187465608,
+      "self_collision_pass_among_found": 16
+    },
+    "image_only": {
+      "endpoint_found": 16,
+      "mean_image_energy": 6.475282829009242,
+      "mean_min_path_margin": 1.5241959128518632,
+      "mean_optimization_seconds": 0.08095944462593252,
+      "mean_actual_query_seconds": 0.032481441437539615,
+      "self_collision_pass_among_found": 16
+    },
+    "joint_proxy": {
+      "endpoint_found": 16,
+      "mean_image_energy": 6.396518538061137,
+      "mean_min_path_margin": 1.5324235172770453,
+      "mean_optimization_seconds": 0.10105822000059561,
+      "mean_actual_query_seconds": 0.03231767987335843,
+      "self_collision_pass_among_found": 16
+    },
+    "paired_joint_vs_image": {
+      "endpoint_found_gain": 0,
+      "image_energy_better": 8,
+      "minimum_proxy_margin_better": 7
+    }
+  },
+  "gradient_failure_rows": 2,
+  "small_h_max_error": 5.878838273964959e-07,
+  "branch_changes": 17431,
+  "actual_incremental_endpoint_benefit": false,
+  "sha256": {
+    "run_optimization.py": "c0b3329c4d54834ed2f95f8cdd5bc0b90f621cfef574065825d7d8e14c2e891d",
+    "REPORT.txt": "895081ee83c9f6d621f2be0d0133adc7a892e7636a15f24a82223380a060734e",
+    "PROTOCOL.json": "bff28ae3baf907dd20bb6bd734d644476bcabc0e89fbcb3cbaa38e11c79304b2",
+    "RESULTS.json": "0b3d3e14c18a83fc6958d910a1c23f44702173e92162ca23b9e8c09b1080b086",
+    "AMENDMENT_01_DIAGNOSTIC_TIE_FIX.txt": "dd81d19fb3078cdfae074d51cd6f16cc04e7eca68f1aebc4948a1d655047951b",
+    "torch_geometry.py": "5f4c65815570132f8662906c2bf88592b27bc67458e3b3dac36444fb4851917a",
+    "run.log": "ecfcc69a82f427715e4ba280b45a18634069700f34464070b8494fabee99b6e8",
+    "GRADIENT_CHECKS.json": "c1870d5efc472289f9a0f4f85f5722784e32760f521a7fb2079e76d948a8b3a5",
+    "BRANCH_DIAGNOSTICS.json": "ddf4693bca4432d96134c1ddf00f2dbb150984d31b730b78b52bb868eec8ca26",
+    "diagnose_branches.py": "97d8646bcc4b4b1784f9051ae980385ec7cb9a8162b8c6e8688fde4bb491243f",
+    "FROZEN_CASES.json": "871ba2d324182fc485158ddb29436f0bead1551dfb7d6d4a42188f423ce0025a",
+    "branch_audit.log": "3c94ff869570223bf159e5e76daa172660f2d9bf139e354bc81abf130f52ebd8"
+  }
+}

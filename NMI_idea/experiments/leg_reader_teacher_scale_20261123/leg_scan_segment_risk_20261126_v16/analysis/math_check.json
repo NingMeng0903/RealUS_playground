@@ -1,0 +1,11 @@
+{
+  "seed": 761609,
+  "random_sweeps": 200,
+  "hypotheses_per_sweep": 6,
+  "angles_per_sweep": 2049,
+  "max_true_lower_minus_enclosure": -0.020144892658978897,
+  "mean_control_certifies_between_two_possible_branches": true,
+  "finite_support_certifies_middle": false,
+  "finite_support_certifies_target_after_0p93": true,
+  "independent_target_A_geometry_passed": true
+}

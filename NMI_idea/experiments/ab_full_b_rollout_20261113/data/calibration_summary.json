@@ -1,0 +1,329 @@
+{
+  "seed_namespace": 716905,
+  "calibration": {
+    "96": {
+      "daughter": {
+        "status": "checked",
+        "nodes": [
+          7,
+          11,
+          9
+        ],
+        "sites": [
+          4,
+          4,
+          4
+        ],
+        "clocks_s": [
+          1.5,
+          3.0,
+          4.5
+        ],
+        "summary": {
+          "same": {
+            "cases": 128,
+            "joint_log_score_per_image": -3.163091264889202,
+            "independent_marginal_log_score_per_image": -3.6129135330231565,
+            "sign_brier_each_step": [
+              0.2565222256279436,
+              0.26045167021238474,
+              0.2678484268157089
+            ],
+            "median_ess_at_three": 4.5665556154369025,
+            "identity_brier_nonempty": 0.20377174812286983,
+            "accepted_correct": 19,
+            "accepted_wrong": 5
+          },
+          "opposite": {
+            "cases": 128,
+            "joint_log_score_per_image": -3.292423282455993,
+            "independent_marginal_log_score_per_image": -3.7105691816132866,
+            "sign_brier_each_step": [
+              0.2565222256279436,
+              0.24388563100238916,
+              0.26945016172407027
+            ],
+            "median_ess_at_three": 3.6708345675072676,
+            "identity_brier_nonempty": 0.1957358114673241,
+            "accepted_correct": 40,
+            "accepted_wrong": 12
+          }
+        },
+        "opposite_minus_same_second_sign_brier": -0.016566039209995668,
+        "paired_ci95": [
+          -0.05033435417637808,
+          0.015450149005934102
+        ]
+      },
+      "trunk": {
+        "status": "checked",
+        "nodes": [
+          19,
+          21,
+          23
+        ],
+        "sites": [
+          6,
+          6,
+          6
+        ],
+        "clocks_s": [
+          1.5,
+          3.0,
+          4.5
+        ],
+        "summary": {
+          "same": {
+            "cases": 128,
+            "joint_log_score_per_image": -2.958279935824028,
+            "independent_marginal_log_score_per_image": -3.182602406158466,
+            "sign_brier_each_step": [
+              0.19912377573912649,
+              0.1794776679562511,
+              0.17283294534175248
+            ],
+            "median_ess_at_three": 4.749107055556741,
+            "identity_brier_nonempty": 0.09045488653133964,
+            "accepted_correct": 221,
+            "accepted_wrong": 16
+          },
+          "opposite": {
+            "cases": 128,
+            "joint_log_score_per_image": -2.9849187714965124,
+            "independent_marginal_log_score_per_image": -3.206648889849004,
+            "sign_brier_each_step": [
+              0.19912377573912649,
+              0.1539629163433922,
+              0.15310302397245001
+            ],
+            "median_ess_at_three": 5.364154390376846,
+            "identity_brier_nonempty": 0.0934558657657906,
+            "accepted_correct": 222,
+            "accepted_wrong": 16
+          }
+        },
+        "opposite_minus_same_second_sign_brier": -0.025514751612858905,
+        "paired_ci95": [
+          -0.040728524419513024,
+          -0.012240427822800064
+        ]
+      }
+    },
+    "256": {
+      "daughter": {
+        "status": "checked",
+        "nodes": [
+          7,
+          11,
+          9
+        ],
+        "sites": [
+          4,
+          4,
+          4
+        ],
+        "clocks_s": [
+          1.5,
+          3.0,
+          4.5
+        ],
+        "summary": {
+          "same": {
+            "cases": 128,
+            "joint_log_score_per_image": -3.1243453589890358,
+            "independent_marginal_log_score_per_image": -3.5978411164730875,
+            "sign_brier_each_step": [
+              0.262367139968698,
+              0.2734658754843347,
+              0.27521373943293137
+            ],
+            "median_ess_at_three": 9.483941079221214,
+            "identity_brier_nonempty": 0.19257593568752854,
+            "accepted_correct": 30,
+            "accepted_wrong": 4
+          },
+          "opposite": {
+            "cases": 128,
+            "joint_log_score_per_image": -3.2386774858031053,
+            "independent_marginal_log_score_per_image": -3.6981300592290642,
+            "sign_brier_each_step": [
+              0.262367139968698,
+              0.259781594224525,
+              0.2613765753373712
+            ],
+            "median_ess_at_three": 6.636214892410237,
+            "identity_brier_nonempty": 0.19536317825012015,
+            "accepted_correct": 44,
+            "accepted_wrong": 9
+          }
+        },
+        "opposite_minus_same_second_sign_brier": -0.013684281259809555,
+        "paired_ci95": [
+          -0.04247775204049923,
+          0.013708268357727139
+        ]
+      },
+      "trunk": {
+        "status": "checked",
+        "nodes": [
+          19,
+          21,
+          23
+        ],
+        "sites": [
+          6,
+          6,
+          6
+        ],
+        "clocks_s": [
+          1.5,
+          3.0,
+          4.5
+        ],
+        "summary": {
+          "same": {
+            "cases": 128,
+            "joint_log_score_per_image": -2.905038453571839,
+            "independent_marginal_log_score_per_image": -3.1601009255814656,
+            "sign_brier_each_step": [
+              0.19714484370194618,
+              0.17382108610462432,
+              0.16778093262188817
+            ],
+            "median_ess_at_three": 9.99514811862488,
+            "identity_brier_nonempty": 0.09018829601251162,
+            "accepted_correct": 225,
+            "accepted_wrong": 17
+          },
+          "opposite": {
+            "cases": 128,
+            "joint_log_score_per_image": -2.933152637468647,
+            "independent_marginal_log_score_per_image": -3.175412892339042,
+            "sign_brier_each_step": [
+              0.19714484370194618,
+              0.15714998385668577,
+              0.15221927319396486
+            ],
+            "median_ess_at_three": 10.751331858367102,
+            "identity_brier_nonempty": 0.09010407399434563,
+            "accepted_correct": 225,
+            "accepted_wrong": 17
+          }
+        },
+        "opposite_minus_same_second_sign_brier": -0.01667110224793862,
+        "paired_ci95": [
+          -0.030686930968121435,
+          -0.004748558311494239
+        ]
+      }
+    },
+    "768": {
+      "daughter": {
+        "status": "checked",
+        "nodes": [
+          7,
+          11,
+          9
+        ],
+        "sites": [
+          4,
+          4,
+          4
+        ],
+        "clocks_s": [
+          1.5,
+          3.0,
+          4.5
+        ],
+        "summary": {
+          "same": {
+            "cases": 128,
+            "joint_log_score_per_image": -3.084879583600225,
+            "independent_marginal_log_score_per_image": -3.58743103333666,
+            "sign_brier_each_step": [
+              0.2483645977203273,
+              0.24719927968423136,
+              0.2539649909062611
+            ],
+            "median_ess_at_three": 23.763588510567914,
+            "identity_brier_nonempty": 0.18160075871539222,
+            "accepted_correct": 29,
+            "accepted_wrong": 5
+          },
+          "opposite": {
+            "cases": 128,
+            "joint_log_score_per_image": -3.2186001953442513,
+            "independent_marginal_log_score_per_image": -3.6869505875132385,
+            "sign_brier_each_step": [
+              0.2483645977203273,
+              0.24135851562155908,
+              0.2283998610217564
+            ],
+            "median_ess_at_three": 16.967049567923496,
+            "identity_brier_nonempty": 0.18531526356704706,
+            "accepted_correct": 37,
+            "accepted_wrong": 6
+          }
+        },
+        "opposite_minus_same_second_sign_brier": -0.005840764062672308,
+        "paired_ci95": [
+          -0.025510527646442755,
+          0.013834187525321982
+        ]
+      },
+      "trunk": {
+        "status": "checked",
+        "nodes": [
+          19,
+          21,
+          23
+        ],
+        "sites": [
+          6,
+          6,
+          6
+        ],
+        "clocks_s": [
+          1.5,
+          3.0,
+          4.5
+        ],
+        "summary": {
+          "same": {
+            "cases": 128,
+            "joint_log_score_per_image": -2.89380202652821,
+            "independent_marginal_log_score_per_image": -3.154157650367022,
+            "sign_brier_each_step": [
+              0.189025915730706,
+              0.1667681061702458,
+              0.15969382283568836
+            ],
+            "median_ess_at_three": 28.36493284861374,
+            "identity_brier_nonempty": 0.08973742109635412,
+            "accepted_correct": 228,
+            "accepted_wrong": 17
+          },
+          "opposite": {
+            "cases": 128,
+            "joint_log_score_per_image": -2.9114864383632604,
+            "independent_marginal_log_score_per_image": -3.171640332967325,
+            "sign_brier_each_step": [
+              0.189025915730706,
+              0.152506974445953,
+              0.14645565179582992
+            ],
+            "median_ess_at_three": 27.716161211878223,
+            "identity_brier_nonempty": 0.08928061291387424,
+            "accepted_correct": 229,
+            "accepted_wrong": 18
+          }
+        },
+        "opposite_minus_same_second_sign_brier": -0.014261131724292681,
+        "paired_ci95": [
+          -0.024833777128875505,
+          -0.0050434537940853555
+        ]
+      }
+    }
+  }
+}

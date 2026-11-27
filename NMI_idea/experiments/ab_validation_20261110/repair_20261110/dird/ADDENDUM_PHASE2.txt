@@ -1,0 +1,84 @@
+第二阶段独立审计后的窄修与结论修订
+日期：2026-11-10。原REPORT.txt、SUMMARY.json、SEALED_MANIFEST.json及旧trace均保留，
+未重写。本文补充并修正其解释；本次不改任何生产QP/C++、权重、harmonic或core。
+
+先修正native稳定性结论
+原REPORT中branch0主批次“12条q位置/速度/自碰撞合法”只能描述该次运行，
+不能读成稳定性、可重复保证或执行证书。独立Astra第二阶段fresh重放发现：
+同冻结branch0/no_dird/path0，tick641，q_meas rail=.298021185919m，
+q_send rail=58.282671290689m，qdot rail=−.001350347698m/s。
+桥接器正确在理想反馈积分前拒绝，保留最后合法q；exit_state.valid=false，
+再次尝试连续执行被实际接口拒绝。异常不再局限于原branch4敏感性批次。
+
+独立证据：../audit/PHASE2_REPORT.txt、PHASE2_PROVENANCE.json、
+phase2_native_first_invalid_tick.json、phase2_native_subset_inputs.npz。
+这些文件只读引用，本工作者未改审计输出。该fresh例只跑到642 tick，其
+位置p95=58.911676mm为截断段统计，不能与原完整路径p95直接等同。
+
+本工作者原二进制case也保留：branch4/no_dird1 tick684，rail从约.312057710m
+返回−3.299771340m，qdot仅+.007547273m/s。同冻结输入Python未越界，只读
+仪表重编译版未再现。两组证据共同表明native长路径输出异常仍是阻断项；
+具体内部赋值尚未定位。不能由solved、小qdot、固定时钟或仪表版未复现而
+声称修复，不能把这些异常推定为真实机器人已故障或几何路径绝对不可执行。
+本次没有再反复重跑长路径挑选结果，也未尝试以修改生产C++掩盖问题。
+
+段界动态诊断修复
+旧桥接器实际将上一qdot传给真实控制器，但统计每段加速度/jerk时用零作
+差分起点，导致连续path和observation hold的段首伪差。现在按连续命令历史：
+  a_k=(v_k−v_{k−1})/dt，j_k=(a_k−a_{k−1})/dt，dt=.005s。
+只有静止root默认v_{−1}=0、a_{−1}=0；后续path/hold都继承上一段最后已
+接受命令的实际速度与加速度。非法最终proposal仍可出现在诊断最大值中，
+但不会污染最后合法的出口速度/加速度，更不会变成虚拟测量或可继续状态。
+
+当前结果新增qdot_entry、acceleration_entry、acceleration_exit与逐tick的
+command_acceleration、command_jerk；derivative_history_schema为
+continuous_command_fd_v2。状态schema升级ultrapoc_qp_complete_history_v2，
+保存acceleration_exit；完整prefix恢复时同时核对q、qdot、acceleration。
+恢复误差门仍为1e−7，未放宽。旧v1状态明确拒绝；源码fingerprint也变化，
+任何后续连续B图必须以新版本重新生成状态，不能直接复用旧缓存。
+
+精确回归与残余超界
+新检查只写phase2_boundary_fix/，不覆盖封存结果。六个回归全部通过：
+1. 非零入口速度/加速度、已知恒定jerk的解析段界。
+2. 静止root的旧/新统计逐位相同；原root统计不受此段界修复影响。
+3–4. 原封存Python/native motion+hold速度数组先全路径拼接，再独立差分，
+     与新分段结果逐位一致；首帧还与Astra独立计算数值一致。
+5–6. 新实际Python/native path→80tick(.4s) hold→path，全部分段逐tick导数、
+     最大值和余量都与全命令序列独立差分逐位一致；JSON完整prefix恢复后，
+     q、qdot、acceleration、jerk轨迹完全一致；篡改出口加速度被拒绝。
+此短回归不证明native长路径稳定，更不消除上面的独立非法rail证据。
+
+同封存trace/本轮对应短回放的hold余量如下，真实小量超箱未隐藏：
+                  原段首归零统计          连续历史修正
+native加速度余量      −.527183672             +1.562790021
+native jerk余量      −406.624314888            −.008656222
+Python加速度余量      −6.300315448             +1.518999877
+Python jerk余量      −1560.063089557           +1.3570e−7
+native的−.008656222仍是实际诊断值，不改成0或通过。每坐标限值/结果完整保留；
+rail用米、arm用弧度，不能把不同量纲的最小余量当统一物理量跨机器人比较。
+
+复现与封存
+从本dird目录运行：
+  env PYTHONPATH=RealUS_playground:RealUS_playground/ird_playground:RealUS_playground/rm75_control \
+      OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+      /media/camp/EXT_DRIVE/envs/genesis/bin/python -m pytest -p no:dash -q \
+      phase2_boundary_fix/test_boundary_derivatives.py
+或使用phase2_boundary_fix/run_checks.sh中的绝对路径命令。
+结果：6 passed in9.19s；1502条OSQP依赖弃用警告原样保留在日志。
+phase2_boundary_fix/logs/boundary_regressions.txt是完整输出。
+frozen_boundary_*.json和actual_continuation_*.json含完整计算与新实际trace。
+
+修改前qp_replay.py SHA256：
+0ed30e40c55ea57f72a2858c4de022b75db26ddf5d90281079bb797b84365fda
+修改后SHA256：
+9b72a782dd70c034b1aaacefb295d442649f7477621ce3f885be621391ec3ce1
+旧源码位于phase2_boundary_fix/before/qp_replay.py；差分、命令、原封存文件
+保留检查和新文件hash见phase2_boundary_fix/PHASE2_FIX_MANIFEST.json。
+原SEALED_MANIFEST是历史版本指纹；其中qp_replay.py当前有这一项有意变更，
+旧hash可由before快照重现，其余原封存项未变。
+
+阶段结论
+连续段加速度/jerk诊断缺陷已窄修并通过其限定回归；没有改变实际QP轨迹、
+参考时钟、速度、初始q、门槛或权重。native长路径非法输出仍未定位，实际
+系统机械可执行性和新连续B机械增益仍不能据本轮声明完成。旧SRS图仍只是
+有限求解器消融。坐标新资产/实机/接触/超声证据不在此次窄修范围。

@@ -1,0 +1,354 @@
+{
+  "schema": "native_regression_independent_stage_audit_v1",
+  "status": "sealed intermediate evidence; final repair NOT accepted yet",
+  "scope": "No native or hardware rerun; all15 diagnostic and28 intermediate saved segment FK/derivatives; collision subsets; complete state/prefix/denominator audit; exact scalar reconstruction of4 rejected commands",
+  "latest_user_scope": "Keep configured posture preferences and ordinary nullspace; disable extra branch hard wall; task-only is diagnostic; any new leg-placement experiment separately identified",
+  "remaining": "Await sealed physical command-admission fix and new final replay, if requested by root",
+  "report_sha256": "5ee599a875746ffeac6a31fef7a4c13942cf2660671564224b2bfd67ad66d615",
+  "files": {
+    "planning/native_regression_20261110/baseline_v2/RESULTS.json": {
+      "sha256": "97e747c150f533da92d37357bac441a523f3868cfe24154e3937144cb155aa3c",
+      "bytes": 113532
+    },
+    "planning/native_regression_20261110/baseline_v2/hold_nominal_10s_native_config.txt": {
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/baseline_v2/hold_nominal_10s_trace.npz": {
+      "sha256": "0d3fa94388fc7752547a5ad5f09177a71b28be3f3f268d8e4647add7e396c988",
+      "bytes": 1954543
+    },
+    "planning/native_regression_20261110/baseline_v2/hold_stress_10s_native_config.txt": {
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/baseline_v2/hold_stress_10s_trace.npz": {
+      "sha256": "b824ae66a7cd5d45adfbac25af5f90603c8bff88cf4fab7c7f94d7d8d4f1b977",
+      "bytes": 1924103
+    },
+    "planning/native_regression_20261110/baseline_v2/new_first_nominal_native_config.txt": {
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/baseline_v2/new_first_nominal_trace.npz": {
+      "sha256": "57d103ded68ff7c76c579043116770a6fb7ff25ba19811c3f6db21a3afcde374",
+      "bytes": 420109
+    },
+    "planning/native_regression_20261110/baseline_v2/old_path0_native_config.txt": {
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/baseline_v2/old_path0_trace.npz": {
+      "sha256": "39ee791c2062dd610735f9780f19610bc61cfac6dbb85dac883268116925ec64",
+      "bytes": 1349646
+    },
+    "planning/native_regression_20261110/baseline_v2/old_path1_native_config.txt": {
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/baseline_v2/old_path1_trace.npz": {
+      "sha256": "70778a3de01b786a7ece7c1c3acdec84201266f5c5e6fa0e094d54d034c27215",
+      "bytes": 1370514
+    },
+    "planning/native_regression_20261110/j1_guard_only/RESULTS.json": {
+      "sha256": "8c0aad52e74a3be617847b56ec2e24378eeb79425217ecc711fcec9a6956deea",
+      "bytes": 52157
+    },
+    "planning/native_regression_20261110/j1_guard_only/hold10s_native_config.txt": {
+      "sha256": "eba0ce159d7ae8c7abfaef2e56e79c40896ba96f9312219ceaae5b07cb268e9a",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/j1_guard_only/hold10s_trace.npz": {
+      "sha256": "212b03317fe09c989e2e4a4e9a01d3c31bcc0568b34c8c5549ee027ba8936c09",
+      "bytes": 1908790
+    },
+    "planning/native_regression_20261110/j1_guard_only/motion_native_config.txt": {
+      "sha256": "eba0ce159d7ae8c7abfaef2e56e79c40896ba96f9312219ceaae5b07cb268e9a",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/j1_guard_only/motion_trace.npz": {
+      "sha256": "c2c847abc303fca870d377fd7c04ecabc81b68a1ccfeed96ef247593f5cddd6f",
+      "bytes": 420239
+    },
+    "planning/native_regression_20261110/causal_2x2/RESULTS.json": {
+      "sha256": "2d9968da7ba08a392220169a87f86c373b3899e8fb7b6666499520679426270a",
+      "bytes": 51013
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_loose_hold6s_native_config.txt": {
+      "sha256": "7b6cab154677121ec4040ff74c8174f91778a2d5e48e7e34676e5ee9acf2626a",
+      "bytes": 8215
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_loose_hold6s_trace.npz": {
+      "sha256": "5dd231af5f9646d0ee8c621f5dc8bbe4bc1a1ea4bd4b53346cfcb664f10ab01d",
+      "bytes": 1196158
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_loose_motion_native_config.txt": {
+      "sha256": "7b6cab154677121ec4040ff74c8174f91778a2d5e48e7e34676e5ee9acf2626a",
+      "bytes": 8215
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_loose_motion_trace.npz": {
+      "sha256": "a97461054d8e0cc771e442c80b825288baf80f6766adc3b17d21000416093fe1",
+      "bytes": 417442
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_original_hold6s_native_config.txt": {
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_original_hold6s_trace.npz": {
+      "sha256": "9a48a7054abcbd65c99599375f6bef6a90471d9eae6327c93d8fb4be595006e8",
+      "bytes": 1198386
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_original_motion_native_config.txt": {
+      "sha256": "7080702d84ed0c8e911c2a790af823af029eb7b42f28f8f8e9dd50e429690ba3",
+      "bytes": 8201
+    },
+    "planning/native_regression_20261110/causal_2x2/raw_jerk_original_motion_trace.npz": {
+      "sha256": "9f96053608fe48641b2e46af730dfb5e8dd24a4c8bc57f068415bc2807c44602",
+      "bytes": 420126
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_loose_hold6s_native_config.txt": {
+      "sha256": "3a308f0b53aafefe920ce8135b4e5d1c97e0a9d59a8ebea321ce647144911604",
+      "bytes": 8260
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_loose_hold6s_trace.npz": {
+      "sha256": "c762d429d2813559541565e2b27c687f743e00b2689f124127c5deaa786666f9",
+      "bytes": 1193269
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_loose_motion_native_config.txt": {
+      "sha256": "3a308f0b53aafefe920ce8135b4e5d1c97e0a9d59a8ebea321ce647144911604",
+      "bytes": 8260
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_loose_motion_trace.npz": {
+      "sha256": "60fd493a105b90c83a1f2cd991d53e5d5b6d272f2c8a005d457778f204966c12",
+      "bytes": 415718
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_original_hold6s_native_config.txt": {
+      "sha256": "2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326",
+      "bytes": 8246
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_original_hold6s_trace.npz": {
+      "sha256": "73e84dbce36c35291aa75099fbdf34d9e5befea86947e18ce2f0b540a5b1c615",
+      "bytes": 1196373
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_original_motion_native_config.txt": {
+      "sha256": "2f706100dcc01478b9b0e4b2ce56077eb86a75ba2a5c5a3197226ed650fd1326",
+      "bytes": 8246
+    },
+    "planning/native_regression_20261110/causal_2x2/unit_jerk_original_motion_trace.npz": {
+      "sha256": "cd611db9361e8d775137be79d43c378902069519d44ad731d745045b3cdc57bd",
+      "bytes": 420435
+    },
+    "planning/native_regression_20261110/production_before_fix/MANIFEST.json": {
+      "sha256": "cbed27e557cfda820b3c3d70a573e9a7bf5ec6f711ee710ef32e2c1b4012b886",
+      "bytes": 838
+    },
+    "planning/native_regression_20261110/production_before_fix/run_native_subset.py": {
+      "sha256": "861ef2cc4a421154148e587ee06e33818a31c9dc9f20a3e2a69f5c5e2c9b9d9f",
+      "bytes": 6453
+    },
+    "planning/native_regression_20261110/production_before_fix/scan_replay.py": {
+      "sha256": "2ca8647ec664836f71072097d82d645e0c0a5f5e736e69537b50ecb9cc1c9461",
+      "bytes": 2635
+    },
+    "planning/native_regression_20261110/production_before_fix/scan_tracking_profile.yaml": {
+      "sha256": "8368eff9e808c61991642af55d0ef8128a64bc165f4df52d1d74b6d05113413d",
+      "bytes": 464
+    },
+    "planning/native_regression_20261110/production_before_fix/test_scan_replay_profile.py": {
+      "sha256": "87a91b8078e5762fa23e3919bf57ce9dcf69c6f378a999a0af39382039ae6c51",
+      "bytes": 2118
+    },
+    "planning/native_regression_20261110/native20_fixed/RESULTS.json": {
+      "sha256": "f3d13433488080a3c1c61fddf0f6e501b52821476060e63869f9a78cd99fb910",
+      "bytes": 3163747
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_identity_0_trace.npz": {
+      "sha256": "3d30eda2d92998f6248332ec370565876323871342cfc38a091a07029135e62f",
+      "bytes": 420248
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_identity_1_trace.npz": {
+      "sha256": "19faa35029b6c060e3ba9a660d2efa3e7cea99976e4e68ab91cff6faa715e9e5",
+      "bytes": 192802
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_identity_2_trace.npz": {
+      "sha256": "4b519705d3a8cda94ea4e973e0c01c7f8d1b98c769c50d2f42592eaee7545635",
+      "bytes": 129329
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_identity_3_trace.npz": {
+      "sha256": "966f336343f3840a4288c1c2134d5f18928dd853b8c1e5a4548eb7ff7318c92c",
+      "bytes": 134394
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_t2_-0.08m_0_trace.npz": {
+      "sha256": "e996239ec494191b915fe7ef8249921f96a61708344eaf573dd1a196cd891c0f",
+      "bytes": 193945
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_t2_-0.08m_1_trace.npz": {
+      "sha256": "974e78d8a6fd958ed6578ff261fcfe447b2f65a6743e46cb8cc025c2e7fcc3b0",
+      "bytes": 405603
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_t2_-0.08m_2_trace.npz": {
+      "sha256": "8f77e93472da1e08016219c356b3a8219a0f5c17cc5e6216c784d0ec1a3ae17e",
+      "bytes": 189827
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_t2_-0.08m_3_trace.npz": {
+      "sha256": "e5191ec185276659478e1dbe09ee063eb55bc02563d4d1df173e795061201203",
+      "bytes": 189555
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_t2_-0.08m_4_trace.npz": {
+      "sha256": "395d2820745fe9a8500fa9615c18a4144a90557fef65eac029d74e06d3e631dd",
+      "bytes": 187368
+    },
+    "planning/native_regression_20261110/native20_fixed/h0_a0_t2_-0.08m_5_trace.npz": {
+      "sha256": "43684b002a954323293dc611b6b709ddabb545b43b380ce59548363a086fac5e",
+      "bytes": 190282
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_identity_0_trace.npz": {
+      "sha256": "24a94fb92b0cbb0fb03f12550aeca1bfb8e27433fb1aa783708d26acb2570845",
+      "bytes": 420234
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_identity_1_trace.npz": {
+      "sha256": "df57deab120fec0dc086464e38d15a756a9ca9da8a765244d57632d3db4c3e98",
+      "bytes": 586028
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_identity_2_trace.npz": {
+      "sha256": "03a8ae84236097746f64f35309e9d129b130bc7c8b2100c7fb412e4192b6b3e5",
+      "bytes": 489772
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_t2_-0.08m_0_trace.npz": {
+      "sha256": "d7276a82c9136870f2d7d0a481f0138eb1adf9aa8f500cc31ca1e094c0a8127e",
+      "bytes": 193938
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_t2_-0.08m_1_trace.npz": {
+      "sha256": "ebc29c4bdbafc83e50c25a1d879a695730359838a68c4956150dc87b20374b1a",
+      "bytes": 189797
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_t2_-0.08m_2_trace.npz": {
+      "sha256": "d02c11664174070f8eb614dcc96ecab60450743306c75d10845072e292d1a1cc",
+      "bytes": 186994
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_t2_-0.08m_3_trace.npz": {
+      "sha256": "15b78031edeafda0d42942f5babb75760046952ad0ff97317618f0827e0a432b",
+      "bytes": 187781
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_t2_-0.08m_4_trace.npz": {
+      "sha256": "5993c4772f53294cdcdc6e946b33d3ff86c0888e4e28a140549f0296a879aeac",
+      "bytes": 188052
+    },
+    "planning/native_regression_20261110/native20_fixed/h1_a0_t2_-0.08m_5_trace.npz": {
+      "sha256": "e53efb8fbb6109f429730140c883c91e01efcf4a25fd8366cd72559d81835f4e",
+      "bytes": 189392
+    },
+    "planning/native_regression_20261110/native20_minimal/RESULTS.json": {
+      "sha256": "24079d3d044f3c6bdffbf4c21023f9a7b2d0fab194c8a96a17712964c1c7c2fa",
+      "bytes": 1200188
+    },
+    "planning/native_regression_20261110/native20_minimal/h0_a0_identity_0_trace.npz": {
+      "sha256": "00a16062e7685f01d31051eec4a33a7fb617ee2adbff14a6f267d8dbd4d5d00c",
+      "bytes": 420226
+    },
+    "planning/native_regression_20261110/native20_minimal/h0_a0_identity_1_trace.npz": {
+      "sha256": "5cb17a6a7ce0a503557a31978d6fc86cbd8d13e5cd8dc77a3cf67ac4f6e8556d",
+      "bytes": 192792
+    },
+    "planning/native_regression_20261110/native20_minimal/h0_a0_identity_2_trace.npz": {
+      "sha256": "2c590757ccaa1058cb141732a987d176a1d4faf08792c96829a1ef232b04612f",
+      "bytes": 129325
+    },
+    "planning/native_regression_20261110/native20_minimal/h0_a0_identity_3_trace.npz": {
+      "sha256": "ad2e1f2d06011684e27f6bef972a186044f34f31924b73b9a80e36001984646c",
+      "bytes": 134386
+    },
+    "planning/native_regression_20261110/native20_minimal/h0_a0_t2_-0.08m_0_trace.npz": {
+      "sha256": "23336a604e3ffe70c18bfb1bb134a3c7ee68aa0c5bdcbdaa8b2afcf4159b8da3",
+      "bytes": 164085
+    },
+    "planning/native_regression_20261110/native20_minimal/h1_a0_identity_0_trace.npz": {
+      "sha256": "5a927d51d7522a40218e06594cb3a991f02618a6081c0d3e2191a335f2163b97",
+      "bytes": 420223
+    },
+    "planning/native_regression_20261110/native20_minimal/h1_a0_identity_1_trace.npz": {
+      "sha256": "4282894229ae70d19062869f8d4093f128fcde5130c40852cc1f7f9b45294762",
+      "bytes": 586083
+    },
+    "planning/native_regression_20261110/native20_minimal/h1_a0_identity_2_trace.npz": {
+      "sha256": "c3ee59bd9de653c9f19838a1337070b2d84e9caf3c536655ca3565b5140d737d",
+      "bytes": 489759
+    },
+    "planning/native_regression_20261110/native20_minimal/h1_a0_t2_-0.08m_0_trace.npz": {
+      "sha256": "cfc43e840ba8d6457520c058a10cbb6263bec1ce146be06c0d7711ef94a7ac4a",
+      "bytes": 164094
+    },
+    "planning/native_regression_20261110/audit/PHYSICAL_BOX_BLOCKER.txt": {
+      "sha256": "5ee599a875746ffeac6a31fef7a4c13942cf2660671564224b2bfd67ad66d615",
+      "bytes": 7269
+    },
+    "planning/native_regression_20261110/audit/causal_trace_audit.json": {
+      "sha256": "44a5e64769dd90bcd96bede8ed62c69c65149104d08b8d61900bd9dc0d3bdd98",
+      "bytes": 31602
+    },
+    "planning/native_regression_20261110/audit/causal_trace_audit.log": {
+      "sha256": "5d21c979c34ba6977b32f537cda9fb765547bd5b6e2bc0547fca5442cbcb02c1",
+      "bytes": 889
+    },
+    "planning/native_regression_20261110/audit/check_native_regression.py": {
+      "sha256": "0788228bbe22b68969d2a052a92835b3088d5b9ff0cdf1b37d563eccdb532b6c",
+      "bytes": 13986
+    },
+    "planning/native_regression_20261110/audit/native20_fixed_audit.json": {
+      "sha256": "3eb876d28a692685441f74dcebbb510b9ebeb2b452b95cd43c1a9505dec0c38b",
+      "bytes": 43431
+    },
+    "planning/native_regression_20261110/audit/native20_fixed_audit.log": {
+      "sha256": "c2a8b30837558a8593ed56b13d9bced13c203a610dffe1a9e9ed239322de9030",
+      "bytes": 773
+    },
+    "planning/native_regression_20261110/audit/native20_minimal_audit.json": {
+      "sha256": "7495de7a5984071439b2abc285c51fc75c2dce7c3852adc8a14d1d5f52a6cf2d",
+      "bytes": 22059
+    },
+    "planning/native_regression_20261110/audit/native20_minimal_audit.log": {
+      "sha256": "87d693bf6933ba30e5affc1f5995c96523fd95fca3f9b31786913f8b8a5071b1",
+      "bytes": 776
+    },
+    "planning/native_regression_20261110/audit/physical_box_failure_checks.json": {
+      "sha256": "12f478b2c0a0997c8103fa8d9e8fce15b04c8becc64bb18efbdc842d99196b45",
+      "bytes": 66024
+    },
+    "planning/native_regression_20261110/audit/pre_physical_conflict_fix/inner.cpp": {
+      "sha256": "bd86583c3508d4879fa47d8b1bdf31bf8307a2a5ae39ebca4ebd9f8e42eafec5",
+      "bytes": 94924
+    },
+    "planning/native_regression_20261110/audit/pre_physical_conflict_fix/types.hpp": {
+      "sha256": "f98826cea468eb0562f32df5725da0cd360bf4f2b969df8c18f46c6e5e61d55c",
+      "bytes": 16079
+    },
+    "planning/native_subset/RESULTS.json": {
+      "sha256": "102acc248945aeeca6c45cb8c21c62c007fef30e84902263374c4c3344493caf",
+      "bytes": 3343649
+    },
+    "planning/test_frozen/results.json": {
+      "sha256": "913be5af55c0d85b969e203635bdbb0979413ccfbd4e1192668bec9efd69ab85",
+      "bytes": 10599210
+    },
+    "planning/NATIVE_SUBSET_PROTOCOL.txt": {
+      "sha256": "01b39ab0b557ae850aecd9edcd0993ea3eb4d06c04acd86a6cafd2da5020ce1f",
+      "bytes": 2096
+    },
+    "planning/native_regression_20261110/CAUSAL_PROTOCOL.txt": {
+      "sha256": "b8c3b528906f8866f01206954c08836bd35912a38aa7a6c4e6d351a7ea1e581e",
+      "bytes": 1108
+    },
+    "planning/native_regression_20261110/run_controlled_comparison.py": {
+      "sha256": "632e5420aefa2e1e4efc4cee91d764e001997695edea03eb68c58b7f54640971",
+      "bytes": 3838
+    },
+    "planning/native_regression_20261110/run_j1_guard.py": {
+      "sha256": "63909c0cd1edad1a5878fb13c9a8805f93fed97e8b2c523116c50b7313b25b3a",
+      "bytes": 2879
+    },
+    "planning/native_regression_20261110/run_causal_variants.py": {
+      "sha256": "3385996a0b32bb2c41fbc3a4bd269a58e217d6d720837c2f7d1ab8c9199e6480",
+      "bytes": 3233
+    }
+  }
+}

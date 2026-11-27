@@ -1,0 +1,14 @@
+Pre-release CRN correction, 2026-11-10
+
+The initial unexecuted runner key included the method label:
+``('continuous_mismatch', condition, object_index, method)``.  That would
+give paired methods different renderer noise even when they selected the
+same action, violating the intended common-random-number comparison.
+
+Correction: the runner now uses exactly
+``('continuous_mismatch', condition, object_index, 'a0_identity')`` for both
+methods.  ``run_episode`` still appends action ordinal and rounded actual
+pose internally, so same-object/condition/ordinal/same-pose observations
+share noise while different actions may differ.  Persistent GT world and
+nuisance state are unchanged.  No GT was opened and no strategy episode was
+executed before this correction.

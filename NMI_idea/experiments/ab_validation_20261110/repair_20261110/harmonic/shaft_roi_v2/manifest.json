@@ -1,0 +1,166 @@
+{
+  "status": "sealed_bounded_shaft_roi_v2",
+  "domain": {
+    "h_min": 0.14,
+    "h_max": 0.94,
+    "theta": "periodic_radians",
+    "d_min": 0,
+    "d_max": 1,
+    "centerline_excluded": true,
+    "inner_radial_fraction": 0.04
+  },
+  "scalar_contract": {
+    "d": "positive_edge_weight_discrete_graph_Laplace_Dirichlet",
+    "h": "transported_centerline_station",
+    "theta": "parallel_transport_periodic_angle",
+    "harmonic_map_theorem_claim": false
+  },
+  "assets": {
+    "atlas_right.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_right.npz",
+      "sha256": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c"
+    },
+    "atlas_left.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/atlas_left.npz",
+      "sha256": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191"
+    },
+    "attachments_left.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/attachments_left.npz",
+      "sha256": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5"
+    },
+    "attachments_right.npz": {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/attachments_right.npz",
+      "sha256": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f"
+    }
+  },
+  "asset_hashes": {
+    "atlas_right.npz": "f1a42becc403ebf7687025d4ab8b7d3480e52d4713df8c6357449b23d4ebba1c",
+    "atlas_left.npz": "8d4deac6ab8f364ae08b359ec2878027144fb1c4aa44fba777f5126e99853191",
+    "attachments_left.npz": "d70d2350240fa2e8a9195a173dbb2e92094503a9458fa3b350dbb55fd658b4d5",
+    "attachments_right.npz": "bfc7c76b083be69604ec18c963d4110870d2437afdb19aba8d95c5e6fb4f1b3f"
+  },
+  "sources": [
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/atlas.py",
+      "sha256": "5d3dfe07d954249be06b181e93d8c0575da2adfc82ea376fb6c94964dec11a8e"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/harmonic.py",
+      "sha256": "3b0778ad6be73e70f539d3f68f0ee27d9e1192bbe9c503f5a14ff824e6512121"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/volume_refine.py",
+      "sha256": "cedeb2bbd1999cea6c517e386eb096e28b2a4c2bdd17a7867143d428ae08108e"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/visualize.py",
+      "sha256": "733c89191f0bf6bd3f0ce0180dd4bbce0a99723b5d8539cbc2907c7084b64bda"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/shaft_rebuild.py",
+      "sha256": "e8f19e726d07badd64e22c556764a0900634d6f62bdec1a03dcc236f94a99b57"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/src/projects/genesis_ue_sync/anatomy_retarget/leg_volume_coordinates/SHAFT_ROI_USAGE.md",
+      "sha256": "3604a94670cfad54a407041708b645c4db8c36c0fecbb825b604086c07e4aee2"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/tests/test_leg_volume_depth_contract.py",
+      "sha256": "414b3628d8c9a836a7a244998929f3d9a5e5bd4b0e44c2087c01e0b3c68c48fc"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/DMP_playground/run_volume_coordinate_query.py",
+      "sha256": "d778bbbcd4a7ad2181b596da019ad83988ac8f9ee82ddcb93795962c4ce1c7ff"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/DMP_playground/configs/shaft_roi_v2_20261110.json",
+      "sha256": "5f3474caa9d245d24e70268bb570f2b7278f638cecabeb208c7b0c49d0192e4e"
+    }
+  ],
+  "canonical_and_preserved_production_inputs": [
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/smpl_canonical_weights.npz",
+      "sha256": "492eda4d279dac9ee5833fb46a20ee7841f58e124556cb61757984e9bd27fc0d"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/smpl_canonical_skeleton.json",
+      "sha256": "3615500c473c9aa0a034e419714b9a2cf47dce6304e51ba1354b7ec3ed5ec69f"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/outputs/anatomy_retarget/recovered_smplx_20261108/source_manifest.json",
+      "sha256": "cca8bbcb85d58a2b7e405e1b39e699b251f37dc23a8234ca1cfc5ef0544c5c74"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_right.npz",
+      "sha256": "06ab1236b096ba0e97132dd9d7831583fa9adf3f98d410f9995c58b30ccc8f86"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/Among_US/dataset/processed/anatomy_retarget/leg_volume_coordinates/production/atlas/atlas_left.npz",
+      "sha256": "05a85088fdaa3d63d29789d77f8e95eae8358b33ddd24f04841fb108fa6ceb19"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/REPORT.txt",
+      "sha256": "6b5e4ad752a7a6c37ac3eaa366c3ce10150d2f3f1168a2d836fe5e1e1d597582"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/relevant_tests.log",
+      "sha256": "8d541392c09009098419b9d493ee731d7357ab5c2ffbb6485342d6ae4d280734"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/boundary_revision.json",
+      "sha256": "3b2f39347b0d16ee07cf88eb28b779aa461675339577d2c90cd7d032680285cc"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/metadata_revision.json",
+      "sha256": "567e8fee1fe4cc721bf177fb1f5d64db6579f1411f7b3ac9e401ef97dffbd27e"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/ownership_metadata_revision.json",
+      "sha256": "b5923c3a8f51657a1d7254aba4112c94d8f5627fc64eb6f32822b30c4b788d7d"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_h_extension_trials/grid_results.json",
+      "sha256": "5269542898e080ceb19cf9c6a577d14409755811c88378fe4dab258ec7912393"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/harmonic_boundary_final.json",
+      "sha256": "89a2323874b2128b1a48e00810e3298e89ca41e438f1a601b591f358bf3aec69"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/harmonic_boundary_extended_final.json",
+      "sha256": "34a200b17e809ca389801ce3e5ec8aaed036ae7eaa2621f0682842fea3d5d028"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/harmonic_final_results.json",
+      "sha256": "22bda797cd38d686b762a166b5fa4861dcd6c2e4f83cb9ebb4beb050c9f5b755"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic/shaft_roi_v2/dmp_point_integration.json",
+      "sha256": "3137c04e8fb2d3d207235509d5d3b6b729142746e40dd9461fe35c7393d97944"
+    },
+    {
+      "path": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/audit/harmonic_skin_fit_final.json",
+      "sha256": "e288c620bbfeb67bd9fde70e8c4933814f075a2d693088c60369e45203c180b0"
+    }
+  ],
+  "tests": "22 passed, 1 optional canonical fixture skipped",
+  "scope_exclusions": [
+    "whole-leg chart",
+    "old vessel projection migration",
+    "complete scan chain",
+    "servo real-time/contact/ultrasound",
+    "arbitrary body shapes or poses"
+  ],
+  "verified_pose_samples_deg": [
+    0,
+    15,
+    30,
+    45,
+    60,
+    75,
+    90
+  ],
+  "history_note": "Metadata-only revisions preserve every numeric array; boundary revision preserves all volume arrays and attachment bytes. See revision files and archived NPZs."
+}

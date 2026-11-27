@@ -18,8 +18,10 @@ DEFAULT_MASS = 1.0
 DEFAULT_DAMPING = 40.0
 DEFAULT_VMAX_M_S = 0.012
 DEFAULT_INERTIA_YY = 0.051
-# 75% of the ICRA tilt plant: ω_ss = e / b and ω_max both drop.
-MOMENT_TRACK_SCALE = 0.75
+# Steady tilt is ω = e / b. 009 still left a dark side while |My| was only
+# ~0.03 N·m and ω stayed near 0.04 rad/s. 0.60 of the ICRA plant lets that
+# side lag a little further. ω_max drops with the same scale.
+MOMENT_TRACK_SCALE = 0.60
 DEFAULT_DAMPING_YY = 0.22 / MOMENT_TRACK_SCALE
 DEFAULT_VMAX_OMEGA_Y = 0.28 * MOMENT_TRACK_SCALE
 DEFAULT_COULOMB_YY = 0.02

@@ -1,0 +1,88 @@
+{
+  "scope": "rho=.8, two main Cartesian simulator runs; 32 configurations per level, historical content retained for A",
+  "metrics": {
+    "basic": {
+      "max_population_curve_error": 0.022235817363703725,
+      "max_early_gain_vs8s": 0.07187500029624994,
+      "target80": {
+        "retain_early": {
+          "budget": 21.0,
+          "attained_completion": 0.96875,
+          "cost_seconds_calls_frames_retries": [
+            16.240249999999836,
+            2.525,
+            71.94375,
+            0.0
+          ]
+        },
+        "hide_old": {
+          "budget": 21.0,
+          "attained_completion": 0.8968749997037501,
+          "cost_seconds_calls_frames_retries": [
+            16.364875000225904,
+            2.525,
+            73.00520833541458,
+            0.0
+          ]
+        }
+      }
+    },
+    "variable": {
+      "max_population_curve_error": 0.07451561177201149,
+      "max_early_gain_vs8s": 0.11249999966249999,
+      "target80": {
+        "retain_early": {
+          "budget": 22.0,
+          "attained_completion": 0.95625,
+          "cost_seconds_calls_frames_retries": [
+            17.30599999999982,
+            2.525,
+            79.96249999999999,
+            0.0
+          ]
+        },
+        "hide_old": {
+          "budget": 22.0,
+          "attained_completion": 0.8483333334436906,
+          "cost_seconds_calls_frames_retries": [
+            17.77401666659815,
+            2.525,
+            83.85437499943212,
+            0.0
+          ]
+        }
+      }
+    },
+    "stress": {
+      "max_population_curve_error": 0.15028284663947478,
+      "max_early_gain_vs8s": 0.0444909277381664,
+      "target80": {
+        "retain_early": {
+          "budget": 33.0,
+          "attained_completion": 0.8827923791715223,
+          "cost_seconds_calls_frames_retries": [
+            25.248680916967803,
+            2.519761814982403,
+            143.29969467530324,
+            0.0
+          ]
+        },
+        "hide_old": {
+          "budget": 33.0,
+          "attained_completion": 0.84890625015,
+          "cost_seconds_calls_frames_retries": [
+            25.155187499591687,
+            2.525,
+            142.30265624625,
+            0.0
+          ]
+        }
+      }
+    }
+  },
+  "geometry_full_chain_interventions": 5440,
+  "joint_v3_independent_configurations": 2,
+  "joint_v3_at20_prediction": 1,
+  "joint_v3_at20_measured": 0.5,
+  "strict_hardware_or_contact_claim": false
+}

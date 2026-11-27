@@ -674,3 +674,30 @@ def test_solver_retry_lease_expiry_is_not_a_latched_fault() -> None:
     assert daemon.ControllerService._is_latched_fault("rail_panic")
     assert daemon.ControllerService._is_latched_fault("qpik_fault:stop:feedback_stale")
     assert daemon.ControllerService._is_latched_fault("qpik_fault:stop:watchdog")
+
+
+def test_p0_conflict_is_latched_once_even_with_queued_dof(monkeypatch):
+    svc = _service_for_boundary()
+    solves = []
+    reason = "qpik_fault:uncertified_qp1:p0_conflict"
+
+    def compile_hold(ctx, req, **kwargs):
+        return Phase(outer=_Outer(), label=req.mode.name)
+
+    def fault_once(sess, phases, inner, **kwargs):
+        solves.append(True)
+        assert len(solves) == 1
+        return LoopResult(1, .005, 0., False, stop_reason=reason)
+
+    def poll():
+        if svc.estop.tripped:
+            svc._stop = True
+        return None
+
+    monkeypatch.setattr(daemon, "compile_request", compile_hold)
+    monkeypatch.setattr(daemon, "run_joint_admittance_phases", fault_once)
+    monkeypatch.setattr(svc.hub, "poll", poll)
+    svc.run(SimpleNamespace(robot=None), None, None)
+    assert solves == [True] and svc._fault_sm == "AWAIT_RESET"
+    assert svc._pending_dof is None and svc._pending is None
+    assert any(e.get("status") == Status.ESTOP for e in _publish_events(svc))

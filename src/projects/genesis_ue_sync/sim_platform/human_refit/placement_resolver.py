@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import json
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from common.project import project_paths
@@ -12,6 +15,23 @@ from projects.genesis_ue_sync.sim_platform.scenes.human_scene_placement import H
 
 PLACEMENT_JSON_ENV = "AMONGUS_HUMAN_SCENE_PLACEMENT_JSON"
 PLACEMENT_SIDECAR_NAME = "human_scene_placement.json"
+
+
+def placement_cache_key(scene_spec: SyncSceneSpec, sequence_path: Path) -> str:
+    """Placement belongs to a specific scene, body reference, and motion clip."""
+    path = sequence_path.expanduser().resolve()
+    stat = path.stat()
+    body_ref = scene_spec.motion.resolved_sequence_npz_path
+    ref_stat = body_ref.stat() if body_ref is not None and body_ref.is_file() else None
+    payload = {
+        "version": 2,
+        "sequence": [str(path), stat.st_size, stat.st_mtime_ns],
+        "body_ref": [str(body_ref), ref_stat.st_size, ref_stat.st_mtime_ns] if ref_stat else None,
+        "human": asdict(scene_spec.human),
+        "support": asdict(scene_spec.support_surface) if scene_spec.support_surface else None,
+        "avatar": asdict(scene_spec.ue_avatar),
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:24]
 
 
 def resolve_human_scene_placement_path(scene_spec: SyncSceneSpec, *, repo_root: Path | None = None) -> Path | None:
@@ -96,15 +116,10 @@ def preferred_placement_output_path(
     *,
     repo_root: Path | None = None,
 ) -> Path:
-    """Path shared by Genesis GT demo and UE (sequence.npz sibling preferred)."""
+    """Local scene-keyed cache; never write sidecars into shared AMASS assets."""
     repo_root = repo_root or project_paths(__file__).root
-    seq = scene_spec.motion.resolved_sequence_npz_path
-    if seq is not None:
-        candidate = Path(seq).expanduser()
-        if not candidate.is_absolute():
-            candidate = (repo_root / candidate).resolve()
-        return candidate.parent / PLACEMENT_SIDECAR_NAME
-    return placement_sidecar_for_npz(amass_npz_path)
+    key = placement_cache_key(scene_spec, amass_npz_path)
+    return repo_root / "outputs/realus_sync/placement_cache" / key / PLACEMENT_SIDECAR_NAME
 
 
 def resolve_or_compute_human_scene_placement(
@@ -144,21 +159,21 @@ def resolve_or_compute_placement_for_amass(
 
     repo_root = repo_root or project_paths(__file__).root
     npz_path = Path(amass_npz_path).expanduser().resolve()
-    sidecar = placement_sidecar_for_npz(npz_path)
+    out_path = preferred_placement_output_path(scene_spec, npz_path, repo_root=repo_root)
+    key = placement_cache_key(scene_spec, npz_path)
 
     if not force_recompute:
         env_raw = str(os.environ.get(PLACEMENT_JSON_ENV, "") or "").strip()
         if env_raw:
             candidate = Path(env_raw).expanduser()
             if candidate.is_file():
-                return HumanScenePlacement.load(candidate), candidate
-        loaded = try_load_human_scene_placement_for_scene(scene_spec, repo_root=repo_root)
-        if loaded is not None:
-            path = resolve_human_scene_placement_path(scene_spec, repo_root=repo_root)
-            assert path is not None
-            return loaded, path
-        if sidecar.is_file():
-            return HumanScenePlacement.load(sidecar), sidecar
+                placement = HumanScenePlacement.load(candidate)
+                if placement.metadata.get("placement_cache_key") == key:
+                    return placement, candidate
+        if out_path.is_file():
+            placement = HumanScenePlacement.load(out_path)
+            if placement.metadata.get("placement_cache_key") == key:
+                return placement, out_path
 
     placement = compute_human_scene_placement(
         sequence,
@@ -171,11 +186,7 @@ def resolve_or_compute_placement_for_amass(
         root_projection_bed_center=bool(root_projection_bed_center),
         fit_samples=int(fit_samples) if fit_samples is not None else None,
     )
-    out_path = preferred_placement_output_path(scene_spec, npz_path, repo_root=repo_root)
+    placement = replace(placement, metadata={**placement.metadata, "placement_cache_key": key})
     out_path.parent.mkdir(parents=True, exist_ok=True)
     placement.save(out_path)
-    amass_sidecar = placement_sidecar_for_npz(npz_path)
-    if amass_sidecar != out_path:
-        amass_sidecar.parent.mkdir(parents=True, exist_ok=True)
-        placement.save(amass_sidecar)
     return placement, out_path

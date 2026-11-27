@@ -1,0 +1,1 @@
+Current interpretation: REPORT.txt and INTERPRETATION_CORRECTION_20261108.txt. Latest evidence archive: v855_transfer_review_bundle_clarified.zip. Original frozen experiments and earlier archive are preserved. No new robot/simulation run in this interpretation correction.

@@ -1,0 +1,18 @@
+--- source_before/adapter_before_calibration.py	2026-11-10 14:57:49.740463286 +0800
++++ ../../dird/adapter.py	2026-11-10 14:57:49.770463208 +0800
+@@ -130,8 +130,13 @@
+         result = {'schema': 'ab_dird_path_query_v1', 'provenance': provenance,
+                   'n_waypoints': len(tcp), 'raw_score_per_waypoint': score,
+                   'min_raw_score': float(score.min()),
+-                  'proxy_threshold': self.calibration['safety_threshold'],
+-                  'proxy_pass': bool(np.all(score >= self.calibration['safety_threshold'])),
++                  # Calibration fits (raw_score-zero_bias); compare raw
++                  # scores with m_safe, not the centered safety_threshold.
++                  'proxy_threshold': self.calibration['m_safe'],
++                  'proxy_threshold_formula': 'raw_score >= zero_bias + safety_threshold',
++                  'calibration_zero_bias': self.calibration['zero_bias'],
++                  'calibration_centered_safety_threshold': self.calibration['safety_threshold'],
++                  'proxy_pass': bool(np.all(score >= self.calibration['m_safe'])),
+                   'score_is_safety_certificate': False, 'q_seed': seed,
+                   'rail_m': rail, 'exact': None,
+                   'seconds': {'proxy': proxy_seconds}}

@@ -1,0 +1,229 @@
+label_kind: uniform_full_workspace_srs_collision_v1
+feature_kind: flange_se3_rot6d9
+feature_frame: flange
+ik_target_frame: tcp
+FLANGE_CANONICAL_DIM: 9
+n: 512
+n_reachable: 26
+n_unreachable: 486
+collision_urdf: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf
+collision_pairs: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml
+collision_security_margin_m: 0.01
+T_flange_tcp:
+- - 0.014774022132612807
+  - 0.9998908401730626
+  - -0.0001897578249923093
+  - 0.0
+- - -0.6440522759647374
+  - 0.009371115199288349
+  - -0.7649240799089563
+  - -0.01523
+- - -0.7648388026863352
+  - 0.011423219245411842
+  - 0.644120420393116
+  - 0.12135
+- - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+metric:
+  schema: se3_weighted_l2_v1
+  lambda_m_per_rad: 0.5729577951308232
+  cm_per_deg: 1.0
+  note: chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic
+robot_contract:
+  schema: realman_robot_contract_v1
+  kinematics_urdf: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.urdf
+  kinematics_urdf_sha256: 7578310c5ce7b03a301c171175fd4eca2bd8e4b15903a7a9a3ed9bfc366e4ec0
+  collision_urdf: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/RM75-6F-8dof.collision.urdf
+  collision_urdf_sha256: ba6f49b4fd9cba74107af25ecd82afccac156a94b194a6acb06a2aadebf1d197
+  collision_pairs: /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/collision_pairs.yaml
+  collision_pairs_sha256: 8d4b96e09ec8bdfd33a7835fb77fa4dcb720551e7d55d28c063994b99c392318
+  collision_mesh_sha256:
+    ? /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/base_link.stl
+    : d064b0a2f806d8f10fd591555fc0e4cc336192094e96401902c141368d8ae6cc
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_1.stl: 90d5b335f392402516e722681ba8329ad06f0e28d79d29ba1463da952b73b90f
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_2.stl: 8c580d89602815965ccc3bf7634004bb60cc72f36b3890f3e7c22bf00e27d5f7
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_3.stl: a3920205d23ee649adfffbad53aa20260d277fd57a7f10d0aa8ce99249e8530e
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_4.stl: 525ab301f2b4747c0e2a9f2494ffca4b28f798d75e38eb6ed2d92438a3a1babe
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_5.stl: bf7ff38e2bde76aeb2424bd8f39c6d90d1bcdcc378c06f41020a89d79762b4f1
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_6.stl: d5efae0116584d1d00d46f3a8579ab093abaecb41435f65c83c06308bb74c518
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/link_7.stl: a19c21f7fc000f5b9aae9b051bdf3b9880caacdcabd027e624072edd17a71f0c
+    /media/camp/EXT_DRIVE/RealUS_playground/rm75_control/rm75_control/assets/robots/rm75_6f_8dof/meshes/collision/probe45.stl: 8a68b1b7df6668af46a766c80393a8f9822060378f4c8d65686efe2edfc0efe5
+  tcp_frame: tcp
+  tcp_joint: link_7_to_tcp
+  flange_frame: link_7
+  root_frame: rail_base
+  rail_joint: rail_y
+  rail_locked_at_m: 0.0
+  rail_limits_m:
+  - 0.0
+  - 0.8
+  j1_joint: joint_1
+  T_root_j1_axis:
+  - - 1.0
+    - 0.0
+    - 0.0
+    - 0.0
+  - - 0.0
+    - 1.0
+    - 0.0
+    - -0.4
+  - - 0.0
+    - 0.0
+    - 1.0
+    - 0.2405
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  T_flange_tcp:
+  - - 0.014774022132612807
+    - 0.9998908401730626
+    - -0.0001897578249923093
+    - 0.0
+  - - -0.6440522759647374
+    - 0.009371115199288349
+    - -0.7649240799089563
+    - -0.01523
+  - - -0.7648388026863352
+    - 0.011423219245411842
+    - 0.644120420393116
+    - 0.12135
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  tool_frame:
+    joint_name: link_7_to_tcp
+    parent_frame: link_7
+    child_frame: tcp
+    T_flange_tcp:
+    - - 0.014774022132612807
+      - 0.9998908401730626
+      - -0.0001897578249923093
+      - 0.0
+    - - -0.6440522759647374
+      - 0.009371115199288349
+      - -0.7649240799089563
+      - -0.01523
+    - - -0.7648388026863352
+      - 0.011423219245411842
+      - 0.644120420393116
+      - 0.12135
+    - - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+    T_tcp_flange:
+    - - 0.014774022132612865
+      - -0.6440522759647375
+      - -0.7648388026863353
+      - 0.08300427254304381
+    - - 0.9998908401730625
+      - 0.00937111519928828
+      - 0.011423219245411823
+      - -0.001243485570945564
+    - - -0.0001897578249922692
+      - -0.7649240799089563
+      - 0.6441204203931159
+      - -0.08981380675171803
+    - - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+  collision_security_margin_m: 0.01
+  metric:
+    schema: se3_weighted_l2_v1
+    lambda_m_per_rad: 0.5729577951308232
+    cm_per_deg: 1.0
+    note: chart-coordinate weighted L2 used for EDT / Eikonal; not an SE(3) geodesic
+  collision_scope: arm_body_self_collision_only
+  yaw_invariant_static_links:
+  - base_link
+srs_conditioning:
+  branch_id: 0
+  psi_grid_step_rad: 0.08726646259971647
+  max_psi_swing_rad: 2.6179938779914944
+  psi_home_rad: 0.0
+  psi_hard_lower_rad: null
+  psi_hard_upper_rad: null
+  y_rail_m: -0.4
+  check_limits: true
+  euler_order: xyz
+  T_flange_tcp:
+  - - 0.014774022132612807
+    - 0.9998908401730626
+    - -0.0001897578249923093
+    - 0.0
+  - - -0.6440522759647374
+    - 0.009371115199288349
+    - -0.7649240799089563
+    - -0.01523
+  - - -0.7648388026863352
+    - 0.011423219245411842
+    - 0.644120420393116
+    - 0.12135
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+  labeler: srs_ik_controller_aligned_v1
+  reachability_kind: point
+  models_path_reachability: false
+  models_top5_goal_score: false
+  D_WT_FLANGE: 0.1612
+  D_BS: 0.2405
+  D_SE: 0.256
+  D_EW: 0.21
+  Q_LOWER:
+  - -3.106
+  - -2.2689
+  - -3.106
+  - -2.356
+  - -3.106
+  - -2.234
+  - -6.28
+  Q_UPPER:
+  - 3.106
+  - 2.2689
+  - 3.106
+  - 2.356
+  - 3.106
+  - 2.234
+  - 6.28
+  RAIL_ORIGIN_Y: -0.4
+  per_sample_overrides:
+  - psi_homes
+  - branch_ids
+  pose_frame: rail_base
+  y_rail_meaning: shoulder_world_y = RAIL_ORIGIN_Y + q_rail
+  tool_mode: flange_tcp
+  tcp_offset_xyz:
+  - 0.0
+  - -0.01523
+  - 0.12135
+  branch_id_policy: fixed default_branch_id=0 for pure TCP queries (no generating
+    seed)
+  psi_home_policy: psi_home_rad=0.0 for pure TCP queries
+  default_branch_id: 0
+  point_only_reachability: true
+seed_gt_npz: data/ird/gpu_pose_production.npz
+config:
+  seed_gt_npz: data/ird/gpu_pose_production.npz
+  output_npz: data/ird/gpu_pose_uniform_production.npz
+  n_queries: 512
+  n_ik_seeds: 16
+  batch_size: 128
+  radius_m: 1.2
+  z_min_m: -0.35
+  z_max_m: 1.35
+  horizontal_probe_fraction: 0.2
+  horizontal_tilt_max_deg: 15.0
+  ik_max_iter: 100
+  default_branch_id: 0
+  seed: 20261130
+  device: cpu
+  log_every_batches: 1
+  robot_spec: /media/camp/EXT_DRIVE/RealUS_playground/ird_playground/configs/robot_probe45.yaml
+  collision_security_margin_m: null

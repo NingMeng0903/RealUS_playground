@@ -38,9 +38,10 @@ def so3_log(R: "torch.Tensor") -> "torch.Tensor":
 
 def so3_exp(rotvec: "torch.Tensor") -> "torch.Tensor":
     """Batch Rodrigues exponential for world-frame rotation vectors."""
-    theta = torch.linalg.vector_norm(rotvec, dim=-1, keepdim=True)
-    axis = rotvec / theta.clamp_min(1e-9)
-    x, y, z = axis.unbind(dim=-1)
+    # Use the rotation-vector skew directly: normalizing an axis and returning
+    # a constant identity near zero erases the exponential's first derivative.
+    theta2 = (rotvec * rotvec).sum(dim=-1)
+    x, y, z = rotvec.unbind(dim=-1)
     zero = torch.zeros_like(x)
     K = torch.stack(
         [zero, -z, y, z, zero, -x, -y, x, zero], dim=-1
@@ -48,9 +49,18 @@ def so3_exp(rotvec: "torch.Tensor") -> "torch.Tensor":
     eye = torch.eye(3, dtype=rotvec.dtype, device=rotvec.device).expand(
         *rotvec.shape[:-1], 3, 3
     )
-    theta_m = theta.unsqueeze(-1)
-    R = eye + torch.sin(theta_m) * K + (1.0 - torch.cos(theta_m)) * (K @ K)
-    return torch.where((theta < 1e-8).unsqueeze(-1), eye, R)
+    # Clamp only the inactive general-form branch, so its square root has a
+    # finite derivative at zero. The Taylor branch retains dependence on r.
+    theta = torch.sqrt(theta2.clamp_min(1e-8))
+    a_general = torch.sin(theta) / theta
+    # Half-angle form avoids cancellation in 1-cos(theta).
+    b_general = 0.5 * (torch.sin(0.5 * theta) / (0.5 * theta)).square()
+    a_taylor = 1.0 - theta2 / 6.0 + theta2.square() / 120.0
+    b_taylor = 0.5 - theta2 / 24.0 + theta2.square() / 720.0
+    small = theta2 < 1e-8
+    a = torch.where(small, a_taylor, a_general)[..., None, None]
+    b = torch.where(small, b_taylor, b_general)[..., None, None]
+    return eye + a * K + b * (K @ K)
 
 
 @dataclass

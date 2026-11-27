@@ -1,0 +1,426 @@
+{
+  "scope": "offline actual native QP + production Cartesian track outer; ideal q feedback; no robot or image/contact outer",
+  "input_sha256": "7e23c9a9d91faef05bfddbc9eb1275c156ceacc04798c20a6beb61425136e8e8",
+  "qp_replay_sha256": "9b72a782dd70c034b1aaacefb295d442649f7477621ce3f885be621391ec3ce1",
+  "path": "frozen branch4 no_dird path0, exact same poses and q_seed",
+  "speed_order_m_s": [
+    0.02,
+    0.005
+  ],
+  "one_run_each_no_retry": true,
+  "dt_s": 0.005,
+  "settle_s": 2.0,
+  "angular_feedforward": "unchanged original zero",
+  "runs": [
+    {
+      "schema": "ultrapoc_motion_qp_path_v1",
+      "provenance": "paired frozen branch4/path0 speed 0.02",
+      "backend": "native",
+      "tcp_mode": "urdf",
+      "speed_m_s": 0.02,
+      "soft_start_ramp_s": 0.4,
+      "settle_s": 2.0,
+      "dt_s": 0.005,
+      "nominal_path_duration_s": 3.892827947091241,
+      "simulated_duration_s": 5.8950000000000005,
+      "integrated_duration_s": 5.9,
+      "n_steps": 1180,
+      "failures": [],
+      "qp1_status_counts": {
+        "solved": 1180
+      },
+      "position_error_mean_m": 7.684771904041975e-05,
+      "position_error_p95_m": 0.00010632542854386727,
+      "position_error_max_m": 0.0006032665249791215,
+      "rotation_error_p95_rad": 0.13801259926921355,
+      "endpoint_position_error_m": 3.668298466561555e-06,
+      "endpoint_rotation_error_rad": 0.002824249142694575,
+      "max_arm_step_rad": 0.0032807522821582946,
+      "max_rail_step_m": 0.0001393303039341487,
+      "velocity_max_abs_by_coordinate": [
+        0.02790867311994679,
+        0.2682778623343055,
+        0.24433826482667378,
+        0.27193500891516353,
+        0.6561504564316416,
+        0.3976201868719473,
+        0.14234876595440638,
+        0.4583295670706182
+      ],
+      "derivative_history_schema": "continuous_command_fd_v2",
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_max_abs_by_coordinate": [
+        0.3004543894608164,
+        2.729226503050819,
+        1.8573339957528134,
+        2.9318163991001978,
+        2.9358707503673975,
+        2.0931677614243194,
+        2.4149487933454115,
+        2.862093448509939
+      ],
+      "jerk_max_abs_by_coordinate": [
+        27.734622310062527,
+        300.0262419969046,
+        300.0233078639858,
+        300.0042932456479,
+        300.03395804527156,
+        300.01574328912596,
+        300.03162147493043,
+        300.0185416520085
+      ],
+      "velocity_limit_by_coordinate": [
+        0.4,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005
+      ],
+      "acceleration_limit_by_coordinate": [
+        1.6,
+        3.0,
+        3.0,
+        3.0,
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "jerk_limit_by_coordinate": [
+        320.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0
+      ],
+      "velocity_margin_min": 0.37209132688005325,
+      "acceleration_margin_min": 0.06412924963260247,
+      "jerk_margin_min": -0.03395804527156088,
+      "joint_limit_min_margin_by_coordinate": [
+        0.27937258887668087,
+        0.5025294320137381,
+        0.6934970511277934,
+        1.6498120886416385,
+        0.7755255226852344,
+        0.45079213567297804,
+        0.9358841234814443,
+        5.192152094445358
+      ],
+      "minimum_self_collision_distance_m": 0.04082273442646761,
+      "self_collision_gate_m": 0.01,
+      "self_collision_sampled_at_every_control_tick": true,
+      "self_collision_pairs_per_tick": 35,
+      "qp_hard_residual_max": 8.489511318376941e-07,
+      "task_paused_count": 0,
+      "task_progress_p05": 0.9992094754218773,
+      "q_exit": [
+        0.3258917031555363,
+        -2.443455837043599,
+        -1.1545737023006577,
+        1.4561879113583613,
+        0.9094958358541297,
+        1.8522447509803437,
+        1.1335835513925716,
+        0.9688503323377595
+      ],
+      "qdot_exit": [
+        0.006056148452891116,
+        -3.0337091465929914e-05,
+        0.12237398020586998,
+        0.27182496850140614,
+        -0.0006698217249159384,
+        -0.24212590588540595,
+        -0.12582556599307518,
+        -0.05563656572267336
+      ],
+      "acceleration_exit": [
+        -0.0019174900142622173,
+        0.00017971531613454465,
+        0.14732530404545086,
+        0.3494172167492371,
+        0.02361405802775824,
+        -0.3060517993492329,
+        -0.19616770608855416,
+        -0.0362396985527938
+      ],
+      "pose_exit": [
+        [
+          -0.9543871073787865,
+          -0.29363848130291814,
+          0.05405267400666719,
+          0.5761350080035639
+        ],
+        [
+          -0.2899121401833661,
+          0.9546785682227964,
+          0.06737790699015767,
+          0.09697212977258832
+        ],
+        [
+          -0.07138767571125765,
+          0.04863407934966697,
+          -0.9962622777573971,
+          0.2354354966533233
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "wall_seconds": 5.11267304699868,
+      "tick_compute_p50_s": 0.00392308049958956,
+      "tick_compute_p95_s": 0.004267802598769776,
+      "scope": "motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation",
+      "exit_state_valid": true,
+      "native_model_clock": "deterministic",
+      "motion_tracking_pass_2mm_2deg": false,
+      "prefix_restore_wall_seconds": 0.0,
+      "prefix_reconstruction_max_abs_error": {
+        "q": 0.0,
+        "qdot": 0.0,
+        "acceleration": 0.0
+      },
+      "path_ticks": 779,
+      "settle_ticks": 401,
+      "path_position_p95_m": 0.00010444724348356461,
+      "path_rotation_p95_deg": 8.10738792576756,
+      "full_rotation_p95_deg": 7.907539457756246,
+      "path_task_progress_lt_001_fraction": 0.0,
+      "path_task_progress_p05": 0.9985432505557775,
+      "completed_nominal_path_time": true,
+      "trace_file": "native_branch4_path0_speed_0.02_trace.npz"
+    },
+    {
+      "schema": "ultrapoc_motion_qp_path_v1",
+      "provenance": "paired frozen branch4/path0 speed 0.005",
+      "backend": "native",
+      "tcp_mode": "urdf",
+      "speed_m_s": 0.005,
+      "soft_start_ramp_s": 0.4,
+      "settle_s": 2.0,
+      "dt_s": 0.005,
+      "nominal_path_duration_s": 14.971311788364963,
+      "simulated_duration_s": 16.975,
+      "integrated_duration_s": 16.98,
+      "n_steps": 3396,
+      "failures": [],
+      "qp1_status_counts": {
+        "solved": 3396
+      },
+      "position_error_mean_m": 2.2042096117330068e-05,
+      "position_error_p95_m": 2.612368226239972e-05,
+      "position_error_max_m": 4.242064542562602e-05,
+      "rotation_error_p95_rad": 0.04627062517528581,
+      "endpoint_position_error_m": 4.883622066792844e-07,
+      "endpoint_rotation_error_rad": 0.0008500549651959388,
+      "max_arm_step_rad": 0.0011763760485179464,
+      "max_rail_step_m": 0.00013068072703870115,
+      "velocity_max_abs_by_coordinate": [
+        0.026140773260357394,
+        0.13137824777250923,
+        0.09914678969086387,
+        0.129767237992852,
+        0.2352752097035896,
+        0.14984085778610676,
+        0.11138965853319127,
+        0.16125325070609395
+      ],
+      "derivative_history_schema": "continuous_command_fd_v2",
+      "qdot_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_entry": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "acceleration_max_abs_by_coordinate": [
+        0.5278491027163968,
+        1.483768510107425,
+        1.1186019089825538,
+        1.539263093856577,
+        2.9998184400359005,
+        1.4641790497727902,
+        1.5274070952624619,
+        1.6225222963136277
+      ],
+      "jerk_max_abs_by_coordinate": [
+        35.00673708614538,
+        300.03837207643215,
+        250.29531722443932,
+        300.00009357605217,
+        299.9983133087081,
+        279.2495116838286,
+        299.9770362504317,
+        300.01077953606324
+      ],
+      "velocity_limit_by_coordinate": [
+        0.4,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005,
+        2.5120000000000005
+      ],
+      "acceleration_limit_by_coordinate": [
+        1.6,
+        3.0,
+        3.0,
+        3.0,
+        3.0,
+        3.0,
+        3.0,
+        3.0
+      ],
+      "jerk_limit_by_coordinate": [
+        320.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0,
+        300.0
+      ],
+      "velocity_margin_min": 0.3738592267396426,
+      "acceleration_margin_min": 0.00018155996409952024,
+      "jerk_margin_min": -0.03837207643215379,
+      "joint_limit_min_margin_by_coordinate": [
+        0.19700906714441835,
+        0.5025294320137381,
+        0.648838866870173,
+        1.8293020763061378,
+        0.8265615359056642,
+        0.450311244557998,
+        0.9401284334521107,
+        5.145184596245325
+      ],
+      "minimum_self_collision_distance_m": 0.040822717685186125,
+      "self_collision_gate_m": 0.01,
+      "self_collision_sampled_at_every_control_tick": true,
+      "self_collision_pairs_per_tick": 35,
+      "qp_hard_residual_max": 9.593019107967393e-07,
+      "task_paused_count": 0,
+      "task_progress_p05": 0.9999999538329509,
+      "q_exit": [
+        0.31084623682450735,
+        -2.4434580894295843,
+        -1.2336926929333518,
+        1.276697923693862,
+        0.8673675320203098,
+        1.9881261606692062,
+        1.2002170841468291,
+        1.0622165597875242
+      ],
+      "qdot_exit": [
+        0.008159017560475466,
+        -1.697640895914984e-05,
+        0.03799614693112549,
+        0.08858908526415996,
+        0.017481078756567903,
+        -0.06884783309725107,
+        -0.027169872486000866,
+        -0.046759195695657264
+      ],
+      "acceleration_exit": [
+        -0.0017873332433773065,
+        0.00010062913087599209,
+        -0.006681820296100538,
+        -0.017422669810954194,
+        0.0024057183339649957,
+        0.016110365412574934,
+        0.0002822242892157323,
+        0.00734957003786646
+      ],
+      "pose_exit": [
+        [
+          -0.9545073658994152,
+          -0.29359077799936284,
+          0.05215499513461086,
+          0.576135976705097
+        ],
+        [
+          -0.28999419806367016,
+          0.9546905238270135,
+          0.0668533380192299,
+          0.09696885301393149
+        ],
+        [
+          -0.06941940314617705,
+          0.04868735758524243,
+          -0.9963987593720685,
+          0.23543507417659224
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "wall_seconds": 14.804920890997892,
+      "tick_compute_p50_s": 0.003950673999497667,
+      "tick_compute_p95_s": 0.004301395500078797,
+      "scope": "motion QP + production Cartesian track outer; ideal q/rail measurement, fixed dt, no force/contact/image outer loop or physical hardware validation",
+      "exit_state_valid": true,
+      "native_model_clock": "deterministic",
+      "motion_tracking_pass_2mm_2deg": false,
+      "prefix_restore_wall_seconds": 0.0,
+      "prefix_reconstruction_max_abs_error": {
+        "q": 0.0,
+        "qdot": 0.0,
+        "acceleration": 0.0
+      },
+      "path_ticks": 2995,
+      "settle_ticks": 401,
+      "path_position_p95_m": 2.6518693142062365e-05,
+      "path_rotation_p95_deg": 2.6703352635588913,
+      "full_rotation_p95_deg": 2.651111537975652,
+      "path_task_progress_lt_001_fraction": 0.0,
+      "path_task_progress_p05": 0.9999999880154238,
+      "completed_nominal_path_time": true,
+      "trace_file": "native_branch4_path0_speed_0.005_trace.npz"
+    }
+  ]
+}

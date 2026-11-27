@@ -1,0 +1,155 @@
+{
+  "input": "/media/camp/EXT_DRIVE/RealUS_playground/NMI_idea/experiments/ab_validation_20261110/repair_20261110/harmonic_independent/ownership_right_cap_mesh.npz",
+  "input_sha256": "6767ef403d8bac9508d5de4a898a455611521a89bbb2a0113300104e842a6db8",
+  "cancelled_opposite_face_pairs": [
+    {
+      "face_ids": [
+        299,
+        908
+      ],
+      "triangles": [
+        [
+          308,
+          0,
+          11
+        ],
+        [
+          11,
+          0,
+          308
+        ]
+      ],
+      "tags": [
+        1,
+        2
+      ],
+      "reason": "exact opposite skin/cap coincident triangles cancel as oriented boundary chain"
+    },
+    {
+      "face_ids": [
+        678,
+        917
+      ],
+      "triangles": [
+        [
+          43,
+          42,
+          18
+        ],
+        [
+          18,
+          42,
+          43
+        ]
+      ],
+      "tags": [
+        1,
+        2
+      ],
+      "reason": "exact opposite skin/cap coincident triangles cancel as oriented boundary chain"
+    },
+    {
+      "face_ids": [
+        802,
+        950
+      ],
+      "triangles": [
+        [
+          465,
+          466,
+          467
+        ],
+        [
+          466,
+          465,
+          467
+        ]
+      ],
+      "tags": [
+        1,
+        2
+      ],
+      "reason": "exact opposite skin/cap coincident triangles cancel as oriented boundary chain"
+    },
+    {
+      "face_ids": [
+        347,
+        945
+      ],
+      "triangles": [
+        [
+          465,
+          467,
+          468
+        ],
+        [
+          465,
+          468,
+          467
+        ]
+      ],
+      "tags": [
+        1,
+        2
+      ],
+      "reason": "exact opposite skin/cap coincident triangles cancel as oriented boundary chain"
+    }
+  ],
+  "topology": {
+    "vertices": 480,
+    "faces": 948,
+    "boundary_edges": 0,
+    "boundary_components": 0,
+    "boundary_component_vertices": [],
+    "boundary_degrees_not_two": 0,
+    "nonmanifold_edges": 0,
+    "inconsistent_interior_winding": 0,
+    "unused_vertices": 4,
+    "watertight": true,
+    "boundary_vertex_ids": []
+  },
+  "cgal_intersections": {
+    "complete_detect_only": true,
+    "cgal_intersecting_face_pairs": 0,
+    "categories": {},
+    "examples": [],
+    "seconds": 0.0035586270023486577
+  },
+  "original_vertex_displacement_max_m": 0.0,
+  "enclosed_signed_volume_m3": 0.009753226511706924,
+  "source_bbox": [
+    [
+      -0.18386408686637878,
+      -1.2455449104309082,
+      -0.13110807538032532
+    ],
+    [
+      0.0011692099506035447,
+      -0.4607885181903839,
+      0.11541152000427246
+    ]
+  ],
+  "retained_surface_bbox": [
+    [
+      -0.18386408686637878,
+      -1.2394345998764038,
+      -0.13110807538032532
+    ],
+    [
+      0.0011692099506035447,
+      -0.4607885181903839,
+      0.11541152000427246
+    ]
+  ],
+  "tetgen": {
+    "nodes": 476,
+    "tets": 1495,
+    "positive": 1495,
+    "negative": 0,
+    "degenerate": 0,
+    "det_min_max": [
+      3.228373469310178e-08,
+      0.0006040927108867094
+    ]
+  }
+}

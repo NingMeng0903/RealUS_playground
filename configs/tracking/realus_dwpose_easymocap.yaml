@@ -14,6 +14,8 @@ ingress:
   recv_timeout_ms: 250
   sync_tolerance_frames: 2
   max_buffer_per_camera: 8
+  source_profile: realsense
+  metadata_intrinsics: false
   sync_mode: hardware_timestamp
   max_hardware_spread_ms: 33
 pose_backend:
@@ -156,7 +158,7 @@ pose_backend:
     lbfgs_min_improve_m: 0.01
     lbfgs_skip_after_small_improve_frames: 2
     vposer:
-      enable: true
+      enable: false
       weight: 0.08
   ik:
     enable: false

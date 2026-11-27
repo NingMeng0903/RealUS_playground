@@ -1,0 +1,710 @@
+                                                      SonoAtlasWorld: Anatomy-Grounded Ultrasound World Models
+                                                                       for Wide-Range Scanning
+                                                                        Zheyuan Zhang Boris Mailhe Hang Yu Yikang Liu
+                                                                     Xiao Chen Ankush Mukherjee Terrence Chen Shanhui Sun*
+                                                                              United Imaging Intelligence, Boston, MA
+
+                                                 (a) Hepatic vein scanning
+arXiv:2611.26867v1 [cs.CV] 19 Nov 2026
+
+
+
+
+                                                                                                                                                                      t
+
+                                                 (b) Portal vein scanning
+
+
+
+
+                                                                                                                                                                      t
+
+                                                 (c) Rib occlusion
+
+
+
+
+                                                                                                                                                                      t
+
+                                                 (d) Gas-induced shadowing
+
+
+
+
+                                                                                                                                                                      t
+
+                                         Figure 1. From probe motion to evolving ultrasound views. SonoAtlasWorld supports probe-controlled exploration of persistent 3D
+                                         anatomy. Each row pairs rendered probe positions (left) with generated ultrasound videos by SonoAtlasWorld along the same scan (right).
+                                         Colored outlines indicate shadow regions from the anatomical visibility conditions. All ultrasound sequences are generated.
+                                                                     Abstract                                  tions achieve pose-to-ultrasound throughput of 81.2 FPS.
+                                                                                                               To evaluate anatomical control beyond image similarity, we
+                                         Learning robotic ultrasound policies requires interactive             introduce the Action-Following Index (AFI), which mea-
+                                         environments for scalable data generation and repeatable              sures normalized reconstruction gain over a static-prefix
+                                         evaluation, while exploration on real patients is limited by          baseline. On 40 held-out 3D volumes, SonoAtlasWorld
+                                         acquisition costs and safety constraints. Generative world            achieves liver and macro-organ AFI of 0.428 and 0.262,
+                                         models offer an alternative, but image history and probe              compared with at most 0.117 and 0.038 for the tested action-
+                                         actions alone do not ensure anatomical consistency across             and geometry-conditioned methods. Long-rollout align-
+                                         wide-range scans and changing acoustic windows. We in-                ment reduces brightness drift by 3.46× at the end of 40
+                                         troduce SonoAtlasWorld, an ultrasound world model built               repeated scan cycles. SonoAtlasWorld also generates offline
+                                         on anatomy as state. A persistent 3D anatomical asset ex-             policy-training demonstrations and supports anatomically
+                                         tracted from computed tomography (CT) anchors each scan               grounded closed-loop evaluation. Scaling the generated
+                                         to a specific anatomy. Probe actions determine anatom-                training data improves key-plane acquisition success from
+                                         ical and acoustic visibility conditions for a causal ultra-           48.2% to 81.2% on unseen anatomies in simulation, demon-
+                                         sound generator trained on clinical videos. Our three-stage           strating its utility for robotic ultrasound policy learning. In-
+                                         pipeline combines anatomy-conditioned pretraining, causal             teractive video demonstrations are available at https://
+                                         conversion and long-rollout alignment. Inference optimiza-            sonoatlasworld.github.io/SonoAtlasWorld.
+                                           * Corresponding author: shanhui.sun@uii-ai.com.
+
+
+
+
+                                                                                                           1
+                                                                     observation history. Clinical videos provide appearance and
+                                                                     temporal priors, while the retained anatomical asset provides
+                                                                     the spatial reference for new scan trajectories. Anatomy and
+1. Introduction                                                      visibility conditioning support exploration across vessels,
+Ultrasound provides real-time imaging for diagnosis and              ribs and gas shadows (Fig. 1). To realize this anatomy-
+intervention, yet acquiring diagnostic views depends strongly        grounded formulation as an interactive environment, we
+on operator expertise. Robotic ultrasound offers a route to          develop a three-stage learning framework that combines an
+more reproducible examinations, reduced physical workload            anatomy-conditioned ultrasound prior, a causal observation
+and improved access where experienced sonographers are               generator and long-rollout alignment (Fig. 2). The resulting
+scarce [20]. Autonomous scanning requires policies that              model supports anatomically consistent, interactive ultra-
+coordinate image interpretation and probe motion across              sound generation with reduced long-rollout drift.
+patient anatomies. Their development depends on realistic               Our contributions are summarized as follows:
+interactive environments for generating demonstrations and           • We introduce anatomy as persistent world state, separating
+evaluating alternative actions.                                        persistent patient-specific spatial state from framewise ob-
+    Constructing these environments remains difficult. Pa-             servation conditioning. Probe actions dynamically sample
+tient scans provide clinical observations, but repeated trial-         spatially consistent anatomy and acoustic visibility from
+and-error exploration is constrained by safety and practical           this shared 3D state across scan trajectories.
+considerations. Phantoms offer controlled interaction with           • We develop a three-stage training pipeline for causal gen-
+limited anatomical diversity; physics-based simulators must            eration and long-rollout alignment, and accelerate pose-
+balance image fidelity and computational cost [2, 7, 34]. Re-          to-ultrasound generation to 81.2 FPS for real-time wide
+slicing reconstructed ultrasound volumes remains bounded               range interactive scanning.
+by the acquired anatomy and viewing angles [22]. Learning            • We introduce an anatomy-referenced evaluation protocol
+from recorded scans also faces a data bottleneck: routine              for ultrasound world models, assessing anatomical action
+videos lack probe poses, and synchronized tracking requires            following, cross-trajectory consistency, and long-horizon
+calibration and dedicated acquisition protocols [43, 44]. Gen-         stability. We further introduce the Action-Following In-
+erative world models offer a data-driven approach to inter-            dex (AFI) to measure anatomical agreement beyond a
+active simulation, as illustrated by DreamDojo and Cos-                static-prefix baseline, complementing conventional image-
+mos [13, 32]. In ultrasound, SonoWorld grounds probe                   quality metrics.
+actions through EM-tracked clinical scans [44], whereas              • We validate SonoAtlasWorld as a source of offline policy-
+UltraWorld uses synthetic supervision and geometric condi-             training data and a closed-loop evaluation environment,
+tioning without real pose annotations [43].                            demonstrating policy generalization across held-out pa-
+    A central challenge is preserving a specific anatomy               tient anatomies in simulation.
+throughout interaction, including when observation history           2. Related Work
+provides an incomplete or ambiguous spatial reference. In
+wide-range liver scanning, a large organ and branching vas-          Generative World Models. Genie and AdaWorld learn
+culature are viewed through changing cross-sections and              latent actions from videos for interactive generation and
+acoustic windows. A vessel may leave the imaging plane               adaptable control [6, 12]. Video foundations such as Wan
+or disappear behind rib or gas shadowing, then reappear              provide generative priors [37]. For temporal generation,
+from another acoustic window. Recent history may therefore           teacher forcing uses ground-truth histories [40], Diffusion
+contain only partial or acoustically obscured views, while           Forcing trains with independent per-token noise levels [8],
+distant anatomical regions can have similar appearances.             CausVid distills a bidirectional teacher into a few-step causal
+Models relying solely on image history and probe actions             student [46], Self Forcing trains on generated histories [15],
+must infer both unobserved anatomy and its correspondence            and Self-Forcing++ supervises sampled windows of longer
+across these views. Such cases challenge the preservation            rollouts [10]. Complementing these advances in temporal
+of anatomical identity through learned action–appearance             generation, LiveWorld maintains a 3D background and en-
+correlations alone, motivating a persistent 3D anatomical            tities that evolve out of view [11], while PERSIST uses a
+reference during interaction.                                        latent 3D environment, camera state and renderer for per-
+    We introduce SonoAtlasWorld, an anatomy-grounded                 sistent spatial memory [14]. SonoAtlasWorld grounds ultra-
+ultrasound world model built on the principle of anatomy as          sound observations in a fixed anatomical volume and probe-
+state. A 3D anatomical asset persists throughout the scan,           dependent visibility, combining a persistent spatial reference
+and probe actions determine the cross-section and acoustic           with causal temporal generation.
+visibility sampled from it. A learned causal observation             Medical World Models. Medical world modeling spans
+model generates ultrasound from these conditions and its             observation synthesis and representation learning. Endora
+
+
+                                                                 2
+  (a) Anatomy-grounded generation                                                                              (b) Three-stage training
+
+                                                                                                                Pretraining
+                                                                                                                              Full (fixed)
+
+
+
+
+                                                                                                                Causal few-step distillation
+                       Anatomy render                                                        Generated Ot
+                                                                Causal DiT                                                  Causal (fixed)
+                       Spatial reference
+                                                                                    ×N
+                                                            Block-causal
+                       History Ot−H:t−1                                           FFN
+                                                              attention
+                       Temporal continuity                                                                      Long-rollout alignment
+                                                                                                                               No grad
+
+                                                                                                                 Student
+
+                                       O ∼ p (O | O , 𝒮(𝒱, p , A ))
+                                           k   θ   k   <k            0     ≤k
+                                                                                                                 Update student
+                                                                                                                                     Window DMD
+       Anatomy input                 History                   Generative model           DMD window
+
+Figure 2. Overview of SonoAtlasWorld. (a) Five rendered poses illustrate interaction with one persistent scene. The final pose, anatomical
+rendering and generated observation share the same saved time step. The current pose provides anatomy and visibility conditions; generated
+history provides temporal context for causal ultrasound generation. Persistent anatomy supports consistent modeling under challenging
+bone-induced occlusion. (b) Training proceeds from anatomy-conditioned pretraining to causal few-step distillation and long-rollout
+alignment. The final stage applies DMD to a teacher-length window after a no-gradient generated prefix.
+
+and Surgical Vision World Model generate endoscopic and                              3. Method
+latent-action-controlled surgical videos, respectively [21,
+                                                                                     SonoAtlasWorld samples anatomy and visibility from a per-
+23], while semantic-map-conditioned diffusion synthesizes
+                                                                                     sistent 3D state under probe actions and causally generates
+echocardiography videos [33]. For representation learning,
+CheXWorld uses JEPA for anatomy- and domain-aware ra-                                ultrasound conditioned on these observation history.
+diograph embeddings [48]; Cardiac Copilot, Structure-aware                           3.1. Data
+World Model and EchoWorld learn spatial and motion repre-
+                                                                                     We collect 82,158 abdominal B-mode clips from 1,254 pa-
+sentations for probe guidance [18, 19, 47]. SonoGraph-WM
+                                                                                     tients under IRB approval. The patient-disjoint split com-
+predicts anatomical scene graphs for planning [25]. For in-                          prises 78,530 training clips from 1,191 patients and 3,628
+teractive ultrasound generation, SonoWorld grounds clinical-                         test clips from 63 patients. After quality filtering, we use
+video dynamics with EM-tracked motion [44], whereas Ul-                              493 unique anatomical assets from public 3D volumes in
+traWorld transfers anatomy-guided synthetic supervision to                           AbdomenCT-1K [29], AbdomenAtlas [24], and Merlin [4],
+a sampling-geometry-conditioned predictor [43]. Building
+                                                                                     split into 453 training volumes and 40 held-out test volumes.
+on controllable medical synthesis [30, 51], SonoAtlasWorld
+                                                                                     Clinical videos provide appearance supervision, while 3D
+retains anatomy and visibility conditions to anchor causal                           assets support anatomical sampling and policy experiments.
+generation in a shared 3D state.                                                     Dataset composition, preprocessing and splits are detailed in
+Interactive Ultrasound Environments. Phantoms,                                       Supplementary Sec. A.1.
+physics-based simulation and tracked volume reconstruction                           3.2. Anatomy as State
+support controlled ultrasound acquisition and robotic
+experimentation [22, 34]. NVIDIA’s ray-based ultrasound                              We represent patient-specific anatomy as a 3D label volume
+simulator renders anatomical geometry but omits diffraction,                         V that remains fixed throughout a scan. At step t, a probe-
+interference and phase [31]. Learned image translation                               frame action at ∈ R6 specifies a relative translation and
+improves the appearance of anatomical simulations [38].                              rotation, updating the probe pose pt ∈ SE(3) and its sampled
+SonoGym combines 3D patient anatomy with parallel                                    condition:
+                                                                                                                              
+robot learning, physics-based simulation and learned                                                pt = SeatV pt−1 Exp(at ) ,                (1)
+slice-to-ultrasound rendering [2]. Its learned renderer uses
+                                                                                                  mt = R(V, pt ),     mt ∈ LH×W .                 (2)
+pix2pix [17] trained on paired ex-vivo spine data, whereas
+our observation model learns temporal generation from                                The operator SeatV restores probe–skin contact, while R
+clinical videos under anatomy and visibility conditions.                             samples anatomy and acoustic visibility within the imaging
+                                                                                     fan using the shared organ, vessel and visibility vocabulary
+                                                                                     L. For causal generation, we group ultrasound frames and
+
+
+                                                                                3
+conditions into blocks Ok and Mk . Given an initial pose             attention: each block attends to its history and all tokens
+p0 and probe actions A≤k through block k, the sampler S              within the current block. The condition branch operates per
+composes Eqs. (1) and (2) to produce the condition sequence          block to prevent future-mask leakage. We first fine-tune
+M≤k . The causal observation model is                                with flow matching using teacher-forced context. Following
+          Ok ∼ pθ Ok | O<k , S(V, p0 , A≤k ) .
+                                                
+                                                         (3)         causal video distillation [15, 46], we initialize a four-step stu-
+                                                                     dent from teacher-generated trajectories. For a saved teacher
+The anatomical volume V defines the persistent patient-              state xT                                   T
+                                                                            si and its final clean sample x0 , the student’s clean
+specific spatial state, while the sampler maps probe actions         prediction dθ minimizes
+to pose-dependent anatomical conditions M≤k supplied to                                     h                            i
+                                                                                                                    T 2
+the generator without direct processing of the full 3D volume.                  Linit = E dθ (xT    si , si , M) − x0 2 ,           (6)
+This separation preserves anatomical consistency across ar-          with i sampled from four noise levels. This initializes few-
+bitrary probe trajectories and revisited acoustic windows            step sampling without requiring the student to reproduce the
+through the state and sampler, while the generated observa-          full teacher trajectory.
+tion history provides temporal continuity.                               We then train on self-generated history using distribution
+   To construct V, we combine abdominal organ, ves-                  matching distillation (DMD) [15, 45]. Let x̂0 = Gθ (M)
+sel, rib and body-surface annotations with automated seg-            be an autoregressive student rollout, and x̂s its re-noised
+mentation [39] and additional intrahepatic vessel mod-               version. A frozen bidirectional teacher fT and a trainable
+els [1, 16, 42]. At each updated pose, R extracts a curvilin-        critic fψ predict clean latents from the shared input zs =
+ear cross-section and traces beam-wise obstruction. Bone,            (x̂s , s, M). With the student Jacobian Jθ = ∂ x̂0 /∂θ, DMD
+costal cartilage and contact loss produce acoustic dropout;          gives
+intraluminal gas produces a distinct gas shadow condition.                                                              
+These labels distinguish intersected anatomy from acousti-                                           fψ (zs ) − fT (zs )
+                                                                                ∇θ LDMD = E J⊤    θ                        ,     (7)
+cally hidden structures. Real and rendered annotations share                                                  cs
+L, allowing the generator to learn from clinical videos and          where cs normalizes the update magnitude. Teacher and
+accept sampled 3D conditions at inference. Asset prepro-             critic predictions are detached for this update; the critic is
+cessing and visibility rules are detailed in Supplementary           trained separately to denoise generated clips. This stage
+Sec. A.3.                                                            uses anatomy sequences without paired ultrasound targets,
+                                                                     exposing the student to the history it encounters during au-
+3.3. Three-Stage World-Model Training
+                                                                     toregressive generation.
+We train the observation model in three stages:
+                                                                     Post-training: long-rollout alignment. Short distillation
+Pretraining: ultrasound prior and anatomy conditioning.              clips provide limited exposure to cache eviction and accu-
+We first adapt a latent video diffusion transformer [37] to          mulated generation errors. We therefore continue training
+clinical ultrasound with a fixed text prompt. We then add            with the rolling inference cache [10] over horizons longer
+an anatomy-conditioning branch initialized from the first Lc         than the teacher’s. Let HT be the teacher horizon in blocks.
+backbone blocks. The branch encodes mask videos with                 We draw a nominal rollout length N and a block-aligned
+the shared video autoencoder and injects residuals into the          window start j using discrete uniform sampling Ud :
+backbone through zero-initialized projections [49]:
+                                                                       N ∼ Ud (Nmin , Nmax ),          j ∼ Ud (0, N − HT ).       (8)
+                  hℓ ← hℓ + Zℓ cℓ (M) ,                   (4)
+                                                                     Here, Ud (a, b) is uniform over integers a, . . . , b. We ap-
+where ℓ = 1, . . . , Lc , cℓ is the condition feature, and Zℓ        ply Eq. (7) to blocks j + 1, . . . , j + HT with their aligned
+is its projection. The branch has no noise-timestep input.           anatomy conditions. Earlier blocks are generated without
+For a clean latent x0 and noise ϵ ∼ N (0, I), let xs =               gradients. Causality allows generation to stop at the window
+(1 − s)x0 + sϵ. We use the flow-matching objective [26, 27]:         endpoint, avoiding unnecessary later blocks. The window’s
+                                                                     first frame and mask sequence are re-encoded as a fresh clip
+                 h                                    i
+                                                    2
+       LFM = E λ(s) vθ (xs , s, M) − (ϵ − x0 ) w . (5)
+                                                                     to match the teacher’s temporal autoencoder layout. This
+Here, s is the noise level, λ(s) is the timestep weight, and         extends the contexts used for training while keeping teacher
+∥ · ∥2w is a normalized squared error with spatial weights           supervision within its original horizon.
+w = w(M) that emphasize small organs. Backbone and
+                                                                     Streaming generation. At inference, the key–value cache
+branch are optimized jointly. Paired fan augmentation trans-
+                                                                     retains an initial attention sink [41] and a fixed-length re-
+forms each clinical clip and its annotations together to ac-
+                                                                     cent history; older states are evicted and rotary positions
+commodate different acquisition geometries.
+                                                                     compacted [36]. Causal autoencoder caches carry features
+Middle training: causal conversion and few-step distilla-            across blocks. Each block requires four denoising steps fol-
+tion. We replace bidirectional attention with block-causal           lowed by a clean-cache commit pass, enabling continued
+
+
+                                                                 4
+Table 1. Patient-specific anatomical fidelity, action following and temporal continuity. Given anatomical inputs, SonoAtlasWorld’s
+benefits extend beyond gross liver structure to finer anatomical recovery and temporal continuity. Vascular distance: median 2D error from
+projected reference branch points to the predicted vessel skeleton, conditional on detection within 10 mm. Warping errors: 8-bit gray levels;
+prefix-only (–) omitted for nearly static output. Bold/italic: best/second-best excluding prefix-only and teacher. Real/sim: real/generated
+training data. † Adapted re-implementations; real action/geometry baselines use EM tracking.
+
+   Method                  Data                          General Scanning                                     Rib Occlusion
+                                       Liver         Macro-organ         Vascular   Temporal       Shadow        Recovery     Temporal
+                                  Dice ↑ AFI ↑ Dice ↑ AFI ↑ Dist. (mm) ↓             Ewarp ↓      Contrast ↑ Liver Dice ↑      Ewarp ↓
+   No control
+   Prefix only             –       0.670       0    0.219      0          3.62           –           0.132         0.645          –
+   Action- or geometry-conditioned world models
+   SonoWorld [44]†       real 0.662 0.107 0.220              0.032        3.33         2.39          0.106         0.681         3.06
+   SonoWorld [44]†       sim    0.605 0.084 0.208            0.031        3.66         2.50          0.085         0.666         2.82
+   UltraWorld [43]†      real 0.667 0.117 0.224              0.038        3.40         2.52          0.123         0.669         3.26
+   UltraWorld [43]†      sim    0.518 0.041 0.171            0.020        3.42         2.44          0.073         0.633         2.62
+   Frame-conditioned rendering
+   SonoGym [2]†         real 0.811          0.434   0.301    0.200        2.93         4.91          0.735         0.931         6.20
+   Teacher model
+   Bidirectional teacher real      0.838    0.472   0.352    0.250        2.10         2.58          0.788         0.890         2.74
+   Causal world model
+   Framewise variants      real    0.815    0.443   0.352    0.258        1.83         2.86          0.646         0.924         4.02
+   SonoAtlasWorld          real    0.813    0.428   0.356    0.262        1.75         1.90          0.773         0.911         2.47
+generation as probe commands arrive. The main model uses                  and coverage criteria detailed in the supplementary material.
+post-trained EMA weights. Architecture, noise schedules                   Temporal continuity is assessed using optical-flow warping
+and cache settings are provided in Supplementary Sec. A.                  error Ewarp [28], without paired real video.
+                                                                             All models follow the same trajectories on 40 held-
+4. Experiments                                                            out 3D volumes. SonoWorld uses relative probe actions
+4.1. Anatomical Action Following                                          and UltraWorld sampling geometry, trained on limited
+                                                                          real EM-tracked data (real) or generated trajectories (sim).
+Image metrics such as PSNR, SSIM and LPIPS [50] are
+                                                                          Given neither receives patient-specific anatomy at inference,
+widely used to evaluate ultrasound world models [43, 44],
+                                                                          these comparisons validate the benefit of retaining explicit
+but image similarity alone does not establish whether gen-
+                                                                          anatomy rather than generator improvements under matched
+erated anatomy follows the executed probe actions. We
+                                                                          inputs. SonoGym renders anatomical labels framewise; our
+therefore reconstruct segmented generated anatomy along
+                                                                          framewise variant uses SonoAtlasWorld’s DiT weights and
+the executed poses and measure its Dice overlap with the
+                                                                          anatomy inputs without generated history. The bidirectional
+reference 3D anatomy within the visible swept volume. The
+                                                                          teacher is reported separately to distinguish anatomical fi-
+segmentation network is trained on independent real ultra-
+                                                                          delity from causal streaming.
+sound images. Anatomical recovery from generated frames
+also provides an indirect check of compatibility with real                Anatomical action following. Action- and geometry-
+ultrasound appearance. To discount agreement already ex-                  conditioned models reach at most 0.117 liver AFI and 0.038
+plained by the initial observation, we introduce the Action-              macro-organ AFI, with liver Dice below the prefix-only base-
+Following Index (AFI):                                                    line (Tab. 1). Both the bidirectional teacher and SonoAtlas-
+                         
+                                D − Dprefix
+                                                                         World significantly outperform these world-model methods
+            AFI = max 0,                       ,         (9)              on all four anatomical metrics. Thus, probe actions and
+                              Dref − Dprefix
+                                                                          sampling geometry alone do not guarantee agreement with
+ where Dprefix is reconstruction Dice when the prefix im-                 the underlying anatomy, even with simulated training data.
+age is repeated along the same trajectory, and Dref is the                A likely contributor to the limited action following is that
+anatomy-mask-stream reference. AFI measures the fraction                  clinical scans typically follow standardized acquisition pat-
+of reconstruction gain beyond this static baseline recovered              terns, restricting action coverage and generalization to wide-
+under the executed actions. Macro-organ scores average                    range probe motions. SonoAtlasWorld achieves the highest
+over the liver, intrahepatic portal vein, hepatic veins, inferior         macro-organ Dice and AFI (0.356/0.262), compared with
+vena cava, gallbladder and right kidney, subject to visibility
+
+
+                                                                     5
+                                                  Generated ultrasound along the executed trajectory (96 frames, 7 shown)                            3-D reconstruction
+
+
+
+
+                                      Slide
+                                                                                                                                                                    Liver Dice
+                                                                                                                                                                          0.90
+
+              Initial observation A
+
+
+
+
+                                      Fan
+                                                                                                                                                                    Liver Dice
+                                                                                                                                                                          0.93
+
+
+
+
+                                      Wide scan                                                                                                                     Liver Dice
+                                                                                                                                                                          0.84
+                                      Slide
+
+
+
+
+                                                                                                                                                                    Liver Dice
+                                                                                                                                                                          0.97
+
+              Initial observation B
+                                      Fan
+
+
+
+
+                                                                                                                                                                    Liver Dice
+                                                                                                                                                                          0.96
+                                      Wide scan
+
+
+
+
+                                                                                                                                                                    Liver Dice
+                                                                                                                                                                          0.94
+
+
+                                                                                                                            US liver (slide / fan / wide)     3D liver (ref.)
+
+Figure 3. Anatomical consistency across controlled scans. For each of two initial observations, slide, fan and wide-scan trajectories
+produce distinct ultrasound sequences. Right: liver reconstructions from generated frames along the executed poses, overlaid on the reference
+3D anatomy. The shared anatomical state grounds each scan in the same spatial reference.
+0.352/0.258 for its framewise variant and 0.301/0.200 for                 Table 2. Ultrasound appearance on held-out clinical videos.
+SonoGym. SonoAtlasWorld attains a median projected ves-                   Distillation improves perceptual and distributional fidelity. Copy-
+sel distance of 1.75 mm among detected points, providing                  prefix attains competitive short-clip image scores without generat-
+complementary evidence of patient-specific vascular align-                ing anatomical change, motivating the complementary AFI evalua-
+ment (Supplementary Sec. B.1). The bidirectional teacher                  tion.
+achieves higher liver scores, while SonoAtlasWorld com-                                       Method                        LPIPS ↓ PSNR (dB) ↑ SSIM ↑ DINO-KID-excess ↓
+bines comparable macro-organ agreement with causal, in-                                       Copy-prefix                     0.232            21.13         0.557               0.012
+teractive generation. Figure 3 illustrates anatomy recovered                                  Causal conversion               0.333            23.45         0.633               1.403
+along distinct scans.                                                                         Few-step initialization         0.306            21.59         0.571               0.740
+                                                                                              Short-rollout DMD               0.210            21.33         0.602               0.177
+Cross-trajectory consistency. To assess cross-trajectory                                      SonoAtlasWorld                  0.220            21.38         0.605               0.209
+anatomical consistency, we independently generate slide, fan
+and wide-scan trajectories for each of 40 held-out anatomies                                 models achieve at most 0.123 shadow contrast on enter-
+and reconstruct their observations in a common CT coordi-                                    ing occlusion and 0.681 liver Dice after leaving it, whereas
+nate system. We measure pairwise 3D Dice within jointly                                      SonoAtlasWorld reaches 0.773 and 0.911, respectively. Son-
+observed regions and reconstruction Dice against the refer-                                  oGym attains the highest recovery Dice (0.931), but larger
+ence CT. SonoAtlasWorld achieves liver cross-trajectory/CT                                   temporal error than our framewise variant (6.20 versus 4.02)
+Dice of 0.836/0.813, comparable to the bidirectional teacher                                 and SonoAtlasWorld (2.47). With identical DiT weights and
+(0.834/0.838) and our framewise variant (0.820/0.815), with                                  anatomy inputs, observation history lowers general-scanning
+higher CT agreement than action-conditioned baselines.                                       and rib-transition Ewarp from 2.86/4.02 to 1.90/2.47 while
+Copying the initial frame yields higher cross-trajectory Dice                                preserving liver Dice (0.813 versus 0.815). This matched
+(0.895) but lower CT Dice (0.659), demonstrating that self-                                  comparison supports the role of causal observation history in
+consistency alone does not establish anatomical correctness.                                 improving temporal continuity while maintaining anatomical
+Together, these results support spatial agreement across in-                                 fidelity. Protocols are detailed in Supplementary Sec. B.1.
+dependently generated trajectories and correspondence with                                   4.2. Ultrasound Quality and Condition Alignment
+the shared patient-specific anatomy.
+                                                                                             Ultrasound quality on real video. We assess ultrasound
+Visibility transitions and temporal continuity. We fur-                                      appearance on held-out clinical clips, conditioning on a real
+ther test anatomical consistency as the probe moves from                                     prefix and estimated anatomy annotations (Tab. 2). Few-
+visible liver into a rib shadow and from the shadow back to                                  step initialization and training with generated history reduce
+visible anatomy (Tab. 1). Action- and geometry-conditioned
+
+
+                                                                                        6
+                               (a) Brightness drift              (b) Absolute log intensity ratio          (c) Black-fraction change                     (d) Hold-frame liver Dice
+
+                                    S                            0.6                                     0.3                                       0.9
+                         0.6
+                                    L
+                                                                 0.4                                     0.2                                       0.8
+                         0.4
+
+                                                                 0.2                                     0.1                                       0.7
+                         0.2
+                                                                                                                                                   0.6
+                         0.0                                     0.0                                     0.0
+                               1        3    5    10   20   40         1      3    5    10   20     40         1        3      5    10   20   40           1       3    5    10   20   40
+                                            Cycle                                 Cycle                                       Cycle                                    Cycle
+
+
+
+                     S
+
+
+
+
+                     L
+
+
+
+
+                     S
+
+
+
+
+                     L
+
+
+
+                                   Cycle 1                   Cycle 3                  Cycle 5                      Cycle 10                   Cycle 20                   Cycle 40
+
+
+Figure 4. Long-rollout alignment mitigates accumulated drift. Compared with the short-rollout model (S), the aligned model (L) better
+preserves ultrasound appearance and anatomy over 40 repeated scan cycles, reducing cycle-40 brightness drift by 3.46×. Top: drift and
+anatomical agreement across cycles; shaded bands denote 95% confidence intervals. Bottom: generated frames at the same return pose for
+two cases. Early appearances are similar, but S progressively darkens and loses visible structures, while L maintains clearer boundaries.
+DINO-KID-excess [3, 35] from 1.403 to 0.740 and 0.177,                                                     differences in fine-scale anatomy.
+respectively. SonoAtlasWorld achieves LPIPS 0.220, PSNR                                                    4.3. Long-Rollout Behaviour
+21.38 dB, SSIM 0.605 and DINO-KID-excess 0.209, sup-
+porting reasonable ultrasound appearance fidelity on real-                                                 Stable long rollouts are essential for ultrasound world models
+video continuations. Copy-prefix achieves competitive im-                                                  to support extended, interactive wide-range scanning. Prior
+age scores without anatomical change, while causal con-                                                    work evaluates round-trip consistency and rollouts beyond
+version has the highest PSNR/SSIM but the worst LPIPS                                                      the training horizon [44], but accumulated drift over many
+and distributional error. These contrasts motivate the com-                                                repeated revisits remains insufficiently characterized. We
+plementary AFI evaluation of anatomical action following                                                   therefore introduce a repeated-cycle evaluation to quantify
+(Sec. 4.1); appearance protocols are detailed in Supplemen-                                                this long-rollout drift. The probe follows the same closed
+tary Sec. B.3.                                                                                             path and returns to its starting pose after each cycle without
+                                                                                                           resetting generation. Comparing these repeated observations
+CT-to-US anatomical condition alignment. To charac-                                                        with the first cycle separates temporal drift from changes
+terize the domain shift between ultrasound-derived training                                                caused by probe motion. We measure brightness drift, abso-
+conditions and CT-rendered inference conditions, we com-                                                   lute log intensity ratio, black-pixel fraction change and liver
+pare anatomical geometry at matched left-lobe–aorta (LLA)                                                  Dice at the return pose. Metric definitions and evaluation
+views, a standard view with clearly delineated anatomical                                                  details are provided in Supplementary Sec. B.5.
+structures. We report medians across 59 depth-matched US                                                       We compare the short-rollout model (S) with its long-
+clip–CT volume pairs, using one frame per clip or volume                                                   rollout-aligned variant (L) over 40 cycles (120 s of generated
+(Supplementary Sec. B.4). After matching the aortic depth,                                                 video at 16 FPS), using only recent generated history (Fig. 4).
+which is used solely as an alignment criterion, liver depth ex-                                            At cycle 40, L reduces brightness drift from 0.594 to 0.172,
+tent is similar between real-US and CT-derived masks (62.8                                                 a 3.46× reduction (71%), and absolute log intensity change
+vs. 64.5 mm), as is its normalized depth extent relative to                                                from 0.512 to 0.182 (2.81×). Liver Dice at the return pose
+the skin-to-aorta distance (0.680 vs. 0.709). Liver solidity                                               is 0.852 for L versus 0.674 for S. The qualitative comparison
+is also close (0.923 vs. 0.940). Residual differences remain                                               shows similar appearance in the first cycle, but S progres-
+in the liver inferior boundary (2.0 mm) and centroid depth                                                 sively darkens and loses visible anatomy, whereas L better
+(4.1 mm). These results indicate that CT-rendered masks                                                    preserves tissue appearance over extended generation. These
+reproduce several key geometric characteristics of real ultra-                                             results show substantially greater resistance to accumulated
+sound conditioning at matched views, while not excluding
+
+
+                                                                                                     7
+    Closed-loop GI success (%)
+
+                                 90
+                                      (a) Training data scaling
+                                       95% case-bootstrap CI                                90
+                                                                                                 (b) Offline error and closed-loop success
+
+                                                                                                  453
+                                                                                                                                                                          5. World Model for Policy Learning
+                                                                                                                  200
+
+
+                                 70                                                         70                                                                            Acquiring standard anatomical planes is a central task in ul-
+                                                                                                                                               50
+                                 50                                                         50
+                                                                                                                                100
+                                                                                                                                                                          trasound scanning. To evaluate SonoAtlasWorld as a source
+                                                                                                                                                     20
+
+                                 30                                                         30
+                                                                                                     Linear fit                          Pearson r = -0.98; n = 5         of offline robotic policy training data, we sample expert tra-
+                                         20             50        100        200      453               2.0              2.5                3.0                 3.5
+                                                    Training 3D volumes (log scale)                               Offline translation error (mm)                          jectories through 3D volumes targeting three liver views: the
+Figure 5. World-model data scaling improves downstream pol-                                                                                                               portal-vein long-axis plane, the first hepatic hilum plane and
+icy learning. (a) More training volumes and generated trajectories                                                                                                        the second hepatic hilum plane. SonoAtlasWorld generates
+improve closed-loop key-plane acquisition on unseen volumes.                                                                                                              the corresponding ultrasound observations, yielding 39.2k
+(b) Lower offline action-prediction error is associated with higher                                                                                                       demonstration trajectories across 453 training 3D volumes.
+closed-loop success across the displayed checkpoints.                                                                                                                     We train a goal-conditioned diffusion policy [9] offline to
+drift for L than S when generation relies on the model’s own                                                                                                              predict probe actions from these observations and probe-
+history.                                                                                                                                                                  state information. We then freeze the policy and evaluate it
+                                                                                                                                                                          in the world model through closed-loop interaction, generat-
+4.4. Inference Speed Benchmark                                                                                                                                            ing new observations in response to its actions. Training and
+Although the bidirectional teacher can improve generation                                                                                                                 evaluation use disjoint 3D volumes; evaluation on held-out
+quality, it jointly denoises an entire clip and achieves only                                                                                                             volumes therefore tests generalization to unseen anatomy.
+17.6 FPS, limiting its suitability for interactive environments                                                                                                           Success is determined from generated ultrasound by a frozen
+(Tab. 3). We accelerate the causal world model in two steps:                                                                                                              key-plane classifier trained on a large corpus of real ultra-
+static KV buffers and CUDA graphs reduce generation time                                                                                                                  sound images, which identifies whether the target plane has
+from 295.2 to 175.1 ms/block, and TAEHV decoding [5]                                                                                                                      been acquired.
+further reduces it to 130.5 ms/block (92.0 FPS), yielding                                                                                                                     With the policy architecture and training budget fixed,
+a 2.26× speedup over the vanilla causal model. Moving                                                                                                                     scaling from 20 to 453 training volumes (1.7k to 39.2k tra-
+anatomy rendering from CPU to GPU reduces sampling                                                                                                                        jectories) raises closed-loop success from 48.2% to 81.2%,
+time from 305.7 to 16.0 ms. Together, these optimizations                                                                                                                 reaching 78.6% at 200 volumes (Fig. 5a). Offline valida-
+enable pose-to-ultrasound generation at 81.2 FPS, supporting                                                                                                              tion translation error decreases from 3.30 to 2.01 mm and
+real-time interactive scanning. For 60 Hz and 90 Hz control                                                                                                               correlates with success across the displayed checkpoints
+inputs, the output throughput is bounded by 60 and 81.2                                                                                                                   (r = −0.98; Fig. 5b). Together with the anatomy-following
+FPS, respectively, with a steady-state median pose-to-first-                                                                                                              results, these findings support scalable demonstration gener-
+frame latency of 255.0 and 250.7 ms, as generation proceeds                                                                                                               ation and controlled policy evaluation on unseen anatomies
+in 12-frame blocks following the blockwise autoregressive                                                                                                                 in simulation. Online policy training and transfer to physical
+setup of CausVid and Self Forcing [15, 46]. All timings are                                                                                                               scanning remain future work. Full results and protocols are
+measured on a single NVIDIA H100 GPU and benchmark                                                                                                                        provided in Supplementary Sec. D.
+protocols are provided in the supplementary material.
+                                                                                                                                                                          6. Conclusion
+Table 3. Inference speed improvements. Static KV buffers,
+CUDA graphs and TAEHV decoding accelerate the causal world
+                                                                                                                                                                          SonoAtlasWorld grounds causal ultrasound generation in a
+model by 2.26×. GPU anatomy sampling enables pose-to-US gen-                                                                                                              persistent 3D anatomical state and probe-dependent visibility.
+eration at 81.2 FPS.                                                                                                                                                      Experiments demonstrate anatomical action following, long-
+                                                                                                                                                                          rollout stability, 81.2 FPS generation, and policy learning
+                                        Configuration                                                     ms/block ↓ FPS ↑                                                and evaluation on unseen anatomies in simulation. However,
+                                        Bidirectional teacher                                                           682.8                17.6                         several limitations remain. Reliance on static anatomical as-
+                                                                                                                                                                          sets limits the modeling of probe-induced tissue deformation
+                                        Causal world model
+                                        Vanilla (eager, Wan VAE)                                                        295.2                40.6                         and physiological motion. The CT-to-US domain gap and
+                                        + Static KV / CUDA graphs                                                       175.1                68.5                         segmenter-dependent anatomical evaluation warrant further
+                                        + TAEHV decoder                                                                 130.5                92.0                         investigation. Policy validation remains confined to simula-
+                                                                                                                                                                          tion; future work will evaluate transfer to robotic hardware
+                                        Anatomy sampling
+                                                                                                                                                                          under appropriate safety controls.
+                                        CPU renderer                                                                    305.7                        –
+                                        GPU renderer                                                                     16.0                        –
+                                        End to end
+                                        Pose-to-US                                                                      147.7                81.2
+
+
+
+
+                                                                                                                                                                      8
+LLM Usage Statement                                                      [13] Shenyuan Gao, William Liang, Kaiyuan Zheng,
+                                                                              Ayaan Naveed Malik, Seonghyeon Ye, Sihyun Yu,
+OpenAI GPT and Claude assisted manuscript editing, lit-                       Wei-Cheng Tseng, Yuzhu Dong, Kaichun Mo, Chen-Hsuan
+erature inspection, and code editing. The authors remain                      Lin, et al. DreamDojo: A generalist robot world model from
+responsible for all scientific claims, code, and results.                     large-scale human videos. In ICML, pages 33340–33366.
+                                                                              PMLR, 2026.
+References                                                               [14] Samuel Garcin, Thomas Walker, Steven McDonagh, Tim
+ [1] Michela Antonelli, Annika Reinke, Spyridon Bakas, et al. The             Pearce, Hakan Bilen, Tianyu He, Kaixin Wang, and Jiang
+     medical segmentation decathlon. Nature Communications,                   Bian. Beyond pixel histories: World models with persistent
+     13:4128, 2022.                                                           3d state. In International Conference on Machine Learning
+ [2] Yunke Ao, Masoud Moghani, Mayank Mittal, Manish Pra-                     (ICML), 2026.
+     japat, Luohong Wu, Frederic Giraud, Fabio Carrillo, Andreas         [15] Xun Huang, Zhengqi Li, Guande He, Mingyuan Zhou, and
+     Krause, and Philipp Fürnstahl. Sonogym: High performance                 Eli Shechtman. Self forcing: Bridging the train-test gap
+     simulation for challenging surgical tasks with robotic ultra-            in autoregressive video diffusion. In Advances in Neural
+     sound. In Advances in Neural Information Processing Sys-                 Information Processing Systems, 2025.
+     tems, 2025.                                                         [16] Fabian Isensee, Paul F. Jaeger, Simon A. A. Kohl, Jens
+ [3] Mikołaj Bińkowski, Danica J. Sutherland, Michael Arbel, and             Petersen, and Klaus H. Maier-Hein. nnU-Net: A self-
+     Arthur Gretton. Demystifying MMD GANs. In International                  configuring method for deep learning-based biomedical image
+     Conference on Learning Representations, 2018.                            segmentation. Nature Methods, 18:203–211, 2021.
+ [4] Louis Blankemeier, Ashwin Kumar, Joseph Paul Cohen, Ji-             [17] Phillip Isola, Jun-Yan Zhu, Tinghui Zhou, and Alexei A. Efros.
+     aming Liu, Longchao Liu, Dave Van Veen, Syed Jamal Safdar                Image-to-image translation with conditional adversarial net-
+     Gardezi, Hongkun Yu, Magdalini Paschali, Zhihong Chen,                   works. In CVPR, pages 1125–1134, 2017.
+     et al. Merlin: a computed tomography vision–language foun-          [18] Haojun Jiang, Meng Li, Zhenguo Sun, Ning Jia, Yu
+     dation model and dataset. Nature, 652(8112):1318–1328,                   Sun, Shaqi Luo, Shiji Song, and Gao Huang. Structure-
+     2026.                                                                    aware world model for probe guidance via large-scale self-
+ [5] Ollin Boer Bohan. TAEHV: Tiny autoencoder for hun-                       supervised pre-train. In Simplifying Medical Ultrasound (AS-
+     yuan video. https://github.com/madebyollin/                              MUS), MICCAI Workshop, pages 58–67, 2024.
+     taehv, 2025. Accessed: 2026-11-13.                                  [19] Haojun Jiang, Zhenguo Sun, Ning Jia, Meng Li, Yu Sun,
+ [6] Jake Bruce, Michael Dennis, Ashley Edwards, Jack Parker-                 Shaqi Luo, Shiji Song, and Gao Huang. Cardiac Copilot:
+     Holder, Yuge Shi, Edward Hughes, Matthew Lai, Aditi                      Automatic probe guidance for echocardiography with world
+     Mavalankar, Richie Steigerwald, Chris Apps, et al. Genie:                model. In Medical Image Computing and Computer Assisted
+     Generative interactive environments. In International Confer-            Intervention – MICCAI 2024, pages 190–199, 2024.
+     ence on Machine Learning (ICML), 2024.                              [20] Zhongliang Jiang, Septimiu E. Salcudean, and Nassir Navab.
+ [7] Benny Bürger, Sascha Bettinghausen, Matthias Rädle, and                  Robotic ultrasound imaging: State-of-the-art and future per-
+     Jürgen Hesser. Real-time GPU-based ultrasound simulation                 spectives. Medical Image Analysis, 89:102878, 2023.
+     using deformable mesh models. IEEE Transactions on Medi-            [21] Saurabh Koju, Saurav Bastola, Prashant Shrestha, Sanskar
+     cal Imaging, 32(3):609–618, 2013.                                        Amgain, Yash Raj Shrestha, Rudra P. K. Poudel, and Binod
+ [8] Boyuan Chen, Diego Martí Monsó, Yilun Du, Max Sim-                       Bhattarai. Surgical vision world model. In MICCAI Workshop
+     chowitz, Russ Tedrake, and Vincent Sitzmann. Diffusion                   on Data Engineering in Medical Imaging (DEMI), 2025.
+     Forcing: Next-token prediction meets full-sequence diffusion.
+                                                                         [22] Andras Lasso, Tamas Heffter, Adam Rankin, Csaba Pinter,
+     In Advances in Neural Information Processing Systems, 2024.
+                                                                              Tamas Ungi, and Gabor Fichtinger. PLUS: Open-source
+ [9] Cheng Chi, Siyuan Feng, Yilun Du, Zhenjia Xu, Eric
+                                                                              toolkit for ultrasound-guided intervention systems. IEEE
+     Cousineau, Benjamin Burchfiel, and Shuran Song. Diffu-
+                                                                              Transactions on Biomedical Engineering, 61(10):2527–2537,
+     sion policy: Visuomotor policy learning via action diffusion.
+                                                                              2014.
+     In Robotics: Science and Systems (RSS), 2023.
+                                                                         [23] Chenxin Li, Hengyu Liu, Yifan Liu, Brandon Y. Feng,
+[10] Justin Cui, Jie Wu, Ming Li, Tao Yang, Xiaojie Li, Rui
+                                                                              Wuyang Li, Xinyu Liu, Zhen Chen, Jing Shao, and Yixuan
+     Wang, Andrew Bai, Yuanhao Ban, and Cho-Jui Hsieh. Self-
+                                                                              Yuan. Endora: Video generation models as endoscopy simu-
+     forcing++: Towards minute-scale high-quality video genera-
+                                                                              lators. In Medical Image Computing and Computer Assisted
+     tion. arXiv preprint arXiv:2510.02283, 2025.
+                                                                              Intervention (MICCAI), pages 230–240, 2024.
+[11] Zicheng Duan, Jiatong Xia, Zeyu Zhang, Wenbo Zhang,
+     Gengze Zhou, Chenhui Gou, Yefei He, Feng Chen, Xinyu                [24] Wenxuan Li, Chongyu Qu, Xiaoxi Chen, Pedro R. A. S. Bassi,
+     Zhang, and Lingqiao Liu. Liveworld: Simulating out-of-sight              Yijia Shi, Yuxiang Lai, Qian Yu, Huimin Xue, Yixiong Chen,
+     dynamics in generative video world models. arXiv preprint                Xiaorui Lin, et al. Abdomenatlas: A large-scale, detailed-
+     arXiv:2603.07145, 2026.                                                  annotated, and multi-center dataset for efficient transfer learn-
+[12] Shenyuan Gao, Siyuan Zhou, Yilun Du, Jun Zhang, and                      ing and open algorithmic benchmarking. Medical Image
+     Chuang Gan. Adaworld: Learning adaptable world models                    Analysis, 2024.
+     with latent actions. In International Conference on Machine         [25] Xuesong Li, Shuai Chen, Feng Li, Zhongliang Jiang, Nassir
+     Learning (ICML), 2025.                                                   Navab, and Yuan Bi. Scanning while imagining: A scene-
+
+
+                                                                     9
+     graph world model for robotic ultrasound navigation. arXiv             [40] Ronald J. Williams and David Zipser. A learning algorithm for
+     preprint arXiv:2609.32837, 2026.                                            continually running fully recurrent neural networks. Neural
+[26] Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maxi-                        Computation, 1(2):270–280, 1989.
+     milian Nickel, and Matt Le. Flow matching for generative               [41] Guangxuan Xiao, Yuandong Tian, Beidi Chen, Song Han,
+     modeling. In ICLR, 2023.                                                    and Mike Lewis. Efficient streaming language models with
+[27] Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight                   attention sinks. In ICLR, 2024.
+     and fast: Learning to generate and transfer data with rectified        [42] Jichen Xu, Anqi Dong, Yang Yang, et al. VSNet: Vessel
+     flow. In ICLR, 2023.                                                        structure-aware network for hepatic and portal vein segmen-
+[28] Yaofang Liu, Xiaodong Cun, Xuebo Liu, Xintao Wang, Yong                     tation. Medical Image Analysis, 101:103458, 2025.
+     Zhang, Haoxin Chen, Yang Liu, Tieyong Zeng, Raymond                    [43] Keke Yang, Erqi Wang, Sainan Guan, and Hongliang Ren.
+     Chan, and Ying Shan. Evalcrafter: Benchmarking and evalu-                   Ultraworld: Learning interactive ultrasound world models
+     ating large video generation models. In CVPR, pages 22139–                  from untracked clinical videos with acoustic sampling map.
+     22149, 2024.                                                                arXiv preprint arXiv:2610.09785, 2026.
+[29] Jun Ma, Yao Zhang, Song Gu, Cheng Zhu, Cheng Ge, Yichi                 [44] Zefan Yang, Zheyuan Zhang, Boris Maihe, Yikang Liu, Hang
+     Zhang, Xingle An, Congcong Wang, Qiyuan Wang, Xin Liu,                      Yu, Ankush Mukherjee, Xiao Chen, Pingkun Yan, Terrence
+     et al. Abdomenct-1k: Is abdominal organ segmentation a                      Chen, and Shanhui Sun. Sonoworld: Towards interactive
+     solved problem? IEEE Transactions on Pattern Analysis and                   pose-controllable ultrasound world models. arXiv preprint
+     Machine Intelligence, 44(10):6695–6714, 2022.                               arXiv:2610.19327, 2026.
+[30] Jiawei Mao, Yuhan Wang, Yucheng Tang, Daguang Xu, Kang                 [45] Tianwei Yin, Michaël Gharbi, Richard Zhang, Eli Shecht-
+     Wang, Yang Yang, Zongwei Zhou, and Yuyin Zhou. Med-                         man, Frédo Durand, William T. Freeman, and Taesung Park.
+     SegFactory: Text-guided generation of medical image-mask                    One-step diffusion with distribution matching distillation. In
+     pairs. In ICCV, pages 21525–21535, 2025.                                    CVPR, 2024.
+[31] NVIDIA. NVIDIA Isaac for Healthcare: Raytracing ultra-                 [46] Tianwei Yin, Qiang Zhang, Richard Zhang, William T. Free-
+     sound simulator. Software documentation, 2026. Accessed:                    man, Frédo Durand, Eli Shechtman, and Xun Huang. From
+     2026-11-15.                                                                 slow bidirectional to fast autoregressive video diffusion mod-
+[32] NVIDIA, Niket Agarwal, Arslan Ali, Maciej Bala, Yogesh                      els. In CVPR, 2025.
+     Balaji, et al. Cosmos world foundation model platform for
+                                                                            [47] Yang Yue, Yulin Wang, Haojun Jiang, Pan Liu, Shiji Song,
+     physical AI. arXiv preprint arXiv:2501.03575, 2025.
+                                                                                 and Gao Huang. Echoworld: Learning motion-aware world
+[33] Nguyen Van Phi, Tran Minh Duc, Pham Huy Hieu, and                           models for echocardiography probe guidance. In CVPR, pages
+     Tran Quoc Long. Echocardiography video synthesis from                       25993–26003, 2025.
+     end diastolic semantic map via diffusion model. In IEEE
+                                                                            [48] Yang Yue, Yulin Wang, Chenxin Tao, Pan Liu, Shiji Song, and
+     International Conference on Acoustics, Speech and Signal
+                                                                                 Gao Huang. CheXWorld: Exploring image world modeling
+     Processing, 2024.
+                                                                                 for radiograph representation learning. In CVPR, 2025.
+[34] Mehrdad Salehi, Seyed-Ahmad Ahmadi, Raphael Prevost,
+                                                                            [49] Lvmin Zhang, Anyi Rao, and Maneesh Agrawala. Adding
+     Nassir Navab, and Wolfgang Wein. Patient-specific 3d ul-
+                                                                                 conditional control to text-to-image diffusion models. In
+     trasound simulation based on convolutional ray-tracing and
+                                                                                 ICCV, 2023.
+     appearance optimization. In Medical Image Computing and
+     Computer-Assisted Intervention, pages 510–518, 2015.                   [50] Richard Zhang, Phillip Isola, Alexei A. Efros, Eli Shechtman,
+[35] Oriane Siméoni, Huy V. Vo, Maximilian Seitzer, Federico                     and Oliver Wang. The unreasonable effectiveness of deep
+     Baldassarre, Maxime Oquab, Cijo Jose, Vasil Khalidov, Marc                  features as a perceptual metric. In CVPR, 2018.
+     Szafraniec, Seungeun Yi, Michaël Ramamonjisoa, et al. DI-              [51] Zheyuan Zhang, Lanhong Yao, Bin Wang, Debesh Jha,
+     NOv3. arXiv preprint arXiv:2508.10104, 2025.                                Gorkem Durak, Elif Keles, Alpay Medetalibeyoglu, and Ulas
+[36] Jianlin Su, Murtadha Ahmed, Yu Lu, Shengfeng Pan, Wen                       Bagci. DiffBoost: Enhancing medical image segmentation via
+     Bo, and Yunfeng Liu. RoFormer: Enhanced transformer with                    text-guided diffusion model. IEEE Transactions on Medical
+     rotary position embedding. Neurocomputing, 568, 2024.                       Imaging, 44(9):3670–3682, 2025.
+[37] Team Wan et al. Wan: Open and advanced large-scale video
+     generative models. arXiv preprint arXiv:2503.20314, 2025.
+[38] Santiago Vitale, José Ignacio Orlando, Emmanuel Iarussi,
+     and Ignacio Larrabide. Improving realism in patient-specific
+     abdominal ultrasound simulation using CycleGANs. Interna-
+     tional Journal of Computer Assisted Radiology and Surgery,
+     15(2):183–192, 2020.
+[39] Jakob Wasserthal, Hanns-Christian Breit, Manfred T. Meyer,
+     Maurice Pradella, Daniel Hinck, Alexander W. Sauter, Tobias
+     Heye, Daniel T. Boll, Joshy Cyriac, Shan Yang, et al. To-
+     talSegmentator: Robust segmentation of 104 anatomic struc-
+     tures in CT images. Radiology: Artificial Intelligence, 5(5),
+     2023.
+
+
+                                                                       10
+

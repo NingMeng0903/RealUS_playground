@@ -1,0 +1,54 @@
+{
+  "status": "passed",
+  "checks": {
+    "BodyParts3D right": {
+      "nodes": 3847,
+      "edges": 3827,
+      "components": 20
+    },
+    "BodyParts3D mirrored left": {
+      "nodes": 3703,
+      "edges": 3680,
+      "components": 23
+    },
+    "Open3DModel right": {
+      "nodes": 4100,
+      "edges": 4068,
+      "components": 32
+    },
+    "MedSeg": {
+      "nodes": 330,
+      "edges": 322,
+      "components": 8
+    },
+    "Blender right held-out": {
+      "nodes": 2392,
+      "edges": 2384,
+      "components": 8
+    },
+    "blender_projection_legacy_comparison": {
+      "matched_finite_station_role_pairs": 469,
+      "coverage_status_disagreements": 0,
+      "discrepant_centers_gt_1e-6_mm": 0,
+      "max_absolute_discrepancy_mm": 0.0
+    }
+  },
+  "input_hashes": {
+    "ct_geometry.npz": "4d683f815675d0be807889a2a355ee82bcd994837045d238141aacbee0794ce2",
+    "ct_reference_topology.json.gz": "2bfde33b9e7cf07003542bb4e057b293286c3ac989c65d475e7c952e5dceb8aa",
+    "medseg_ct_route.npz": "8e416538a07d82d3a240a0f75942908f91f6b3a34cbf1fd26332c93c418be84a",
+    "medseg_native_graph.json": "ace8842a79f8e6b9dbbb12df0fafa5a3870af1031fed3d7e18247304536e9005",
+    "blender_holdout_geometry_links.npz": "804d3c1646976e97ea7f45da058b3772f05def30e0818e4bf65b7514f480f14f",
+    "blender_holdout_topology.json.gz": "fa7f3f687d5da1c83e35e91a3fa8be2388a70c4a38983b17607d44d3acdd953e"
+  },
+  "offline_rebuild_byte_identical": {
+    "ct_geometry.npz": true,
+    "ct_reference_topology.json.gz": true,
+    "medseg_ct_route.npz": true,
+    "medseg_native_graph.json": true,
+    "blender_holdout_geometry_links.npz": true,
+    "blender_holdout_topology.json.gz": true,
+    "training_topology_audit.json": true,
+    "blender_holdout_topology_audit.json": true
+  }
+}

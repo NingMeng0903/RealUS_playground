@@ -42,18 +42,17 @@ def _leakage_group_ids(
         raise ValueError("boundary_id and source_pose_id must have the same shape")
 
     groups = np.empty(len(source), dtype=np.int64)
-    next_group = 0
-    source_values = np.unique(source[source >= 0])
-    source_map = {int(value): i for i, value in enumerate(source_values.tolist())}
-    next_group = len(source_map)
-    for value, group in source_map.items():
-        groups[source == value] = group
+    source_mask = source >= 0
+    source_values, source_inverse = np.unique(source[source_mask], return_inverse=True)
+    groups[source_mask] = source_inverse
+    next_group = len(source_values)
 
     unresolved_boundary = (source < 0) & (boundary >= 0)
-    boundary_values = np.unique(boundary[unresolved_boundary])
-    for value in boundary_values.tolist():
-        groups[unresolved_boundary & (boundary == value)] = next_group
-        next_group += 1
+    boundary_values, boundary_inverse = np.unique(
+        boundary[unresolved_boundary], return_inverse=True
+    )
+    groups[unresolved_boundary] = next_group + boundary_inverse
+    next_group += len(boundary_values)
 
     unresolved_rows = np.flatnonzero((source < 0) & (boundary < 0))
     groups[unresolved_rows] = np.arange(

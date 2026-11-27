@@ -1,0 +1,596 @@
+{
+  "scope": "two exact synthetic worlds, no image noise, no native controller or clinical data",
+  "known_external_pose": {
+    "rotation": [
+      [
+        0.9510565162951535,
+        -0.3090169943749474,
+        0.0
+      ],
+      [
+        0.3090169943749474,
+        0.9510565162951535,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "translation_mm": [
+      -18.0,
+      12.0,
+      7.0
+    ]
+  },
+  "fixed_short_axis_view_normal_world": [
+    0.9510565162951535,
+    0.3090169943749474,
+    0.0
+  ],
+  "reference_target_mm": 0,
+  "position_tolerance_mm": 2.0,
+  "unobserved_inner_slips_mm": [
+    -5,
+    5
+  ],
+  "local_views_mm": [
+    0,
+    -5,
+    5
+  ],
+  "first_discriminating_grid_position_mm": 15,
+  "results": [
+    {
+      "condition": "tracked_branch",
+      "policy": "geometry_replay",
+      "private_slip_mm": -5,
+      "axial_error_mm": 5,
+      "status": "wrong",
+      "total_travel_mm": 0,
+      "return_body_x_mm": 0,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ]
+    },
+    {
+      "condition": "tracked_branch",
+      "policy": "local_full_history",
+      "private_slip_mm": -5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 15,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "tracked_branch",
+      "policy": "classical_fixed_sweep",
+      "private_slip_mm": -5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 35,
+      "return_body_x_mm": -5,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          10,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          15,
+          "60418eff4873138a18145552b8659908c03d5f289f253f27abf9f7cc2053bbec"
+        ],
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5
+      ]
+    },
+    {
+      "condition": "tracked_branch",
+      "policy": "active_mask_recovery",
+      "private_slip_mm": -5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 35,
+      "return_body_x_mm": -5,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          15,
+          "60418eff4873138a18145552b8659908c03d5f289f253f27abf9f7cc2053bbec"
+        ],
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5
+      ]
+    },
+    {
+      "condition": "tracked_branch",
+      "policy": "geometry_replay",
+      "private_slip_mm": 5,
+      "axial_error_mm": 5,
+      "status": "wrong",
+      "total_travel_mm": 0,
+      "return_body_x_mm": 0,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ]
+    },
+    {
+      "condition": "tracked_branch",
+      "policy": "local_full_history",
+      "private_slip_mm": 5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 15,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "tracked_branch",
+      "policy": "classical_fixed_sweep",
+      "private_slip_mm": 5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 25,
+      "return_body_x_mm": 5,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          10,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          15,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        5
+      ]
+    },
+    {
+      "condition": "tracked_branch",
+      "policy": "active_mask_recovery",
+      "private_slip_mm": 5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 25,
+      "return_body_x_mm": 5,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          15,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        5
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "geometry_replay",
+      "private_slip_mm": -5,
+      "axial_error_mm": 5,
+      "status": "wrong",
+      "total_travel_mm": 0,
+      "return_body_x_mm": 0,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "local_full_history",
+      "private_slip_mm": -5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 15,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "classical_fixed_sweep",
+      "private_slip_mm": -5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 30,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          10,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          15,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          20,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          25,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          30,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "active_mask_recovery",
+      "private_slip_mm": -5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 0,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "geometry_replay",
+      "private_slip_mm": 5,
+      "axial_error_mm": 5,
+      "status": "wrong",
+      "total_travel_mm": 0,
+      "return_body_x_mm": 0,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "local_full_history",
+      "private_slip_mm": 5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 15,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "classical_fixed_sweep",
+      "private_slip_mm": 5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 30,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          10,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          15,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          20,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          25,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ],
+        [
+          30,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "uniform_tube_symmetry",
+      "policy": "active_mask_recovery",
+      "private_slip_mm": 5,
+      "axial_error_mm": null,
+      "status": "abstain",
+      "total_travel_mm": 0,
+      "return_body_x_mm": null,
+      "observations": [
+        [
+          0,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5,
+        5
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "geometry_replay",
+      "private_slip_mm": -5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": -5,
+      "observations": [
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "local_full_history",
+      "private_slip_mm": -5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": -5,
+      "observations": [
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "classical_fixed_sweep",
+      "private_slip_mm": -5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": -5,
+      "observations": [
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "active_mask_recovery",
+      "private_slip_mm": -5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": -5,
+      "observations": [
+        [
+          -5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        -5
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "geometry_replay",
+      "private_slip_mm": 5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": 5,
+      "observations": [
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "local_full_history",
+      "private_slip_mm": 5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": 5,
+      "observations": [
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        5
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "classical_fixed_sweep",
+      "private_slip_mm": 5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": 5,
+      "observations": [
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        5
+      ]
+    },
+    {
+      "condition": "inner_registration_revealed",
+      "policy": "active_mask_recovery",
+      "private_slip_mm": 5,
+      "axial_error_mm": 0,
+      "status": "correct",
+      "total_travel_mm": 5,
+      "return_body_x_mm": 5,
+      "observations": [
+        [
+          5,
+          "e9ad2b0f9b512ff61dc8f88a5229d4e3ec4a8dd9df6725f33802b3a57b1bcecb"
+        ]
+      ],
+      "remaining_slips_mm": [
+        5
+      ]
+    }
+  ]
+}

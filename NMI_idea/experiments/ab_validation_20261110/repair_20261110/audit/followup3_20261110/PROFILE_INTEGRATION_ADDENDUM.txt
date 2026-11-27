@@ -1,0 +1,16 @@
+Independent YAML/profile integration addendum, 2026-11-10
+
+The later reusable entry is now real, not merely a saved recipe. ScanReplayBridge reads scan_tracking_profile.yaml, validates schema/reference kind, applies its lead/weight overrides, and supplies a local WorldPoseSplineReference factory. run_scan_profile.py reads input poses and q seed by explicit NPZ keys, passes the profile's speed/settle values, and computes measured-before same-time metrics. The profile remains an offline path; hardware/global controller defaults are not switched.
+
+Read-only comparison of the separately saved profile_integration_check trace with frozen path0_smooth_baseline shows all 33 common control/state/pose/error/clock/constraint arrays bit-identical. Only measured wall computation time was excluded. This validates actual profile consumption on the one saved run, not arbitrary unseen trajectories. Its middle remains 580 samples, .0329824142724 mm and .0324844550316 degrees. No native rerun was performed for the independent audit.
+
+The base bridge change is only extracting the previous constructor into make_pose_reference. The preserved old bridge SHA matches the original four-run source, 88b71baaa55c18a35d0bd3696b18ef9d24a54b813e766fbacbbdf2f0cffb09ec. Independent construction compared 257 legacy samples and found pose/feed-forward arrays bit-identical. Actual reference implementation and native binary are unchanged from the earlier sealed experiment.
+
+Two entry-boundary defects identified by this audit were fixed before this addendum:
+1. A fixed-position I -> Rz(.1) -> I sequence initially silently became a hold because only endpoint rotations were checked. It now checks every orientation and explicitly rejects the pure-rotation request. The initial failure is retained in profile_factory_boundary_check_initial.json; the corrected rejection was independently repeated without a controller.
+2. Short paths with no samples in the declared .8-second-edge middle interval now return samples=0 and null maxima instead of raising an empty-array maximum after replay. The window/threshold is not adjusted to force an apparent pass.
+Unsupported YAML reference kinds now reject. All five no-native factory/entry tests were independently rerun and passed.
+
+Strict derivative gates and scope stay unchanged. This saved integration run has jerk margin -.024015952967, despite the legacy motion_tracking_pass_2mm_2deg flag being true: that flag is a tracking check, not the strict all-physical-limits gate. A stationary endpoint reference also does not imply all robot joint velocities are zero; the saved redundant controller still has nonzero qdot_exit. This addendum establishes reference/profile wiring and measured Cartesian tracking in the ideal-feedback offline controller, not terminal joint rest or hardware execution.
+
+Evidence: profile_integration_independent.json records hashes of both bridges, reference profile, tests, CLI and the saved integration trace/result; it includes all array-equality results. profile_tests.log records 5 passing tests. The original four-run numerical evidence and SMOOTH_REFERENCE_AUDIT.txt remain unchanged.
